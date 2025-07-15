@@ -48,7 +48,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AMX.cs" />
+    <Compile Include="AMXClean\CSAMX.cs" />
+    <Compile Include="AMXClean\NVM.cs" />
     <Compile Include="CustomEventArgs.cs" />
     <Compile Include="DraxService.cs">
       <SubType>Component</SubType>
@@ -75,5 +76,6 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

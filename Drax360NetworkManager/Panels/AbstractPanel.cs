@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Drax360Service.AMXClean;
+using System;
 using System.Collections.Generic;
 using System.IO.Ports;
 using System.Text;
@@ -21,7 +22,7 @@ namespace Drax360Service.Panels
         public event EventHandler Fire;
         public string Identifier = "";
         protected Timer heartbeat_timer = null;
-        
+        private CSAMX cleanamx = new CSAMX();
 
         #region constructors
         public AbstractPanel(string identifier)
@@ -52,12 +53,34 @@ namespace Drax360Service.Panels
         public abstract void EnableDevice(string passedvalues);
         public abstract void DisableZone(string passedvalues);
         public abstract void EnableZone(string passedvalues);
-        public void FireFire(string msg)
+        public void FireFire(string msg) // extra params here to inidicate which panel
         {
             EventHandler handler = Fire;
 
             if (handler != null) handler(this, new CustomEventArgs(msg));
+            amxalarm(true);
+
+
         }
+
+        private void amxalarm(bool on)  // extra params here to inidicate which panel
+        {
+            int amxoffset = 1; // 0 amxlight
+            int node = 1;
+            int zone = 2;
+            int inputtype = 1;
+
+            int evnum = cleanamx.MakeInputNumber(node + amxoffset, zone, inputtype, 0);
+
+
+
+            string ps = "##TEST";
+            string tempRefParam = "";
+            string tempRefParam2 = "";
+            cleanamx.WriteData(1, evnum, ps, tempRefParam, tempRefParam2, on);
+            cleanamx.FlushMessages();
+        }
+
         public virtual void Parse(byte[] buffer)
         {
             this.buffer.AddRange(buffer);
