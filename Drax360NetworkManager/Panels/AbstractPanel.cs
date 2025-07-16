@@ -22,12 +22,13 @@ namespace Drax360Service.Panels
         public event EventHandler Fire;
         public string Identifier = "";
         protected Timer heartbeat_timer = null;
-        private CSAMX cleanamx = new CSAMX();
+        
 
         #region constructors
         public AbstractPanel(string identifier)
         {
             this.Identifier = identifier;
+           
         }
         #endregion
 
@@ -70,15 +71,15 @@ namespace Drax360Service.Panels
             int zone = 2;
             int inputtype = 1;
 
-            int evnum = cleanamx.MakeInputNumber(node + amxoffset, zone, inputtype, 0);
+            int evnum = CSAMXSingleton.CS.MakeInputNumber(node + amxoffset, zone, inputtype, 0);
 
 
 
             string ps = "##TEST";
             string tempRefParam = "";
             string tempRefParam2 = "";
-            cleanamx.WriteData(1, evnum, ps, tempRefParam, tempRefParam2, on);
-            cleanamx.FlushMessages();
+            CSAMXSingleton.CS.WriteData(1, evnum, ps, tempRefParam, tempRefParam2, on);
+            CSAMXSingleton.CS.FlushMessages();
         }
 
         public virtual void Parse(byte[] buffer)

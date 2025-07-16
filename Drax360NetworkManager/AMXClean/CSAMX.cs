@@ -11,12 +11,12 @@ namespace Drax360Service.AMXClean
     {
         #region constants
         
-        private const string kgenextension = ".GEN";
+        private const string kgenextension = "GEN";
         private const int kmaxfilenumber = 1000000;
         #endregion
 
         #region private variables
-        private int filenumber = 1;
+        private int filenumber = 0;
 
         private string workingfolder = "";
         private List<NVM> nvms = new List<NVM>();
@@ -94,7 +94,9 @@ namespace Drax360Service.AMXClean
             }
 
             filenumber++;
-            string filename = filenumber.ToString() + kgenextension;
+            if (filenumber > kmaxfilenumber) filenumber = 1;
+
+            string filename = filenumber.ToString() +"."+ kgenextension;
             string fullfilename = Path.Combine(workingfolder, filename);
 
             // Open the file in write mode, changed from append as we need to create a new file on flush
@@ -111,7 +113,7 @@ namespace Drax360Service.AMXClean
                 }
             }
 
-            if (filenumber > kmaxfilenumber) filenumber = 1;
+            
             nvms.Clear();
         }
         #endregion
@@ -122,7 +124,7 @@ namespace Drax360Service.AMXClean
         private void determinelastfilenumber()
         {
             var dirInfo = new DirectoryInfo(workingfolder);
-            var allFiles = dirInfo.GetFiles("*.GEN", SearchOption.TopDirectoryOnly);
+            var allFiles = dirInfo.GetFiles("*." + kgenextension, SearchOption.TopDirectoryOnly);
             FileInfo lastmodifiedfile = allFiles.OrderBy(fi => fi.LastWriteTime).LastOrDefault();
             if (lastmodifiedfile == null) return;
 
@@ -130,10 +132,7 @@ namespace Drax360Service.AMXClean
 
             if (splits.Length != 2) return;
 
-            filenumber = Convert.ToInt32(splits[0]) + 1;
-            if (filenumber > kmaxfilenumber) filenumber = 1;
-
-        
+            filenumber = Convert.ToInt32(splits[0]);
         }
         #endregion
     }

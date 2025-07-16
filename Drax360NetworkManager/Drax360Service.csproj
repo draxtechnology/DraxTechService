@@ -49,6 +49,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AMXClean\CSAMX.cs" />
+    <Compile Include="AMXClean\CSAMXSingelton.cs" />
     <Compile Include="AMXClean\NVM.cs" />
     <Compile Include="CustomEventArgs.cs" />
     <Compile Include="DraxService.cs">
