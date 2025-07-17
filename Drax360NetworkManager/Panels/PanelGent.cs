@@ -7,10 +7,10 @@ using System.Security.Policy;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Timers;
 
 namespace Drax360Service.Panels
 {
-
     internal class PanelGent : AbstractPanel
     {
         #region constants
@@ -33,7 +33,7 @@ namespace Drax360Service.Panels
         {
             if (!String.IsNullOrEmpty(identifier))
             {
-                heartbeat_timer = new Timer(heartbeat_timer_callback, this.Identifier, 500, kheartbeatdelayseconds * 1000);
+                heartbeat_timer = new System.Threading.Timer(heartbeat_timer_callback, this.Identifier, 500, kheartbeatdelayseconds * 1000);
             }
         }
 
@@ -137,7 +137,7 @@ namespace Drax360Service.Panels
             }
 
             // we have a result fire the callback
-            FireFire(sTime);
+            //FireFire(sTime);
             if (Convert.ToInt32(sEventParam.Substring(2, 2)) > 0)
             {
                 int giNoOfFaults = Convert.ToInt32(sEventParam.Substring(2, 2));
@@ -204,44 +204,45 @@ namespace Drax360Service.Panels
 
         public override void Evacuate(string passedvalues)
         {
-            send_message(ActionType.kEVACTUATE, passedvalues);
+            send_message(ActionType.kEVACTUATE, NwmData.AlarmToAmx, passedvalues);
         }
         public override void Alert(string passedvalues)
         {
         }
         public override void EvacuateNetwork(string passedvalues)
         {
-            send_message(ActionType.kEVACTUATENETWORK, passedvalues);
+            send_message(ActionType.kEVACTUATENETWORK, NwmData.AlarmToAmx, passedvalues);
         }
         public override void Silence(string passedvalues)
         {
-            send_message(ActionType.kSILENCE, passedvalues);
+            send_message(ActionType.kSILENCE, NwmData.AlarmToAmx, passedvalues);
         }
         public override void MuteBuzzers(string passedvalues)
         {
-            send_message(ActionType.kMUTEBUZZERS, passedvalues);
+            send_message(ActionType.kMUTEBUZZERS, NwmData.AlarmToAmx, passedvalues);
         }
         public override void Reset(string passedvalues)
         {
-            send_message(ActionType.kRESET, passedvalues);
+            send_message(ActionType.kRESET, NwmData.AlarmToAmx, passedvalues);
         }
+
         public override void DisableDevice(string passedvalues)
         {
-            send_message(ActionType.kDISABLEDEVICE, passedvalues);
+            send_message(ActionType.kDISABLEDEVICE, NwmData.IsolationToAmx, passedvalues);
         }
         public override void EnableDevice(string passedvalues)
         {
-            send_message(ActionType.kENABLEDEVICE, passedvalues);
+            send_message(ActionType.kENABLEDEVICE, NwmData.IsolationToAmx, passedvalues);
         }
         public override void DisableZone(string passedvalues)
         {
-            send_message(ActionType.kDISABLEZONE, passedvalues);
+            send_message(ActionType.kDISABLEZONE, NwmData.IsolationToAmx,passedvalues);
         }
         public override void EnableZone(string passedvalues)
         {
-            send_message(ActionType.kENABLEZONE, passedvalues);
+            send_message(ActionType.kENABLEZONE, NwmData.IsolationToAmx,passedvalues);
         }
-        public virtual void send_message(ActionType action, string passedvalues)
+        public virtual void send_message(ActionType action, NwmData type, string passedvalues)
         {
             string[] parts = passedvalues.Split(',');
 
@@ -349,6 +350,7 @@ namespace Drax360Service.Panels
             gbaryDataToTX[58] = (byte)iLSB;
 
             sendserial(gbaryDataToTX);
+            SendEvent("Gent", type, action.ToString(), node, loop, device);
         }
     }
 }

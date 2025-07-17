@@ -4,13 +4,12 @@ using System.Collections.Generic;
 using System.IO.Ports;
 using System.Text;
 using System.Threading;
-
+using System.Xml.Linq;
 
 namespace Drax360Service.Panels
 {
     internal abstract class AbstractPanel
     {
-
         #region constants
         protected const byte kheartbeatintinitialdelayseconds = 60;
         protected const byte kheartbeatdelayseconds = 60;
@@ -23,7 +22,6 @@ namespace Drax360Service.Panels
         public string Identifier = "";
         protected Timer heartbeat_timer = null;
         
-
         #region constructors
         public AbstractPanel(string identifier)
         {
@@ -54,31 +52,25 @@ namespace Drax360Service.Panels
         public abstract void EnableDevice(string passedvalues);
         public abstract void DisableZone(string passedvalues);
         public abstract void EnableZone(string passedvalues);
-        public void FireFire(string msg) // extra params here to inidicate which panel
+        public void SendEvent(string panel, NwmData type, string text, int node = 0, int loop = 0, int device = 0)
         {
             EventHandler handler = Fire;
 
-            if (handler != null) handler(this, new CustomEventArgs(msg));
-            amxalarm(true);
-
-
+            if (handler != null) handler(this, new CustomEventArgs(text));
+            amxalarm(true, type, text, node, loop, device);
         }
 
-        private void amxalarm(bool on)  // extra params here to inidicate which panel
+        private void amxalarm(bool on, NwmData type, string text, int node = 0, int loop = 0, int device = 0)
         {
-            int amxoffset = 1; // 0 amxlight
-            int node = 1;
-            int zone = 2;
-            int inputtype = 1;
+            int amxoffset = 0; // 0 amxlight
 
-            int evnum = CSAMXSingleton.CS.MakeInputNumber(node + amxoffset, zone, inputtype, 0);
+            int evnum = CSAMXSingleton.CS.MakeInputNumber(node + amxoffset, loop, device, 4);
 
-
-
-            string ps = "##TEST";
+            string ps = text;
             string tempRefParam = "";
             string tempRefParam2 = "";
-            CSAMXSingleton.CS.WriteData(1, evnum, ps, tempRefParam, tempRefParam2, on);
+
+            CSAMXSingleton.CS.WriteData(type, evnum, ps, tempRefParam, tempRefParam2, on);
             CSAMXSingleton.CS.FlushMessages();
         }
 
