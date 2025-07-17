@@ -1,5 +1,7 @@
 ﻿
 using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Text;
 
 
@@ -33,7 +35,7 @@ namespace Drax360Service.AMXClean
         #region constructor
         public NVM()
         {
-           
+
             Spare = new int[8];
             for (int i = 0; i < Spare.Length; i++)
             {
@@ -46,81 +48,87 @@ namespace Drax360Service.AMXClean
         #endregion
 
         #region public methods
-        public string Render()
+
+
+        public Byte[] RenderBytes()
         {
-            string ret = "";
-            ret += renderlong(OurType);
-            ret += renderlong(OurEvent);
-            
-            ret += render__int16(OnOff);
-            ret += render__int16(Value);
-            ret += render__int16(Node);
-            ret += render__int16(Zone);
-            ret += render__int16(Op);
-            ret += render__int16(ControlType);
-            ret += renderlong(Dat1);
-            ret += renderlong(Dat2);
-            ret += renderlong(Dat3);
-            ret += renderlong(Dat4);
-            ret += renderlong(Dat5);
-            ret += renderlong(Dat6);
-            ret += rendertime();
+            List<Byte> ret = new List<Byte>();
+            ret.AddRange(renderlongb(OurType));
+            ret.AddRange(renderlongb(OurEvent));
+
+            ret.AddRange(render__int16b(OnOff));
+            ret.AddRange(render__int16b(Value));
+            ret.AddRange(render__int16b(Node));
+            ret.AddRange(render__int16b(Zone));
+            ret.AddRange(render__int16b(Op));
+            ret.AddRange(render__int16b(ControlType));
+            ret.AddRange(renderlongb(Dat1));
+            ret.AddRange(renderlongb(Dat2));
+            ret.AddRange(renderlongb(Dat3));
+            ret.AddRange(renderlongb(Dat4));
+            ret.AddRange(renderlongb(Dat5));
+            ret.AddRange(renderlongb(Dat6));
+            ret.AddRange(rendertimeb());
             foreach (int s in Spare)
             {
-                ret += renderlong(s);
+                ret.AddRange(renderlongb(s));
             }
-            ret += renderchar(Text.Length > 40 ? Text.Substring(0, 40) : Text, 64);
-            ret += renderchar(Text2, 40);
-            ret += renderchar(Text3, 40);
-            return ret;
+            ret.AddRange(rendercharb(Text.Length > 40 ? Text.Substring(0, 40) : Text, 64));
+            ret.AddRange(rendercharb(Text2, 40));
+            ret.AddRange(rendercharb(Text3, 40));
+            return ret.ToArray();
         }
+
         #endregion
 
         #region private methods
-        private string renderlong(int ourint)
+
+        private byte[] renderlongb(int ourint)
         {
             long ourlong = (long)ourint;
-            return renderlong(ourlong);
+            return renderlongb(ourlong);
         }
 
-        private string renderlong(long ourlong)
+        private byte[] renderlongb(long ourlong)
         {
-            byte[] bytevals = BitConverter.GetBytes((int)ourlong);
-            string ret = Encoding.ASCII.GetString(bytevals, 0, bytevals.Length);
-            return ret;
+            byte[] buffer = new byte[4];
+
+            buffer[0] = (byte)(ourlong & 0xFF);         // Least significant byte
+            buffer[1] = (byte)(ourlong >> 8 & 0xFF);
+            buffer[2] = (byte)(ourlong >> 16 & 0xFF);
+            buffer[3] = (byte)(ourlong >> 24 & 0xFF); // Most significant byte
+            return buffer;
+
         }
 
-        private string rendertime()
+
+
+
+
+        private byte[] rendertimeb()
         {
-            long secondsSince1970 = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            return renderlong(secondsSince1970);
-        }
+            long secondsSince1970 = DateTimeOffset.Now.ToUnixTimeSeconds();
 
-        private string rendertimeNEW()
-        {
-            DateTimeOffset fixedTime = new DateTimeOffset(2025, 7, 8, 9, 4, 00, TimeSpan.Zero);
-            //DateTimeOffset fixedTime = new DateTimeOffset(System.DateTime.Now.Year, 7, 8, 15, 24, 00, TimeSpan.Zero);
-            uint unixSeconds = (uint)fixedTime.ToUnixTimeSeconds(); // ensures it's unsigned 32-bit
-            byte[] bytes = BitConverter.GetBytes(unixSeconds);      // little-endian 4 bytes
-            //return Encoding.GetEncoding("ISO-8859-1").GetString(bytes); // safely converts raw bytes to string
-            return Encoding.ASCII.GetString(bytes);
+
+
+
+            return renderlongb(secondsSince1970);
         }
 
 
-        private string render__int16(int ourval)
+        private byte[] render__int16b(int ourval)
         {
             byte[] buffer = new byte[2];
 
             buffer[0] = (byte)ourval;
             buffer[1] = (byte)(ourval >> 8);
-
-            string ret = Encoding.ASCII.GetString(buffer, 0, buffer.Length);
-            return ret;
+            return buffer;
 
         }
-        private string renderchar(string ourstr, int ourwidth)
+        private byte[] rendercharb(string ourstr, int ourwidth)
         {
-            return ourstr.PadRight(ourwidth, (char)0);
+            string ret = ourstr.PadRight(ourwidth, (char)0);
+            return Encoding.ASCII.GetBytes(ret);
         }
         #endregion
     }

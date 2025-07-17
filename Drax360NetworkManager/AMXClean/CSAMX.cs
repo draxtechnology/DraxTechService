@@ -80,14 +80,14 @@ namespace Drax360Service.AMXClean
             if (nvms.Count == 0) return;
 
 
-            string contents = "";
+            List<byte> contents = new List<byte>();
             foreach (NVM ournvm in nvms)
             {
-                contents += ournvm.Render();
+                contents.AddRange(ournvm.RenderBytes());
             }
 
             // safety check
-            if (String.IsNullOrEmpty(contents))
+            if (contents.Count == 0)
             {
                 nvms.Clear();
                 return;
@@ -107,10 +107,9 @@ namespace Drax360Service.AMXClean
 
             using (FileStream fileStream = new FileStream(fullfilename, FileMode.CreateNew, FileAccess.Write))
             {
-                using (StreamWriter writer = new StreamWriter(fileStream))
-                {
-                    writer.Write(contents);
-                }
+                byte[] ourbytes = contents.ToArray();
+                fileStream.Write(ourbytes, 0, ourbytes.Length);
+                fileStream.Close();
             }
 
             
