@@ -120,8 +120,8 @@ namespace Drax360Service.AMXClean
         {
             byte[] buffer = new byte[2];
 
-            buffer[0] = (byte)ourval;
-            buffer[1] = (byte)(ourval >> 8);
+            buffer[0] = (byte)(ourval & 0xFF);
+            buffer[1] = (byte)(ourval >> 8 & 0xFF);
             return buffer;
 
         }
