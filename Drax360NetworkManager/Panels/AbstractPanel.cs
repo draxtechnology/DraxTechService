@@ -59,10 +59,10 @@ namespace Drax360Service.Panels
             if (handler != null) handler(this, new CustomEventArgs(text));
 
             // TODO - need to introduce a switch on type
-            amxalarm( type, text, node, loop, device);
+            amxalarm(text, node, loop, device);
         }
 
-        private void amxalarm(NwmData type, string text, int node = 0, int loop = 0, int device = 0)
+        private void amxalarm(string text, int node = 0, int loop = 0, int device = 0)
         {
             int amxoffset = 0; // 0 amxlight
 
