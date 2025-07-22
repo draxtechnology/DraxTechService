@@ -59,7 +59,7 @@ namespace Drax360Service.AMXClean
             NVM ournvm = new NVM();
             ournvm.OurType = Convert.ToInt32(eventtype);
             ournvm.OurEvent = eventnumber;
-            ournvm.OnOff = on;
+            ournvm.On = on;
 
             ournvm.Text = textparameter;
             ournvm.Text2 = textparameter2;
@@ -155,13 +155,13 @@ unsigned char *TxFile;
 
         */
 
-        public void SendAlarmToAMX(int AlarmType, int eventnumber, string dtext, string dtext2, string dtext3)
+        public void SendAlarmToAMX( int eventnumber, string dtext, string dtext2, string dtext3)
         {
             NVM ournvm = new NVM();
             ournvm.OurType = 1;
             ournvm.OurEvent = eventnumber;
 
-            ournvm.OnOff = true;
+            ournvm.On = true;
             ournvm.Text = dtext;
             ournvm.Text2 = dtext2;
             ournvm.Text3 = dtext3;
@@ -170,13 +170,13 @@ unsigned char *TxFile;
         }
 
 
-        public void SendResetToAMX(int AlarmType, int eventnumber, string dtext, string dtext2, string dtext3)
+        public void SendResetToAMX( int eventnumber, string dtext, string dtext2, string dtext3)
         {
             NVM ournvm = new NVM();
             ournvm.OurType = 1;
             ournvm.OurEvent = eventnumber;
 
-            ournvm.OnOff = false;
+            ournvm.On = false;
             ournvm.Text = dtext;
             ournvm.Text2 = dtext2;
             ournvm.Text3 = dtext3;
