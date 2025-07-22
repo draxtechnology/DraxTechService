@@ -58,20 +58,47 @@ namespace Drax360Service.Panels
 
             if (handler != null) handler(this, new CustomEventArgs(text));
 
+            if (type == NwmData.AlarmToAmx || type == NwmData.ResetToNwm)
+            {
+                amxalarm(text, node, loop, device);
+                
+            }
+            else
+            {
+                amxsend(type, text, node, loop, device);
+            }
             // TODO - need to introduce a switch on type
-            amxalarm(text, node, loop, device);
+            //amxalarm(text, node, loop, device);
 
             //amxreset(text, node, loop, device);
         }
 
-        private void amxalarm(string text, int node = 0, int loop = 0, int device = 0)
+        private void amxsend(NwmData type, string text, int node = 0, int loop = 0, int device = 0)
         {
             int amxoffset = 0; // 0 amxlight
 
             int evnum = CSAMXSingleton.CS.MakeInputNumber(node + amxoffset, loop, device, 4);
-  
-            CSAMXSingleton.CS.SendAlarmToAMX(evnum, text);
-            
+
+            CSAMXSingleton.CS.WriteData(type,evnum, text,"","",true);
+            CSAMXSingleton.CS.FlushMessages();
+        }
+        private void amxalarm(string text, int node = 0, int loop = 0, int device = 0)
+        {
+            int amxoffset = 0; // 0 amxlight
+
+            int evnum = CSAMXSingleton.CS.MakeInputNumber(node + amxoffset, loop, device, 5);
+
+            //text = "Alarms Sounded";
+            //evnum = 0;
+
+            //CSAMXSingleton.CS.SendAlarmToAMX(evnum, text);
+
+            byte[] bytes = new byte[1];
+            bytes[0] = (byte)49;
+            string ourstring = Encoding.ASCII.GetString(bytes);
+            //CSAMXSingleton.CS.SendAlarmToAMX(evnum, ourstring, "", text);
+            CSAMXSingleton.CS.SendAlarmToAMX(evnum, "1", "", text);
+
             CSAMXSingleton.CS.FlushMessages();
         }
 

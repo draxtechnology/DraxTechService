@@ -13,7 +13,7 @@ namespace Drax360Service.AMXClean
         #region public variables
         public int OurType; // Type of event - see below [RPJ - long]
         public int OurEvent;    // Event number - must be 0 if Node/Zone/Op/Dat1,2,3,4,5 used [RPJ - long]
-        public bool On;   // On off. 0=Off <>0=On [RPJ - __int16]
+        public int On;   // On off. 0=Off <>0=On [RPJ - __int16]
         public int Value;   // [RPJ - __int16]
         public int Node;    // Node number	- set event to 0 if using this [RPJ - __int16]
         public int Zone;    // Zone number	- set event to 0 if using this [RPJ - __int16]
@@ -118,7 +118,7 @@ namespace Drax360Service.AMXClean
 
         private byte[] render__int16b(bool ourval)
         {
-            return render__int16b(ourval ? -1 : 0);
+            return render__int16b(ourval ? 1 : 0);
         }
         private byte[] render__int16b(int ourval)
         {

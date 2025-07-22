@@ -59,7 +59,7 @@ namespace Drax360Service.AMXClean
             NVM ournvm = new NVM();
             ournvm.OurType = Convert.ToInt32(eventtype);
             ournvm.OurEvent = eventnumber;
-            ournvm.On = on;
+            ournvm.On = on?1:0;
 
             ournvm.Text = textparameter;
             ournvm.Text2 = textparameter2;
@@ -240,7 +240,10 @@ unsigned char *TxFile;
             ournvm.OurType = 1;
             ournvm.OurEvent = eventnumber;
 
-            ournvm.On = on;
+            ournvm.On = on?1:0;
+            //ournvm.Value = 65535;
+            //ournvm.Node = 255;
+            //ournvm.Zone = 255;
             ournvm.Text = dtext;
             ournvm.Text2 = dtext2;
             ournvm.Text3 = dtext3;
