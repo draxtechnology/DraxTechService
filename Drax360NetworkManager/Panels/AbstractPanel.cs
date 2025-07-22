@@ -60,6 +60,8 @@ namespace Drax360Service.Panels
 
             // TODO - need to introduce a switch on type
             amxalarm(text, node, loop, device);
+
+            //amxreset(text, node, loop, device);
         }
 
         private void amxalarm(string text, int node = 0, int loop = 0, int device = 0)
@@ -70,6 +72,17 @@ namespace Drax360Service.Panels
   
             CSAMXSingleton.CS.SendAlarmToAMX(evnum, text);
             
+            CSAMXSingleton.CS.FlushMessages();
+        }
+
+        private void amxreset(string text, int node = 0, int loop = 0, int device = 0)
+        {
+            int amxoffset = 0; // 0 amxlight
+
+            int evnum = CSAMXSingleton.CS.MakeInputNumber(node + amxoffset, loop, device, 4);
+
+            CSAMXSingleton.CS.SendResetToAMX(evnum, text);
+
             CSAMXSingleton.CS.FlushMessages();
         }
 
