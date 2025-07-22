@@ -155,33 +155,14 @@ unsigned char *TxFile;
 
         */
 
-        public void SendAlarmToAMX( int eventnumber, string dtext, string dtext2, string dtext3)
+        public void SendAlarmToAMX( int eventnumber, string dtext = "", string dtext2="", string dtext3 = "")
         {
-            NVM ournvm = new NVM();
-            ournvm.OurType = 1;
-            ournvm.OurEvent = eventnumber;
-
-            ournvm.On = true;
-            ournvm.Text = dtext;
-            ournvm.Text2 = dtext2;
-            ournvm.Text3 = dtext3;
-
-            nvms.Add(ournvm);
+            sendalarmorreset(eventnumber, dtext, dtext2, dtext3,true);
         }
 
-
-        public void SendResetToAMX( int eventnumber, string dtext, string dtext2, string dtext3)
+        public void SendResetToAMX(int eventnumber, string dtext = "", string dtext2 = "", string dtext3 = "")
         {
-            NVM ournvm = new NVM();
-            ournvm.OurType = 1;
-            ournvm.OurEvent = eventnumber;
-
-            ournvm.On = false;
-            ournvm.Text = dtext;
-            ournvm.Text2 = dtext2;
-            ournvm.Text3 = dtext3;
-
-            nvms.Add(ournvm);
+            sendalarmorreset(eventnumber, dtext, dtext2, dtext3, false);
         }
         public void LogMessage(int eventtype, int eventnumber, string text, int ophandle)
         {
@@ -251,6 +232,20 @@ unsigned char *TxFile;
             if (splits.Length != 2) return;
 
             filenumber = Convert.ToInt32(splits[0]);
+        }
+
+        public void sendalarmorreset(int eventnumber, string dtext, string dtext2, string dtext3,bool on)
+        {
+            NVM ournvm = new NVM();
+            ournvm.OurType = 1;
+            ournvm.OurEvent = eventnumber;
+
+            ournvm.On = on;
+            ournvm.Text = dtext;
+            ournvm.Text2 = dtext2;
+            ournvm.Text3 = dtext3;
+
+            nvms.Add(ournvm);
         }
         #endregion
     }
