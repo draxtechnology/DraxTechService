@@ -73,7 +73,7 @@ namespace Drax360Service.AMXClean
             {
                 ret.AddRange(renderlongb(s));
             }
-            ret.AddRange(rendercharb(Text.Length > 40 ? Text.Substring(0, 40) : Text, 64));
+            ret.AddRange(rendercharb(Text, 64));
             ret.AddRange(rendercharb(Text2, 40));
             ret.AddRange(rendercharb(Text3, 40));
             return ret.ToArray();
