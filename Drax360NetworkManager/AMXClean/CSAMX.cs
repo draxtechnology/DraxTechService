@@ -47,17 +47,17 @@ namespace Drax360Service.AMXClean
         {
             return (int) (inputNumber + 0x80000000);
         }
-        public int MakeInputNumber(int node, int zone, int inputn, int inputtype)
+        public int MakeInputNumber(int node, int loop, int inputn, int inputtype)
         { 
             
-            return inputn + (zone * 0x100) + (node * 0x10000) + (inputtype * 0x8000000);
+            return inputn + (loop * 0x100) + (node * 0x10000) + (inputtype * 0x8000000);
         }
 
-        public void WriteData(int eventtype, int eventnumber,
+        public void WriteData(NwmData eventtype, int eventnumber,
              string textparameter, string textparameter2, string textparameter3, bool on)
         {
             NVM ournvm = new NVM();
-            ournvm.OurType = eventtype;
+            ournvm.OurType = Convert.ToInt32(eventtype);
             ournvm.OurEvent = eventnumber;
             ournvm.OnOff = on ? -1 : 0;
 

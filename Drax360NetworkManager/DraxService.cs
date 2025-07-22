@@ -34,6 +34,31 @@ namespace Drax360Service
         kDISABLEZONE,
         kENABLEZONE
     }
+    public enum NwmData
+    {
+        Blank = 0,
+        AlarmToAmx = 1,
+        IsolationToAmx = 2,
+        IsolationToNwm = 3,
+        OutputControlToNwm = 4,
+        SounderIsolationToNwm = 5,
+        ControlIsolationToNwm = 6,
+        SounderControlToNwm = 7,
+        ControlControlToNwm = 8,
+        MessageForSystemHistoryToAmx = 9,
+        NWMErrorToAmx = 10,
+        GeneralControlToNwm = 11,
+        EvacuateToNwm = 12,
+        AlertToNwm = 13,
+        SilenceToNwm = 14,
+        ResetToNwm = 15,
+        BuzzerMuteToNwm = 16,
+        ForceEVMAttrToAmx = 17,
+        EventOutputToNwm = 18,
+        StartTestToNwm = 19,
+        endTestToNwm = 20
+    }
+
     public partial class DraxService : ServiceBase
     {
         #region constants
