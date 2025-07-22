@@ -155,7 +155,7 @@ unsigned char *TxFile;
 
         */
 
-        public void SendAlarmToAMX1(int AlarmType, int eventnumber, int iPar, string dtext, string dtext2, string dtext3)
+        public void SendAlarmToAMX(int AlarmType, int eventnumber, string dtext, string dtext2, string dtext3)
         {
             NVM ournvm = new NVM();
             ournvm.OurType = 1;
@@ -169,7 +169,7 @@ unsigned char *TxFile;
         }
 
 
-        public void SendResetToAMX1(int AlarmType, int eventnumber, int iPar, string dtext, string dtext2, string dtext3)
+        public void SendResetToAMX(int AlarmType, int eventnumber, string dtext, string dtext2, string dtext3)
         {
             NVM ournvm = new NVM();
             ournvm.OurType = 1;
