@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using static System.Net.Mime.MediaTypeNames;
+using System.Runtime.InteropServices;
+using static System.Net.WebRequestMethods;
 
 
 namespace Drax360Service.AMXClean
@@ -56,13 +59,110 @@ namespace Drax360Service.AMXClean
             NVM ournvm = new NVM();
             ournvm.OurType = Convert.ToInt32(eventtype);
             ournvm.OurEvent = eventnumber;
-            ournvm.OnOff = on ? -1 : 0;
+            ournvm.On = on;
 
             ournvm.Text = textparameter;
             ournvm.Text2 = textparameter2;
             ournvm.Text3 = textparameter3;
 
             nvms.Add(ournvm);
+        }
+
+        /*
+         
+        DllExport __int16  WINAPI SendResetToAMX1(AlarmType, EventNumber, LongTime, iPar, Dtext, Dtext2, Dtext3, TxFile)
+__int16 AlarmType;
+long    EventNumber;		
+long	LongTime;			// Time in c long time format
+__int16	iPar;				// Integer parameter
+unsigned char *Dtext;		// String parameter
+unsigned char *Dtext2;		// String parameter
+unsigned char *Dtext3;		// String parameter
+unsigned char *TxFile;
+{
+	__int16 res=0;
+	struct NWMSTRUCT NwmCmd;
+	time_t tm;					// Used in time routines
+
+	if(LongTime == 0L) {
+		tm = time(&tm);
+	}
+	else{
+		tm = (time_t)LongTime;
+	}
+	memset(&NwmCmd, 0, sizeof(struct NWMSTRUCT));								
+	NwmCmd.type = 1;					// Event Type
+	NwmCmd.event = EventNumber;			// Event number
+	NwmCmd.time = (long)tm;
+	NwmCmd.OnOff = 0;
+	if((Dtext != 0) && (Dtext != NULL)) {
+		strncpy(NwmCmd.Text, Dtext, 64);
+	}
+	if((Dtext2 != 0) && (Dtext2 != NULL)) {
+		strncpy(NwmCmd.Text2, Dtext2, 40);		
+	}
+	if((Dtext3 != 0) && (Dtext3 != NULL)) {
+		strncpy(NwmCmd.Text3, Dtext3, 40);	
+	}
+	res += SendEventToAMX1(TxFile, &NwmCmd);	// Now send it
+	return res;
+}
+
+          
+         */
+
+        /*
+         
+        DllExport __int16  WINAPI SendAlarmToAMX1(AlarmType, EventNumber, LongTime, iPar, Dtext, Dtext2, Dtext3, TxFile)
+__int16 AlarmType;
+long    EventNumber;		
+long	LongTime;			// Time in c long time format
+__int16	iPar;				// Integer parameter
+unsigned char *Dtext;		// String parameter
+unsigned char *Dtext2;		// String parameter
+unsigned char *Dtext3;		// String parameter
+unsigned char *TxFile;
+{
+	__int16 res=0;
+	struct NWMSTRUCT NwmCmd;
+	time_t tm;				// Used in time routines
+
+	if(LongTime == 0L) {
+		tm = time(&tm);
+	}
+	else{
+		tm = (time_t)LongTime;
+	}
+	memset(&NwmCmd, 0, sizeof(struct NWMSTRUCT));								
+	NwmCmd.type = 1;							// Event Type
+	NwmCmd.event = EventNumber;					// Event number
+	NwmCmd.time = (long)tm;
+	NwmCmd.OnOff = 1;
+	NwmCmd.event |= 0x80000000;
+	if((Dtext != 0) && (Dtext != NULL)) {
+		strncpy(NwmCmd.Text, Dtext, 64);
+	}
+	if((Dtext2 != 0) && (Dtext2 != NULL)) {
+		strncpy(NwmCmd.Text2, Dtext2, 40);		
+	}
+	if((Dtext3 != 0) && (Dtext3 != NULL)) {
+		strncpy(NwmCmd.Text3, Dtext3, 40);	
+	}
+
+	res += SendEventToAMX1(TxFile, &NwmCmd);	// Now send it
+	return res;
+}
+
+        */
+
+        public void SendAlarmToAMX( int eventnumber, string dtext = "", string dtext2="", string dtext3 = "")
+        {
+            sendalarmorreset(eventnumber, dtext, dtext2, dtext3,true);
+        }
+
+        public void SendResetToAMX(int eventnumber, string dtext = "", string dtext2 = "", string dtext3 = "")
+        {
+            sendalarmorreset(eventnumber, dtext, dtext2, dtext3, false);
         }
         public void LogMessage(int eventtype, int eventnumber, string text, int ophandle)
         {
@@ -101,8 +201,8 @@ namespace Drax360Service.AMXClean
 
             // Open the file in write mode, changed from append as we need to create a new file on flush
             
-            if (File.Exists(fullfilename)) {
-                File.Delete(fullfilename);  
+            if (System.IO.File.Exists(fullfilename)) {
+                System.IO.File.Delete(fullfilename);  
             }
 
             using (FileStream fileStream = new FileStream(fullfilename, FileMode.CreateNew, FileAccess.Write))
@@ -132,6 +232,20 @@ namespace Drax360Service.AMXClean
             if (splits.Length != 2) return;
 
             filenumber = Convert.ToInt32(splits[0]);
+        }
+
+        public void sendalarmorreset(int eventnumber, string dtext, string dtext2, string dtext3,bool on)
+        {
+            NVM ournvm = new NVM();
+            ournvm.OurType = 1;
+            ournvm.OurEvent = eventnumber;
+
+            ournvm.On = on;
+            ournvm.Text = dtext;
+            ournvm.Text2 = dtext2;
+            ournvm.Text3 = dtext3;
+
+            nvms.Add(ournvm);
         }
         #endregion
     }

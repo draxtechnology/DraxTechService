@@ -57,20 +57,32 @@ namespace Drax360Service.Panels
             EventHandler handler = Fire;
 
             if (handler != null) handler(this, new CustomEventArgs(text));
-            amxalarm(true, type, text, node, loop, device);
+
+            // TODO - need to introduce a switch on type
+            amxalarm(text, node, loop, device);
+
+            //amxreset(text, node, loop, device);
         }
 
-        private void amxalarm(bool on, NwmData type, string text, int node = 0, int loop = 0, int device = 0)
+        private void amxalarm(string text, int node = 0, int loop = 0, int device = 0)
+        {
+            int amxoffset = 0; // 0 amxlight
+
+            int evnum = CSAMXSingleton.CS.MakeInputNumber(node + amxoffset, loop, device, 4);
+  
+            CSAMXSingleton.CS.SendAlarmToAMX(evnum, text);
+            
+            CSAMXSingleton.CS.FlushMessages();
+        }
+
+        private void amxreset(string text, int node = 0, int loop = 0, int device = 0)
         {
             int amxoffset = 0; // 0 amxlight
 
             int evnum = CSAMXSingleton.CS.MakeInputNumber(node + amxoffset, loop, device, 4);
 
-            string ps = text;
-            string tempRefParam = "";
-            string tempRefParam2 = "";
+            CSAMXSingleton.CS.SendResetToAMX(evnum, text);
 
-            CSAMXSingleton.CS.WriteData(type, evnum, ps, tempRefParam, tempRefParam2, on);
             CSAMXSingleton.CS.FlushMessages();
         }
 
