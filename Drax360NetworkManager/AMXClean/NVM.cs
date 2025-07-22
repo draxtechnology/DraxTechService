@@ -54,7 +54,9 @@ namespace Drax360Service.AMXClean
         {
             List<Byte> ret = new List<Byte>();
             ret.AddRange(renderlongb(OurType));
-            ret.AddRange(renderlongb(OurEvent));
+
+            long ourevent = OurEvent | 0x80000000;
+            ret.AddRange(renderlongb(ourevent));
 
             ret.AddRange(render__int16b(On));
             ret.AddRange(render__int16b(Value));
