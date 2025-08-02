@@ -8,13 +8,13 @@ using System.IO;
 using System.IO.Pipes;
 using System.IO.Ports;
 using System.Reflection;
-using System.Security.Cryptography;
 using System.ServiceProcess;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
-using System.Threading.Tasks;
+
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Drax360Service
 {
@@ -62,7 +62,8 @@ namespace Drax360Service
     public partial class DraxService : ServiceBase
     {
         #region constants
-        const string kpipename = "Drax360Pipe";
+        const string kpipenamesend = "Drax360PipeSend";
+        const string kpipenamereturn = "Drax360PipeReturn";
         const char kpipedelim = '|';
         const string kappname = "Drax 360 Service";
        
@@ -81,7 +82,8 @@ namespace Drax360Service
         #endregion
 
         #region private variables
-        NamedPipeServerStream pipeserver = null;
+        NamedPipeServerStream pipeserversend = null;
+        
         string panel = "";
         Dictionary<string, string> settings = new Dictionary<string, string>();
 
@@ -360,7 +362,7 @@ namespace Drax360Service
 
 
                 //sp.Zone = zone;
-                ap.Fire += Sp_Fire;
+                ap.OutsideEvents += Sp_Fire;
                 
 
                 
@@ -440,6 +442,7 @@ namespace Drax360Service
             CustomEventArgs ex = e as CustomEventArgs;
             string msg = ex.Message.ToString();
             ln("Fired "+msg);
+            sendreturncmd(msg);
         }
 
         private void fake_timer(object sender)
@@ -556,7 +559,9 @@ namespace Drax360Service
 
 
 
-            listenpipe();
+            startpipesend();
+            //startpipereturn();
+
 
             // start the service
             init_service();
@@ -565,18 +570,20 @@ namespace Drax360Service
 
         private void startpipeserver()
         {
-            pipeserver = new NamedPipeServerStream(kpipename, PipeDirection.InOut, 254, PipeTransmissionMode.Message);
-            ln("Pipe Server is Started (" + kpipename + ")");
+            pipeserversend = new NamedPipeServerStream(kpipenamesend, PipeDirection.InOut, 254, PipeTransmissionMode.Message);
+            ln("Pipe Server Send is Started (" + kpipenamesend + ")");
         }
 
-        private async void listenpipe()
+     
+
+        private async void startpipesend()
         {
-            while (pipeserver!=null)
+            while (pipeserversend!=null)
             {
-                await pipeserver.WaitForConnectionAsync();
+                await pipeserversend.WaitForConnectionAsync();
 
                 //receive message from client
-                var messagebytes = readpipemessage(pipeserver);
+                var messagebytes = readpipemessage(pipeserversend);
                 string strresponse = Encoding.UTF8.GetString(messagebytes);
                 ln("Message received from client: " + strresponse);
                 string strret = handlepiperesponse(strresponse);
@@ -584,25 +591,88 @@ namespace Drax360Service
                 byte[] response = Encoding.UTF8.GetBytes(strret);
 
                 //send response to a client
-                pipeserver.Write(response, 0, response.Length);
-                pipeserver.Disconnect();
+                pipeserversend.Write(response, 0, response.Length);
+                pipeserversend.Disconnect();
              
             }
 
         }
 
-        /*
-         TODO May be required
-          
-        private async void writepipe(string msg)
+    
+
+        private string sendreturncmd(string cmd, string parameters = "")
         {
-            if (pipeserver == null) return;
-            await pipeserver.WaitForConnectionAsync();
-            byte[] message = Encoding.UTF8.GetBytes(msg);
-            pipeserver.Write(message, 0, message.Length);
-            pipeserver.Disconnect();
-           
-        }*/
+        
+            string strcmd = cmd;
+            if (!string.IsNullOrEmpty(parameters))
+            {
+
+                strcmd += kpipedelim + parameters;
+            }
+
+            string result = "";
+
+            try
+            {
+                result = Task.Run(() => sendreturnserver(strcmd)).Result;
+            }
+            catch (Exception ex)
+            {
+                result = "Error: " + ex;
+            }
+            
+            return result;
+        }
+
+        private async Task<string> sendreturnserver(string message)
+        {
+            using (NamedPipeClientStream pipe = new NamedPipeClientStream(".", kpipenamereturn, PipeDirection.InOut))
+            {
+                pipe.Connect(5000);
+                pipe.ReadMode = PipeTransmissionMode.Message;
+
+                byte[] ba = Encoding.Default.GetBytes(message);
+                pipe.Write(ba, 0, ba.Length);
+
+                var result = await Task.Run(() =>
+                {
+                    return readmessagereturn(pipe);
+                });
+
+                string strresponse = Encoding.Default.GetString(result);
+
+                Console.WriteLine("Response received from Return server: " + strresponse);
+
+                return strresponse;
+            }
+        }
+
+            private static byte[] readmessagereturn(PipeStream pipe)
+            {
+                if (!pipe.IsConnected) return new byte[0];
+
+                byte[] buffer = new byte[1024];
+                using (var ms = new MemoryStream())
+                {
+                    do
+                    {
+                        var readBytes = pipe.Read(buffer, 0, buffer.Length);
+                        ms.Write(buffer, 0, readBytes);
+                    }
+                    while (!pipe.IsMessageComplete);
+
+                    return ms.ToArray();
+                }
+            }
+        
+
+
+
+
+
+
+
+
 
         private string handlepiperesponse(string strresponse)
         {
@@ -615,6 +685,8 @@ namespace Drax360Service
             }
             string cmd = parts[0].Trim().ToUpper();
             string ret = "OK";
+
+            if (String.IsNullOrEmpty(cmd)) return ret;
             switch (cmd)
             {
                 case "SILENCE":
@@ -738,6 +810,7 @@ namespace Drax360Service
         }
         private static byte[] readpipemessage(PipeStream pipe)
         {
+            if (!pipe.IsConnected) return new byte[0];
             byte[] buffer = new byte[2048];
             using (var ms = new MemoryStream())
             {
@@ -754,12 +827,16 @@ namespace Drax360Service
 
         private void stoppipeserver()
         {
-            if (pipeserver == null) return;
+            if (pipeserversend != null)
+            {
 
-            ln("Pipe Server is stopping...");
-            pipeserver.Close();
-            pipeserver.Dispose();
-            pipeserver = null;
+                ln("Pipe Server Send is stopping...");
+                pipeserversend.Close();
+                pipeserversend.Dispose();
+                pipeserversend = null;
+            }
+
+            
         }
 
         public void Stopit()

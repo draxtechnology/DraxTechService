@@ -1,13 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Security.Policy;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Timers;
 
 namespace Drax360Service.Panels
 {
@@ -142,11 +135,13 @@ namespace Drax360Service.Panels
             {
                 int giNoOfFaults = Convert.ToInt32(sEventParam.Substring(2, 2));
                 Console.WriteLine("-------------------- Panel In " + giNoOfFaults.ToString() + " Fault Condition ----------- ");
+                base.NotifyClient("Hello From Deep Inside Server 1");
             }
             if (Convert.ToInt32(sEventParam.Substring(4, 2)) > 0)
             {
                 int giNoOfDisable = Convert.ToInt32(sEventParam.Substring(4, 2));
                 Console.WriteLine("-------------------- Panel In " + giNoOfDisable.ToString() + " Disable Condition ----------- ");
+                base.NotifyClient("Hello From Deep Inside Server 2");
             }
         }
 

@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.IO.Ports;
 using System.Text;
 using System.Threading;
-using System.Xml.Linq;
+
 
 namespace Drax360Service.Panels
 {
@@ -18,7 +18,7 @@ namespace Drax360Service.Panels
         protected List<byte> buffer = new List<byte>();
 
         public SerialPort Port = null;
-        public event EventHandler Fire;
+        public event EventHandler OutsideEvents;
         public string Identifier = "";
         protected Timer heartbeat_timer = null;
         
@@ -52,9 +52,21 @@ namespace Drax360Service.Panels
         public abstract void EnableDevice(string passedvalues);
         public abstract void DisableZone(string passedvalues);
         public abstract void EnableZone(string passedvalues);
+
+        public void NotifyClient(string msg)
+        {
+            EventHandler handler = OutsideEvents;
+
+            if (handler != null) handler(this, new CustomEventArgs(msg));
+            
+        }
+
+
         public void SendEvent(string panel, NwmData type, string text, int node = 0, int loop = 0, int device = 0)
         {
-            EventHandler handler = Fire;
+
+            // Todo check this - this will notify the client app 
+            EventHandler handler = OutsideEvents;
 
             if (handler != null) handler(this, new CustomEventArgs(text));
 
@@ -132,8 +144,7 @@ namespace Drax360Service.Panels
         }
         protected void sendserial(string tosend)
         {
-            byte[] buffer = Encoding.ASCII.GetBytes(tosend);
-            sendserial(buffer);
+            sendserial(Encoding.ASCII.GetBytes(tosend));
         }
 
         #endregion
