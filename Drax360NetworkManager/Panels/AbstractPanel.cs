@@ -11,13 +11,13 @@ namespace Drax360Service.Panels
     internal abstract class AbstractPanel
     {
         #region Constants
-        protected const byte HeartbeatInitialDelaySeconds = 60;
-        protected const byte HeartbeatDelaySeconds = 60;
+        protected const byte kHeartbeatInitialDelaySeconds = 60;
+        protected const byte kHeartbeatDelaySeconds = 60;
         #endregion
 
         #region Fields
-        private readonly List<byte> buffer = new List<byte>();
-        private Timer heartbeatTimer;
+        protected readonly List<byte> buffer = new List<byte>();
+        protected Timer heartbeat_timer;
         #endregion
 
         #region Properties
@@ -77,12 +77,12 @@ namespace Drax360Service.Panels
         #endregion
 
         #region Protected Methods
-        protected virtual void HeartbeatTimerCallback(object sender)
+        protected virtual void heartbeat_timer_callback(object sender)
         {
             Console.WriteLine("Sent Heartbeat");
         }
 
-        protected void SendSerial(byte[] toSend)
+        protected void sendserial(byte[] toSend)
         {
             if (Port?.IsOpen == true)
             {
@@ -90,9 +90,9 @@ namespace Drax360Service.Panels
             }
         }
 
-        protected void SendSerial(string toSend)
+        protected void sendserial(string toSend)
         {
-            SendSerial(Encoding.ASCII.GetBytes(toSend));
+            sendserial(Encoding.ASCII.GetBytes(toSend));
         }
         #endregion
 

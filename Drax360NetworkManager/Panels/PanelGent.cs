@@ -26,7 +26,7 @@ namespace Drax360Service.Panels
         {
             if (!String.IsNullOrEmpty(identifier))
             {
-                heartbeat_timer = new System.Threading.Timer(heartbeat_timer_callback, this.Identifier, 500, kheartbeatdelayseconds * 1000);
+                heartbeat_timer = new System.Threading.Timer(heartbeat_timer_callback, this.Identifier, 500, kHeartbeatDelaySeconds * 1000);
             }
         }
 
