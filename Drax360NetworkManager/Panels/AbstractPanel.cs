@@ -10,119 +10,64 @@ namespace Drax360Service.Panels
 {
     internal abstract class AbstractPanel
     {
-        #region constants
-        protected const byte kheartbeatintinitialdelayseconds = 60;
-        protected const byte kheartbeatdelayseconds = 60;
-        
-        #endregion 
-        protected List<byte> buffer = new List<byte>();
+        #region Constants
+        protected const byte HeartbeatInitialDelaySeconds = 60;
+        protected const byte HeartbeatDelaySeconds = 60;
+        #endregion
 
-        public SerialPort Port = null;
+        #region Fields
+        private readonly List<byte> buffer = new List<byte>();
+        private Timer heartbeatTimer;
+        #endregion
+
+        #region Properties
+        public SerialPort Port { get; set; }
         public event EventHandler OutsideEvents;
-        public string Identifier = "";
-        protected Timer heartbeat_timer = null;
-        
-        #region constructors
+        public string Identifier { get; private set; }
+
+        // Abstract properties
+        public abstract string GetFileName { get; }
+        public abstract string FakeString { get; }
+        #endregion
+
+        #region Constructors
         public AbstractPanel(string identifier)
         {
-            this.Identifier = identifier;
-           
+            Identifier = identifier;
         }
         #endregion
 
-        #region public properties
-        
-        // returns the log file or ini file name
-        public abstract string GetFileName { get; }
-
-        // returns some sample data to send to the panel
-        public abstract string FakeString { get; }
-
-        #endregion
-
-        #region public methods
+        #region Public Methods
         public abstract void OnStartUp();
-        public abstract void Evacuate(string passedvalues);
-        public abstract void EvacuateNetwork(string passedvalues);
-        public abstract void Alert(string passedvalues);
-        public abstract void Silence(string passedvalues);
-        public abstract void MuteBuzzers(string passedvalues);
-        public abstract void Reset(string passedvalues);
-        public abstract void DisableDevice(string passedvalues);
-        public abstract void EnableDevice(string passedvalues);
-        public abstract void DisableZone(string passedvalues);
-        public abstract void EnableZone(string passedvalues);
+        public abstract void Evacuate(string passedValues);
+        public abstract void EvacuateNetwork(string passedValues);
+        public abstract void Alert(string passedValues);
+        public abstract void Silence(string passedValues);
+        public abstract void MuteBuzzers(string passedValues);
+        public abstract void Reset(string passedValues);
+        public abstract void DisableDevice(string passedValues);
+        public abstract void EnableDevice(string passedValues);
+        public abstract void DisableZone(string passedValues);
+        public abstract void EnableZone(string passedValues);
 
-        public void NotifyClient(string msg)
+        public void NotifyClient(string message)
         {
-            EventHandler handler = OutsideEvents;
-
-            if (handler != null) handler(this, new CustomEventArgs(msg));
-            
+            OutsideEvents?.Invoke(this, new CustomEventArgs(message));
         }
-
 
         public void SendEvent(string panel, NwmData type, string text, int node = 0, int loop = 0, int device = 0)
         {
-
-            // Todo check this - this will notify the client app 
-            EventHandler handler = OutsideEvents;
-
-            if (handler != null) handler(this, new CustomEventArgs(text));
+            // Notify the client application
+            OutsideEvents?.Invoke(this, new CustomEventArgs(text));
 
             if (type == NwmData.AlarmToAmx || type == NwmData.ResetToNwm)
             {
-                amxalarm(text, node, loop, device);
-                
+                AmxAlarm(text, node, loop, device);
             }
             else
             {
-                amxsend(type, text, node, loop, device);
+                AmxSend(type, text, node, loop, device);
             }
-            // TODO - need to introduce a switch on type
-            //amxalarm(text, node, loop, device);
-
-            //amxreset(text, node, loop, device);
-        }
-
-        private void amxsend(NwmData type, string text, int node = 0, int loop = 0, int device = 0)
-        {
-            int amxoffset = 0; // 0 amxlight
-
-            int evnum = CSAMXSingleton.CS.MakeInputNumber(node + amxoffset, loop, device, 4);
-
-            CSAMXSingleton.CS.WriteData(type,evnum, text,"","",true);
-            CSAMXSingleton.CS.FlushMessages();
-        }
-        private void amxalarm(string text, int node = 0, int loop = 0, int device = 0)
-        {
-            int amxoffset = 0; // 0 amxlight
-
-            int evnum = CSAMXSingleton.CS.MakeInputNumber(node + amxoffset, loop, device, 5);
-
-            //text = "Alarms Sounded";
-            //evnum = 0;
-
-            //CSAMXSingleton.CS.SendAlarmToAMX(evnum, text);
-
-            byte[] bytes = new byte[1];
-            bytes[0] = (byte)49;
-            string ourstring = Encoding.ASCII.GetString(bytes);
-            //CSAMXSingleton.CS.SendAlarmToAMX(evnum, ourstring, "", text);
-            CSAMXSingleton.CS.SendAlarmToAMX(evnum, "1", "", text);
-
-            CSAMXSingleton.CS.FlushMessages();
-        }
-
-        private void amxreset(string text, int node = 0, int loop = 0, int device = 0)
-        {
-            int amxoffset = 0; // 0 amxlight
-
-            int evnum = CSAMXSingleton.CS.MakeInputNumber(node + amxoffset, loop, device, 4);
-
-            CSAMXSingleton.CS.SendResetToAMX(evnum, text);
-
-            CSAMXSingleton.CS.FlushMessages();
         }
 
         public virtual void Parse(byte[] buffer)
@@ -131,22 +76,54 @@ namespace Drax360Service.Panels
         }
         #endregion
 
-        #region private methods
-        protected virtual void heartbeat_timer_callback(object sender)
+        #region Protected Methods
+        protected virtual void HeartbeatTimerCallback(object sender)
         {
             Console.WriteLine("Sent Heartbeat");
         }
-        protected void sendserial(byte[] tosend)
+
+        protected void SendSerial(byte[] toSend)
         {
-            if (Port == null) return;
-            if (!Port.IsOpen) return;
-            Port.Write(tosend, 0, tosend.Length);
-        }
-        protected void sendserial(string tosend)
-        {
-            sendserial(Encoding.ASCII.GetBytes(tosend));
+            if (Port?.IsOpen == true)
+            {
+                Port.Write(toSend, 0, toSend.Length);
+            }
         }
 
+        protected void SendSerial(string toSend)
+        {
+            SendSerial(Encoding.ASCII.GetBytes(toSend));
+        }
+        #endregion
+
+        #region Private Methods
+        private void AmxSend(NwmData type, string text, int node = 0, int loop = 0, int device = 0)
+        {
+            int amxOffset = 0; // 0 for AMX light
+            int eventNumber = CSAMXSingleton.CS.MakeInputNumber(node + amxOffset, loop, device, 4);
+
+            CSAMXSingleton.CS.WriteData(type, eventNumber, text, string.Empty, string.Empty, true);
+            CSAMXSingleton.CS.FlushMessages();
+        }
+
+        private void AmxAlarm(string text, int node = 0, int loop = 0, int device = 0)
+        {
+            int amxOffset = 0; // 0 for AMX light
+            int eventNumber = CSAMXSingleton.CS.MakeInputNumber(node + amxOffset, loop, device, 5);
+
+            // Send alarm to AMX
+            CSAMXSingleton.CS.SendAlarmToAMX(eventNumber, "1", string.Empty, text);
+            CSAMXSingleton.CS.FlushMessages();
+        }
+
+        private void AmxReset(string text, int node = 0, int loop = 0, int device = 0)
+        {
+            int amxOffset = 0; // 0 for AMX light
+            int eventNumber = CSAMXSingleton.CS.MakeInputNumber(node + amxOffset, loop, device, 4);
+
+            CSAMXSingleton.CS.SendResetToAMX(eventNumber, text);
+            CSAMXSingleton.CS.FlushMessages();
+        }
         #endregion
     }
 }

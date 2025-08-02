@@ -2,10 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using static System.Net.Mime.MediaTypeNames;
-using System.Runtime.InteropServices;
-using static System.Net.WebRequestMethods;
 
 
 namespace Drax360Service.AMXClean
