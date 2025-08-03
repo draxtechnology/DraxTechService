@@ -48,9 +48,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AMXClean\CSAMX.cs" />
-    <Compile Include="AMXClean\CSAMXSingelton.cs" />
-    <Compile Include="AMXClean\NVM.cs" />
+    <Compile Include="CSAMX\CSAMX.cs" />
+    <Compile Include="CSAMX\CSAMXSingelton.cs" />
+    <Compile Include="CSAMX\NVM.cs" />
     <Compile Include="CustomEventArgs.cs" />
     <Compile Include="DraxService.cs">
       <SubType>Component</SubType>

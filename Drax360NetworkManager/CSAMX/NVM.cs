@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 
 
-namespace Drax360Service.AMXClean
+namespace Drax360Service
 {
     internal class NVM
     // NWM DATA STRUCT

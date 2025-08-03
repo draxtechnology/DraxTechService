@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 
 
-namespace Drax360Service.AMXClean
+namespace Drax360Service
 {
     public class CSAMX
     {
