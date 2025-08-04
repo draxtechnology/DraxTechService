@@ -677,9 +677,11 @@ namespace Drax360Service
         private string handlepiperesponse(string strresponse)
         {
             string passedvalues = "";
+            string[] partssplit = null;
             string[] parts = strresponse.Split(kpipedelim);
             if (parts.Length > 1)
             {
+                partssplit = parts[1].Split(',');
                 string[] values = ExtractTextBoxValues(parts[1]);
                 passedvalues = string.Join(",", values); // "1,2,3,4"
             }
@@ -793,6 +795,51 @@ namespace Drax360Service
                     break;
                 case "GETPANELTYPE":
                     ret = panel;
+                    break;
+
+                case "TEST BOX":
+
+                    if (partssplit.Length >= 4)
+                    {
+                        string part1 = partssplit[0];
+                        string part2 = partssplit[1];
+                        string part3 = partssplit[2];
+                        string part4 = partssplit[3];
+
+                        // If you want integers instead of strings:
+                        int p1 = int.Parse(part1);
+                        int p2 = int.Parse(part2);
+                        int p3 = int.Parse(part3);
+                        int p4 = int.Parse(part4);
+
+                        int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, true);
+                        CSAMXSingleton.CS.SendAlarmToAMX(evnum, "##TEST", "", "");
+                        CSAMXSingleton.CS.FlushMessages();
+                    }
+
+                    break;
+
+                case "TEST BOX RESET":
+
+
+                    if (partssplit.Length >= 4)
+                    {
+                        string part1 = partssplit[0];
+                        string part2 = partssplit[1];
+                        string part3 = partssplit[2];
+                        string part4 = partssplit[3];
+
+                        // If you want integers instead of strings:
+                        int p1 = int.Parse(part1);
+                        int p2 = int.Parse(part2);
+                        int p3 = int.Parse(part3);
+                        int p4 = int.Parse(part4);
+
+                        int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, false);
+                        CSAMXSingleton.CS.SendResetToAMX(evnum, "##TEST", "", "");
+                        CSAMXSingleton.CS.FlushMessages();
+                    }
+
                     break;
 
 

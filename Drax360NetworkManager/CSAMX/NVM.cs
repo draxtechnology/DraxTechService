@@ -54,9 +54,7 @@ namespace Drax360Service
         {
             List<Byte> ret = new List<Byte>();
             ret.AddRange(renderlongb(OurType));
-
-            long ourevent = OurEvent | 0x80000000;
-            ret.AddRange(renderlongb(ourevent));
+            ret.AddRange(renderlongb(OurEvent));
 
             ret.AddRange(render__int16b(On));
             ret.AddRange(render__int16b(Value));

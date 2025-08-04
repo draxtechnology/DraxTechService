@@ -1,6 +1,15 @@
-﻿using System;
+﻿
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Security.Policy;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Timers;
+using System.IO;
 
 namespace Drax360Service.Panels
 {
@@ -9,6 +18,7 @@ namespace Drax360Service.Panels
         #region constants
         const byte kzerobyte = 0x00;
         const byte kackbyte = 0x06;
+        protected const byte kheartbeatdelayseconds = 60;
         #endregion
 
         public override string GetFileName { get=> "GenMan"; }
@@ -26,7 +36,7 @@ namespace Drax360Service.Panels
         {
             if (!String.IsNullOrEmpty(identifier))
             {
-                heartbeat_timer = new System.Threading.Timer(heartbeat_timer_callback, this.Identifier, 500, kHeartbeatDelaySeconds * 1000);
+                heartbeat_timer = new System.Threading.Timer(heartbeat_timer_callback, this.Identifier, 500, kheartbeatdelayseconds * 1000);
             }
         }
 
@@ -40,6 +50,7 @@ namespace Drax360Service.Panels
             this.buffer.Clear();
             string strmsg = Encoding.UTF8.GetString(ourmessage);
 
+            File.WriteAllText("c:\\temp\\c#output.txt", strmsg);
             // test checksum
             int piMSB = ourmessage[ourmessage.Length - 2];
             int piLSB = ourmessage[ourmessage.Length - 1];
@@ -65,6 +76,8 @@ namespace Drax360Service.Panels
                 switch (i)
                 {
                     case 0:
+                        sEventCode = intb.ToString();
+                        break;
                     case 1:
                         sEventCode += intb.ToString();
                         break;
@@ -129,19 +142,183 @@ namespace Drax360Service.Panels
                 }
             }
 
-            // we have a result fire the callback
-            //FireFire(sTime);
-            if (Convert.ToInt32(sEventParam.Substring(2, 2)) > 0)
+            string sMSB = "";
+            string sLSB = "";
+
+            if (sEventCode.Length > 2)
+            {
+                sMSB = sEventCode.Substring(0, 2);
+                sLSB = sEventCode.Substring(2, 1);
+            }
+
+            else
+            {
+                sMSB = sEventCode.Substring(0, 1);
+                sLSB = sEventCode.Substring(1, 1);
+            }
+
+            if (sMSB == "0")
+            {
+                if (sLSB == "4")
+                {
+                    Console.WriteLine("-------------------- Alarms Silenced ----------- ");
+
+                    string part1 = "15";
+                    string part2 = "1";
+                    string part3 = "0";
+                    string part4 = "10";
+
+                    int p1 = int.Parse(part1);
+                    int p2 = int.Parse(part2);
+                    int p3 = int.Parse(part3);
+                    int p4 = int.Parse(part4);
+
+                    int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, true);
+                    CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", "Alarms Silenced");
+                    CSAMXSingleton.CS.FlushMessages();
+
+                    buffer = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
+                    sendserial(buffer);
+                }
+
+                if (sLSB == "5")
+                {
+                    Console.WriteLine("-------------------- Panel In Evac Condition ----------- ");
+
+                    string part1 = "15";
+                    string part2 = "1";
+                    string part3 = "0";
+                    string part4 = "1";
+
+                    int p1 = int.Parse(part1);
+                    int p2 = int.Parse(part2);
+                    int p3 = int.Parse(part3);
+                    int p4 = int.Parse(part4);
+
+                    int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, true);
+                    CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", "Alarms Sounded");
+                    CSAMXSingleton.CS.FlushMessages();
+
+                    buffer = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
+                    sendserial(buffer);
+                }
+
+                if (sLSB == "1")
+                {
+                    Console.WriteLine("-------------------- Panel In Reset Condition ----------- ");
+
+                    string part1 = "15";
+                    string part2 = "1";
+                    string part3 = "0";
+                    string part4 = "1";
+
+                    int p1 = int.Parse(part1);
+                    int p2 = int.Parse(part2);
+                    int p3 = int.Parse(part3);
+                    int p4 = int.Parse(part4);
+
+                    int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, true);
+                    CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", "Reset");
+                    CSAMXSingleton.CS.FlushMessages();
+
+                    buffer = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
+                    sendserial(buffer);
+                }
+
+                if (sLSB == "3")
+                {
+                    Console.WriteLine("-------------------- Panel In Enable Condition ----------- ");
+
+                    string part1 = "4";
+                    string part2 = "1";
+                    string part3 = "0";
+                    string part4 = "1";
+
+                    int p1 = int.Parse(part1);
+                    int p2 = int.Parse(part2);
+                    int p3 = int.Parse(part3);
+                    int p4 = int.Parse(part4);
+
+                    int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, true);
+                    CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", "Enable");
+                    CSAMXSingleton.CS.FlushMessages();
+
+                    buffer = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
+                    sendserial(buffer);
+                }
+            }
+            if (sMSB == "1")
+            {
+                if (sLSB == "8")
+                {
+                    Console.WriteLine("-------------------- Panel In Cancel Buzzer ----------- ");
+
+                    string part1 = "4";
+                    string part2 = "1";
+                    string part3 = "0";
+                    string part4 = "1";
+
+                    int p1 = int.Parse(part1);
+                    int p2 = int.Parse(part2);
+                    int p3 = int.Parse(part3);
+                    int p4 = int.Parse(part4);
+
+                    int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, true);
+                    CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", "Cancel Buzzer");
+                    CSAMXSingleton.CS.FlushMessages();
+
+                    buffer = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
+                    sendserial(buffer);
+                }
+            }
+             if (sMSB == "4" || Convert.ToInt32(sEventParam.Substring(2, 2)) > 0)
             {
                 int giNoOfFaults = Convert.ToInt32(sEventParam.Substring(2, 2));
                 Console.WriteLine("-------------------- Panel In " + giNoOfFaults.ToString() + " Fault Condition ----------- ");
-                base.NotifyClient("Hello From Deep Inside Server 1");
+
+                string part1 = "8";
+                string part2 = "1";
+                string part3 = "0";
+                string part4 = "1";
+
+                int p1 = int.Parse(part1);
+                int p2 = int.Parse(part2);
+                int p3 = int.Parse(part3);
+                int p4 = int.Parse(part4);
+
+                int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, true);
+                CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", giNoOfFaults.ToString() + " Fault(s) in Panel or Panels", "Number of Panels in Fault");
+                CSAMXSingleton.CS.FlushMessages();
+
+                buffer = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
+                sendserial(buffer);
             }
-            if (Convert.ToInt32(sEventParam.Substring(4, 2)) > 0)
+            if (sMSB == "7" || Convert.ToInt32(sEventParam.Substring(4, 2)) > 0)
             {
                 int giNoOfDisable = Convert.ToInt32(sEventParam.Substring(4, 2));
                 Console.WriteLine("-------------------- Panel In " + giNoOfDisable.ToString() + " Disable Condition ----------- ");
-                base.NotifyClient("Hello From Deep Inside Server 2");
+
+                int p1 = 4;
+                int p2 = sPanelNumber;
+                int p3 = sLoopNumber;
+                int p4 = AddressNumber;
+
+                string part1 = "4";
+                string part2 = "1";
+                string part3 = "0";
+                string part4 = "1";
+
+                p1 = int.Parse(part1);
+                p2 = int.Parse(part2);
+                p3 = int.Parse(part3);
+                p4 = int.Parse(part4);
+
+                int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, true);
+                CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", giNoOfDisable.ToString() + " Panel(s) in Disablement", "Number of Panels in Disablement");
+                CSAMXSingleton.CS.FlushMessages();
+
+                buffer = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
+                sendserial(buffer);
             }
         }
 
@@ -241,7 +418,7 @@ namespace Drax360Service.Panels
         {
             string[] parts = passedvalues.Split(',');
 
-            int node = 1, loop = 0, zone = 0, device = 0, giDomainNumber = 0;
+            int node = 1, loop = 0, zone = 0, device = 0, giDomainNumber = 0, inputtype=0;
 
             if (parts.Length > 0) int.TryParse(parts[0], out node);
             if (parts.Length > 1) int.TryParse(parts[1], out loop);
@@ -263,6 +440,8 @@ namespace Drax360Service.Panels
 
             byte[] gbaryDataToTX = new byte[60];
 
+            string text = action.ToString();
+
             for (int i = 1; i <= 9; i++)
             {
                 gbaryDataToTX[i] = 0;
@@ -271,11 +450,21 @@ namespace Drax360Service.Panels
             if (action == ActionType.kEVACTUATE)
             {
                 gbaryDataToTX[0] = 32;
+                text = "Alarms Sounded";
+                inputtype = 248;
+                node = 1;
+                loop = 0;
+                device = 1;
             }
 
             if (action == ActionType.kRESET)
             {
                 gbaryDataToTX[0] = 20;
+                text = "Alarms Reset";
+                inputtype = 248;
+                node = 1;
+                loop = 0;
+                device = 1;
             }
 
             if (action == ActionType.kSILENCE)
@@ -295,6 +484,8 @@ namespace Drax360Service.Panels
                 gbaryDataToTX[2] = (byte)device;
                 gbaryDataToTX[8] = (byte)zone;
                 gbaryDataToTX[9] = (byte)loop;
+                text = "Disable Device";
+                inputtype = 4;
             }
 
             if (action == ActionType.kENABLEDEVICE)
@@ -304,6 +495,8 @@ namespace Drax360Service.Panels
                 gbaryDataToTX[2] = (byte)device;
                 gbaryDataToTX[8] = (byte)zone;
                 gbaryDataToTX[9] = (byte)loop;
+                text = "Enable Device";
+                inputtype = 4;
             }
 
             if (action == ActionType.kDISABLEZONE)
@@ -312,6 +505,8 @@ namespace Drax360Service.Panels
                 gbaryDataToTX[1] = 4;
                 gbaryDataToTX[8] = (byte)zone;
                 gbaryDataToTX[9] = (byte)loop;
+                text = "Disable Zone";
+                inputtype = 4;
             }
 
             if (action == ActionType.kENABLEZONE)
@@ -320,6 +515,8 @@ namespace Drax360Service.Panels
                 gbaryDataToTX[1] = 1;
                 gbaryDataToTX[8] = (byte)zone;
                 gbaryDataToTX[9] = (byte)loop;
+                text = "Enable Zone";
+                inputtype = 4;
             }
             gbaryDataToTX[10] = (byte)node;
             gbaryDataToTX[11] = (byte)sSecond;
@@ -345,7 +542,7 @@ namespace Drax360Service.Panels
             gbaryDataToTX[58] = (byte)iLSB;
 
             sendserial(gbaryDataToTX);
-            SendEvent("Gent", type, action.ToString(), node, loop, device);
+            SendEvent("Gent", type, inputtype, text, node, loop, device);
         }
     }
 }

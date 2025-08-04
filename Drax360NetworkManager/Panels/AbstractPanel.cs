@@ -9,6 +9,7 @@ namespace Drax360Service.Panels
 {
     internal abstract class AbstractPanel
     {
+
         #region Constants
         protected const byte kHeartbeatInitialDelaySeconds = 60;
         protected const byte kHeartbeatDelaySeconds = 60;
@@ -21,6 +22,7 @@ namespace Drax360Service.Panels
 
         #region Properties
         public SerialPort Port { get; set; }
+        public event EventHandler Fire;
         public event EventHandler OutsideEvents;
         public string Identifier { get; private set; }
 
@@ -68,6 +70,22 @@ namespace Drax360Service.Panels
                 AmxSend(type, text, node, loop, device);
             }
         }
+        public void SendEvent(string panel, NwmData type, int inputtype, string text, int node = 0, int loop = 0, int device = 0)
+        {
+            EventHandler handler = Fire;
+
+            if (handler != null) handler(this, new CustomEventArgs(text));
+
+            if (type == NwmData.AlarmToAmx || type == NwmData.ResetToNwm)
+            {
+                AmxAlarm(text, inputtype, node, loop, device);
+            }
+            else
+            {
+                AmxSend(type, text, inputtype, node, loop, device);
+            }
+        }
+
 
         public virtual void Parse(byte[] buffer)
         {
@@ -96,29 +114,31 @@ namespace Drax360Service.Panels
         #endregion
 
         #region Private Methods
-        private void AmxSend(NwmData type, string text, int node = 0, int loop = 0, int device = 0)
-        {
-            int amxOffset = 0; // 0 for AMX light
-            int eventNumber = CSAMXSingleton.CS.MakeInputNumber(node + amxOffset, loop, device, 4);
 
-            CSAMXSingleton.CS.WriteData(type, eventNumber, text, string.Empty, string.Empty, true);
+        private void AmxSend(NwmData type, string text, int inputtype, int node = 0, int loop = 0, int device = 0)
+        {
+            int amxoffset = 0; // 0 amxlight
+
+            int evnum = CSAMXSingleton.CS.MakeInputNumber(node + amxoffset, loop, device, inputtype, true);
+
+            CSAMXSingleton.CS.WriteData(type, evnum, text, "", "", true);
             CSAMXSingleton.CS.FlushMessages();
         }
 
-        private void AmxAlarm(string text, int node = 0, int loop = 0, int device = 0)
+        private void AmxAlarm(string text, int inputtype, int node = 0, int loop = 0, int device = 0)
         {
-            int amxOffset = 0; // 0 for AMX light
-            int eventNumber = CSAMXSingleton.CS.MakeInputNumber(node + amxOffset, loop, device, 5);
+            int amxoffset = 0; // 0 amxlight
 
-            // Send alarm to AMX
-            CSAMXSingleton.CS.SendAlarmToAMX(eventNumber, "1", string.Empty, text);
+            int evnum = CSAMXSingleton.CS.MakeInputNumber(node + amxoffset, loop, device, inputtype, true);
+
+            CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", "", text);
             CSAMXSingleton.CS.FlushMessages();
         }
 
         private void AmxReset(string text, int node = 0, int loop = 0, int device = 0)
         {
             int amxOffset = 0; // 0 for AMX light
-            int eventNumber = CSAMXSingleton.CS.MakeInputNumber(node + amxOffset, loop, device, 4);
+            int eventNumber = CSAMXSingleton.CS.MakeInputNumber(node + amxOffset, loop, device, 4, false);
 
             CSAMXSingleton.CS.SendResetToAMX(eventNumber, text);
             CSAMXSingleton.CS.FlushMessages();

@@ -43,10 +43,15 @@ namespace Drax360Service
         {
             return (int) (inputNumber + 0x80000000);
         }
-        public int MakeInputNumber(int node, int loop, int inputn, int inputtype)
-        { 
-            
-            return inputn + (loop * 0x100) + (node * 0x10000) + (inputtype * 0x8000000);
+        public int MakeInputNumber(int node, int loop, int inputn, int inputtype, bool on)
+        {
+            int no = inputn + (loop * 0x100) + (node * 0x10000) + (inputtype * 0x8000000);
+            if (on)
+            {
+                no |= unchecked((int)0x80000000);
+            }
+
+            return no;
         }
 
         public void WriteData(NwmData eventtype, int eventnumber,
@@ -153,7 +158,7 @@ unsigned char *TxFile;
 
         public void SendAlarmToAMX( int eventnumber, string dtext = "", string dtext2="", string dtext3 = "")
         {
-            sendalarmorreset(eventnumber, dtext, dtext2, dtext3,true);
+            sendalarmorreset(eventnumber, dtext, dtext2, dtext3, true);
         }
 
         public void SendResetToAMX(int eventnumber, string dtext = "", string dtext2 = "", string dtext3 = "")
@@ -206,9 +211,11 @@ unsigned char *TxFile;
                 byte[] ourbytes = contents.ToArray();
                 fileStream.Write(ourbytes, 0, ourbytes.Length);
                 fileStream.Close();
+                if (Program.IsConnected)
+                {
+                    Program.SendMessage($"NTX:" + fullfilename);
+                }
             }
-
-            
             nvms.Clear();
         }
         #endregion
@@ -230,16 +237,12 @@ unsigned char *TxFile;
             filenumber = Convert.ToInt32(splits[0]);
         }
 
-        public void sendalarmorreset(int eventnumber, string dtext, string dtext2, string dtext3,bool on)
+        public void sendalarmorreset(int eventnumber, string dtext, string dtext2, string dtext3, bool on)
         {
             NVM ournvm = new NVM();
             ournvm.OurType = 1;
             ournvm.OurEvent = eventnumber;
-
-            ournvm.On = on?1:0;
-            //ournvm.Value = 65535;
-            //ournvm.Node = 255;
-            //ournvm.Zone = 255;
+            ournvm.On = on ? 65535 : 0;
             ournvm.Text = dtext;
             ournvm.Text2 = dtext2;
             ournvm.Text3 = dtext3;
