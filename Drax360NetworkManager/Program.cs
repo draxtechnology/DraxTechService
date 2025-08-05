@@ -20,13 +20,16 @@ namespace Drax360Service
         /// <summary>
         /// The main entry point for the application.
         /// </summary>
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             if (Environment.UserInteractive)
             {
                 DraxService service = new DraxService();
                 service.Run(args);
-                //tcpconnect();
+
+                AMXTransfer amxtransfer = new AMXTransfer();
+                await AMXTransfer.Instance.Run(args);
+
                 waitcr();
                 service.Stopit();
                 service.Dispose();

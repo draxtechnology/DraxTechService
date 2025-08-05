@@ -211,9 +211,9 @@ unsigned char *TxFile;
                 byte[] ourbytes = contents.ToArray();
                 fileStream.Write(ourbytes, 0, ourbytes.Length);
                 fileStream.Close();
-                //if (Program.IsConnected)
+                if (AMXTransfer.Instance.IsConnected)
                 {
-                    //Program.SendMessage($"NTX:" + fullfilename);
+                    AMXTransfer.Instance.SendMessage($"NTX:" + fullfilename);
                 }
             }
             nvms.Clear();

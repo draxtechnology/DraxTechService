@@ -12,6 +12,7 @@
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>true</Deterministic>
+    <LangVersion>8.0</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -48,7 +49,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CSAMX\AMXConnect.cs" />
+    <Compile Include="CSAMX\AMXTransfer.cs" />
     <Compile Include="CSAMX\CSAMX.cs" />
     <Compile Include="CSAMX\CSAMXSingelton.cs" />
     <Compile Include="CSAMX\NVM.cs" />
