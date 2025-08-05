@@ -211,9 +211,9 @@ unsigned char *TxFile;
                 byte[] ourbytes = contents.ToArray();
                 fileStream.Write(ourbytes, 0, ourbytes.Length);
                 fileStream.Close();
-                if (Program.IsConnected)
+                //if (Program.IsConnected)
                 {
-                    Program.SendMessage($"NTX:" + fullfilename);
+                    //Program.SendMessage($"NTX:" + fullfilename);
                 }
             }
             nvms.Clear();

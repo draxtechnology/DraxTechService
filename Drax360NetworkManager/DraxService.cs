@@ -7,14 +7,18 @@ using System.Globalization;
 using System.IO;
 using System.IO.Pipes;
 using System.IO.Ports;
+using System.Linq;
+using System.Net;
+using System.Net.Sockets;
 using System.Reflection;
+using System.Runtime.InteropServices.ComTypes;
+using System.Runtime.Remoting.Messaging;
 using System.ServiceProcess;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
-
-using System.Linq;
 using System.Threading.Tasks;
+using System.Timers;
 
 namespace Drax360Service
 {
@@ -61,12 +65,23 @@ namespace Drax360Service
 
     public partial class DraxService : ServiceBase
     {
+        private int _port = 3090;
+        private string _address = "localhost";
+        private TcpClient _tcpClient;
+        private bool _connected = true;
+
+        private NetworkStream _stream;
+        private StreamWriter _writer;
+        private System.Timers.Timer _heartbeatTimer;
+
+        public event Action<string> isMessageReceive;
+
         #region constants
         const string kpipenamesend = "Drax360PipeSend";
         const string kpipenamereturn = "Drax360PipeReturn";
         const char kpipedelim = '|';
         const string kappname = "Drax 360 Service";
-       
+
         const char ksettingdelim = '|';
         const int kfaketimertickseconds = 60;
         const int kfakefireinitialwakeseconds = 0;
@@ -83,14 +98,14 @@ namespace Drax360Service
 
         #region private variables
         NamedPipeServerStream pipeserversend = null;
-        
+
         string panel = "";
         Dictionary<string, string> settings = new Dictionary<string, string>();
 
         //List<SerialPortExtra> sps = new List<SerialPortExtra>();
         List<AbstractPanel> abstractpanels = new List<AbstractPanel>();
 
-        List<Timer> faketimers = new List<Timer>();
+        List<System.Threading.Timer> faketimers = new List<System.Threading.Timer>();
 
         // will remove any unused values as we go
         int giMainOffset = 0;
@@ -113,7 +128,7 @@ namespace Drax360Service
         bool DesignTime = false;
         string sLogDate = "";
         DateTime dteDataLogSetDate = DateTime.MinValue;
-      
+
         private int indent = 0;
         string[] args = null;
         int fakemode = 0;
@@ -169,32 +184,12 @@ namespace Drax360Service
             indent--;
         }
 
-        private void dumpsettings()
-        {
-            string workingsection = "";
-            foreach (string key in settings.Keys)
-            {
-                string[] keysplit = key.Split(ksettingdelim);
-                string section = keysplit[0];
-                if (section != workingsection)
-                {
-                    workingsection = section;
-                    indent = 0;
-                    title(workingsection);
-
-                }
-                indent = 1;
-                kvp(keysplit[1], settings[key]);
-
-            }
-        }
-
         private T getsetting<T>(string section, string name)
         {
             string key = section.ToUpper() + ksettingdelim + name.ToUpper();
             if (!settings.ContainsKey(key))
             {
-                warning("Setting Not Found " + section+" "+name);
+                warning("Setting Not Found " + section + " " + name);
                 return default(T);
             }
             string val = settings[key];
@@ -204,8 +199,8 @@ namespace Drax360Service
 
         private void loadsettings()
         {
-            string settingfile = "ini/" + getpanel().GetFileName+".ini";
-            
+            string settingfile = "ini/" + getpanel().GetFileName + ".ini";
+
             settings.Clear();
             if (!File.Exists(settingfile)) return;
             string section = "";
@@ -222,15 +217,18 @@ namespace Drax360Service
                 }
 
                 // we are a value
-                if (String.IsNullOrEmpty(section)) {
+                if (String.IsNullOrEmpty(section))
+                {
                     warning("No Section Specified For Setting " + line);
                     continue;
                 }
 
                 string[] linesplit = line.Split('=');
-                if (linesplit.Length != 2) {
-                    warning("Incorrect Setting "+section+ " "+line);
-                    continue; }
+                if (linesplit.Length != 2)
+                {
+                    warning("Incorrect Setting " + section + " " + line);
+                    continue;
+                }
                 string key = section + ksettingdelim + linesplit[0].Trim().ToUpper();
                 string value = linesplit[1].Trim();
                 if (String.IsNullOrEmpty(value)) { continue; }
@@ -241,16 +239,12 @@ namespace Drax360Service
                 }
 
                 settings.Add(key, value);
-
             }
         }
 
         private void log(string message, EventLogEntryType eventtype = EventLogEntryType.Information)
         {
             filelockmutex.WaitOne();
-
-
-
 
             string logfile = getpanel().GetFileName + ".log";
 
@@ -262,48 +256,34 @@ namespace Drax360Service
         private void pad()
         {
             Console.WriteLine();
-
         }
         private void title(string msg)
         {
-            
             Console.ForegroundColor = ConsoleColor.Cyan;
             ln(msg);
-           
-        }
-
-        private void error(string errormessage)
-        {
-            Console.ForegroundColor = ConsoleColor.Red;
-            indent = 0;
-            ln("Error "+errormessage, EventLogEntryType.Error);
         }
 
         private void warning(string warningmessage)
         {
             Console.ForegroundColor = ConsoleColor.Magenta;
-            ln("Warning "+warningmessage, EventLogEntryType.FailureAudit);
+            ln("Warning " + warningmessage, EventLogEntryType.FailureAudit);
         }
 
         private void init_service()
         {
- //if (AmxLite == 0)
+            //if (AmxLite == 0)
 
             //Full version
             giMainOffset = getsetting<int>(ksettingsetupsection, "giAmx1Offset");
 
-
-
             giDomainOffset = getsetting<int>(ksettingsetupsection, "DomainOffset");
             gsNWMBaud = getsetting<int>(ksettingsetupsection, "BaudRate");
-
 
             gsNWMDataBits = getsetting<int>(ksettingsetupsection, "DataBits");
             gsNWMParity = getsetting<string>(ksettingsetupsection, "Parity");
             gsNWMStop = getsetting<int>(ksettingsetupsection, "StopBits");
             gsNWMHeartBeat = getsetting<int>(ksettingsetupsection, "HeartbeatTimeout");
             giDomainNumber = getsetting<int>(ksettingsetupsection, "DomainNumber");
-
 
             giNWMPanelTCP = getsetting<int>(ksettingsetupsection, "PanelcTCP");
             gbNWMDisplayUnknownEvents = getsetting<int>(ksettingsetupsection, "DisplayUnknownEvents") == 1;
@@ -312,9 +292,7 @@ namespace Drax360Service
             gbDisplayChkSumFails = getsetting<int>(ksettingsetupsection, "DisplayChkSumFails") == 1;
             gsExtendedTextPath = getsetting<string>(ksettingsetupsection, "ExtendedTextFilePath");
 
-
             gbExtendedText = getsetting<int>(ksettingsetupsection, "ExtendedText") == 1;
-
 
             // double check these come out in the right order
             int delim = getsetting<int>(ksettingsetupsection, "Delimiter");
@@ -330,7 +308,6 @@ namespace Drax360Service
             giUseExtendedTextIfOver = getsetting<int>(ksettingsetupsection, "UseExtendedTextIfOver");
             gbOutstationFaultGenFault = getsetting<int>(ksettingsetupsection, "OutStationFaultsGenFault") == 1;
 
-
             DesignTime = getsetting<int>(ksettingsetupsection, "DataLogging") == 1;
 
             sLogDate = getsetting<string>(ksettingsetupsection, "DataLoggingSet");
@@ -343,7 +320,6 @@ namespace Drax360Service
                 dteDataLogSetDate = DateTime.Parse(sLogDate);
             }
 
-
             // now go grab com ports
             abstractpanels.Clear();
             //sps.Clear();
@@ -351,34 +327,29 @@ namespace Drax360Service
             for (int i = 1; i < 7; i++)
             {
                 string panel = ksettingpanelsection + i;
-               
+
                 int zone = getsetting<int>(panel, "ZoneBase");
                 int port = getsetting<int>(panel, "CommPort");
                 if (port <= 0) continue;
 
                 string identifier = "COM" + port;
                 AbstractPanel ap = getpanel(identifier);
-                
-
 
                 //sp.Zone = zone;
                 ap.OutsideEvents += Sp_Fire;
-                
 
-                
                 // we are in fake mode
                 if (this.fakemode > 0)
                 {
-                    ln("Opened Fake " + identifier +" Mode "+ fakemode);
-                    faketimers.Add( new Timer(fake_timer,identifier, kfakefireinitialwakeseconds*1000, kfaketimertickseconds*1000));  
-                   
+                    ln("Opened Fake " + identifier + " Mode " + fakemode);
+                    faketimers.Add(new System.Threading.Timer(fake_timer, identifier, kfakefireinitialwakeseconds * 1000, kfaketimertickseconds * 1000));
                 }
                 else
                 {
                     // we are a real serial port 
                     ap.Port = new SerialPort(identifier);
                     ap.Port.BaudRate = gsNWMBaud;
-                    
+
                     Parity parity = Parity.None;
                     string friendlyparity = gsNWMParity.Substring(0, 1).ToUpper();
                     if (friendlyparity == "E")
@@ -428,20 +399,16 @@ namespace Drax360Service
                     ap.Port.DiscardInBuffer();  //  MH Added
                     ap.Port.DiscardOutBuffer(); //  MH Added
                 }
-                
+
                 abstractpanels.Add(ap);
             }
-
-
-            // dumpsettings();
         }
 
-        
         private void Sp_Fire(object sender, EventArgs e)
         {
             CustomEventArgs ex = e as CustomEventArgs;
             string msg = ex.Message.ToString();
-            ln("Fired "+msg);
+            ln("Fired " + msg);
             sendreturncmd(msg);
         }
 
@@ -460,15 +427,13 @@ namespace Drax360Service
                 }
             }
             if (ourabstractpanel == null) return;
-            
+
             string read = ourabstractpanel.FakeString;
 
             byte[] bytes = Encoding.ASCII.GetBytes(read);
             ourabstractpanel.Parse(bytes);
         }
-
-
-        private AbstractPanel getpanel(string identifier="")
+        private AbstractPanel getpanel(string identifier = "")
         {
             AbstractPanel ret = null;
             switch (panel)
@@ -486,7 +451,7 @@ namespace Drax360Service
                     break;
 
                 default:
-                    throw new Exception("Panel Undefined "+panel);
+                    throw new Exception("Panel Undefined " + panel);
 
             }
             return ret;
@@ -512,7 +477,8 @@ namespace Drax360Service
             byte[] bytes = new byte[bytestoread];
             int read = serialPort.Read(bytes, 0, bytestoread);
             if (read > 0)
-            {   spe.Parse(bytes);
+            {
+                spe.Parse(bytes);
             }
         }
         #endregion
@@ -557,28 +523,173 @@ namespace Drax360Service
             pad();
             ln("Settings Loaded (" + settings.Count + " Values)");
 
-
-
             startpipesend();
-            //startpipereturn();
 
+            init_service();    // start the service
 
-            // start the service
-            init_service();
-
+            tcpconnect();
         }
 
+        private async void tcpconnect()
+        {
+            _port = 3090;
+            _address = "localhost";
+
+            _tcpClient = new TcpClient();
+            var cancellationTokenSource = new CancellationTokenSource();
+            _tcpClient.Client.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.NoDelay, true);
+            _tcpClient.ReceiveTimeout = 3000;
+            _tcpClient.SendTimeout = 3000;
+            try
+            {
+                var connectTask = Task.Run(() => _tcpClient.ConnectAsync(_address, _port), cancellationTokenSource.Token);
+                var timeoutTask = Task.Delay(5000); // 5-second timeout
+                                                    // Wait for either the connection to succeed or the timeout to occur
+                var completedTask = await Task.WhenAny(connectTask, timeoutTask);
+                if (completedTask == timeoutTask)
+                {
+                    cancellationTokenSource.Cancel();
+                    Debug.WriteLine("Connection timeout.");
+                    return;
+                }
+                _connected = true;
+                _stream = _tcpClient.GetStream();
+                _writer = new StreamWriter(_stream, Encoding.UTF8) { AutoFlush = true };
+                StartHeartbeatTimer();
+
+                // Log the startup
+
+                int evnum = CSAMXSingleton.CS.MakeInputNumber(1, 1, 1, 1, true);
+                string text = "c# Gent Started";
+                CSAMXSingleton.CS.WriteData(NwmData.MessageForSystemHistoryToAmx, evnum, text, "", "", true);
+                CSAMXSingleton.CS.FlushMessages();
+
+                isMessageReceive += msg =>
+                {
+                    Console.WriteLine("Received From AMX: " + msg);
+                    if (msg == "NWM:TBSHOW")
+                    {
+                        sendreturncmd("NWM", msg);
+                    }
+                };
+                await ReceiveDataAsync();
+            }
+            catch (Exception ex)
+            {
+                _connected = false;
+                Debug.WriteLine("Connection failed: " + ex.Message);
+            }
+        }
+        private void StartHeartbeatTimer()
+        {
+            _heartbeatTimer = new System.Timers.Timer(1000); // 1 second interval
+            _heartbeatTimer.Elapsed += HeartbeatTimer_Elapsed;
+            _heartbeatTimer.AutoReset = true; // keep firing every second
+            _heartbeatTimer.Enabled = true;
+        }
+
+        private void HeartbeatTimer_Elapsed(object sender, ElapsedEventArgs e)
+        {
+            if (_tcpClient != null && _tcpClient.Connected)
+            {
+                SendMessage("?");  // Send your heartbeat query every second
+                Console.WriteLine("Sent AMX Heartbeat ?");
+            }
+        }
+        public void SendMessage(string message)
+        {
+            const int maxAttempts = 3;
+
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                if (_connected && _tcpClient != null && _tcpClient.Connected && _stream != null)
+                {
+                    try
+                    {
+                        if (_stream.CanWrite)
+                        {
+                            byte[] data = Encoding.UTF8.GetBytes(message);
+                            _stream.Write(data, 0, data.Length);
+                            _stream.Flush();
+                            return; // success, exit method
+                        }
+                        else
+                        {
+                            Debug.WriteLine("Stream is not writable.");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Send attempt {attempt} failed: {ex.Message}");
+                        _connected = false;
+                    }
+                }
+
+                // Try reconnecting if not connected and not on final attempt
+                if (!_connected && attempt < maxAttempts)
+                {
+                    Debug.WriteLine($"Attempting to reconnect... (Attempt {attempt + 1})");
+                    tcpconnect();
+                }
+            }
+
+            Debug.WriteLine("SendMessage failed after 3 attempts.");
+        }
+
+        public async Task ReceiveDataAsync()
+        {
+            try
+            {
+                if (_tcpClient == null || !_tcpClient.Connected)
+                    return;
+
+                var buffer = new byte[1024];
+                var stream = _tcpClient.GetStream();
+
+                while (_tcpClient.Connected)
+                {
+                    int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
+
+                    if (bytesRead == 0)
+                    {
+                        Console.WriteLine("Server closed connection");
+                        break;
+                    }
+
+                    string chunk = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+
+                    isMessageReceive?.Invoke(chunk.Trim());
+
+                    string cmd = chunk.Substring(0, Math.Min(4, chunk.Length));
+                    string par = chunk.Substring(Math.Min(4, chunk.Length));
+
+                    switch (cmd)
+                    {
+                        case "NWM:":  //NWM = Commands recognised by any NWM 
+
+                            switch (par)
+                            {
+                                case "TBSHOW":  //Look for command to show test box 
+
+                                    break;
+                            }
+                            break;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Exception in ReceiveDataAsync: " + ex.Message);
+            }
+        }
         private void startpipeserver()
         {
             pipeserversend = new NamedPipeServerStream(kpipenamesend, PipeDirection.InOut, 254, PipeTransmissionMode.Message);
             ln("Pipe Server Send is Started (" + kpipenamesend + ")");
         }
-
-     
-
         private async void startpipesend()
         {
-            while (pipeserversend!=null)
+            while (pipeserversend != null)
             {
                 await pipeserversend.WaitForConnectionAsync();
 
@@ -593,16 +704,12 @@ namespace Drax360Service
                 //send response to a client
                 pipeserversend.Write(response, 0, response.Length);
                 pipeserversend.Disconnect();
-             
+
             }
-
         }
-
-    
 
         private string sendreturncmd(string cmd, string parameters = "")
         {
-        
             string strcmd = cmd;
             if (!string.IsNullOrEmpty(parameters))
             {
@@ -620,7 +727,7 @@ namespace Drax360Service
             {
                 result = "Error: " + ex;
             }
-            
+
             return result;
         }
 
@@ -647,33 +754,23 @@ namespace Drax360Service
             }
         }
 
-            private static byte[] readmessagereturn(PipeStream pipe)
+        private static byte[] readmessagereturn(PipeStream pipe)
+        {
+            if (!pipe.IsConnected) return new byte[0];
+
+            byte[] buffer = new byte[1024];
+            using (var ms = new MemoryStream())
             {
-                if (!pipe.IsConnected) return new byte[0];
-
-                byte[] buffer = new byte[1024];
-                using (var ms = new MemoryStream())
+                do
                 {
-                    do
-                    {
-                        var readBytes = pipe.Read(buffer, 0, buffer.Length);
-                        ms.Write(buffer, 0, readBytes);
-                    }
-                    while (!pipe.IsMessageComplete);
-
-                    return ms.ToArray();
+                    var readBytes = pipe.Read(buffer, 0, buffer.Length);
+                    ms.Write(buffer, 0, readBytes);
                 }
+                while (!pipe.IsMessageComplete);
+
+                return ms.ToArray();
             }
-        
-
-
-
-
-
-
-
-
-
+        }
         private string handlepiperesponse(string strresponse)
         {
             string passedvalues = "";
@@ -700,6 +797,7 @@ namespace Drax360Service
                     }
 
                     break;
+
                 case "MUTEBUZZERS":
 
                     // for now alert all connected panels to mute buzzers
@@ -760,6 +858,7 @@ namespace Drax360Service
                         }
                     }
                     break;
+
                 case "ENABLEDEVICE":
 
                     if (passedvalues.Length > 0)
@@ -842,11 +941,10 @@ namespace Drax360Service
 
                     break;
 
-
                 default:
                     throw new Exception("Pipe Message Not Handled " + cmd);
             }
-        
+
             return ret;
         }
         private string[] ExtractTextBoxValues(string input)
@@ -882,8 +980,6 @@ namespace Drax360Service
                 pipeserversend.Dispose();
                 pipeserversend = null;
             }
-
-            
         }
 
         public void Stopit()
@@ -892,19 +988,19 @@ namespace Drax360Service
             ln("Stopping Service");
             stoppipeserver();
             // close fake timers
-            if (this.fakemode>0)
+            if (this.fakemode > 0)
             {
-                foreach(Timer timer in this.faketimers)
+                foreach (System.Threading.Timer timer in this.faketimers)
                 {
-                    
+
                     timer.Dispose();
-                   
+
                 }
                 faketimers.Clear();
             }
-            
+
             // close serial ports
-            foreach(AbstractPanel ap in abstractpanels)
+            foreach (AbstractPanel ap in abstractpanels)
             {
                 if (ap.Port == null) continue;
 
@@ -912,14 +1008,16 @@ namespace Drax360Service
                 try
                 {
                     ap.Port.Close();
-                } catch {
+                }
+                catch
+                {
                     warning("Failed To Close " + ap.Port.PortName);
                 }
                 if (!ap.Port.IsOpen)
                 {
                     ln("Closed" + ap.Port.PortName);
                 }
-                
+
                 ap.Port.Dispose();
                 ap.Port = null;
             }
