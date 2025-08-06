@@ -594,7 +594,6 @@ namespace Drax360Service
                 return strresponse;
             }
         }
-
         private static byte[] readmessagereturn(PipeStream pipe)
         {
             if (!pipe.IsConnected) return new byte[0];
@@ -761,7 +760,6 @@ namespace Drax360Service
 
                 case "TEST BOX RESET":
 
-
                     if (partssplit.Length >= 4)
                     {
                         string part1 = partssplit[0];
@@ -815,7 +813,6 @@ namespace Drax360Service
         {
             if (pipeserversend != null)
             {
-
                 ln("Pipe Server Send is stopping...");
                 pipeserversend.Close();
                 pipeserversend.Dispose();
@@ -864,6 +861,17 @@ namespace Drax360Service
             }
             abstractpanels.Clear();
             ln("Stopped Service");
+
+            try
+            {
+                _tcpClient?.Close();
+                _tcpClient?.Dispose();
+                _tcpClient = null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error closing TCP connection: " + ex.Message);
+            }
         }
         #endregion
 

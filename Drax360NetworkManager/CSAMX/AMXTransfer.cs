@@ -128,11 +128,9 @@ namespace Drax360Service
                     }
                 }
 
-                // Try reconnecting if not connected and not on final attempt
                 if (!_connected && attempt < maxAttempts)
                 {
-                    Debug.WriteLine($"Attempting to reconnect... (Attempt {attempt + 1})");
-                    //tcpconnect();
+                    Debug.WriteLine($"Not connected unable to sennd");
                 }
             }
 
@@ -163,22 +161,6 @@ namespace Drax360Service
 
                     isMessageReceive?.Invoke(chunk.Trim());
 
-                    string cmd = chunk.Substring(0, Math.Min(4, chunk.Length));
-                    string par = chunk.Substring(Math.Min(4, chunk.Length));
-                    /*
-                    switch (cmd)
-                    {
-                        case "NWM:":  //NWM = Commands recognised by any NWM 
-
-                            switch (par)
-                            {
-                                case "TBSHOW":  //Look for command to show test box 
-
-                                    break;
-                            }
-                            break;
-                    }
-                    */
                 }
             }
             catch (Exception ex)

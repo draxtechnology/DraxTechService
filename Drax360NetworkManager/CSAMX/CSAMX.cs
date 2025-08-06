@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-
 namespace Drax360Service
 {
     public class CSAMX
@@ -20,7 +19,6 @@ namespace Drax360Service
         private string workingfolder = "";
         private List<NVM> nvms = new List<NVM>();
         #endregion
-
 
         #region constructor
         public CSAMX()

@@ -4,7 +4,6 @@ using System.IO.Ports;
 using System.Text;
 using System.Threading;
 
-
 namespace Drax360Service.Panels
 {
     internal abstract class AbstractPanel
@@ -106,7 +105,6 @@ namespace Drax360Service.Panels
                 Port.Write(toSend, 0, toSend.Length);
             }
         }
-
         protected void sendserial(string toSend)
         {
             sendserial(Encoding.ASCII.GetBytes(toSend));
@@ -135,14 +133,6 @@ namespace Drax360Service.Panels
             CSAMXSingleton.CS.FlushMessages();
         }
 
-        private void AmxReset(string text, int node = 0, int loop = 0, int device = 0)
-        {
-            int amxOffset = 0; // 0 for AMX light
-            int eventNumber = CSAMXSingleton.CS.MakeInputNumber(node + amxOffset, loop, device, 4, false);
-
-            CSAMXSingleton.CS.SendResetToAMX(eventNumber, text);
-            CSAMXSingleton.CS.FlushMessages();
-        }
         #endregion
     }
 }
