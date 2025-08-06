@@ -68,14 +68,13 @@ namespace Drax360Service
                 isMessageReceive += msg =>
                 {
                     Console.WriteLine("Received From AMX: " + msg);
-                    if (msg == "NWM:TBSHOW"|| msg == "NWM:SHOWABOUT")
+                    if (msg.StartsWith("NWM:") || msg.StartsWith("GEN:"))
                     {
                         DraxService drax = new DraxService();
                         drax.sendreturncmd("", msg);
                     }
                 };
-
-
+                
                 await ReceiveDataAsync();
             }
             catch (Exception ex)
