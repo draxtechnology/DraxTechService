@@ -21,7 +21,7 @@ namespace Drax360Service.Panels
         protected const byte kheartbeatdelayseconds = 60;
         #endregion
 
-        public override string GetFileName { get=> "GenMan"; }
+        public override string GetFileName { get => "GenMan"; }
 
         public override string FakeString
         {
@@ -42,150 +42,246 @@ namespace Drax360Service.Panels
 
         public override void Parse(byte[] buffer)
         {
-            base.Parse(buffer);
+            //base.Parse(buffer);
+            this.buffer.AddRange(buffer);
 
-            int bufferlength = this.buffer.Count;
-            if (bufferlength < 59) return; // bail if we have less bytes than is viable
-            byte[] ourmessage = this.buffer.GetRange(0, 59).ToArray();
-            this.buffer.Clear();
-            string strmsg = Encoding.UTF8.GetString(ourmessage);
-
-            File.WriteAllText("c:\\temp\\c#output.txt", strmsg);
-            // test checksum
-            int piMSB = ourmessage[ourmessage.Length - 2];
-            int piLSB = ourmessage[ourmessage.Length - 1];
-            if (!gentchecksumvalidation(piMSB, piLSB, ourmessage)) return;
-
-            string sEventCode = "";
-            int AddressNumber = 0;
-            int sChannelNumber = 0;
-            string sSectorBitArray = "";
-            int sZoneNumber = 0;
-            int sLoopNumber = 0;
-            int sPanelNumber = 0;
-            int sDomainNumber = 0;
-            int sMasterSector = 0;
-            string sTime = "";
-            string sEventParam = "";
-            string gsTextField = "";
-            for (int i = 0; i < 25; i++)
+            while (this.buffer.Count >= 59)
             {
+                int bufferlength = this.buffer.Count;
+                //if (bufferlength < 59) return; // bail if we have less bytes than is viable
+                byte[] ourmessage = this.buffer.GetRange(0, 59).ToArray();
+                //this.buffer.Clear();
+                this.buffer.RemoveRange(0, 59);
+                string strmsg = Encoding.UTF8.GetString(ourmessage);
 
-                byte b = ourmessage[i];
-                int intb = Convert.ToInt32(b);
-                switch (i)
+                string filePath = "c:\\temp\\csharp_output_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".gen";
+                File.WriteAllBytes(filePath, ourmessage);
+                // test checksum
+                int piMSB = ourmessage[ourmessage.Length - 2];
+                int piLSB = ourmessage[ourmessage.Length - 1];
+                if (!gentchecksumvalidation(piMSB, piLSB, ourmessage)) return;
+
+                string sEventCode = "";
+                int AddressNumber = 0;
+                int sChannelNumber = 0;
+                string sSectorBitArray = "";
+                int sZoneNumber = 0;
+                int sLoopNumber = 0;
+                int sPanelNumber = 0;
+                int sDomainNumber = 0;
+                int sMasterSector = 0;
+                string sTime = "";
+                string sEventParam = "";
+                string gsTextField = "";
+                for (int i = 0; i < 25; i++)
                 {
-                    case 0:
-                        sEventCode = intb.ToString();
-                        break;
-                    case 1:
-                        sEventCode += intb.ToString();
-                        break;
-                    case 2:
-                        AddressNumber = intb;
-                        break;
-                    case 3:
-                        sChannelNumber = intb;
-                        break;
-                    case 4:
-                    case 5:
-                    case 6:
-                    case 7:
-                        sSectorBitArray += intb.ToString();
-                        break;
-                    case 8:
-                        sZoneNumber += intb;
-                        break;
-                    case 9:
-                        sLoopNumber = intb;
-                        break;
-                    case 10:
-                        sPanelNumber = intb;
-                        break;
-                    case 11:
-                    case 12:
-                    case 13:
-                    case 14:
-                    case 15:
-                        sTime += intb.ToString();
-                        break;
-                    case 16:
-                        sZoneNumber += intb;
-                        break;
-                    case 17:
-                        sDomainNumber = intb;
-                        break;
-                    case 18:
-                        sMasterSector = intb;
-                        break;
-                    case 19:
 
-                    case 20:
-                    case 21:
-                    case 22:
-                    case 23:
-                    case 24:
-                        sEventParam += intb.ToString();
-                        break;
-                    default:
-                        break;
-                }
-            }
-
-            if (ourmessage.Length > 25)
-            {
-                for (int i = 25; i < 57; i++)
-                {
                     byte b = ourmessage[i];
-                    if (b == 0) continue;
-                    gsTextField += b.ToString();
+                    int intb = Convert.ToInt32(b);
+                    switch (i)
+                    {
+                        case 0:
+                            sEventCode = intb.ToString();
+                            break;
+                        case 1:
+                            sEventCode += intb.ToString();
+                            break;
+                        case 2:
+                            AddressNumber = intb;
+                            break;
+                        case 3:
+                            sChannelNumber = intb;
+                            break;
+                        case 4:
+                        case 5:
+                        case 6:
+                        case 7:
+                            sSectorBitArray += intb.ToString();
+                            break;
+                        case 8:
+                            sZoneNumber += intb;
+                            break;
+                        case 9:
+                            sLoopNumber = intb;
+                            break;
+                        case 10:
+                            sPanelNumber = intb;
+                            break;
+                        case 11:
+                        case 12:
+                        case 13:
+                        case 14:
+                        case 15:
+                            sTime += intb.ToString();
+                            break;
+                        case 16:
+                            sZoneNumber += intb;
+                            break;
+                        case 17:
+                            sDomainNumber = intb;
+                            break;
+                        case 18:
+                            sMasterSector = intb;
+                            break;
+                        case 19:
+
+                        case 20:
+                        case 21:
+                        case 22:
+                        case 23:
+                        case 24:
+                            sEventParam += intb.ToString();
+                            break;
+                        default:
+                            break;
+                    }
                 }
-            }
 
-            string sMSB = "";
-            string sLSB = "";
-
-            if (sEventCode.Length > 2)
-            {
-                sMSB = sEventCode.Substring(0, 2);
-                sLSB = sEventCode.Substring(2, 1);
-            }
-
-            else
-            {
-                sMSB = sEventCode.Substring(0, 1);
-                sLSB = sEventCode.Substring(1, 1);
-            }
-
-            if (sMSB == "0")
-            {
-                if (sLSB == "4")
+                if (ourmessage.Length > 25)
                 {
-                    Console.WriteLine("-------------------- Alarms Silenced ----------- ");
-
-                    string part1 = "15";
-                    string part2 = "1";
-                    string part3 = "0";
-                    string part4 = "10";
-
-                    int p1 = int.Parse(part1);
-                    int p2 = int.Parse(part2);
-                    int p3 = int.Parse(part3);
-                    int p4 = int.Parse(part4);
-
-                    int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, true);
-                    CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", "Alarms Silenced");
-                    CSAMXSingleton.CS.FlushMessages();
-
-                    buffer = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
-                    sendserial(buffer);
+                    for (int i = 25; i < 57; i++)
+                    {
+                        byte b = ourmessage[i];
+                        if (b == 0) continue;
+                        gsTextField += b.ToString();
+                    }
                 }
 
-                if (sLSB == "5")
-                {
-                    Console.WriteLine("-------------------- Panel In Evac Condition ----------- ");
+                string sMSB = "";
+                string sLSB = "";
 
-                    string part1 = "15";
+                if (sEventCode.Length > 2)
+                {
+                    sMSB = sEventCode.Substring(0, 2);
+                    sLSB = sEventCode.Substring(2, 1);
+                }
+
+                else
+                {
+                    sMSB = sEventCode.Substring(0, 1);
+                    sLSB = sEventCode.Substring(1, 1);
+                }
+
+                if (sMSB == "0")
+                {
+                    if (sLSB == "4")
+                    {
+                        Console.WriteLine("-------------------- Alarms Silenced ----------- ");
+
+                        string part1 = "15";
+                        string part2 = "1";
+                        string part3 = "0";
+                        string part4 = "10";
+
+                        int p1 = int.Parse(part1);
+                        int p2 = int.Parse(part2);
+                        int p3 = int.Parse(part3);
+                        int p4 = int.Parse(part4);
+
+                        int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, true);
+                        CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", "Alarms Silenced");
+                        CSAMXSingleton.CS.FlushMessages();
+
+                        buffer = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
+                        sendserial(buffer);
+                    }
+
+                    if (sLSB == "5")
+                    {
+                        Console.WriteLine("-------------------- Panel In Evac Condition ----------- ");
+
+                        string part1 = "15";
+                        string part2 = "1";
+                        string part3 = "0";
+                        string part4 = "1";
+
+                        int p1 = int.Parse(part1);
+                        int p2 = int.Parse(part2);
+                        int p3 = int.Parse(part3);
+                        int p4 = int.Parse(part4);
+
+                        int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, true);
+                        CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", "Alarms Sounded");
+                        CSAMXSingleton.CS.FlushMessages();
+
+                        buffer = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
+                        sendserial(buffer);
+                    }
+
+                    if (sLSB == "1")
+                    {
+                        Console.WriteLine("-------------------- Panel In Reset Condition ----------- ");
+
+                        string part1 = "1";
+                        string part2 = "1";
+                        string part3 = "0";
+                        string part4 = "1";
+
+                        int p1 = int.Parse(part1);
+                        int p2 = int.Parse(part2);
+                        int p3 = int.Parse(part3);
+                        int p4 = int.Parse(part4);
+
+                        int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, true);
+                        CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", "Reset");
+                        CSAMXSingleton.CS.FlushMessages();
+
+                        buffer = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
+                        sendserial(buffer);
+                    }
+
+                    if (sLSB == "3")
+                    {
+                        Console.WriteLine("-------------------- Panel In Enable Condition ----------- ");
+
+                        string part1 = "4";
+                        string part2 = "1";
+                        string part3 = "0";
+                        string part4 = "1";
+
+                        int p1 = int.Parse(part1);
+                        int p2 = int.Parse(part2);
+                        int p3 = int.Parse(part3);
+                        int p4 = int.Parse(part4);
+
+                        int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, true);
+                        CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", "Enable");
+                        CSAMXSingleton.CS.FlushMessages();
+
+                        buffer = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
+                        sendserial(buffer);
+                    }
+                }
+                if (sMSB == "1")
+                {
+                    if (sLSB == "8")
+                    {
+                        Console.WriteLine("-------------------- Panel In Cancel Buzzer ----------- ");
+
+                        string part1 = "4";
+                        string part2 = "1";
+                        string part3 = "0";
+                        string part4 = "1";
+
+                        int p1 = int.Parse(part1);
+                        int p2 = int.Parse(part2);
+                        int p3 = int.Parse(part3);
+                        int p4 = int.Parse(part4);
+
+                        int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, true);
+                        CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", "Cancel Buzzer");
+                        CSAMXSingleton.CS.FlushMessages();
+
+                        buffer = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
+                        sendserial(buffer);
+                    }
+                }
+                if (sMSB == "4")
+                {
+                    int giNoOfFaults = Convert.ToInt32(sEventParam.Substring(2, 2));
+                    Console.WriteLine("-------------------- Panel In " + giNoOfFaults.ToString() + " Fault Condition ----------- ");
+
+                    string part1 = "8";
                     string part2 = "1";
                     string part3 = "0";
                     string part4 = "1";
@@ -196,129 +292,39 @@ namespace Drax360Service.Panels
                     int p4 = int.Parse(part4);
 
                     int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, true);
-                    CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", "Alarms Sounded");
+                    CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", giNoOfFaults.ToString() + " Fault(s) in Panel or Panels", "Number of Panels in Fault");
                     CSAMXSingleton.CS.FlushMessages();
 
                     buffer = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
                     sendserial(buffer);
                 }
-
-                if (sLSB == "1")
+                if (sMSB == "7")
                 {
-                    Console.WriteLine("-------------------- Panel In Reset Condition ----------- ");
+                    int giNoOfDisable = Convert.ToInt32(sEventParam.Substring(4, 2));
+                    Console.WriteLine("-------------------- Panel In " + giNoOfDisable.ToString() + " Disable Condition ----------- ");
 
-                    string part1 = "15";
-                    string part2 = "1";
-                    string part3 = "0";
-                    string part4 = "1";
-
-                    int p1 = int.Parse(part1);
-                    int p2 = int.Parse(part2);
-                    int p3 = int.Parse(part3);
-                    int p4 = int.Parse(part4);
-
-                    int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, true);
-                    CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", "Reset");
-                    CSAMXSingleton.CS.FlushMessages();
-
-                    buffer = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
-                    sendserial(buffer);
-                }
-
-                if (sLSB == "3")
-                {
-                    Console.WriteLine("-------------------- Panel In Enable Condition ----------- ");
+                    int p1 = 4;
+                    int p2 = sPanelNumber;
+                    int p3 = sLoopNumber;
+                    int p4 = AddressNumber;
 
                     string part1 = "4";
                     string part2 = "1";
                     string part3 = "0";
                     string part4 = "1";
 
-                    int p1 = int.Parse(part1);
-                    int p2 = int.Parse(part2);
-                    int p3 = int.Parse(part3);
-                    int p4 = int.Parse(part4);
+                    p1 = int.Parse(part1);
+                    p2 = int.Parse(part2);
+                    p3 = int.Parse(part3);
+                    p4 = int.Parse(part4);
 
                     int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, true);
-                    CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", "Enable");
+                    CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", giNoOfDisable.ToString() + " Panel(s) in Disablement", "Number of Panels in Disablement");
                     CSAMXSingleton.CS.FlushMessages();
 
                     buffer = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
                     sendserial(buffer);
                 }
-            }
-            if (sMSB == "1")
-            {
-                if (sLSB == "8")
-                {
-                    Console.WriteLine("-------------------- Panel In Cancel Buzzer ----------- ");
-
-                    string part1 = "4";
-                    string part2 = "1";
-                    string part3 = "0";
-                    string part4 = "1";
-
-                    int p1 = int.Parse(part1);
-                    int p2 = int.Parse(part2);
-                    int p3 = int.Parse(part3);
-                    int p4 = int.Parse(part4);
-
-                    int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, true);
-                    CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", "Cancel Buzzer");
-                    CSAMXSingleton.CS.FlushMessages();
-
-                    buffer = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
-                    sendserial(buffer);
-                }
-            }
-             if (sMSB == "4" || Convert.ToInt32(sEventParam.Substring(2, 2)) > 0)
-            {
-                int giNoOfFaults = Convert.ToInt32(sEventParam.Substring(2, 2));
-                Console.WriteLine("-------------------- Panel In " + giNoOfFaults.ToString() + " Fault Condition ----------- ");
-
-                string part1 = "8";
-                string part2 = "1";
-                string part3 = "0";
-                string part4 = "1";
-
-                int p1 = int.Parse(part1);
-                int p2 = int.Parse(part2);
-                int p3 = int.Parse(part3);
-                int p4 = int.Parse(part4);
-
-                int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, true);
-                CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", giNoOfFaults.ToString() + " Fault(s) in Panel or Panels", "Number of Panels in Fault");
-                CSAMXSingleton.CS.FlushMessages();
-
-                buffer = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
-                sendserial(buffer);
-            }
-            if (sMSB == "7" || Convert.ToInt32(sEventParam.Substring(4, 2)) > 0)
-            {
-                int giNoOfDisable = Convert.ToInt32(sEventParam.Substring(4, 2));
-                Console.WriteLine("-------------------- Panel In " + giNoOfDisable.ToString() + " Disable Condition ----------- ");
-
-                int p1 = 4;
-                int p2 = sPanelNumber;
-                int p3 = sLoopNumber;
-                int p4 = AddressNumber;
-
-                string part1 = "4";
-                string part2 = "1";
-                string part3 = "0";
-                string part4 = "1";
-
-                p1 = int.Parse(part1);
-                p2 = int.Parse(part2);
-                p3 = int.Parse(part3);
-                p4 = int.Parse(part4);
-
-                int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, true);
-                CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", giNoOfDisable.ToString() + " Panel(s) in Disablement", "Number of Panels in Disablement");
-                CSAMXSingleton.CS.FlushMessages();
-
-                buffer = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
-                sendserial(buffer);
             }
         }
 
@@ -408,17 +414,17 @@ namespace Drax360Service.Panels
         }
         public override void DisableZone(string passedvalues)
         {
-            send_message(ActionType.kDISABLEZONE, NwmData.IsolationToAmx,passedvalues);
+            send_message(ActionType.kDISABLEZONE, NwmData.IsolationToAmx, passedvalues);
         }
         public override void EnableZone(string passedvalues)
         {
-            send_message(ActionType.kENABLEZONE, NwmData.IsolationToAmx,passedvalues);
+            send_message(ActionType.kENABLEZONE, NwmData.IsolationToAmx, passedvalues);
         }
         public virtual void send_message(ActionType action, NwmData type, string passedvalues)
         {
             string[] parts = passedvalues.Split(',');
 
-            int node = 1, loop = 0, zone = 0, device = 0, giDomainNumber = 0, inputtype=0;
+            int node = 1, loop = 0, zone = 0, device = 0, giDomainNumber = 0, inputtype = 0;
 
             if (parts.Length > 0) int.TryParse(parts[0], out node);
             if (parts.Length > 1) int.TryParse(parts[1], out loop);
@@ -544,5 +550,37 @@ namespace Drax360Service.Panels
             sendserial(gbaryDataToTX);
             SendEvent("Gent", type, inputtype, text, node, loop, device);
         }
+
+        string ConvertByteArrayToEscapedString(byte[] bytes)
+        {
+            var sb = new StringBuilder();
+            sb.Append('"');
+            foreach (byte b in bytes)
+            {
+                if (b == 0x00)
+                {
+                    sb.Append(@"\0");
+                }
+                else if (b >= 0x01 && b <= 0x1F)
+                {
+                    sb.Append(@"\u" + b.ToString("X4"));
+                }
+                else if (b == 0x5C) // backslash '\'
+                {
+                    sb.Append(@"\\");
+                }
+                else if (b == 0x22) // double quote '"'
+                {
+                    sb.Append("\\\"");
+                }
+                else
+                {
+                    sb.Append((char)b);
+                }
+            }
+            sb.Append('"');
+            return sb.ToString();
+        }
     }
+
 }
