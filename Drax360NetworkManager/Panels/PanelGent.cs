@@ -75,7 +75,6 @@ namespace Drax360Service.Panels
                 string gsTextField = "";
                 for (int i = 0; i < 25; i++)
                 {
-
                     byte b = ourmessage[i];
                     int intb = Convert.ToInt32(b);
                     switch (i)
@@ -124,7 +123,6 @@ namespace Drax360Service.Panels
                             sMasterSector = intb;
                             break;
                         case 19:
-
                         case 20:
                         case 21:
                         case 22:
@@ -164,50 +162,12 @@ namespace Drax360Service.Panels
 
                 if (sMSB == "0")
                 {
-                    if (sLSB == "4")
+                    if (sLSB == "0")
                     {
-                        Console.WriteLine("-------------------- Alarms Silenced ----------- ");
-
-                        string part1 = "15";
-                        string part2 = "1";
-                        string part3 = "0";
-                        string part4 = "10";
-
-                        int p1 = int.Parse(part1);
-                        int p2 = int.Parse(part2);
-                        int p3 = int.Parse(part3);
-                        int p4 = int.Parse(part4);
-
-                        int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, true);
-                        CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", "Alarms Silenced");
-                        CSAMXSingleton.CS.FlushMessages();
-
+                        Console.WriteLine("-------------------- Handshake ----------- ");
                         buffer = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
                         sendserial(buffer);
                     }
-
-                    if (sLSB == "5")
-                    {
-                        Console.WriteLine("-------------------- Panel In Evac Condition ----------- ");
-
-                        string part1 = "15";
-                        string part2 = "1";
-                        string part3 = "0";
-                        string part4 = "1";
-
-                        int p1 = int.Parse(part1);
-                        int p2 = int.Parse(part2);
-                        int p3 = int.Parse(part3);
-                        int p4 = int.Parse(part4);
-
-                        int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, true);
-                        CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", "Alarms Sounded");
-                        CSAMXSingleton.CS.FlushMessages();
-
-                        buffer = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
-                        sendserial(buffer);
-                    }
-
                     if (sLSB == "1")
                     {
                         Console.WriteLine("-------------------- Panel In Reset Condition ----------- ");
@@ -224,6 +184,27 @@ namespace Drax360Service.Panels
 
                         int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, true);
                         CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", "Reset");
+                        CSAMXSingleton.CS.FlushMessages();
+
+                        buffer = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
+                        sendserial(buffer);
+                    }
+                    if (sLSB == "2")
+                    {
+                        Console.WriteLine("-------------------- Faults Cleared ----------- ");
+
+                        string part1 = "8";
+                        string part2 = "1";
+                        string part3 = "0";
+                        string part4 = "21";
+
+                        int p1 = int.Parse(part1);
+                        int p2 = int.Parse(part2);
+                        int p3 = int.Parse(part3);
+                        int p4 = int.Parse(part4);
+
+                        int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, true);
+                        CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", "Faults Cleared");
                         CSAMXSingleton.CS.FlushMessages();
 
                         buffer = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
@@ -252,6 +233,51 @@ namespace Drax360Service.Panels
                         sendserial(buffer);
                     }
                 }
+                if (sLSB == "4")
+                {
+                    Console.WriteLine("-------------------- Alarms Silenced ----------- ");
+
+                    string part1 = "15";
+                    string part2 = "1";
+                    string part3 = "0";
+                    string part4 = "10";
+
+                    int p1 = int.Parse(part1);
+                    int p2 = int.Parse(part2);
+                    int p3 = int.Parse(part3);
+                    int p4 = int.Parse(part4);
+
+                    int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, true);
+                    CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", "Alarms Silenced");
+                    CSAMXSingleton.CS.FlushMessages();
+
+                    buffer = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
+                    sendserial(buffer);
+                }
+
+                if (sLSB == "5")
+                {
+                    Console.WriteLine("-------------------- Panel In Evac Condition ----------- ");
+
+                    string part1 = "15";
+                    string part2 = "1";
+                    string part3 = "0";
+                    string part4 = "54";
+
+                    int p1 = int.Parse(part1);
+                    int p2 = int.Parse(part2);
+                    int p3 = int.Parse(part3);
+                    int p4 = int.Parse(part4);
+
+                    int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, true);
+                    CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", "Alarms Sounded");
+                    CSAMXSingleton.CS.FlushMessages();
+
+                    buffer = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
+                    sendserial(buffer);
+                }
+
+
                 if (sMSB == "1")
                 {
                     if (sLSB == "8")
@@ -276,15 +302,15 @@ namespace Drax360Service.Panels
                         sendserial(buffer);
                     }
                 }
-                if (sMSB == "4")
+                if (Convert.ToInt32(sEventParam.Substring(2, 2)) > 0)
                 {
                     int giNoOfFaults = Convert.ToInt32(sEventParam.Substring(2, 2));
                     Console.WriteLine("-------------------- Panel In " + giNoOfFaults.ToString() + " Fault Condition ----------- ");
 
-                    string part1 = "8";
+                    string part1 = "15";
                     string part2 = "1";
                     string part3 = "0";
-                    string part4 = "1";
+                    string part4 = "55";
 
                     int p1 = int.Parse(part1);
                     int p2 = int.Parse(part2);
@@ -292,13 +318,56 @@ namespace Drax360Service.Panels
                     int p4 = int.Parse(part4);
 
                     int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, true);
-                    CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", giNoOfFaults.ToString() + " Fault(s) in Panel or Panels", "Number of Panels in Fault");
+                    CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", giNoOfFaults.ToString() + " Fault(s) in Panel or Panels", "");
                     CSAMXSingleton.CS.FlushMessages();
 
                     buffer = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
                     sendserial(buffer);
                 }
-                if (sMSB == "7")
+
+                if (sMSB == "4")
+                {
+                    Console.WriteLine("-------------------- System Fault Condition ----------- ");
+
+                    string part1 = "15";
+                    string part2 = "1";
+                    string part3 = "0";
+                    string part4 = "55";
+
+                    int p1 = int.Parse(part1);
+                    int p2 = int.Parse(part2);
+                    int p3 = int.Parse(part3);
+                    int p4 = int.Parse(part4);
+
+                    int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, true);
+                    CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", "System Fault", "");
+                    CSAMXSingleton.CS.FlushMessages();
+
+                    buffer = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
+                    sendserial(buffer);
+                }
+                if (sMSB == "5")
+                {
+                    Console.WriteLine("-------------------- Out Station Loop Fault ----------- ");
+
+                    string part1 = "8";
+                    string part2 = sPanelNumber.ToString();
+                    string part3 = sLoopNumber.ToString();
+                    string part4 = AddressNumber.ToString();
+
+                    int p1 = int.Parse(part1);
+                    int p2 = int.Parse(part2);
+                    int p3 = int.Parse(part3);
+                    int p4 = int.Parse(part4);
+
+                    int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, true);
+                    CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", "Fault", "");
+                    CSAMXSingleton.CS.FlushMessages();
+
+                    buffer = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
+                    sendserial(buffer);
+                }
+                if (sMSB == "7" || Convert.ToInt32(sEventParam.Substring(4, 2)) > 0)
                 {
                     int giNoOfDisable = Convert.ToInt32(sEventParam.Substring(4, 2));
                     Console.WriteLine("-------------------- Panel In " + giNoOfDisable.ToString() + " Disable Condition ----------- ");

@@ -455,6 +455,8 @@ namespace Drax360Service
         {
             SerialPort serialPort = (SerialPort)sender;
 
+            System.Threading.Thread.Sleep(1000);
+
             AbstractPanel spe = null;
             foreach (AbstractPanel sp in abstractpanels)
             {
