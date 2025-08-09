@@ -21,6 +21,7 @@ namespace Drax360Service.Panels
         const byte kackbyte = 0x06;
         protected const byte kheartbeatdelayseconds = 60;
         const int kchunksize = 59;
+        const string kpad = "--------------------";
         #endregion
 
         public override string GetFileName { get => "GenMan"; }
@@ -34,6 +35,7 @@ namespace Drax360Service.Panels
                 string msg = "\0\0\0\0X\u0002@\0\0\0\0\u0002/\v\u0017\u0006\u0019\0\0\0\0\0\u0003\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\u0001\u000f";
                 msg+= "\0\0\0\0X\u0002@\0\0\0\0\u0002/\v\u0017\u0006\u0019\0\0\0\0\0\u0003\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\u0001\u000f";
 
+                // added this extra part to the message to make it longer
                 msg += "12345";
                 return msg;
             }
@@ -557,7 +559,7 @@ namespace Drax360Service.Panels
 
             int evnum = 0;
 
-            // MIKE could be made into a switch statement
+            // MIKE could be made into a switch statement -- apart from the extra if (sLSB == 5)  see below
             if (sMSB == 0)
             {
                 switch (sLSB)
@@ -702,17 +704,16 @@ namespace Drax360Service.Panels
 
         private void sender(int evnum,string message1,string message2,string message3="")
         {
-            const string kpad = "--------------------";
+            
             Console.WriteLine(kpad + " " + message2 + " " + kpad);
-            if (evnum > -1)
+            if (evnum > -1) // don't send if evnum is -1, this is used for the handshake message
             {
 
                 CSAMXSingleton.CS.SendAlarmToAMX(evnum, message1, message2, message3);
                 CSAMXSingleton.CS.FlushMessages();
             }
 
-            byte[] sendbuffer = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
-            sendserial(sendbuffer);
+            sendserial(new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte });
         }
         private bool gentchecksumvalidation(int piMSB, int piLSB, byte[] paryMessage)
         {
@@ -758,8 +759,7 @@ namespace Drax360Service.Panels
         protected override void heartbeat_timer_callback(object sender)
         {
             base.heartbeat_timer_callback(sender);
-            byte[] buffer = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
-            sendserial(buffer);
+            sendserial(new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte });
         }
 
         public override void OnStartUp()

@@ -457,7 +457,9 @@ namespace Drax360Service
             SerialPort serialPort = (SerialPort)sender;
 
             // MIKE CHUNKER should fix this - please test and remove this line if we can
-            
+
+            // My worry with this, is that port_datareceived could be called multiple times
+
             System.Threading.Thread.Sleep(1000);
 
             AbstractPanel spe = null;
