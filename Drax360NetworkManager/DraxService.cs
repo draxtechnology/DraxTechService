@@ -12,6 +12,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Runtime.InteropServices.ComTypes;
+using System.Runtime.Remoting.Lifetime;
 using System.Runtime.Remoting.Messaging;
 using System.ServiceProcess;
 using System.Text;
@@ -455,6 +456,8 @@ namespace Drax360Service
         {
             SerialPort serialPort = (SerialPort)sender;
 
+            // MIKE CHUNKER should fix this - please test and remove this line if we can
+            
             System.Threading.Thread.Sleep(1000);
 
             AbstractPanel spe = null;

@@ -60,6 +60,7 @@
     <Compile Include="DraxService.Designer.cs">
       <DependentUpon>DraxService.cs</DependentUpon>
     </Compile>
+    <Compile Include="Elements.cs" />
     <Compile Include="Panels\AbstractPanel.cs" />
     <Compile Include="Panels\PanelAdvanced.cs" />
     <Compile Include="Panels\PanelGent.cs" />
