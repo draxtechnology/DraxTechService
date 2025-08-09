@@ -60,9 +60,9 @@ namespace Drax360Service
 
                 // Log the startup
 
-                int evnum = CSAMXSingleton.CS.MakeInputNumber(1, 1, 1, 1, true);
+                int evnum = CSAMXSingleton.CS.MakeInputNumber(1, 1, 1, 1);
                 string text = "c# Gent Started";
-                CSAMXSingleton.CS.WriteData(NwmData.MessageForSystemHistoryToAmx, evnum, text, "", "", true);
+                CSAMXSingleton.CS.WriteData(NwmData.MessageForSystemHistoryToAmx, evnum, text, "", "");
                 CSAMXSingleton.CS.FlushMessages();
 
                 isMessageReceive += msg =>

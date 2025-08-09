@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -17,16 +18,13 @@ namespace Drax360Service
         /// <returns></returns>
         public static List<byte[]> Chunker(byte[] data, int chunksize)
         {
-            var chunks = new List<byte[]>();
-            if (data.Length < chunksize) return chunks;
-            List<byte[]> rets = data.Select((value, index) => new { PairNum = Math.Floor(index / (double)chunksize), value }).GroupBy(pair => pair.PairNum).Select(grp => grp.Select(g => g.value).ToArray()).ToList();
-            // make sure each item is chunksize
-            foreach (byte[] r in rets)
+            List<byte[]> chunks = new List<byte[]>();
+            
+            for (int intcount = 0; intcount < data.Length / chunksize; intcount++)
             {
-                if (r.Length == chunksize)
-                {
-                    chunks.Add(r);
-                }
+                byte[] ret = data.Skip(intcount * chunksize).Take(chunksize).ToArray();
+
+                chunks.Add(ret);
             }
             return chunks;
 

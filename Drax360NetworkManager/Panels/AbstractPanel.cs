@@ -117,9 +117,9 @@ namespace Drax360Service.Panels
         {
             int amxoffset = 0; // 0 amxlight
 
-            int evnum = CSAMXSingleton.CS.MakeInputNumber(node + amxoffset, loop, device, inputtype, true);
+            int evnum = CSAMXSingleton.CS.MakeInputNumber(node + amxoffset, loop, device, inputtype);
 
-            CSAMXSingleton.CS.WriteData(type, evnum, text, "", "", true);
+            CSAMXSingleton.CS.WriteData(type, evnum, text, "", "");
             CSAMXSingleton.CS.FlushMessages();
         }
 
@@ -127,7 +127,7 @@ namespace Drax360Service.Panels
         {
             int amxoffset = 0; // 0 amxlight
 
-            int evnum = CSAMXSingleton.CS.MakeInputNumber(node + amxoffset, loop, device, inputtype, true);
+            int evnum = CSAMXSingleton.CS.MakeInputNumber(node + amxoffset, loop, device, inputtype);
 
             CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", "", text);
             CSAMXSingleton.CS.FlushMessages();

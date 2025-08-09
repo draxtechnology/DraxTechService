@@ -41,7 +41,7 @@ namespace Drax360Service
         {
             return (int) (inputNumber + 0x80000000);
         }
-        public int MakeInputNumber(int node, int loop, int inputn, int inputtype, bool on)
+        public int MakeInputNumber(int node, int loop, int inputn, int inputtype, bool on=true)
         {
             int no = inputn + (loop * 0x100) + (node * 0x10000) + (inputtype * 0x8000000);
             if (on)
@@ -53,7 +53,7 @@ namespace Drax360Service
         }
 
         public void WriteData(NwmData eventtype, int eventnumber,
-             string textparameter, string textparameter2, string textparameter3, bool on)
+             string textparameter, string textparameter2, string textparameter3, bool on=true)
         {
             NVM ournvm = new NVM();
             ournvm.OurType = Convert.ToInt32(eventtype);

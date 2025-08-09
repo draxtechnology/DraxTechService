@@ -8,18 +8,14 @@ using System.IO;
 using System.IO.Pipes;
 using System.IO.Ports;
 using System.Linq;
-using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
-using System.Runtime.InteropServices.ComTypes;
-using System.Runtime.Remoting.Lifetime;
-using System.Runtime.Remoting.Messaging;
 using System.ServiceProcess;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Timers;
+
 
 namespace Drax360Service
 {
@@ -456,11 +452,11 @@ namespace Drax360Service
         {
             SerialPort serialPort = (SerialPort)sender;
 
-            // MIKE CHUNKER should fix this - please test and remove this line if we can
+            // MIKE Chunker should fix this - please test and remove this line if we can
 
             // My worry with this, is that port_datareceived could be called multiple times
 
-            System.Threading.Thread.Sleep(1000);
+            //System.Threading.Thread.Sleep(1000);
 
             AbstractPanel spe = null;
             foreach (AbstractPanel sp in abstractpanels)
@@ -476,11 +472,11 @@ namespace Drax360Service
             int bytestoread = serialPort.BytesToRead;
             if (bytestoread == 0) return;
 
-            byte[] bytes = new byte[bytestoread];
-            int read = serialPort.Read(bytes, 0, bytestoread);
-            if (read > 0)
+            byte[] readbytes = new byte[bytestoread];
+            int numberread = serialPort.Read(readbytes, 0, bytestoread);
+            if (numberread > 0)
             {
-                spe.Parse(bytes);
+                spe.Parse(readbytes);
             }
         }
         #endregion
