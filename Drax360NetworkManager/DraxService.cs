@@ -72,7 +72,7 @@ namespace Drax360Service
         const int kfakefireinitialwakeseconds = 0;
 
         // settings sections
-        const string ksettingsetupsection = "SETUP";
+        //const string ksettingsetupsection = "SETUP";
         const string ksettingpanelsection = "PANEL";
        
         #endregion
@@ -189,7 +189,7 @@ namespace Drax360Service
 
             // used to just load our settings from the ini file
             AbstractPanel apbase = getpanel();
-            int setttingbaudrate = apbase.GetSetting<int>(ksettingsetupsection, "BaudRate");
+            /*int setttingbaudrate = apbase.GetSetting<int>(ksettingsetupsection, "BaudRate");
             string settingparity = apbase.GetSetting<string>(ksettingsetupsection, "Parity");
             int settingdatabits = apbase.GetSetting<int>(ksettingsetupsection, "DataBits");
             int settingstopbits = apbase.GetSetting<int>(ksettingsetupsection, "StopBits");
@@ -198,6 +198,7 @@ namespace Drax360Service
             kvp("DataBits", settingdatabits);
             kvp("StopBits", settingstopbits);
             pad();
+            */
 
             for (int i = 1; i < 7; i++)
             {
@@ -211,21 +212,22 @@ namespace Drax360Service
 
                 string identifier = "COM" + port;
                 AbstractPanel ap = getpanel(identifier);
+                
+
+                ap.OnStartUp(fakemode);
                 ap.OutsideEvents += Sp_Fire;
 
-               
-                
                 // we are in fake mode
                 if (this.fakemode > 0)
                 {
                     ln("Opened Fake " + identifier + " Mode " + fakemode);
-
+                    
                     faketimers.Add(new System.Threading.Timer(fake_timer, identifier, kfakefireinitialwakeseconds * 1000, kfaketimertickseconds * 1000));
                 }
                 else
                 {
                     // we are a real serial port 
-                    ap.Port = new SerialPort(identifier);
+                    /*ap.Port = new SerialPort(identifier);
                     ap.Port.BaudRate = setttingbaudrate;
 
                     Parity parity = Parity.None;
@@ -275,7 +277,9 @@ namespace Drax360Service
                     {
                         ap.Port.DiscardInBuffer();
                         ap.Port.DiscardOutBuffer();
-                    }
+                    
+                    }*/
+                    
                 }
 
                 abstractpanels.Add(ap);
@@ -288,7 +292,10 @@ namespace Drax360Service
             string msg = ex.Message.ToString();
             bool notifyui = ex.NotifyUI;
             ln("Fired " + msg);
-            sendreturncmd(msg,notifyui);
+            if (notifyui)
+            { 
+                sendreturncmd(msg);
+            }
         }
         private void fake_timer(object sender)
         {
@@ -309,6 +316,8 @@ namespace Drax360Service
             string read = ourabstractpanel.FakeString;
 
             byte[] bytes = Encoding.ASCII.GetBytes(read);
+
+           
             ourabstractpanel.Parse(bytes);
         }
         private AbstractPanel getpanel(string identifier = "")
@@ -333,6 +342,9 @@ namespace Drax360Service
             }
             return ret;
         }
+
+        // This is the data received event for the serial port
+        /*
         private void port_datareceived(object sender, SerialDataReceivedEventArgs e)
         {
             SerialPort serialPort = (SerialPort)sender;
@@ -363,7 +375,7 @@ namespace Drax360Service
 
             spe.Parse(readbytes);
 
-        }
+        }*/
 
         private void startpipeserver()
         {
@@ -673,7 +685,7 @@ namespace Drax360Service
         }
 
        
-        public string sendreturncmd(string cmd, bool notifyui, string parameters = "")
+        public string sendreturncmd(string cmd, string parameters = "")
         {
             string strcmd = cmd;
             if (!string.IsNullOrEmpty(parameters))
@@ -684,9 +696,7 @@ namespace Drax360Service
 
             string result = "";
 
-            // Do we send this back to the User interface?
-            if (!notifyui) return result;
-
+           
             try
             {
                 result = Task.Run(() => sendreturnserver(strcmd)).Result;
@@ -722,24 +732,24 @@ namespace Drax360Service
             // close serial ports
             foreach (AbstractPanel ap in abstractpanels)
             {
-                if (ap.Port == null) continue;
+                if (ap.SerialPort == null) continue;
 
-                ln("Closing " + ap.Port.PortName);
+                ln("Closing " + ap.SerialPort.PortName);
                 try
                 {
-                    ap.Port.Close();
+                    ap.SerialPort.Close();
                 }
                 catch
                 {
-                    warning("Failed To Close " + ap.Port.PortName);
+                    warning("Failed To Close " + ap.SerialPort.PortName);
                 }
-                if (!ap.Port.IsOpen)
+                if (!ap.SerialPort.IsOpen)
                 {
-                    ln("Closed" + ap.Port.PortName);
+                    ln("Closed" + ap.SerialPort.PortName);
                 }
 
-                ap.Port.Dispose();
-                ap.Port = null;
+                ap.SerialPort.Dispose();
+                ap.SerialPort = null;
             }
             abstractpanels.Clear();
             ln("Stopped Service");

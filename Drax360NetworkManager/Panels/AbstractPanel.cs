@@ -15,7 +15,8 @@ namespace Drax360Service.Panels
         #region Constants
         protected const byte kHeartbeatInitialDelaySeconds = 60;
         protected const byte kHeartbeatDelaySeconds = 60;
-        
+        protected const string ksettingsetupsection = "SETUP";
+
         #endregion
 
         #region private fields
@@ -27,7 +28,7 @@ namespace Drax360Service.Panels
         #endregion
 
         #region Properties
-        public SerialPort Port { get; set; }
+        public SerialPort SerialPort { get; set; }
         public event EventHandler Fire;
         public event EventHandler OutsideEvents;
         public string Identifier { get; private set; }
@@ -47,7 +48,7 @@ namespace Drax360Service.Panels
         #endregion
 
         #region Public Methods
-        public abstract void OnStartUp();
+        public abstract void OnStartUp(int fakemode);
         public abstract void Evacuate(string passedValues);
         public abstract void EvacuateNetwork(string passedValues);
         public abstract void Alert(string passedValues);
@@ -100,6 +101,19 @@ namespace Drax360Service.Panels
             this.buffer.AddRange(buffer);
         }
 
+        public virtual void SerialPort_Datareceived(object sender, SerialDataReceivedEventArgs e)
+        {
+           
+            int bytestoread = SerialPort.BytesToRead;
+            if (bytestoread == 0) return;
+
+            byte[] readbytes = new byte[bytestoread];
+            int numberread = SerialPort.Read(readbytes, 0, bytestoread);
+            if (numberread == 0) return;
+           
+            Parse(readbytes);
+        }
+
 
         public T GetSetting<T>(string section, string name)
         {
@@ -116,9 +130,9 @@ namespace Drax360Service.Panels
 
         protected void serialsend(byte[] toSend)
         {
-            if (Port?.IsOpen == true)
+            if (SerialPort?.IsOpen == true)
             {
-                Port.Write(toSend, 0, toSend.Length);
+                SerialPort.Write(toSend, 0, toSend.Length);
             }
         }
         protected void serialsend(string toSend)

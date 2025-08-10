@@ -1,6 +1,7 @@
 ﻿
 using System;
 using System.Collections.Generic;
+using System.IO.Ports;
 using System.Linq;
 
 
@@ -763,9 +764,73 @@ namespace Drax360Service.Panels
             serialsend(new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte });
         }
 
-        public override void OnStartUp()
+        public override void OnStartUp(int fakemode)
         {
+            
+            int setttingbaudrate = base.GetSetting<int>(ksettingsetupsection, "BaudRate");
+            string settingparity = base.GetSetting<string>(ksettingsetupsection, "Parity");
+            int settingdatabits = base.GetSetting<int>(ksettingsetupsection, "DataBits");
+            int settingstopbits = base.GetSetting<int>(ksettingsetupsection, "StopBits");
+
+
+            if (fakemode == 0)
+            {
+
+                return;
+            }
+
+             // we are a real serial port 
+            SerialPort = new SerialPort(this.Identifier);
+            SerialPort.BaudRate = setttingbaudrate;
+
+            Parity parity = Parity.None;
+            string friendlyparity = settingparity.Substring(0, 1).ToUpper();
+            if (friendlyparity == "E")
+                parity = Parity.Even;
+            if (friendlyparity == "O")
+                parity = Parity.Odd;
+
+            SerialPort.Parity = parity;
+
+            SerialPort.DataBits = settingdatabits;
+            SerialPort.StopBits = (StopBits)settingstopbits;
+            SerialPort.Handshake = Handshake.None;
+            //SerialPort.DataReceived += port_datareceived;
+            SerialPort.DataReceived += SerialPort_Datareceived;
+            if (SerialPort.IsOpen)
+            {
+                SerialPort.Close();
+            }
+            base.NotifyClient("Attempting Open "+ SerialPort.PortName,false);
+            SerialPort.Encoding = System.Text.Encoding.ASCII;
+            SerialPort.DtrEnable = true;
+
+            SerialPort.ReadBufferSize = 8000;
+            SerialPort.WriteBufferSize = 200;
+
+            SerialPort.ReadTimeout = 500;
+            SerialPort.ParityReplace = (byte)0;
+            SerialPort.ReceivedBytesThreshold = 8;
+            try
+            {
+                SerialPort.Open();
+            }
+            catch (Exception e)
+
+            {
+                base.NotifyClient("Failed To Open " + SerialPort.PortName, false);
+
+
+            }
+
+            if (SerialPort.IsOpen)
+            {
+                SerialPort.DiscardInBuffer();
+                SerialPort.DiscardOutBuffer();
+            }
         }
+        
+       
 
         public override void Evacuate(string passedvalues)
         {

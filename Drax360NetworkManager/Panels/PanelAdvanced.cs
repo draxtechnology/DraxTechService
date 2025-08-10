@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO.Ports;
 using System.Linq;
 using System.Runtime.ConstrainedExecution;
 using System.Security.Cryptography;
@@ -87,7 +88,7 @@ namespace Drax360Service.Panels
         public override void Parse(byte[] buffer)
 
         {
-            this.buffer.AddRange(buffer);
+            base.Parse(buffer);
             int foundat = -1;
             int bufferlength = this.buffer.Count;
 
@@ -190,11 +191,79 @@ namespace Drax360Service.Panels
             // sendserial(Convert.ToChar(42).ToString() + Convert.ToChar(0).ToString() + Convert.ToChar(1).ToString());
         }
 
-        public override void OnStartUp()
+        public override void OnStartUp(int fakemode)
         {
-            Byte[] start = new Byte[] { kAdvancedStart, 128, 0, 0, 2, 41, 8, 0, 0, 0, 0, 1, 1, 240, 250, 5, 195, kAdvanedEnd };
-            serialsend(start);
+            
+            int setttingbaudrate = base.GetSetting<int>(ksettingsetupsection, "BaudRate");
+            string settingparity = base.GetSetting<string>(ksettingsetupsection, "Parity");
+            int settingdatabits = base.GetSetting<int>(ksettingsetupsection, "DataBits");
+            int settingstopbits = base.GetSetting<int>(ksettingsetupsection, "StopBits");
+
+
+            if (fakemode == 0)
+            {
+
+                return;
+            }
+
+            // we are a real serial port 
+            SerialPort = new SerialPort(this.Identifier);
+            SerialPort.BaudRate = setttingbaudrate;
+
+            Parity parity = Parity.None;
+            string friendlyparity = settingparity.Substring(0, 1).ToUpper();
+            if (friendlyparity == "E")
+                parity = Parity.Even;
+            if (friendlyparity == "O")
+                parity = Parity.Odd;
+
+            SerialPort.Parity = parity;
+
+            SerialPort.DataBits = settingdatabits;
+            SerialPort.StopBits = (StopBits)settingstopbits;
+            SerialPort.Handshake = Handshake.None;
+            SerialPort.DataReceived += SerialPort_Datareceived;
+            if (SerialPort.IsOpen)
+            {
+                SerialPort.Close();
+            }
+            base.NotifyClient("Attempting Open " + SerialPort.PortName, false);
+            SerialPort.Encoding = System.Text.Encoding.ASCII;
+            SerialPort.DtrEnable = true;
+
+            SerialPort.ReadBufferSize = 8000;
+            SerialPort.WriteBufferSize = 200;
+
+            SerialPort.ReadTimeout = 500;
+            SerialPort.ParityReplace = (byte)0;
+            SerialPort.ReceivedBytesThreshold = 8;
+            try
+            {
+                SerialPort.Open();
+            }
+            catch (Exception e)
+
+            {
+                base.NotifyClient("Failed To Open " + SerialPort.PortName, false);
+
+
+            }
+
+            if (SerialPort.IsOpen)
+            {
+                SerialPort.DiscardInBuffer();
+                SerialPort.DiscardOutBuffer();
+                Byte[] start = new Byte[] { kAdvancedStart, 128, 0, 0, 2, 41, 8, 0, 0, 0, 0, 1, 1, 240, 250, 5, 195, kAdvanedEnd };
+                serialsend(start);
+            }
+
         }
+        
+
+    
+
+
+
 
         public override void Evacuate(string passedvalues)
         {
