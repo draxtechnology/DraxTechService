@@ -28,7 +28,7 @@ namespace Drax360Service.Panels
         #endregion
 
         #region Properties
-        public SerialPort SerialPort { get; set; }
+        protected SerialPort serialport { get; set; }
         public event EventHandler Fire;
         public event EventHandler OutsideEvents;
         public string Identifier { get; private set; }
@@ -44,11 +44,13 @@ namespace Drax360Service.Panels
         {
             Identifier = identifier;
             this.GetFileName = inifile;
+            
+            
         }
         #endregion
 
         #region Public Methods
-        public abstract void OnStartUp(int fakemode);
+        public abstract void StartUp(int fakemode);
         public abstract void Evacuate(string passedValues);
         public abstract void EvacuateNetwork(string passedValues);
         public abstract void Alert(string passedValues);
@@ -94,6 +96,22 @@ namespace Drax360Service.Panels
                 amxsend(type, text, inputtype, node, loop, device);
             }
         }
+        public void Shutdown()
+        {
+            if (serialport != null)
+            {
+                try
+                {
+                    serialport.Close();
+                }
+                catch
+                {
+
+                }
+                serialport.Dispose();
+                serialport = null;
+            }
+        }
 
 
         public virtual void Parse(byte[] buffer)
@@ -104,11 +122,11 @@ namespace Drax360Service.Panels
         public virtual void SerialPort_Datareceived(object sender, SerialDataReceivedEventArgs e)
         {
            
-            int bytestoread = SerialPort.BytesToRead;
+            int bytestoread = serialport.BytesToRead;
             if (bytestoread == 0) return;
 
             byte[] readbytes = new byte[bytestoread];
-            int numberread = SerialPort.Read(readbytes, 0, bytestoread);
+            int numberread = serialport.Read(readbytes, 0, bytestoread);
             if (numberread == 0) return;
            
             Parse(readbytes);
@@ -130,9 +148,9 @@ namespace Drax360Service.Panels
 
         protected void serialsend(byte[] toSend)
         {
-            if (SerialPort?.IsOpen == true)
+            if (serialport?.IsOpen == true)
             {
-                SerialPort.Write(toSend, 0, toSend.Length);
+                serialport.Write(toSend, 0, toSend.Length);
             }
         }
         protected void serialsend(string toSend)

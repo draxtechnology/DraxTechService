@@ -214,7 +214,7 @@ namespace Drax360Service
                 AbstractPanel ap = getpanel(identifier);
                 
 
-                ap.OnStartUp(fakemode);
+                ap.StartUp(fakemode);
                 ap.OutsideEvents += Sp_Fire;
 
                 // we are in fake mode
@@ -732,27 +732,10 @@ namespace Drax360Service
             // close serial ports
             foreach (AbstractPanel ap in abstractpanels)
             {
-                if (ap.SerialPort == null) continue;
-
-                ln("Closing " + ap.SerialPort.PortName);
-                try
-                {
-                    ap.SerialPort.Close();
-                }
-                catch
-                {
-                    warning("Failed To Close " + ap.SerialPort.PortName);
-                }
-                if (!ap.SerialPort.IsOpen)
-                {
-                    ln("Closed" + ap.SerialPort.PortName);
-                }
-
-                ap.SerialPort.Dispose();
-                ap.SerialPort = null;
+                ap.Shutdown();
             }
             abstractpanels.Clear();
-            ln("Stopped Service");
+           
 
             try
             {
@@ -764,7 +747,9 @@ namespace Drax360Service
             {
                 Console.WriteLine("Error closing TCP connection: " + ex.Message);
             }
+            ln("Stopped Service");
         }
+        
         #endregion
 
         #region protected methods

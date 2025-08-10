@@ -636,7 +636,7 @@ namespace Drax360Service.Panels
             serialsend(">IQS\r");
         }
 
-        public override void OnStartUp(int fakemode)
+        public override void StartUp(int fakemode)
         {
             int setttingbaudrate = base.GetSetting<int>(ksettingsetupsection, "BaudRate");
             string settingparity = base.GetSetting<string>(ksettingsetupsection, "Parity");
@@ -644,15 +644,15 @@ namespace Drax360Service.Panels
             int settingstopbits = base.GetSetting<int>(ksettingsetupsection, "StopBits");
 
 
-            if (fakemode == 0)
+            if (fakemode > 0)
             {
 
                 return;
             }
 
             // we are a real serial port 
-            SerialPort = new SerialPort(this.Identifier);
-            SerialPort.BaudRate = setttingbaudrate;
+            serialport = new SerialPort(this.Identifier);
+            serialport.BaudRate = setttingbaudrate;
 
             Parity parity = Parity.None;
             string friendlyparity = settingparity.Substring(0, 1).ToUpper();
@@ -661,42 +661,42 @@ namespace Drax360Service.Panels
             if (friendlyparity == "O")
                 parity = Parity.Odd;
 
-            SerialPort.Parity = parity;
+            serialport.Parity = parity;
 
-            SerialPort.DataBits = settingdatabits;
-            SerialPort.StopBits = (StopBits)settingstopbits;
-            SerialPort.Handshake = Handshake.None;
-            SerialPort.DataReceived += SerialPort_Datareceived;
-            if (SerialPort.IsOpen)
+            serialport.DataBits = settingdatabits;
+            serialport.StopBits = (StopBits)settingstopbits;
+            serialport.Handshake = Handshake.None;
+            serialport.DataReceived += SerialPort_Datareceived;
+            if (serialport.IsOpen)
             {
-                SerialPort.Close();
+                serialport.Close();
             }
-            base.NotifyClient("Attempting Open " + SerialPort.PortName, false);
-            SerialPort.Encoding = System.Text.Encoding.ASCII;
-            SerialPort.DtrEnable = true;
+            base.NotifyClient("Attempting Open " + serialport.PortName, false);
+            serialport.Encoding = System.Text.Encoding.ASCII;
+            serialport.DtrEnable = true;
 
-            SerialPort.ReadBufferSize = 8000;
-            SerialPort.WriteBufferSize = 200;
+            serialport.ReadBufferSize = 8000;
+            serialport.WriteBufferSize = 200;
 
-            SerialPort.ReadTimeout = 500;
-            SerialPort.ParityReplace = (byte)0;
-            SerialPort.ReceivedBytesThreshold = 8;
+            serialport.ReadTimeout = 500;
+            serialport.ParityReplace = (byte)0;
+            serialport.ReceivedBytesThreshold = 8;
             try
             {
-                SerialPort.Open();
+                serialport.Open();
             }
             catch (Exception e)
 
             {
-                base.NotifyClient("Failed To Open " + SerialPort.PortName, false);
+                base.NotifyClient("Failed To Open " + serialport.PortName, false);
 
 
             }
 
-            if (SerialPort.IsOpen)
+            if (serialport.IsOpen)
             {
-                SerialPort.DiscardInBuffer();
-                SerialPort.DiscardOutBuffer();
+                serialport.DiscardInBuffer();
+                serialport.DiscardOutBuffer();
             }
         }
 
