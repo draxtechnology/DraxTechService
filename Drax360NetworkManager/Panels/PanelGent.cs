@@ -38,7 +38,7 @@ namespace Drax360Service.Panels
               //   "\0\0\0\0X\u0002@\0\0\0\0\u0002/\v\u0017\u0006\u0019\0\0\0\0\0\u0003\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\u0001\u000f";
         }
 
-        public string Zone = "";
+       
 
         public PanelGent(string identifier) : base(identifier, "GenMan")
         {
