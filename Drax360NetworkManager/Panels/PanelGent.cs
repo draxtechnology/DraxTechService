@@ -11,12 +11,11 @@ namespace Drax360Service.Panels
         #region constants
         const byte kzerobyte = 0x00;
         const byte kackbyte = 0x06;
-        protected const byte kheartbeatdelayseconds = 60;
-        const int kchunksize = 59;
-        const string kpad = "--------------------";
+        const byte kheartbeatdelayseconds = 60;
+        const int kchunksize = 59; 
         #endregion
 
-        public override string GetFileName { get => "GenMan"; }
+        
 
         public override string FakeString
         {
@@ -40,7 +39,7 @@ namespace Drax360Service.Panels
 
         public string Zone = "";
 
-        public PanelGent(string identifier) : base(identifier)
+        public PanelGent(string identifier) : base(identifier, "GenMan")
         {
             if (!String.IsNullOrEmpty(identifier))
             {
@@ -563,7 +562,7 @@ namespace Drax360Service.Panels
                     case 0:
                         message2 = "Handshake";
 
-                        sender(-1, "", message2);
+                        send_response_amx_and_serial(-1, "", message2);
                         break;
                     case 1:
                         message2 = "Reset";
@@ -572,7 +571,7 @@ namespace Drax360Service.Panels
                         p3 = 0; p4 = 1;
 
                         evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-                        sender(evnum, "", message2);
+                        send_response_amx_and_serial(evnum, "", message2);
                         break;
                     case 2:
                         message2 = "Faults Cleared";
@@ -581,7 +580,7 @@ namespace Drax360Service.Panels
                         p3 = 0; p4 = 21;
 
                         evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-                        sender(evnum, "", message2);
+                        send_response_amx_and_serial(evnum, "", message2);
                         break;
                     case 3:
                         message2 = "Enable";
@@ -590,7 +589,7 @@ namespace Drax360Service.Panels
                         p3 = 0; p4 = 1;
 
                         evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-                        sender(evnum, "", message2);
+                        send_response_amx_and_serial(evnum, "", message2);
                         break;
                     case 4:
                         message2 = "Alarms Silenced";
@@ -599,7 +598,7 @@ namespace Drax360Service.Panels
                         p3 = 0; p4 = 10;
 
                         evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-                        sender(evnum, "", message2);
+                        send_response_amx_and_serial(evnum, "", message2);
                         break;
 
 
@@ -610,7 +609,7 @@ namespace Drax360Service.Panels
                         p3 = 0; p4 = 54;
 
                         evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-                        sender(evnum, "", message2);
+                        send_response_amx_and_serial(evnum, "", message2);
                         break;
                     default:
                         break;
@@ -626,7 +625,7 @@ namespace Drax360Service.Panels
                 p3 = 0; p4 = 54;
 
                 evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-                sender(evnum, "", message2);
+                send_response_amx_and_serial(evnum, "", message2);
 
             }
             if (sMSB == 1)
@@ -639,7 +638,7 @@ namespace Drax360Service.Panels
                     p3 = 0; p4 = 1;
 
                     evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-                    sender(evnum, "", message2);
+                    send_response_amx_and_serial(evnum, "", message2);
                 }
             }
             if (Convert.ToInt32(sEventParam.Substring(2, 2)) > 0)
@@ -651,7 +650,7 @@ namespace Drax360Service.Panels
                 p3 = 0; p4 = 55;
 
                 evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-                sender(evnum, "", message2);
+                send_response_amx_and_serial(evnum, "", message2);
             }
 
             if (sMSB == 4)
@@ -662,7 +661,7 @@ namespace Drax360Service.Panels
                 p3 = 0; p4 = 55;
 
                 evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-                sender(evnum, "", message2);
+                send_response_amx_and_serial(evnum, "", message2);
             }
 
             if (sMSB == 5)
@@ -673,7 +672,7 @@ namespace Drax360Service.Panels
                 p3 = sLoopNumber; p4 = AddressNumber;
 
                 evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-                sender(evnum, "", message2);
+                send_response_amx_and_serial(evnum, "", message2);
             }
             if (sMSB == 7 || Convert.ToInt32(sEventParam.Substring(4, 2)) > 0)
             {
@@ -691,17 +690,23 @@ namespace Drax360Service.Panels
                 p3 = 0; p4 = 1;
 
                 evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-                sender(evnum, "", message2, message3);
+                send_response_amx_and_serial(evnum, "", message2, message3);
 
             }
         }
         
         
 
-        private void sender(int evnum,string message1,string message2,string message3="")
+        private void send_response_amx_and_serial(int evnum,string message1,string message2,string message3="")
         {
-            
-            Console.WriteLine(kpad + " " + message2 + (message3.Length>0? " "+message3:"")+" " + kpad);
+            string friendlymessage = message2 + (message3.Length > 0 ? (" " + message3): "");
+
+            // Previously used Console.WriteLine for debugging, now using NotifyClient  
+            //Console.WriteLine(kpad + " " +friendlymessage + " " + kpad);
+
+            // Signal the event back to the main service, so that it can be logged
+            this.NotifyClient(friendlymessage,false);
+
             if (evnum > -1) // don't send if evnum is -1, this is used for the handshake message
             {
 
@@ -709,7 +714,7 @@ namespace Drax360Service.Panels
                 CSAMXSingleton.CS.FlushMessages();
             }
 
-            sendserial(new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte });
+            serialsend(new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte });
         }
         private bool gentchecksumvalidation(int piMSB, int piLSB, byte[] paryMessage)
         {
@@ -755,7 +760,7 @@ namespace Drax360Service.Panels
         protected override void heartbeat_timer_callback(object sender)
         {
             base.heartbeat_timer_callback(sender);
-            sendserial(new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte });
+            serialsend(new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte });
         }
 
         public override void OnStartUp()
@@ -928,7 +933,7 @@ namespace Drax360Service.Panels
             gbaryDataToTX[57] = (byte)iMSB;
             gbaryDataToTX[58] = (byte)iLSB;
 
-            sendserial(gbaryDataToTX);
+            serialsend(gbaryDataToTX);
             SendEvent("Gent", type, inputtype, text, node, loop, device);
         }
 

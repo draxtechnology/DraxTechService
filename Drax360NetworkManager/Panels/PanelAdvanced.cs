@@ -55,7 +55,7 @@ namespace Drax360Service.Panels
         int AdvancedDestinationAddress = 0;
         int AdvancedSourceAddress = 0;
         int ControlPacketSequence = 0;
-        public override string GetFileName { get => "AdvMan"; }
+        
 
         public override string FakeString
         {
@@ -77,7 +77,7 @@ namespace Drax360Service.Panels
         }
 
         public string Zone = "";
-        public PanelAdvanced(string identifier) : base(identifier)
+        public PanelAdvanced(string identifier) : base(identifier, "AdvMan")
         {
             if (!String.IsNullOrEmpty(identifier))
             {
@@ -128,7 +128,7 @@ namespace Drax360Service.Panels
             Byte[] stracknoledge = new Byte[] { kAdvancedStart, 1, 0, packetsequece, 1, kAdvanedEnd };
             //string stracknoledge = (Convert.ToChar(1).ToString() + Convert.ToChar(0).ToString() + Convert.ToChar(packetsequece).ToString() + Convert.ToChar(1).ToString());
             //FireFire("FIRE FIRE");
-            sendserial(stracknoledge);
+            serialsend(stracknoledge);
         }
 
         public static string GetAdvancedDeviceType(int deviceType)
@@ -185,7 +185,7 @@ namespace Drax360Service.Panels
 
             Byte[] heartbeat = new Byte[] { kAdvancedStart, 42, 0, 1, kAdvanedEnd };
             //string heartbeat = ((char)42).ToString() + (char)0 + (char)1;
-            sendserial(heartbeat);
+            serialsend(heartbeat);
 
             // sendserial(Convert.ToChar(42).ToString() + Convert.ToChar(0).ToString() + Convert.ToChar(1).ToString());
         }
@@ -193,7 +193,7 @@ namespace Drax360Service.Panels
         public override void OnStartUp()
         {
             Byte[] start = new Byte[] { kAdvancedStart, 128, 0, 0, 2, 41, 8, 0, 0, 0, 0, 1, 1, 240, 250, 5, 195, kAdvanedEnd };
-            sendserial(start);
+            serialsend(start);
         }
 
         public override void Evacuate(string passedvalues)
@@ -204,7 +204,7 @@ namespace Drax360Service.Panels
 
            // Byte[] evactest = new Byte[] { kAdvancedStart, 128, 0, 0, 4, 61, 7, 1, 0, 0, 0, 0, 240, 225, 100, kAdvanedEnd };  VB6 Example Send String
 
-            sendserial(evacnew);
+            serialsend(evacnew);
         }
         public override void EvacuateNetwork(string passedvalues)
         {
@@ -216,7 +216,7 @@ namespace Drax360Service.Panels
 
             Byte[] silencenew = DefineControl(silence);
 
-            sendserial(silencenew);
+            serialsend(silencenew);
         }
 
         public override void Alert(string passedvalues)
@@ -225,7 +225,7 @@ namespace Drax360Service.Panels
 
             Byte[] alertnew = DefineControl(alert);
 
-            sendserial(alertnew);
+            serialsend(alertnew);
         }
 
         public override void MuteBuzzers(string passedvalues)
@@ -239,7 +239,7 @@ namespace Drax360Service.Panels
 
             Byte[] resetnew = DefineControl(reset);
 
-            sendserial(resetnew);
+            serialsend(resetnew);
         }
         public override void DisableDevice(string passedvalues)
         {
@@ -256,7 +256,7 @@ namespace Drax360Service.Panels
 
             Byte[] disiceabledevnew = DefineControl(disiceabledev);
 
-            sendserial(disiceabledevnew);
+            serialsend(disiceabledevnew);
         }
         public override void EnableDevice(string passedvalues)
         {
@@ -273,7 +273,7 @@ namespace Drax360Service.Panels
 
             Byte[] enabledevicenew = DefineControl(enabledevice);
 
-            sendserial(enabledevicenew);
+            serialsend(enabledevicenew);
         }
         public override void DisableZone(string passedvalues)
         {
@@ -293,7 +293,7 @@ namespace Drax360Service.Panels
 
             Byte[] disablezonenew = DefineControl(disablezone);
 
-            sendserial(disablezonenew);
+            serialsend(disablezonenew);
         }
         public override void EnableZone(string passedvalues)
         {
@@ -313,7 +313,7 @@ namespace Drax360Service.Panels
 
             Byte[] enablezonenew = DefineControl(enablezone);
 
-            sendserial(enablezonenew);
+            serialsend(enablezonenew);
         }
 
         public byte[] DefineControl(byte[] evac)

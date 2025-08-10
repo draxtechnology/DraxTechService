@@ -71,7 +71,7 @@ namespace Drax360Service
                     if (msg.StartsWith("NWM:") || msg.StartsWith("GEN:"))
                     {
                         DraxService drax = new DraxService();
-                        drax.sendreturncmd("", msg);
+                        drax.sendreturncmd("",true, msg);
                     }
                 };
                 

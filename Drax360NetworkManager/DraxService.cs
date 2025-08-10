@@ -62,6 +62,22 @@ namespace Drax360Service
 
     public partial class DraxService : ServiceBase
     {
+        #region constants
+        const string kpipenamesend = "Drax360PipeSend";
+        const string kpipenamereturn = "Drax360PipeReturn";
+        const char kpipedelim = '|';
+        const string kappname = "Drax 360 Service";
+
+        const int kfaketimertickseconds = 60;
+        const int kfakefireinitialwakeseconds = 0;
+
+        // settings sections
+        const string ksettingsetupsection = "SETUP";
+        const string ksettingpanelsection = "PANEL";
+       
+        #endregion
+
+        #region private variables
         private int _port = 3090;
         private string _address = "localhost";
         private TcpClient _tcpClient;
@@ -70,70 +86,22 @@ namespace Drax360Service
         private NetworkStream _stream;
         private StreamWriter _writer;
         private System.Timers.Timer _heartbeatTimer;
+        private NamedPipeServerStream pipeserversend = null;
 
-        public event Action<string> isMessageReceive;
+        private string panel = "";
 
-        #region constants
-        const string kpipenamesend = "Drax360PipeSend";
-        const string kpipenamereturn = "Drax360PipeReturn";
-        const char kpipedelim = '|';
-        const string kappname = "Drax 360 Service";
+        private List<AbstractPanel> abstractpanels = new List<AbstractPanel>();
 
-        const char ksettingdelim = '|';
-        const int kfaketimertickseconds = 60;
-        const int kfakefireinitialwakeseconds = 0;
+        private List<System.Threading.Timer> faketimers = new List<System.Threading.Timer>();
 
-        // settings sections
-        const string ksettingsetupsection = "SETUP";
-        const string ksettingpanelsection = "PANEL";
-        public enum enmDelimiter
-        {
-            DelimiterTab = 0,
-            DelimiterComma = 1
-        }
-        #endregion
-
-        #region private variables
-        NamedPipeServerStream pipeserversend = null;
-
-        string panel = "";
-        Dictionary<string, string> settings = new Dictionary<string, string>();
-
-        //List<SerialPortExtra> sps = new List<SerialPortExtra>();
-        List<AbstractPanel> abstractpanels = new List<AbstractPanel>();
-
-        List<System.Threading.Timer> faketimers = new List<System.Threading.Timer>();
-
-        // will remove any unused values as we go
-        int giMainOffset = 0;
-        int giDomainOffset = 0;
-        int gsNWMBaud = 0;
-        int gsNWMDataBits = 0;
-        string gsNWMParity = "";
-        int gsNWMStop = 0;
-        int gsNWMHeartBeat = 0;
-        int giDomainNumber = 0;
-        int giNWMPanelTCP = 0;
-        bool gbNWMDisplayUnknownEvents = false;
-        bool gbDisablePanelText = false;
-        bool gbDisplayChkSumFails = false;
-        string gsExtendedTextPath = "";
-        bool gbExtendedText = false;
-        enmDelimiter gDelimiter = enmDelimiter.DelimiterComma;
-        int giUseExtendedTextIfOver = 0;
-        bool gbOutstationFaultGenFault = false;
-        bool DesignTime = false;
-        string sLogDate = "";
-        DateTime dteDataLogSetDate = DateTime.MinValue;
-
+      
         private int indent = 0;
-        string[] args = null;
-        int fakemode = 0;
-        Mutex filelockmutex = new Mutex();
+        private string[] args = null;
+        private int fakemode = 0;
+        private Mutex filelockmutex = new Mutex();
         #endregion
 
         #region private methods
-
         private string friendlytimestamp()
         {
 
@@ -154,7 +122,7 @@ namespace Drax360Service
         private void kvp(string key, object value)
         {
             Console.ForegroundColor = ConsoleColor.DarkYellow;
-            Console.Write("".PadLeft(indent, '\t') + key);
+            Console.Write("".PadLeft(indent, '\t') + key.Trim());
 
             Console.ResetColor();
             Console.WriteLine(" = " + value);
@@ -165,7 +133,7 @@ namespace Drax360Service
 
         private void dumpavailableserialports()
         {
-            title("Available Serial Ports");
+           
 
             string[] ports = SerialPort.GetPortNames();
             if (ports.Length == 0)
@@ -173,6 +141,7 @@ namespace Drax360Service
                 warning("No Available Serial Ports");
                 return;
             }
+            title("Available Serial Ports");
             indent++;
             foreach (string port in ports)
             {
@@ -181,63 +150,7 @@ namespace Drax360Service
             indent--;
         }
 
-        private T getsetting<T>(string section, string name)
-        {
-            string key = section.ToUpper() + ksettingdelim + name.ToUpper();
-            if (!settings.ContainsKey(key))
-            {
-                warning("Setting Not Found " + section + " " + name);
-                return default(T);
-            }
-            string val = settings[key];
-
-            return (T)Convert.ChangeType(val, typeof(T));
-        }
-
-        private void loadsettings()
-        {
-            string settingfile = "ini/" + getpanel().GetFileName + ".ini";
-
-            settings.Clear();
-            if (!File.Exists(settingfile)) return;
-            string section = "";
-
-            string[] lines = File.ReadAllLines(settingfile);
-            foreach (string line in lines)
-            {
-                // we are a section
-                if (line.StartsWith("["))
-                {
-                    section = line.Replace("[", "").Replace("]", "");
-                    section = section.ToUpper();
-                    continue;
-                }
-
-                // we are a value
-                if (String.IsNullOrEmpty(section))
-                {
-                    warning("No Section Specified For Setting " + line);
-                    continue;
-                }
-
-                string[] linesplit = line.Split('=');
-                if (linesplit.Length != 2)
-                {
-                    warning("Incorrect Setting " + section + " " + line);
-                    continue;
-                }
-                string key = section + ksettingdelim + linesplit[0].Trim().ToUpper();
-                string value = linesplit[1].Trim();
-                if (String.IsNullOrEmpty(value)) { continue; }
-                if (settings.ContainsKey(key))
-                {
-                    warning("Duplicate Setting" + section + " " + key + " - " + value);
-                    continue;
-                }
-
-                settings.Add(key, value);
-            }
-        }
+        
 
         private void log(string message, EventLogEntryType eventtype = EventLogEntryType.Information)
         {
@@ -268,87 +181,55 @@ namespace Drax360Service
 
         private void init_service()
         {
-            //if (AmxLite == 0)
-
-            //Full version
-            giMainOffset = getsetting<int>(ksettingsetupsection, "giAmx1Offset");
-
-            giDomainOffset = getsetting<int>(ksettingsetupsection, "DomainOffset");
-            gsNWMBaud = getsetting<int>(ksettingsetupsection, "BaudRate");
-
-            gsNWMDataBits = getsetting<int>(ksettingsetupsection, "DataBits");
-            gsNWMParity = getsetting<string>(ksettingsetupsection, "Parity");
-            gsNWMStop = getsetting<int>(ksettingsetupsection, "StopBits");
-            gsNWMHeartBeat = getsetting<int>(ksettingsetupsection, "HeartbeatTimeout");
-            giDomainNumber = getsetting<int>(ksettingsetupsection, "DomainNumber");
-
-            giNWMPanelTCP = getsetting<int>(ksettingsetupsection, "PanelcTCP");
-            gbNWMDisplayUnknownEvents = getsetting<int>(ksettingsetupsection, "DisplayUnknownEvents") == 1;
-
-            gbDisablePanelText = getsetting<int>(ksettingsetupsection, "DisablePanelText") == 1;
-            gbDisplayChkSumFails = getsetting<int>(ksettingsetupsection, "DisplayChkSumFails") == 1;
-            gsExtendedTextPath = getsetting<string>(ksettingsetupsection, "ExtendedTextFilePath");
-
-            gbExtendedText = getsetting<int>(ksettingsetupsection, "ExtendedText") == 1;
-
-            // double check these come out in the right order
-            int delim = getsetting<int>(ksettingsetupsection, "Delimiter");
-            if (delim == 0)
-            {
-                gDelimiter = enmDelimiter.DelimiterTab;
-            }
-            else
-            {
-                gDelimiter = enmDelimiter.DelimiterComma;
-            }
-
-            giUseExtendedTextIfOver = getsetting<int>(ksettingsetupsection, "UseExtendedTextIfOver");
-            gbOutstationFaultGenFault = getsetting<int>(ksettingsetupsection, "OutStationFaultsGenFault") == 1;
-
-            DesignTime = getsetting<int>(ksettingsetupsection, "DataLogging") == 1;
-
-            sLogDate = getsetting<string>(ksettingsetupsection, "DataLoggingSet");
-            if (String.IsNullOrEmpty(sLogDate))
-            {
-                dteDataLogSetDate = DateTime.Parse("00:00:00");
-            }
-            else
-            {
-                dteDataLogSetDate = DateTime.Parse(sLogDate);
-            }
-
+           
             // now go grab com ports
             abstractpanels.Clear();
             //sps.Clear();
             faketimers.Clear();
+
+            // used to just load our settings from the ini file
+            AbstractPanel apbase = getpanel();
+            int setttingbaudrate = apbase.GetSetting<int>(ksettingsetupsection, "BaudRate");
+            string settingparity = apbase.GetSetting<string>(ksettingsetupsection, "Parity");
+            int settingdatabits = apbase.GetSetting<int>(ksettingsetupsection, "DataBits");
+            int settingstopbits = apbase.GetSetting<int>(ksettingsetupsection, "StopBits");
+            kvp("BaudRate", setttingbaudrate);
+            kvp("Parity", settingparity);
+            kvp("DataBits", settingdatabits);
+            kvp("StopBits", settingstopbits);
+            pad();
+
             for (int i = 1; i < 7; i++)
             {
+               
                 string panel = ksettingpanelsection + i;
+                
+                // now work out the settings for this panel                               
+                int port = apbase.GetSetting<int>(panel, "CommPort");
 
-                int zone = getsetting<int>(panel, "ZoneBase");
-                int port = getsetting<int>(panel, "CommPort");
                 if (port <= 0) continue;
 
                 string identifier = "COM" + port;
                 AbstractPanel ap = getpanel(identifier);
-
-                //sp.Zone = zone;
                 ap.OutsideEvents += Sp_Fire;
 
+               
+                
                 // we are in fake mode
                 if (this.fakemode > 0)
                 {
                     ln("Opened Fake " + identifier + " Mode " + fakemode);
+
                     faketimers.Add(new System.Threading.Timer(fake_timer, identifier, kfakefireinitialwakeseconds * 1000, kfaketimertickseconds * 1000));
                 }
                 else
                 {
                     // we are a real serial port 
                     ap.Port = new SerialPort(identifier);
-                    ap.Port.BaudRate = gsNWMBaud;
+                    ap.Port.BaudRate = setttingbaudrate;
 
                     Parity parity = Parity.None;
-                    string friendlyparity = gsNWMParity.Substring(0, 1).ToUpper();
+                    string friendlyparity = settingparity.Substring(0, 1).ToUpper();
                     if (friendlyparity == "E")
                         parity = Parity.Even;
                     if (friendlyparity == "O")
@@ -356,8 +237,8 @@ namespace Drax360Service
 
                     ap.Port.Parity = parity;
 
-                    ap.Port.DataBits = gsNWMDataBits;
-                    ap.Port.StopBits = (StopBits)gsNWMStop;
+                    ap.Port.DataBits = settingdatabits;
+                    ap.Port.StopBits = (StopBits) settingstopbits;
                     ap.Port.Handshake = Handshake.None;
                     ap.Port.DataReceived += port_datareceived;
                     if (ap.Port.IsOpen)
@@ -390,8 +271,11 @@ namespace Drax360Service
                     ln("Opened " + ap.Port.PortName);
 
                     ap.OnStartUp();
-                    ap.Port.DiscardInBuffer();
-                    ap.Port.DiscardOutBuffer(); 
+                    if (ap.Port.IsOpen)
+                    {
+                        ap.Port.DiscardInBuffer();
+                        ap.Port.DiscardOutBuffer();
+                    }
                 }
 
                 abstractpanels.Add(ap);
@@ -402,8 +286,9 @@ namespace Drax360Service
         {
             CustomEventArgs ex = e as CustomEventArgs;
             string msg = ex.Message.ToString();
+            bool notifyui = ex.NotifyUI;
             ln("Fired " + msg);
-            sendreturncmd(msg);
+            sendreturncmd(msg,notifyui);
         }
         private void fake_timer(object sender)
         {
@@ -474,56 +359,9 @@ namespace Drax360Service
 
             byte[] readbytes = new byte[bytestoread];
             int numberread = serialPort.Read(readbytes, 0, bytestoread);
-            if (numberread > 0)
-            {
-                spe.Parse(readbytes);
-            }
-        }
-        #endregion
+            if (numberread == 0) return;
 
-        #region constructors
-        public DraxService()
-        {
-            InitializeComponent();
-        }
-        #endregion
-
-        #region public methods
-        public void Run(string[] args)
-        {
-            // singular for now
-            panel = ConfigurationManager.AppSettings["Panels"].Trim().ToUpper();
-
-            startpipeserver();
-
-            Console.Title = kappname;
-            title("-- " + kappname + " --");
-            title(panel);
-            this.args = args;
-
-            // determine if we are in a fake mode
-            if (args.Length > 0)
-            {
-                try
-                {
-                    this.fakemode = Convert.ToInt32(args[0]);
-                }
-                catch
-                { }
-            }
-
-            ln("Version " + Assembly.GetEntryAssembly().GetCustomAttribute<AssemblyFileVersionAttribute>().Version);
-            pad();
-            dumpavailableserialports();
-            pad();
-            ln("Loading Settings");
-            loadsettings();
-            pad();
-            ln("Settings Loaded (" + settings.Count + " Values)");
-
-            startpipesend();
-
-            init_service();    // start the service
+            spe.Parse(readbytes);
 
         }
 
@@ -551,28 +389,6 @@ namespace Drax360Service
                 pipeserversend.Disconnect();
 
             }
-        }
-        public string sendreturncmd(string cmd, string parameters = "")
-        {
-            string strcmd = cmd;
-            if (!string.IsNullOrEmpty(parameters))
-            {
-
-                strcmd += kpipedelim + parameters;
-            }
-
-            string result = "";
-
-            try
-            {
-                result = Task.Run(() => sendreturnserver(strcmd)).Result;
-            }
-            catch (Exception ex)
-            {
-                result = "Error: " + ex;
-            }
-
-            return result;
         }
 
         private async Task<string> sendreturnserver(string message)
@@ -743,16 +559,8 @@ namespace Drax360Service
 
                     if (partssplit.Length >= 4)
                     {
-                        string part1 = partssplit[0];
-                        string part2 = partssplit[1];
-                        string part3 = partssplit[2];
-                        string part4 = partssplit[3];
-
-                        // If you want integers instead of strings:
-                        int p1 = int.Parse(part1);
-                        int p2 = int.Parse(part2);
-                        int p3 = int.Parse(part3);
-                        int p4 = int.Parse(part4);
+                        int p1 = int.Parse(partssplit[0]); int p2 = int.Parse(partssplit[1]);
+                        int p3 = int.Parse(partssplit[2]); int p4 = int.Parse(partssplit[3]);
 
                         int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, true);
                         CSAMXSingleton.CS.SendAlarmToAMX(evnum, "##TEST", "", "");
@@ -765,16 +573,8 @@ namespace Drax360Service
 
                     if (partssplit.Length >= 4)
                     {
-                        string part1 = partssplit[0];
-                        string part2 = partssplit[1];
-                        string part3 = partssplit[2];
-                        string part4 = partssplit[3];
-
-                        // If you want integers instead of strings:
-                        int p1 = int.Parse(part1);
-                        int p2 = int.Parse(part2);
-                        int p3 = int.Parse(part3);
-                        int p4 = int.Parse(part4);
+                        int p1 = int.Parse(partssplit[0]); int p2 = int.Parse(partssplit[1]);
+                        int p3 = int.Parse(partssplit[2]); int p4 = int.Parse(partssplit[3]);
 
                         int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, false);
                         CSAMXSingleton.CS.SendResetToAMX(evnum, "##TEST", "", "");
@@ -822,6 +622,85 @@ namespace Drax360Service
                 pipeserversend = null;
             }
         }
+        #endregion
+
+        #region constructors
+        public DraxService()
+        {
+            InitializeComponent();
+        }
+        #endregion
+
+        #region public methods
+        public void Run(string[] args)
+        {
+            // singular for now
+            panel = ConfigurationManager.AppSettings["Panels"].Trim().ToUpper();
+
+          
+
+            Console.Title = kappname;
+            title("-- " + kappname + " --");
+          
+            this.args = args;
+
+            // determine if we are in a fake mode
+            if (args.Length > 0)
+            {
+                try
+                {
+                    this.fakemode = Convert.ToInt32(args[0]);
+                }
+                catch
+                { }
+            }
+
+            kvp("Version", Assembly.GetEntryAssembly().GetCustomAttribute<AssemblyFileVersionAttribute>().Version);
+            
+            kvp("Panel",panel);
+            pad();
+            startpipeserver();
+            pad();
+            dumpavailableserialports();
+            pad();
+            
+            
+
+            startpipesend();
+
+            init_service();    // start the service
+
+        }
+
+       
+        public string sendreturncmd(string cmd, bool notifyui, string parameters = "")
+        {
+            string strcmd = cmd;
+            if (!string.IsNullOrEmpty(parameters))
+            {
+
+                strcmd += kpipedelim + parameters;
+            }
+
+            string result = "";
+
+            // Do we send this back to the User interface?
+            if (!notifyui) return result;
+
+            try
+            {
+                result = Task.Run(() => sendreturnserver(strcmd)).Result;
+            }
+            catch (Exception ex)
+            {
+                result = "Error: " + ex;
+            }
+
+
+            return result;
+        }
+
+      
 
         public void Stopit()
         {

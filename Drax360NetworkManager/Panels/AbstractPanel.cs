@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.IO.Ports;
+using System.Runtime;
+using System.Security;
 using System.Text;
 using System.Threading;
 
@@ -12,11 +15,15 @@ namespace Drax360Service.Panels
         #region Constants
         protected const byte kHeartbeatInitialDelaySeconds = 60;
         protected const byte kHeartbeatDelaySeconds = 60;
+        
         #endregion
 
-        #region Fields
+        #region private fields
         protected readonly List<byte> buffer = new List<byte>();
         protected Timer heartbeat_timer;
+        
+        
+
         #endregion
 
         #region Properties
@@ -24,16 +31,18 @@ namespace Drax360Service.Panels
         public event EventHandler Fire;
         public event EventHandler OutsideEvents;
         public string Identifier { get; private set; }
+        public string GetFileName { get; private set; }
 
         // Abstract properties
-        public abstract string GetFileName { get; }
+
         public abstract string FakeString { get; }
         #endregion
 
         #region Constructors
-        public AbstractPanel(string identifier)
+        public AbstractPanel(string identifier, string inifile)
         {
             Identifier = identifier;
+            this.GetFileName = inifile;
         }
         #endregion
 
@@ -50,38 +59,38 @@ namespace Drax360Service.Panels
         public abstract void DisableZone(string passedValues);
         public abstract void EnableZone(string passedValues);
 
-        public void NotifyClient(string message)
+        public void NotifyClient(string message,bool notifyui)
         {
-            OutsideEvents?.Invoke(this, new CustomEventArgs(message));
+            OutsideEvents?.Invoke(this, new CustomEventArgs(message,notifyui));
         }
 
         public void SendEvent(string panel, NwmData type, string text, int node = 0, int loop = 0, int device = 0)
         {
             // Notify the client application
-            OutsideEvents?.Invoke(this, new CustomEventArgs(text));
+            OutsideEvents?.Invoke(this, new CustomEventArgs(text,true));
 
             if (type == NwmData.AlarmToAmx || type == NwmData.ResetToNwm)
             {
-                AmxAlarm(text, node, loop, device);
+                amxalarm(text, node, loop, device);
             }
             else
             {
-                AmxSend(type, text, node, loop, device);
+                amxsend(type, text, node, loop, device);
             }
         }
         public void SendEvent(string panel, NwmData type, int inputtype, string text, int node = 0, int loop = 0, int device = 0)
         {
             EventHandler handler = Fire;
 
-            if (handler != null) handler(this, new CustomEventArgs(text));
+            if (handler != null) handler(this, new CustomEventArgs(text,true));
 
             if (type == NwmData.AlarmToAmx || type == NwmData.ResetToNwm)
             {
-                AmxAlarm(text, inputtype, node, loop, device);
+                amxalarm(text, inputtype, node, loop, device);
             }
             else
             {
-                AmxSend(type, text, inputtype, node, loop, device);
+                amxsend(type, text, inputtype, node, loop, device);
             }
         }
 
@@ -90,6 +99,13 @@ namespace Drax360Service.Panels
         {
             this.buffer.AddRange(buffer);
         }
+
+
+        public T GetSetting<T>(string section, string name)
+        {
+            return SettingsSingleton.Instance(this.GetFileName).GetSetting<T>(section, name);
+        }
+
         #endregion
 
         #region Protected Methods
@@ -98,22 +114,22 @@ namespace Drax360Service.Panels
             Console.WriteLine("Sent Heartbeat");
         }
 
-        protected void sendserial(byte[] toSend)
+        protected void serialsend(byte[] toSend)
         {
             if (Port?.IsOpen == true)
             {
                 Port.Write(toSend, 0, toSend.Length);
             }
         }
-        protected void sendserial(string toSend)
+        protected void serialsend(string toSend)
         {
-            sendserial(Encoding.ASCII.GetBytes(toSend));
+            serialsend(Encoding.ASCII.GetBytes(toSend));
         }
         #endregion
 
         #region Private Methods
-
-        private void AmxSend(NwmData type, string text, int inputtype, int node = 0, int loop = 0, int device = 0)
+       
+        private void amxsend(NwmData type, string text, int inputtype, int node = 0, int loop = 0, int device = 0)
         {
             int amxoffset = 0; // 0 amxlight
 
@@ -123,7 +139,7 @@ namespace Drax360Service.Panels
             CSAMXSingleton.CS.FlushMessages();
         }
 
-        private void AmxAlarm(string text, int inputtype, int node = 0, int loop = 0, int device = 0)
+        private void amxalarm(string text, int inputtype, int node = 0, int loop = 0, int device = 0)
         {
             int amxoffset = 0; // 0 amxlight
 

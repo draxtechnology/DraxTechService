@@ -9,7 +9,7 @@ namespace Drax360Service
     public sealed class CSAMXSingleton
     {
         private static CSAMXSingleton instance = null;
-         public static CSAMX CS = new CSAMX();
+        public static CSAMX CS = new CSAMX();
         private CSAMXSingleton()
         {
         }

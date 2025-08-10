@@ -160,7 +160,7 @@ namespace Drax360Service.Panels
     internal class PanelMorelyMax : AbstractPanel
     {
 
-        public override string GetFileName { get => "MaxMan"; }
+        
 
         public override string FakeString
         {
@@ -178,7 +178,7 @@ namespace Drax360Service.Panels
 
         }
 
-        public PanelMorelyMax(string identifier) : base(identifier)
+        public PanelMorelyMax(string identifier) : base(identifier, "MaxMan")
         {
             if (!String.IsNullOrEmpty(identifier))
             {
@@ -623,7 +623,7 @@ namespace Drax360Service.Panels
             string stracknowledge = ">IACK\r";
             //             FireFire("FIRE FIRE");
 
-            sendserial(stracknowledge);
+            serialsend(stracknowledge);
             Console.WriteLine(stracknowledge.Replace("\r", "") + " Sent to Panel");
         }
 
@@ -632,7 +632,7 @@ namespace Drax360Service.Panels
           
             base.heartbeat_timer_callback (sender);
 
-            sendserial(">IQS\r");
+            serialsend(">IQS\r");
         }
 
         public override void OnStartUp()
@@ -822,7 +822,7 @@ namespace Drax360Service.Panels
 
             string sChecksum = CreateMAXChecksum(message);
 
-            sendserial(">" + message + sChecksum + "\r");
+            serialsend(">" + message + sChecksum + "\r");
 
             Console.WriteLine(">" + message + sChecksum + " Sent to panel");
         }

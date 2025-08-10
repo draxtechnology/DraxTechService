@@ -49,6 +49,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="SettingsSingleton.cs" />
     <Compile Include="CSAMX\AMXTransfer.cs" />
     <Compile Include="CSAMX\CSAMX.cs" />
     <Compile Include="CSAMX\CSAMXSingelton.cs" />
