@@ -406,28 +406,58 @@ namespace Drax360Service.Panels
             }
         }*/
         
-        public override void Parse(byte[] buffer)
+        /*
+        public override void ParseRichard(byte[] buffer)
         {
             base.Parse(buffer);
           
             List<byte[]> chunks = Elements.Chunker(buffer, kchunksize);
+            this.buffer.Clear();
             if (chunks.Count == 0) return;
 
 
 
             // MIKE YOU MIGHT WANT TO CLEAR THE BUFFER HERE , rather than leave any available bytes
-            // aka      this.buffer.Clear();
+
             // because you might have just gotten a partial message to start with - needs a test
 
             // remove all leading chunks
-            this.buffer.RemoveRange(0, chunks.Count * kchunksize);
+            //this.buffer.RemoveRange(0, chunks.Count * kchunksize);
 
             foreach (byte[] chunk in chunks)
             {
                 processmessage(chunk);
             }
         }
+        */
 
+        public override void Parse(byte[] buffer)
+        {
+            // Append new data
+            this.buffer.AddRange(buffer);
+
+            // Chunk from rolling buffer
+            var chunks = Elements.Chunker(this.buffer.ToArray(), kchunksize);
+
+            foreach (var chunk in chunks)
+            {
+                processmessage(chunk);
+            }
+
+            // Remove only the processed bytes, keep leftovers
+            int processedBytes = chunks.Count * kchunksize;
+            if (processedBytes > 0)
+            {
+                this.buffer.RemoveRange(0, processedBytes);
+            }
+            // Flush leftover partial data
+            if (this.buffer.Count > 0)
+            {
+  //              processmessage(this.buffer.ToArray());
+            }
+ //           this.buffer.Clear();
+        }
+        
         private void processmessage(byte[] chunk)
         {
 
@@ -543,9 +573,7 @@ namespace Drax360Service.Panels
                 sLSB = Convert.ToInt32(sEventCode.Substring(1, 1));
             }
 
-
-            // MIKE could be all set to zero
-            int p1 = 4;
+            int p1 = 0;
             int p2 = sPanelNumber;
             int p3 = sLoopNumber;
             int p4 = AddressNumber;
@@ -555,15 +583,34 @@ namespace Drax360Service.Panels
 
             int evnum = 0;
 
-            // MIKE could be made into a switch statement -- apart from the extra if (sLSB == 5)  see below
             if (sMSB == 0)
             {
                 switch (sLSB)
                 {
                     case 0:
-                        message2 = "Handshake";
+                        if (Convert.ToInt32(sEventParam.Substring(2, 2)) > 0)
+                        {
+                            int giNoOfFaults = Convert.ToInt32(sEventParam.Substring(2, 2));
+                            message2 = giNoOfFaults.ToString() + " Panel(s) in Fault Condition";
 
-                        send_response_amx_and_serial(-1, "", message2);
+                            p1 = 15; p2 = 1;
+                            p3 = 0; p4 = 55;
+
+                            evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+                            send_response_amx_and_serial(evnum, "", message2);
+                        }
+                        if (Convert.ToInt32(sEventParam.Substring(4, 2)) > 0)
+                        {
+                            int giNoOfDisable = Convert.ToInt32(sEventParam.Substring(4, 2));
+                            message2 = giNoOfDisable.ToString() + " Panel(s) in Disablement";
+
+
+                            p1 = 15; p2 = 1;
+                            p3 = 0; p4 = 56;
+
+                            evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+                            send_response_amx_and_serial(evnum, "", message2, message3);
+                        }
                         break;
                     case 1:
                         message2 = "Reset";
@@ -617,7 +664,6 @@ namespace Drax360Service.Panels
                 }
             }
 
-            // MIKE THIS SEEMS WRONG, it is at the highest level of if
             if (sLSB == 5)
             {
                 message2 = "Alarms Sounded";
@@ -642,17 +688,6 @@ namespace Drax360Service.Panels
                     send_response_amx_and_serial(evnum, "", message2);
                 }
             }
-            if (Convert.ToInt32(sEventParam.Substring(2, 2)) > 0)
-            {
-                int giNoOfFaults = Convert.ToInt32(sEventParam.Substring(2, 2));
-                message2 = giNoOfFaults.ToString() + " Panel(s) in Fault Condition";
-                
-                p1 = 15; p2 = 1;
-                p3 = 0; p4 = 55;
-
-                evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-                send_response_amx_and_serial(evnum, "", message2);
-            }
 
             if (sMSB == 4)
             {
@@ -675,29 +710,19 @@ namespace Drax360Service.Panels
                 evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
                 send_response_amx_and_serial(evnum, "", message2);
             }
-            if (sMSB == 7 || Convert.ToInt32(sEventParam.Substring(4, 2)) > 0)
+            if (sMSB == 7)
             {
                 int giNoOfDisable = Convert.ToInt32(sEventParam.Substring(4, 2));
-                message2 = giNoOfDisable.ToString() + " Panel(s) in Disablement";
-                message3 = "Number of Panels in Disablement";
-                /*
-                p1 = 4;
-                p2 = sPanelNumber;
-                p3 = sLoopNumber;
-                p4 = AddressNumber;
-                */
+                message2 = "Disablement";
 
                 p1 = 4; p2 = 1;
                 p3 = 0; p4 = 1;
 
                 evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
                 send_response_amx_and_serial(evnum, "", message2, message3);
-
             }
         }
         
-        
-
         private void send_response_amx_and_serial(int evnum,string message1,string message2,string message3="")
         {
             string friendlymessage = message2 + (message3.Length > 0 ? (" " + message3): "");
@@ -708,7 +733,7 @@ namespace Drax360Service.Panels
             // Signal the event back to the main service, so that it can be logged
             this.NotifyClient(friendlymessage,false);
 
-            if (evnum > -1) // don't send if evnum is -1, this is used for the handshake message
+            //if (evnum > -1) // don't send if evnum is -1, this is used for the handshake message
             {
 
                 CSAMXSingleton.CS.SendAlarmToAMX(evnum, message1, message2, message3);
@@ -893,8 +918,8 @@ namespace Drax360Service.Panels
             int sYear = int.Parse(now.ToString("yy"));   // Two-digit year
             int sMonth = int.Parse(now.ToString("MM"));  // Two-digit month
             int sDay = int.Parse(now.ToString("dd"));   // Two-digit day
-            int sDayWeek = int.Parse(now.ToString("d")) + 1;   // Sunday = 1, Monday = 2, etc.
-
+            int sDayWeek = ((int)now.DayOfWeek + 6) % 7 + 1;// Sunday = 1, Monday = 2, etc.
+ 
             byte[] gbaryDataToTX = new byte[60];
 
             string text = action.ToString();

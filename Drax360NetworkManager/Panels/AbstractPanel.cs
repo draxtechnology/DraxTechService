@@ -119,9 +119,9 @@ namespace Drax360Service.Panels
             this.buffer.AddRange(buffer);
         }
 
-        public virtual void SerialPort_Datareceived(object sender, SerialDataReceivedEventArgs e)
+        public virtual void SerialPort_DatareceivedRichard(object sender, SerialDataReceivedEventArgs e)
         {
-           
+            System.Threading.Thread.Sleep(1000);
             int bytestoread = serialport.BytesToRead;
             if (bytestoread == 0) return;
 
@@ -132,6 +132,28 @@ namespace Drax360Service.Panels
             Parse(readbytes);
         }
 
+        public virtual void SerialPort_Datareceived(object sender, SerialDataReceivedEventArgs e)
+        {
+            const int kchunksize = 59; // your fixed packet size
+            const int maxWaitMs = 50;  // how long to wait for remaining bytes
+            const int pollDelayMs = 2; // how often to check
+
+            int waited = 0;
+            while (serialport.BytesToRead < kchunksize && waited < maxWaitMs)
+            {
+                System.Threading.Thread.Sleep(pollDelayMs);
+                waited += pollDelayMs;
+            }
+
+            int bytestoread = serialport.BytesToRead;
+            if (bytestoread == 0) return;
+
+            byte[] readbytes = new byte[bytestoread];
+            int numberread = serialport.Read(readbytes, 0, bytestoread);
+            if (numberread == 0) return;
+
+            Parse(readbytes);
+        }
 
         public T GetSetting<T>(string section, string name)
         {
