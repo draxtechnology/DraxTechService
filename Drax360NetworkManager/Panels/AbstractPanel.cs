@@ -8,8 +8,7 @@ using System.Text;
 using System.Threading;
 
 namespace Drax360Service.Panels
-{
-    internal abstract class AbstractPanel
+{    internal abstract class AbstractPanel
     {
 
         #region Constants
@@ -67,33 +66,19 @@ namespace Drax360Service.Panels
             OutsideEvents?.Invoke(this, new CustomEventArgs(message,notifyui));
         }
 
-        public void SendEvent(string panel, NwmData type, string text, int node = 0, int loop = 0, int device = 0)
-        {
-            // Notify the client application
-            OutsideEvents?.Invoke(this, new CustomEventArgs(text,true));
-
-            if (type == NwmData.AlarmToAmx || type == NwmData.ResetToNwm)
-            {
-                amxalarm(text, node, loop, device);
-            }
-            else
-            {
-                amxsend(type, text, node, loop, device);
-            }
-        }
-        public void SendEvent(string panel, NwmData type, int inputtype, string text, int node = 0, int loop = 0, int device = 0)
+        public void SendEvent(string panel, NwmData type, int inputtype, string text, bool on, int node = 0, int loop = 0, int device = 0)
         {
             EventHandler handler = Fire;
 
             if (handler != null) handler(this, new CustomEventArgs(text,true));
 
-            if (type == NwmData.AlarmToAmx || type == NwmData.ResetToNwm)
+            if (type == NwmData.AlarmToAmx || type == NwmData.ResetToNwm || type == NwmData.IsolationToAmx)
             {
-                amxalarm(text, inputtype, node, loop, device);
+                amxalarm(text, inputtype, on, node, loop, device);
             }
             else
             {
-                amxsend(type, text, inputtype, node, loop, device);
+                amxsend(type, text, inputtype, on, node, loop, device);
             }
         }
         public void Shutdown()
@@ -105,9 +90,7 @@ namespace Drax360Service.Panels
                     serialport.Close();
                 }
                 catch
-                {
-
-                }
+                {}
                 serialport.Dispose();
                 serialport = null;
             }
@@ -119,7 +102,7 @@ namespace Drax360Service.Panels
             this.buffer.AddRange(buffer);
         }
 
-        public virtual void SerialPort_DatareceivedRichard(object sender, SerialDataReceivedEventArgs e)
+        public virtual void SerialPort_Datareceived(object sender, SerialDataReceivedEventArgs e)
         {
             System.Threading.Thread.Sleep(1000);
             int bytestoread = serialport.BytesToRead;
@@ -132,28 +115,6 @@ namespace Drax360Service.Panels
             Parse(readbytes);
         }
 
-        public virtual void SerialPort_Datareceived(object sender, SerialDataReceivedEventArgs e)
-        {
-            const int kchunksize = 59; // your fixed packet size
-            const int maxWaitMs = 50;  // how long to wait for remaining bytes
-            const int pollDelayMs = 2; // how often to check
-
-            int waited = 0;
-            while (serialport.BytesToRead < kchunksize && waited < maxWaitMs)
-            {
-                System.Threading.Thread.Sleep(pollDelayMs);
-                waited += pollDelayMs;
-            }
-
-            int bytestoread = serialport.BytesToRead;
-            if (bytestoread == 0) return;
-
-            byte[] readbytes = new byte[bytestoread];
-            int numberread = serialport.Read(readbytes, 0, bytestoread);
-            if (numberread == 0) return;
-
-            Parse(readbytes);
-        }
 
         public T GetSetting<T>(string section, string name)
         {
@@ -173,6 +134,7 @@ namespace Drax360Service.Panels
             if (serialport?.IsOpen == true)
             {
                 serialport.Write(toSend, 0, toSend.Length);
+                this.NotifyClient("Sent: " + toSend, false);
             }
         }
         protected void serialsend(string toSend)
@@ -183,21 +145,21 @@ namespace Drax360Service.Panels
 
         #region Private Methods
        
-        private void amxsend(NwmData type, string text, int inputtype, int node = 0, int loop = 0, int device = 0)
+        private void amxsend(NwmData type, string text, int inputtype, bool on, int node = 0, int loop = 0, int device = 0)
         {
             int amxoffset = 0; // 0 amxlight
 
-            int evnum = CSAMXSingleton.CS.MakeInputNumber(node + amxoffset, loop, device, inputtype);
+            int evnum = CSAMXSingleton.CS.MakeInputNumber(node + amxoffset, loop, device, inputtype, on);
 
             CSAMXSingleton.CS.WriteData(type, evnum, text, "", "");
             CSAMXSingleton.CS.FlushMessages();
         }
 
-        private void amxalarm(string text, int inputtype, int node = 0, int loop = 0, int device = 0)
+        private void amxalarm(string text, int inputtype, bool on, int node = 0, int loop = 0, int device = 0)
         {
             int amxoffset = 0; // 0 amxlight
 
-            int evnum = CSAMXSingleton.CS.MakeInputNumber(node + amxoffset, loop, device, inputtype);
+            int evnum = CSAMXSingleton.CS.MakeInputNumber(node + amxoffset, loop, device, inputtype, on);
 
             CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", "", text);
             CSAMXSingleton.CS.FlushMessages();

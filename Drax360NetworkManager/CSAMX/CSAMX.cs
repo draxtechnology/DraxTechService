@@ -41,7 +41,7 @@ namespace Drax360Service
         {
             return (int) (inputNumber + 0x80000000);
         }
-        public int MakeInputNumber(int node, int loop, int inputn, int inputtype, bool on=true)
+        public int MakeInputNumber(int node, int loop, int inputn, int inputtype, bool on = true)
         {
             int no = inputn + (loop * 0x100) + (node * 0x10000) + (inputtype * 0x8000000);
             if (on)

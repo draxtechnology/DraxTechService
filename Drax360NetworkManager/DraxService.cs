@@ -133,8 +133,6 @@ namespace Drax360Service
 
         private void dumpavailableserialports()
         {
-           
-
             string[] ports = SerialPort.GetPortNames();
             if (ports.Length == 0)
             {
@@ -149,8 +147,6 @@ namespace Drax360Service
             }
             indent--;
         }
-
-        
 
         private void log(string message, EventLogEntryType eventtype = EventLogEntryType.Information)
         {
