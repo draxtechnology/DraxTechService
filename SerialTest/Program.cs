@@ -12,57 +12,45 @@ class Program
     {
         serialPort = new SerialPort("COM3", 19200, Parity.Even, 8, StopBits.One);
         serialPort.Handshake = Handshake.None;
-        serialPort.DtrEnable = true;  
-        serialPort.RtsEnable = false;
-
-        serialPort.DataReceived += SerialPort_DataReceived;
+        serialPort.DtrEnable = true; // VB6 default
+        serialPort.RtsEnable = true; // VB6 default
 
         try
         {
             serialPort.Open();
-            Console.WriteLine("Listening on " + serialPort.PortName + "...");
-            Console.WriteLine("Press Ctrl+C to exit.");
-            Log("Program started.");
+            Log("Program started, port open: " + serialPort.PortName);
 
-            byte[] reply = { 0x00, 0x06, 0x00, 0x06 };
-            serialPort.Write(reply, 0, reply.Length);
-            serialPort.BaseStream.Flush();
+            // Send back 0x06 0x06 (change here if you want 00-06-00-06)
+            byte[] start = { 0x0, 0x06, 0x0, 0x06 };
+            serialPort.Write(start, 0, start.Length);
 
-            string sentHex = BitConverter.ToString(reply);
-            Console.WriteLine("Sent: " + sentHex);
-            Log("Sent: " + sentHex);
+            while (true)
+            {
+                if (serialPort.BytesToRead > 0)
+                {
+                    // Read all available bytes
+                    byte[] buffer = new byte[serialPort.BytesToRead];
+                    serialPort.Read(buffer, 0, buffer.Length);
 
-            while (true) Thread.Sleep(100);
+                    string receivedHex = BitConverter.ToString(buffer);
+                    Console.WriteLine(System.DateTime.Now.ToString() + " Received: " + receivedHex);
+                    Log("Received: " + receivedHex);
+
+                    // Send back 0x06 0x06 (change here if you want 00-06-00-06)
+                    byte[] reply = { 0x0, 0x06, 0x0, 0x06 };
+                    serialPort.Write(reply, 0, reply.Length);
+
+                    string sentHex = BitConverter.ToString(reply);
+                    Console.WriteLine(System.DateTime.Now.ToString() + " Sent: " + sentHex);
+                    Log("Sent: " + sentHex);
+                }
+
+                Thread.Sleep(500); // Mimics VB6 timer interval
+            }
         }
         catch (Exception ex)
         {
             Log("Error: " + ex.Message);
-        }
-    }
-
-    private static void SerialPort_DataReceived(object sender, SerialDataReceivedEventArgs e)
-    {
-        try
-        {
-            int bytes = serialPort.BytesToRead;
-            byte[] buffer = new byte[bytes];
-            serialPort.Read(buffer, 0, bytes);
-
-            string receivedHex = BitConverter.ToString(buffer);
-            Console.WriteLine("Received: " + receivedHex);
-            Log("Received: " + receivedHex);
-
-            byte[] reply = { 0x00, 0x06, 0x00, 0x06 };
-            serialPort.Write(reply, 0, reply.Length);
-            serialPort.BaseStream.Flush();
-
-            string sentHex = BitConverter.ToString(reply);
-            Console.WriteLine("Sent: " + sentHex);
-            Log("Sent: " + sentHex);
-        }
-        catch (Exception ex)
-        {
-            Log("Send Error: " + ex.Message);
         }
     }
 

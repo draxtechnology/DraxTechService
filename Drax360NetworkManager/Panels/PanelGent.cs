@@ -279,33 +279,58 @@ namespace Drax360Service.Panels
                         send_response_amx_and_serial(evnum, "", message2);
                         break;
                     default:
-                        this.NotifyClient("Unknown sLSB: " + sLSB, false);
+                        this.NotifyClient("Unknown sMSB: " + " sLSB: " + sLSB, false);
                         break;
                 }
             }
 
-            if (sLSB == 5)
-            {
-                message2 = "Alarms Sounded";
-                
-                p1 = 15; p2 = 1;
-                p3 = 0; p4 = 54;
-
-                evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-                send_response_amx_and_serial(evnum, "", message2);
-
-            }
             if (sMSB == 1)
             {
                 if (sLSB == 8)
                 {
                     message2 = "Cancel Buzzer";
-                    
+
                     p1 = 4; p2 = 1;
                     p3 = 0; p4 = 1;
 
                     evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
                     send_response_amx_and_serial(evnum, "", message2);
+                }
+                else
+                {
+                    this.NotifyClient("Unknown sMSB: " + " sLSB: " + sLSB, false);
+                }
+            }
+
+            if (sMSB == 2)
+            {
+                switch (sLSB)
+                {
+                    case 1:
+                        {
+                            message2 = "Supervisory On";
+
+                            p1 = 15; p2 = 1;
+                            p3 = 0; p4 = 12;
+
+                            evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+                            send_response_amx_and_serial(evnum, "", message2);
+                            break;
+                        }
+                    case 2:
+                        {
+                            message2 = "Supervisory off";
+
+                            p1 = 15; p2 = 1;
+                            p3 = 0; p4 = 12;
+
+                            evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, false);
+                            send_response_amx_and_serial(evnum, "", message2);
+                            break;
+                        }
+                    default:
+                        this.NotifyClient("Unknown sMSB: " + " sLSB: " + sLSB, false);
+                        break;
                 }
             }
 
@@ -332,19 +357,75 @@ namespace Drax360Service.Panels
             }
             if (sMSB == 7)
             {
-                if (sLoopNumber == 0)
+                if (AddressNumber == 0)
                 {
                     message2 = "Zone Disablement";
                     p1 = 15;
+
+                    switch (sLoopNumber)
+                    {
+                        case 0:
+                            p4 = 53;
+                            break;
+                        case 1:
+                            p4 = 37;
+                            break;
+                        case 2:
+                            p4 = 38;
+                            break;
+                        case 3:
+                            p4 = 39;
+                            break;
+                        case 4:
+                            p4 = 40;
+                            break;
+                        case 5:
+                            p4 = 41;
+                            break;
+                        case 6:
+                            p4 = 42;
+                            break;
+                        case 7:
+                            p4 = 43;
+                            break;
+                        case 8:
+                            p4 = 44;
+                            break;
+                        case 9:
+                            p4 = 45;
+                            break;
+                        case 10:
+                            p4 = 46;
+                            break;
+                        case 11:
+                            p4 = 47;
+                            break;
+                        case 12:
+                            p4 = 48;
+                            break;
+                        case 13:
+                            p4 = 49;
+                            break;
+                        case 14:
+                            p4 = 50;
+                            break;
+                        case 15:
+                            p4 = 51;
+                            break;
+                        case 16:
+                            p4 = 52;
+                            break;
+                    }
                 }
                 else
                 {
                     message2 = "Device Disablement";
                     p1 = 4;
+                    p4 = AddressNumber;
                 }
 
                 p2 = 1;
-                p3 = sLoopNumber; p4 = 53;
+                p3 = sLoopNumber;
 
                 evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
                 send_response_amx_and_serial(evnum, "", message2, message3);
@@ -420,13 +501,11 @@ namespace Drax360Service.Panels
         }
 
         public override void StartUp(int fakemode)
-        {
-            
+        {     
             int setttingbaudrate = base.GetSetting<int>(ksettingsetupsection, "BaudRate");
             string settingparity = base.GetSetting<string>(ksettingsetupsection, "Parity");
             int settingdatabits = base.GetSetting<int>(ksettingsetupsection, "DataBits");
             int settingstopbits = base.GetSetting<int>(ksettingsetupsection, "StopBits");
-
 
             if (fakemode > 0)
             {
@@ -623,8 +702,62 @@ namespace Drax360Service.Panels
                 text = "Zone Disablement";
                 inputtype = 15;
                 node = 1;
-                loop = 0;
-                device = 53;
+
+                switch (loop)
+                {
+                    case 0:
+                        device = 53;
+                        break;
+                    case 1:
+                        device = 37;
+                        break;
+                    case 2:
+                        device = 38;
+                        break;
+                    case 3:
+                        device = 39;
+                        break;
+                    case 4:
+                        device = 40;
+                        break;
+                    case 5:
+                        device = 41;
+                        break;
+                    case 6:
+                        device = 42;
+                        break;
+                    case 7:
+                        device = 43;
+                        break;
+                    case 8:
+                        device = 44;
+                        break;
+                    case 9:
+                        device = 45;
+                        break;
+                    case 10:
+                        device = 46;
+                        break;
+                    case 11:
+                        device = 47;
+                        break;
+                    case 12:
+                        device = 48;
+                        break;
+                    case 13:
+                        device = 49;
+                        break;
+                    case 14:
+                        device = 50;
+                        break;
+                    case 15:
+                        device = 51;
+                        break;
+                    case 16:
+                        device = 52;
+                        break;
+                }
+  
             }
 
             if (action == ActionType.kENABLEZONE)
@@ -636,9 +769,61 @@ namespace Drax360Service.Panels
                 text = "Enable Zone";
                 inputtype = 15;
                 node = 1;
-                loop = 0;
-                device = 53;
                 on = false;
+                switch (loop)
+                {
+                    case 0:
+                        device = 53;
+                        break;
+                    case 1:
+                        device = 37;
+                        break;
+                    case 2:
+                        device = 38;
+                        break;
+                    case 3:
+                        device = 39;
+                        break;
+                    case 4:
+                        device = 40;
+                        break;
+                    case 5:
+                        device = 41;
+                        break;
+                    case 6:
+                        device = 42;
+                        break;
+                    case 7:
+                        device = 43;
+                        break;
+                    case 8:
+                        device = 44;
+                        break;
+                    case 9:
+                        device = 45;
+                        break;
+                    case 10:
+                        device = 46;
+                        break;
+                    case 11:
+                        device = 47;
+                        break;
+                    case 12:
+                        device = 48;
+                        break;
+                    case 13:
+                        device = 49;
+                        break;
+                    case 14:
+                        device = 50;
+                        break;
+                    case 15:
+                        device = 51;
+                        break;
+                    case 16:
+                        device = 52;
+                        break;
+                }
             }
             gbaryDataToTX[10] = (byte)node;
             gbaryDataToTX[11] = (byte)sSecond;
@@ -669,7 +854,7 @@ namespace Drax360Service.Panels
         public override void SerialPort_Datareceived(object sender, SerialDataReceivedEventArgs e)
         {
             const int kchunksize = 59; // your fixed packet size
-            const int maxWaitMs = 50;  // how long to wait for remaining bytes
+            const int maxWaitMs = 500;  // how long to wait for remaining bytes
             const int pollDelayMs = 2; // how often to check
 
             int waited = 0;
