@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO.Ports;
 using System.Linq;
+using System.Runtime.InteropServices;
 
 
 namespace Drax360Service.Panels
@@ -64,23 +65,10 @@ namespace Drax360Service.Panels
             {
                 this.buffer.RemoveRange(0, processedBytes);
             }
-            // Flush leftover partial data
-            if (this.buffer.Count > 0)
-            {
-  //              processmessage(this.buffer.ToArray());
-            }
- //           this.buffer.Clear();
         }
         
         private void processmessage(byte[] chunk)
         {
-            //string strmsg = Encoding.UTF8.GetString(chunk);
-
-            // Added - need milliseconds on this
-            // string filePath = "c:\\temp\\csharp_output_" + DateTime.Now.ToString("yyyyMMdd_HHmmssSSS") + ".gen";
-            //File.WriteAllBytes(filePath, chunk);
-
-
             // test checksum
             int piMSB = chunk[chunk.Length - 2];
             int piLSB = chunk[chunk.Length - 1];
@@ -436,9 +424,6 @@ namespace Drax360Service.Panels
         {
             string friendlymessage = message2 + (message3.Length > 0 ? (" " + message3) : "");
 
-            // Previously used Console.WriteLine for debugging, now using NotifyClient  
-            // Console.WriteLine(kpad + " " + friendlymessage + " " + kpad);
-
             // Signal the event back to the main service, so that it can be logged
             this.NotifyClient(friendlymessage, false);
 
@@ -446,11 +431,9 @@ namespace Drax360Service.Panels
             CSAMXSingleton.CS.FlushMessages();
 
             serialsend(new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte });
-            this.NotifyClient("ACK Sent:",false);
-            this.NotifyClient(kzerobyte.ToString(), false);
-            this.NotifyClient(kackbyte.ToString(), false);
-            this.NotifyClient(kzerobyte.ToString(), false);
-            this.NotifyClient(kackbyte.ToString(), false);
+            byte[] bytesToLog = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
+            string hex = BitConverter.ToString(bytesToLog); // "00-06-00-06"
+            this.NotifyClient("ACK Sent: " + hex, false);
         }
         private bool gentchecksumvalidation(int piMSB, int piLSB, byte[] paryMessage)
         {
@@ -488,7 +471,7 @@ namespace Drax360Service.Panels
             }
             catch (Exception)
             {
-                this.NotifyClient("Checksumvalidation:",false);
+                this.NotifyClient("Checksumvalidation Error:",false);
                 this.NotifyClient("piMSB: " + piMSB, false);
                 this.NotifyClient("piLSB: " + piLSB, false);
             }
@@ -855,7 +838,7 @@ namespace Drax360Service.Panels
         {
             const int kchunksize = 59; // your fixed packet size
             const int maxWaitMs = 500;  // how long to wait for remaining bytes
-            const int pollDelayMs = 2; // how often to check
+            const int pollDelayMs = 10; // how often to check
 
             int waited = 0;
             while (serialport.BytesToRead < kchunksize && waited < maxWaitMs)
@@ -871,7 +854,10 @@ namespace Drax360Service.Panels
             int numberread = serialport.Read(readbytes, 0, bytestoread);
             if (numberread == 0) return;
 
+            string hex = BitConverter.ToString(readbytes);
+            this.NotifyClient("Received: " + hex, false);
             Parse(readbytes);
+
         }
         /*
         // This method is not used in the current code, but it can be useful for converting byte arrays to escaped strings

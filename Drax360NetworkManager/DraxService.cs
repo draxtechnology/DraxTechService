@@ -104,16 +104,20 @@ namespace Drax360Service
         #region private methods
         private string friendlytimestamp()
         {
-
             if (indent > 0) return "";
 
-            string ret = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture);
+            var ukTimeZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
+            var ukTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, ukTimeZone);
+
+            //string ret = ukTime.ToString("o", CultureInfo.InvariantCulture);
+            string ret = ukTime.ToString("dd-MM-yyyy HH:mm:ss.fff", CultureInfo.InvariantCulture);
 
             return ret + " ";
         }
+
         private void ln(string message, EventLogEntryType eventtype = EventLogEntryType.Information)
         {
-            //if (indent==0) Console.WriteLine(friendlytimestamp());
+
             Console.WriteLine("".PadLeft(indent, '\t') + message);
             Console.ResetColor();
             log(message);
@@ -148,6 +152,7 @@ namespace Drax360Service
             indent--;
         }
 
+
         private void log(string message, EventLogEntryType eventtype = EventLogEntryType.Information)
         {
             filelockmutex.WaitOne();
@@ -177,7 +182,6 @@ namespace Drax360Service
 
         private void init_service()
         {
-           
             // now go grab com ports
             abstractpanels.Clear();
             //sps.Clear();
@@ -198,7 +202,6 @@ namespace Drax360Service
 
             for (int i = 1; i < 7; i++)
             {
-               
                 string panel = ksettingpanelsection + i;
                 
                 // now work out the settings for this panel                               
@@ -287,7 +290,7 @@ namespace Drax360Service
             CustomEventArgs ex = e as CustomEventArgs;
             string msg = ex.Message.ToString();
             bool notifyui = ex.NotifyUI;
-            ln("Fired " + msg);
+            ln(msg);
             if (notifyui)
             { 
                 sendreturncmd(msg);
@@ -645,11 +648,10 @@ namespace Drax360Service
             // singular for now
             panel = ConfigurationManager.AppSettings["Panels"].Trim().ToUpper();
 
-          
-
             Console.Title = kappname;
-            title("-- " + kappname + " --");
-          
+            title("------------------------------------------------");
+            title("----------- " + kappname + " Started -----------");
+            title("------------------------------------------------");
             this.args = args;
 
             // determine if we are in a fake mode
@@ -671,13 +673,10 @@ namespace Drax360Service
             pad();
             dumpavailableserialports();
             pad();
-            
-            
 
             startpipesend();
 
             init_service();    // start the service
-
         }
 
        
@@ -691,7 +690,6 @@ namespace Drax360Service
             }
 
             string result = "";
-
            
             try
             {
@@ -705,8 +703,6 @@ namespace Drax360Service
 
             return result;
         }
-
-      
 
         public void Stopit()
         {
@@ -732,7 +728,6 @@ namespace Drax360Service
             }
             abstractpanels.Clear();
            
-
             try
             {
                 _tcpClient?.Close();

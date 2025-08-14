@@ -96,7 +96,6 @@ namespace Drax360Service.Panels
             }
         }
 
-
         public virtual void Parse(byte[] buffer)
         {
             this.buffer.AddRange(buffer);
@@ -134,7 +133,8 @@ namespace Drax360Service.Panels
             if (serialport?.IsOpen == true)
             {
                 serialport.Write(toSend, 0, toSend.Length);
-                this.NotifyClient("Sent: " + toSend, false);
+                string hex = BitConverter.ToString(toSend);
+                this.NotifyClient("Sent: " + hex, false);
             }
         }
         protected void serialsend(string toSend)

@@ -212,7 +212,6 @@ unsigned char *TxFile;
                 if (AMXTransfer.Instance.IsConnected)
                 {
                     AMXTransfer.Instance.SendMessage($"NTX:" + fullfilename);
-                    System.IO.File.Delete(fullfilename);
                 }
             }
             nvms.Clear();
