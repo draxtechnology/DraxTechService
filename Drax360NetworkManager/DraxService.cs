@@ -491,7 +491,6 @@ namespace Drax360Service
                         CSAMXSingleton.CS.SendAlarmToAMX(evnum, "##TEST", "", "");
                         CSAMXSingleton.CS.FlushMessages();
                     }
-
                     break;
 
                 case "TEST BOX RESET":
@@ -505,7 +504,6 @@ namespace Drax360Service
                         CSAMXSingleton.CS.SendResetToAMX(evnum, "##TEST", "", "");
                         CSAMXSingleton.CS.FlushMessages();
                     }
-
                     break;
 
                 case "SETTINGSGET":
@@ -518,9 +516,19 @@ namespace Drax360Service
                     }
                     break;
 
+
+                case "SETTINGSGETKEYSINSECTION":
+                    if (partssplit.Length != 1) break;
+                    {
+                        string section = partssplit[0];
+                        ret = SettingsSingleton.Instance(panel).GetSettingsKeyInSection(section);
+                    }
+                    break;
+
                 case "SETTINGSGETSECTIONS":
                     ret = SettingsSingleton.Instance(panel).GetSettingSections();
                     break;
+
                 case "SETTINGSSET":
                     if (partssplit.Length != 3) break;
                     {
@@ -538,6 +546,7 @@ namespace Drax360Service
                 case "SERVICERESTART":
                     init_service();
                     break;
+
                 default:
                     throw new Exception("Pipe Message Not Handled " + cmd);
             }

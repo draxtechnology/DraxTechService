@@ -126,6 +126,24 @@ namespace Drax360Service
             return default(T);
         }
 
+        public string GetSettingsKeyInSection(string section)
+        {
+            string ret = "";
+            string findsection = section.Trim().ToUpper();
+            foreach (string key in settings.Keys.OrderBy(i => i))
+            {
+                string[] splits = key.Split(ksettingdelim);
+                if (splits.Length != 2) continue;
+                string workingsection = splits[0];
+                if (workingsection != findsection) continue;
+
+                if (!String.IsNullOrEmpty(ret)) ret += ",";
+                ret += splits[1];
+            }
+            return ret;
+
+        }
+
         private string makekey(string section, string name)
         {
             return section.ToUpper() + ksettingdelim + name.Trim().ToUpper();
