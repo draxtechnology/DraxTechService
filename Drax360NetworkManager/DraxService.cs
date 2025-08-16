@@ -87,6 +87,7 @@ namespace Drax360Service
         private StreamWriter _writer;
         private System.Timers.Timer _heartbeatTimer;
         private NamedPipeServerStream pipeserversend = null;
+       
 
         private string panel = "";
 
@@ -189,16 +190,7 @@ namespace Drax360Service
 
             // used to just load our settings from the ini file
             AbstractPanel apbase = getpanel();
-            /*int setttingbaudrate = apbase.GetSetting<int>(ksettingsetupsection, "BaudRate");
-            string settingparity = apbase.GetSetting<string>(ksettingsetupsection, "Parity");
-            int settingdatabits = apbase.GetSetting<int>(ksettingsetupsection, "DataBits");
-            int settingstopbits = apbase.GetSetting<int>(ksettingsetupsection, "StopBits");
-            kvp("BaudRate", setttingbaudrate);
-            kvp("Parity", settingparity);
-            kvp("DataBits", settingdatabits);
-            kvp("StopBits", settingstopbits);
-            pad();
-            */
+            
 
             for (int i = 1; i < 7; i++)
             {
@@ -225,59 +217,7 @@ namespace Drax360Service
                 }
                 else
                 {
-                    // we are a real serial port 
-                    /*ap.Port = new SerialPort(identifier);
-                    ap.Port.BaudRate = setttingbaudrate;
-
-                    Parity parity = Parity.None;
-                    string friendlyparity = settingparity.Substring(0, 1).ToUpper();
-                    if (friendlyparity == "E")
-                        parity = Parity.Even;
-                    if (friendlyparity == "O")
-                        parity = Parity.Odd;
-
-                    ap.Port.Parity = parity;
-
-                    ap.Port.DataBits = settingdatabits;
-                    ap.Port.StopBits = (StopBits) settingstopbits;
-                    ap.Port.Handshake = Handshake.None;
-                    ap.Port.DataReceived += port_datareceived;
-                    if (ap.Port.IsOpen)
-                    {
-                        ap.Port.Close();
-                    }
-                    kvp("Attempting Open", ap.Port.PortName);
-                    ap.Port.Encoding = System.Text.Encoding.ASCII;
-                    ap.Port.DtrEnable = true;
-
-                    ap.Port.ReadBufferSize = 8000;
-                    ap.Port.WriteBufferSize = 200;
-
-                    ap.Port.ReadTimeout = 500;
-                    ap.Port.ParityReplace = (byte)0;
-                    ap.Port.ReceivedBytesThreshold = 8;
-                    try
-                    {
-                        ap.Port.Open();
-                    }
-                    catch (Exception e)
-
-                    {
-                        warning("Failed To Open " + ap.Port.PortName);
-                        indent++;
-                        ln(e.Message);
-                        indent--;
-                        continue;
-                    }
-                    ln("Opened " + ap.Port.PortName);
-
-                    ap.OnStartUp();
-                    if (ap.Port.IsOpen)
-                    {
-                        ap.Port.DiscardInBuffer();
-                        ap.Port.DiscardOutBuffer();
                     
-                    }*/
                     
                 }
 
@@ -342,40 +282,6 @@ namespace Drax360Service
             return ret;
         }
 
-        // This is the data received event for the serial port
-        /*
-        private void port_datareceived(object sender, SerialDataReceivedEventArgs e)
-        {
-            SerialPort serialPort = (SerialPort)sender;
-
-            // MIKE Chunker should fix this - please test and remove this line if we can
-
-            // My worry with this, is that port_datareceived could be called multiple times
-
-            //System.Threading.Thread.Sleep(1000);
-
-            AbstractPanel spe = null;
-            foreach (AbstractPanel sp in abstractpanels)
-            {
-                if (sp.Port.PortName == serialPort.PortName)
-                {
-                    spe = sp;
-                    break;
-                }
-            }
-            if (spe == null) return;
-
-            int bytestoread = serialPort.BytesToRead;
-            if (bytestoread == 0) return;
-
-            byte[] readbytes = new byte[bytestoread];
-            int numberread = serialPort.Read(readbytes, 0, bytestoread);
-            if (numberread == 0) return;
-
-            spe.Parse(readbytes);
-
-        }*/
-
         private void startpipeserver()
         {
             pipeserversend = new NamedPipeServerStream(kpipenamesend, PipeDirection.InOut, 254, PipeTransmissionMode.Message);
@@ -383,6 +289,7 @@ namespace Drax360Service
         }
         private async void startpipesend()
         {
+           
             while (pipeserversend != null)
             {
                 await pipeserversend.WaitForConnectionAsync();
@@ -396,9 +303,16 @@ namespace Drax360Service
                 byte[] response = Encoding.UTF8.GetBytes(strret);
 
                 //send response to a client
-                pipeserversend.Write(response, 0, response.Length);
-                pipeserversend.Disconnect();
+                try
+                {
+                    pipeserversend.Write(response, 0, response.Length);
+                    pipeserversend.Disconnect();
+                }
+                catch (Exception ex)
+                {
+                    ln("Error sending response: " + ex.Message, EventLogEntryType.Error);
 
+                }
             }
         }
 
@@ -594,6 +508,36 @@ namespace Drax360Service
 
                     break;
 
+                case "SETTINGSGET":
+                    if (partssplit.Length != 2) break;
+                    {
+                        string section = partssplit[0];
+                        string key = partssplit[1];
+
+                        ret = SettingsSingleton.Instance(panel).GetSetting<string>(section, key);
+                    }
+                    break;
+
+                case "SETTINGSGETSECTIONS":
+                    ret = SettingsSingleton.Instance(panel).GetSettingSections();
+                    break;
+                case "SETTINGSSET":
+                    if (partssplit.Length != 3) break;
+                    {
+                        string section = partssplit[0];
+                        string key = partssplit[1];
+                        string value = partssplit[2];
+                        SettingsSingleton.Instance(panel).SetSetting(section, key, value);
+                    }
+                    break;
+
+                case "SETTINGSSAVE":
+                    SettingsSingleton.Instance(panel).SaveSettings();
+                    break;
+
+                case "SERVICERESTART":
+                    init_service();
+                    break;
                 default:
                     throw new Exception("Pipe Message Not Handled " + cmd);
             }
@@ -645,14 +589,20 @@ namespace Drax360Service
         #region public methods
         public void Run(string[] args)
         {
+            this.args = args;
+        
             // singular for now
             panel = ConfigurationManager.AppSettings["Panels"].Trim().ToUpper();
 
             Console.Title = kappname;
-            title("------------------------------------------------");
-            title("----------- " + kappname + " Started -----------");
-            title("------------------------------------------------");
-            this.args = args;
+            string longbar = "".PadRight(48, '-');
+
+            string msg = " " + kappname + " Started ";
+            string shortbar = "".PadRight((longbar.Length - msg.Length) / 2, '-');
+            title(longbar);
+            title(shortbar + msg + shortbar);
+            title(longbar);
+
 
             // determine if we are in a fake mode
             if (args.Length > 0)
@@ -666,17 +616,22 @@ namespace Drax360Service
             }
 
             kvp("Version", Assembly.GetEntryAssembly().GetCustomAttribute<AssemblyFileVersionAttribute>().Version);
-            
-            kvp("Panel",panel);
+
+            kvp("Panel", panel);
             pad();
+
+
             startpipeserver();
+
             pad();
             dumpavailableserialports();
             pad();
 
-            startpipesend();
+            
+                startpipesend();
 
             init_service();    // start the service
+            //SettingsSingleton.Instance("").SaveSettings();
         }
 
        
