@@ -1,21 +1,28 @@
-﻿using System;
+﻿#region usings
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-
+#endregion
 
 namespace Drax360Service
 {
     public sealed class SettingsSingleton
     {
+        #region constants
         private const char ksettingdelim = '_';
         private const char ksettingvaluedelim = '=';
         private const char ksectionstart = '[';
         private const char ksectionend = ']';
+        #endregion
+
+        #region private variables
         private static SettingsSingleton instance = null;
         private Dictionary<string, string> settings = new Dictionary<string, string>();
         private string settingsfile;
+        #endregion
+
+        #region public methods
         public SettingsSingleton(string panelfilename)
         {
             settingsfile = Path.Combine("ini", panelfilename + ".ini");
@@ -24,7 +31,10 @@ namespace Drax360Service
 
         public void SaveSettings()
         {
-            //string settingfiletemp = Path.Combine("ini", "temp" + ".ini");
+            // this is a test mode, so we can write to a temp file
+            bool testmode = false;
+
+            string settingfiletemp = Path.Combine("ini", "temp" + ".ini");
             string section = "";
             string buffer = "";
             foreach (string key in settings.Keys.OrderBy(i => i))
@@ -34,20 +44,26 @@ namespace Drax360Service
                 string workingsection = splits[0];
                 if (workingsection != section)
                 {
-                  
+
                     section = workingsection;
                     string msgsection = ksectionstart + section + ksectionend;
-                    buffer += msgsection+ Environment.NewLine;
-                     Console.WriteLine("Adding section: " + msgsection);
+                    buffer += msgsection + Environment.NewLine;
+                    Console.WriteLine("Adding section: " + msgsection);
 
                 }
 
                 string msgline = splits[1] + ksettingvaluedelim + settings[key];
-                buffer += msgline+ Environment.NewLine;
+                buffer += msgline + Environment.NewLine;
                 Console.WriteLine("\tAdding Line: " + msgline);
             }
-            //File.WriteAllText(settingfiletemp, buffer);
-            File.WriteAllText(settingsfile, buffer);
+            if (testmode)
+            {
+                File.WriteAllText(settingfiletemp, buffer);
+            }
+            else
+            {
+                File.WriteAllText(settingsfile, buffer);
+            }
         }
 
         public void ReLoadSettings()
@@ -82,7 +98,7 @@ namespace Drax360Service
                 }
 
                 string key = makekey(section, linesplit[0]);
-                
+
                 string value = linesplit[1].Trim();
                 if (String.IsNullOrEmpty(value)) { continue; }
                 if (settings.ContainsKey(key))
@@ -96,8 +112,8 @@ namespace Drax360Service
         }
 
 
-        public void SetSetting(string section, string name,object value)
-        { 
+        public void SetSetting(string section, string name, object value)
+        {
             RemoveSetting(section, name);
             string key = makekey(section, name);
             settings.Add(key, value.ToString());
@@ -115,7 +131,7 @@ namespace Drax360Service
 
         public T GetSetting<T>(string section, string name)
         {
-            
+
             string key = makekey(section, name);
             if (settings.ContainsKey(key))
             {
@@ -144,11 +160,6 @@ namespace Drax360Service
 
         }
 
-        private string makekey(string section, string name)
-        {
-            return section.ToUpper() + ksettingdelim + name.Trim().ToUpper();
-        }
-
         public static SettingsSingleton Instance(string panelfilename)
         {
 
@@ -159,12 +170,12 @@ namespace Drax360Service
             return instance;
         }
 
-        internal string GetSettingSections()
+        public string GetSettingSections()
         {
             string ret = "";
             string section = "";
             foreach (string key in settings.Keys.OrderBy(i => i))
-            {   
+            {
                 string[] splits = key.Split(ksettingdelim);
                 if (splits.Length != 2) continue;
                 string workingsection = splits[0];
@@ -177,6 +188,14 @@ namespace Drax360Service
             }
             return ret;
         }
+        #endregion
+
+        #region private methods
+        private string makekey(string section, string name)
+        {
+            return section.ToUpper() + ksettingdelim + name.Trim().ToUpper();
+        }
+
+        #endregion
     }
 }
-
