@@ -521,7 +521,7 @@ namespace Drax360Service
                     if (partssplit.Length != 1) break;
                     {
                         string section = partssplit[0];
-                        ret = SettingsSingleton.Instance(panel).GetSettingsKeyInSection(section);
+                        ret = SettingsSingleton.Instance(panel).GetSettingsKeysInSection(section);
                     }
                     break;
 

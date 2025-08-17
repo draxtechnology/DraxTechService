@@ -142,7 +142,7 @@ namespace Drax360Service
             return default(T);
         }
 
-        public string GetSettingsKeyInSection(string section)
+        public string GetSettingsKeysInSection(string section)
         {
             string ret = "";
             string findsection = section.Trim().ToUpper();
