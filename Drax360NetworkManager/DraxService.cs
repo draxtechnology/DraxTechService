@@ -74,7 +74,9 @@ namespace Drax360Service
         // settings sections
         //const string ksettingsetupsection = "SETUP";
         const string ksettingpanelsection = "PANEL";
-       
+
+        protected SerialPort serialport { get; set; }
+
         #endregion
 
         #region private variables
@@ -476,8 +478,21 @@ namespace Drax360Service
                     }
 
                     break;
+
                 case "GETPANELTYPE":
                     ret = panel;
+                    break;
+
+                case "GETCOMMPORTSTATUS":
+
+                    if (serialport?.IsOpen == true)
+                    {
+                        ret = "Connected";
+                    }
+                    else
+                    {
+                        ret = "Disconnected";
+                    }
                     break;
 
                 case "TEST BOX":
@@ -636,8 +651,7 @@ namespace Drax360Service
             dumpavailableserialports();
             pad();
 
-            
-                startpipesend();
+            startpipesend();
 
             init_service();    // start the service
             //SettingsSingleton.Instance("").SaveSettings();

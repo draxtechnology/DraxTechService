@@ -32,7 +32,7 @@ namespace Drax360Service
         public void SaveSettings()
         {
             // this is a test mode, so we can write to a temp file
-            bool testmode = false;
+            bool testmode = true;
 
             string settingfiletemp = Path.Combine("ini", "temp" + ".ini");
             string section = "";
