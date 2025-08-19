@@ -512,7 +512,6 @@ namespace Drax360Service.Panels
             serialport.DataBits = settingdatabits;
             serialport.StopBits = (StopBits)settingstopbits;
             serialport.Handshake = Handshake.None;
-            //SerialPort.DataReceived += port_datareceived;
             serialport.DataReceived += SerialPort_Datareceived;
             if (serialport.IsOpen)
             {
@@ -840,7 +839,9 @@ namespace Drax360Service.Panels
             const int maxWaitMs = 500;  // how long to wait for remaining bytes
             const int pollDelayMs = 10; // how often to check
 
+            lastDataReceived = DateTime.Now;
             int waited = 0;
+
             while (serialport.BytesToRead < kchunksize && waited < maxWaitMs)
             {
                 System.Threading.Thread.Sleep(pollDelayMs);
@@ -857,7 +858,6 @@ namespace Drax360Service.Panels
             string hex = BitConverter.ToString(readbytes);
             this.NotifyClient("Received: " + hex, false);
             Parse(readbytes);
-
         }
         /*
         // This method is not used in the current code, but it can be useful for converting byte arrays to escaped strings

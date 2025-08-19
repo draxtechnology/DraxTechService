@@ -44,12 +44,10 @@ namespace Drax360Service
                 string workingsection = splits[0];
                 if (workingsection != section)
                 {
-
                     section = workingsection;
                     string msgsection = ksectionstart + section + ksectionend;
                     buffer += msgsection + Environment.NewLine;
                     Console.WriteLine("Adding section: " + msgsection);
-
                 }
 
                 string msgline = splits[1] + ksettingvaluedelim + settings[key];
@@ -93,7 +91,6 @@ namespace Drax360Service
                 string[] linesplit = line.Split(ksettingvaluedelim);
                 if (linesplit.Length != 2)
                 {
-
                     continue;
                 }
 
@@ -103,7 +100,6 @@ namespace Drax360Service
                 if (String.IsNullOrEmpty(value)) { continue; }
                 if (settings.ContainsKey(key))
                 {
-
                     continue;
                 }
 
@@ -157,7 +153,6 @@ namespace Drax360Service
                 ret += splits[1];
             }
             return ret;
-
         }
 
         public static SettingsSingleton Instance(string panelfilename)

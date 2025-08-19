@@ -15,7 +15,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-
+using System.Management;
 
 namespace Drax360Service
 {
@@ -225,6 +225,7 @@ namespace Drax360Service
 
                 abstractpanels.Add(ap);
             }
+            StartDeviceWatcher();
         }
 
         private void Sp_Fire(object sender, EventArgs e)
@@ -484,14 +485,28 @@ namespace Drax360Service
                     break;
 
                 case "GETCOMMPORTSTATUS":
-
-                    if (serialport?.IsOpen == true)
+                    if (partssplit.Length != 1) break;
+                    string identifier = partssplit[0];
+                    DateTime lastSeen = DateTime.MinValue;
+                    AbstractPanel ourabstractpanel = null;
+                    foreach (AbstractPanel ap in abstractpanels)
                     {
-                        ret = "Connected";
+                        if (ap.Identifier == identifier)
+                        {
+                            ourabstractpanel = ap;
+                            lastSeen = ourabstractpanel.lastDataReceived;
+                         
+                            break;
+                        }
                     }
-                    else
+                    if (ourabstractpanel == null) return "ERROR";
+                    ret = ourabstractpanel.SerialPortIsOpen() ? "CONNECTED" : "DISCONNECTED";
+                    if (ret == "CONNECTED")
                     {
-                        ret = "Disconnected";
+                        if (lastSeen > DateTime.MinValue)
+                        {
+                            ret = "Data Last Received: " + lastSeen.ToString();
+                        }
                     }
                     break;
 
@@ -560,6 +575,10 @@ namespace Drax360Service
 
                 case "SERVICERESTART":
                     init_service();
+                    break;
+
+                case "SETTINGSRELOAD":
+                    SettingsSingleton.Instance(panel).ReLoadSettings();
                     break;
 
                 default:
@@ -718,7 +737,32 @@ namespace Drax360Service
             }
             ln("Stopped Service");
         }
-        
+
+        private void StartDeviceWatcher()
+        {
+            var watcher = new ManagementEventWatcher(
+                new WqlEventQuery("SELECT * FROM Win32_DeviceChangeEvent"));
+            watcher.EventArrived += (s, e) =>
+            {
+                Console.WriteLine("Device change detected. Rescanning ports...");
+                RescanPorts();
+            };
+            watcher.Start();
+        }
+
+        private void RescanPorts()
+        {
+            var availablePorts = SerialPort.GetPortNames();
+
+            foreach (AbstractPanel panel in abstractpanels)
+            {
+                //if (!panel.SerialPortIsOpen() && availablePorts.Contains(panel.PortName))
+                if (!panel.SerialPortIsOpen())
+                {
+                    panel.TryReconnect();
+                }
+            }
+        }
         #endregion
 
         #region protected methods

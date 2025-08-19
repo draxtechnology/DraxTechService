@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Ports;
+using System.Linq;
 using System.Runtime;
 using System.Security;
 using System.Text;
@@ -10,7 +11,6 @@ using System.Threading;
 namespace Drax360Service.Panels
 {    internal abstract class AbstractPanel
     {
-
         #region Constants
         protected const byte kHeartbeatInitialDelaySeconds = 60;
         protected const byte kHeartbeatDelaySeconds = 60;
@@ -22,8 +22,7 @@ namespace Drax360Service.Panels
         protected readonly List<byte> buffer = new List<byte>();
         protected Timer heartbeat_timer;
         
-        
-
+ 
         #endregion
 
         #region Properties
@@ -32,6 +31,8 @@ namespace Drax360Service.Panels
         public event EventHandler OutsideEvents;
         public string Identifier { get; private set; }
         public string GetFileName { get; private set; }
+
+        public DateTime lastDataReceived = DateTime.MinValue;
 
         // Abstract properties
 
@@ -114,6 +115,10 @@ namespace Drax360Service.Panels
             Parse(readbytes);
         }
 
+        public Boolean SerialPortIsOpen()
+        {
+            return serialport.IsOpen;
+        }
 
         public T GetSetting<T>(string section, string name)
         {
@@ -165,6 +170,21 @@ namespace Drax360Service.Panels
             CSAMXSingleton.CS.FlushMessages();
         }
 
+        public void TryReconnect()
+        {
+            try
+            {
+                if (!SerialPortIsOpen())
+                {
+                    //serialport.PortName = this.PortName;
+                    serialport.Open();
+                }
+            }
+            catch
+            {
+                // handle/log failure
+            }
+        }
         #endregion
     }
 }
