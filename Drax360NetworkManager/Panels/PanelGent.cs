@@ -54,25 +54,40 @@ namespace Drax360Service.Panels
             // Chunk from rolling buffer
             var chunks = Elements.Chunker(this.buffer.ToArray(), kchunksize);
 
+            bool clean = true;
             foreach (var chunk in chunks)
             {
-                processmessage(chunk);
+                if (!processmessage(chunk))
+                {
+                    clean = false;
+                }
             }
-
-            // Remove only the processed bytes, keep leftovers
-            int processedBytes = chunks.Count * kchunksize;
-            if (processedBytes > 0)
+            if (clean)
             {
-                this.buffer.RemoveRange(0, processedBytes);
+                // Remove only the processed bytes, keep leftovers
+                int processedBytes = chunks.Count * kchunksize;
+                if (processedBytes > 0)
+                {
+                    this.buffer.RemoveRange(0, processedBytes);
+                }
+            }
+            else 
+            {
+                this.buffer.Clear();
             }
         }
         
-        private void processmessage(byte[] chunk)
+        private bool processmessage(byte[] chunk)
         {
             // test checksum
             int piMSB = chunk[chunk.Length - 2];
             int piLSB = chunk[chunk.Length - 1];
-            if (!gentchecksumvalidation(piMSB, piLSB, chunk)) return;
+            int oiMSB, oiLSB;
+            if (!gentchecksumvalidation(piMSB, piLSB, chunk, out oiMSB, out oiLSB))
+            {
+                this.NotifyClient("Checksum Error: " + " piMSB: " + piMSB + " piLSB: " + piLSB + " oiMSB: " + oiMSB + " oiLSB: " + oiLSB, false);
+                return false;
+            }
 
             string sEventCode = "";
             int AddressNumber = 0;
@@ -418,6 +433,7 @@ namespace Drax360Service.Panels
                 evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
                 send_response_amx_and_serial(evnum, "", message2, message3);
             }
+            return true;
         }
 
         private void send_response_amx_and_serial(int evnum, string message1, string message2, string message3 = "")
@@ -435,7 +451,7 @@ namespace Drax360Service.Panels
             string hex = BitConverter.ToString(bytesToLog); // "00-06-00-06"
             this.NotifyClient("ACK Sent: " + hex, false);
         }
-        private bool gentchecksumvalidation(int piMSB, int piLSB, byte[] paryMessage)
+        private bool gentchecksumvalidation(int piMSB, int piLSB, byte[] paryMessage, out int oiMSB, out int oiLSB)
         {
             int iMsgCheckSum = 0;
             for (int i = 0; i < paryMessage.Length - 2; i++)
@@ -445,6 +461,9 @@ namespace Drax360Service.Panels
 
             int iMSB = Convert.ToInt32(iMsgCheckSum / 256);
             int iLSB = iMsgCheckSum % 256;
+
+            oiMSB = iMSB;
+            oiLSB = iLSB;
 
             return piMSB == iMSB && piLSB == iLSB;
         }

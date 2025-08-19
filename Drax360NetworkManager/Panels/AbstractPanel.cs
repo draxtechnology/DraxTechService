@@ -176,7 +176,7 @@ namespace Drax360Service.Panels
             {
                 if (!SerialPortIsOpen())
                 {
-                    //serialport.PortName = this.PortName;
+                    //serialPort.PortName = this.PortName;
                     serialport.Open();
                 }
             }
