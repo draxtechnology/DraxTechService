@@ -196,243 +196,216 @@ namespace Drax360Service.Panels
 
             int evnum = 0;
 
-            if (sMSB == 0)
+            switch (sMSB)
             {
-                switch (sLSB)
-                {
-                    case 0:  // Handshake
-                        if (Convert.ToInt32(sEventParam.Substring(2, 2)) > 0)
-                        {
-                            int giNoOfFaults = Convert.ToInt32(sEventParam.Substring(2, 2));
-                            message2 = giNoOfFaults.ToString() + " Panel(s) in Fault Condition";
+                case 0:
+                    switch (sLSB)
+                    {
+                        case 0:  // Handshake
+                            if (Convert.ToInt32(sEventParam.Substring(2, 2)) > 0)
+                            {
+                                int giNoOfFaults = Convert.ToInt32(sEventParam.Substring(2, 2));
+                                message2 = giNoOfFaults.ToString() + " Panel(s) in Fault Condition";
 
-                            p1 = 15; p2 = 1;
-                            p3 = 0; p4 = 55;
+                                p1 = 15; p2 = 1;
+                                p3 = 0; p4 = 55;
 
-                            evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-                            send_response_amx_and_serial(evnum, "", message2);
-                        }
-                        if (Convert.ToInt32(sEventParam.Substring(4, 2)) > 0)
-                        {
-                            int giNoOfDisable = Convert.ToInt32(sEventParam.Substring(4, 2));
-                            message2 = giNoOfDisable.ToString() + " Panel(s) in Disablement";
+                                evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+                                send_response_amx_and_serial(evnum, "", message2);
+                            }
+                            if (Convert.ToInt32(sEventParam.Substring(4, 2)) > 0)
+                            {
+                                int giNoOfDisable = Convert.ToInt32(sEventParam.Substring(4, 2));
+                                message2 = giNoOfDisable.ToString() + " Panel(s) in Disablement";
 
+                                p1 = 15; p2 = 1;
+                                p3 = 0; p4 = 56;
 
-                            p1 = 15; p2 = 1;
-                            p3 = 0; p4 = 56;
+                                evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+                                send_response_amx_and_serial(evnum, "", message2, message3);
+                            }
+                            break;
 
-                            evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-                            send_response_amx_and_serial(evnum, "", message2, message3);
-                        }
-                        break;
-                    case 1:
-                        message2 = "Reset";
-                        
-                        p1 = 15; p2 = 1;
-                        p3 = 0; p4 = 9;
-
-                        evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-                        send_response_amx_and_serial(evnum, "", message2);
-                        break;
-                    case 2:
-                        message2 = "Faults Cleared";
-                        
-                        p1 = 8; p2 = 1;
-                        p3 = 0; p4 = 21;
-
-                        evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-                        send_response_amx_and_serial(evnum, "", message2);
-                        break;
-                    case 3:
-                        if (sLoopNumber == 0)
-                        {
-                            message2 = "Zone Enable";
-                            p1 = 15;
-                        }
-                        else
-                        {
-                            message2 = "Device Enable";
-                            p1 = 4;
-                        }
-                        
-                        p2 = 1;
-                        p3 = sLoopNumber; p4 = 53;
-
-                        evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, false);
-                        send_response_amx_and_serial(evnum, "", message2);
-                        break;
-                    case 4:
-                        message2 = "Alarms Silenced";
-                        
-                        p1 = 15; p2 = 1;
-                        p3 = 0; p4 = 10;
-
-                        evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-                        send_response_amx_and_serial(evnum, "", message2);
-                        break;
-
-
-                    case 5:
-                        message2 = "Alarms Sounded";
-                        
-                        p1 = 15; p2 = 1;
-                        p3 = 0; p4 = 1;
-
-                        evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-                        send_response_amx_and_serial(evnum, "", message2);
-                        break;
-                    default:
-                        this.NotifyClient("Unknown sMSB: " + " sLSB: " + sLSB, false);
-                        break;
-                }
-            }
-
-            if (sMSB == 1)
-            {
-                if (sLSB == 8)
-                {
-                    message2 = "Cancel Buzzer";
-
-                    p1 = 4; p2 = 1;
-                    p3 = 0; p4 = 1;
-
-                    evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-                    send_response_amx_and_serial(evnum, "", message2);
-                }
-                else
-                {
-                    this.NotifyClient("Unknown sMSB: " + " sLSB: " + sLSB, false);
-                }
-            }
-
-            if (sMSB == 2)
-            {
-                switch (sLSB)
-                {
-                    case 1:
-                        {
-                            message2 = "Supervisory On";
-
-                            p1 = 15; p2 = 1;
-                            p3 = 0; p4 = 12;
-
+                        case 1:
+                            message2 = "Reset";
+                            p1 = 15; p2 = sPanelNumber;
+                            p3 = 0; p4 = 9;
                             evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
                             send_response_amx_and_serial(evnum, "", message2);
                             break;
-                        }
-                    case 2:
-                        {
-                            message2 = "Supervisory off";
 
-                            p1 = 15; p2 = 1;
-                            p3 = 0; p4 = 12;
+                        case 2:
+                            message2 = "Faults Cleared";
+                            p1 = 8; p2 = sPanelNumber;
+                            p3 = 0; p4 = 21;
+                            evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+                            send_response_amx_and_serial(evnum, "", message2);
+                            break;
 
+                        case 3:
+                            if (sLoopNumber == 0)
+                            {
+                                message2 = "Zone Enable";
+                                p1 = 15;
+                            }
+                            else
+                            {
+                                message2 = "Device Enable";
+                                p1 = 4;
+                            }
+                            p2 = sPanelNumber;
+                            p3 = sLoopNumber; p4 = 53;
                             evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, false);
                             send_response_amx_and_serial(evnum, "", message2);
                             break;
-                        }
-                    default:
-                        this.NotifyClient("Unknown sMSB: " + " sLSB: " + sLSB, false);
-                        break;
-                }
-            }
 
-            if (sMSB == 4)
-            {
-                message2 = "System Fault";
-                
-                p1 = 15; p2 = 1;
-                p3 = 0; p4 = 55;
-
-                evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-                send_response_amx_and_serial(evnum, "", message2);
-            }
-
-            if (sMSB == 5)
-            {
-                message2 = "Fault"; // Out Station Loop Fault
-                
-                p1 = 8; p2 = sPanelNumber;
-                p3 = sLoopNumber; p4 = AddressNumber;
-
-                evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-                send_response_amx_and_serial(evnum, "", message2);
-            }
-            if (sMSB == 7)
-            {
-                if (AddressNumber == 0)
-                {
-                    message2 = "Zone Disablement";
-                    p1 = 15;
-
-                    switch (sLoopNumber)
-                    {
-                        case 0:
-                            p4 = 53;
-                            break;
-                        case 1:
-                            p4 = 37;
-                            break;
-                        case 2:
-                            p4 = 38;
-                            break;
-                        case 3:
-                            p4 = 39;
-                            break;
                         case 4:
-                            p4 = 40;
+                            message2 = "Alarms Silenced";
+                            p1 = 15; p2 = sPanelNumber;
+                            p3 = 0; p4 = 10;
+                            evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+                            send_response_amx_and_serial(evnum, "", message2);
                             break;
+
                         case 5:
-                            p4 = 41;
+                            message2 = "Alarms Sounded";
+                            p1 = 15; p2 = sPanelNumber;
+                            p3 = 0; p4 = 1;
+                            evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+                            send_response_amx_and_serial(evnum, "", message2);
                             break;
-                        case 6:
-                            p4 = 42;
-                            break;
-                        case 7:
-                            p4 = 43;
-                            break;
-                        case 8:
-                            p4 = 44;
-                            break;
-                        case 9:
-                            p4 = 45;
-                            break;
-                        case 10:
-                            p4 = 46;
-                            break;
-                        case 11:
-                            p4 = 47;
-                            break;
-                        case 12:
-                            p4 = 48;
-                            break;
-                        case 13:
-                            p4 = 49;
-                            break;
-                        case 14:
-                            p4 = 50;
-                            break;
-                        case 15:
-                            p4 = 51;
-                            break;
-                        case 16:
-                            p4 = 52;
+
+                        default:
+                            this.NotifyClient("Unknown sMSB: " + sMSB + " sLSB: " + sLSB, false);
                             break;
                     }
-                }
-                else
-                {
-                    message2 = "Device Disablement";
-                    p1 = 4;
-                    p4 = AddressNumber;
-                }
+                    break;
 
-                p2 = 1;
-                p3 = sLoopNumber;
+                case 1:
+                    if (sLSB == 8)
+                    {
+                        message2 = "Cancel Buzzer";
+                        p1 = 4; p2 = sPanelNumber;
+                        p3 = 0; p4 = 1;
+                        evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+                        send_response_amx_and_serial(evnum, "", message2);
+                    }
+                    else
+                    {
+                        this.NotifyClient("Unknown sMSB: " + sMSB + " sLSB: " + sLSB, false);
+                    }
+                    break;
 
-                evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-                send_response_amx_and_serial(evnum, "", message2, message3);
+                case 2:
+                    switch (sLSB)
+                    {
+                        case 1:
+                            message2 = "Supervisory On";
+                            p1 = 15; p2 = sPanelNumber;
+                            p3 = 0; p4 = 12;
+                            evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+                            send_response_amx_and_serial(evnum, "", message2);
+                            break;
+
+                        case 2:
+                            message2 = "Supervisory Off";
+                            p1 = 15; p2 = sPanelNumber;
+                            p3 = 0; p4 = 12;
+                            evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, false);
+                            send_response_amx_and_serial(evnum, "", message2);
+                            break;
+
+                        default:
+                            this.NotifyClient("Unknown sMSB: " + sMSB + " sLSB: " + sLSB, false);
+                            break;
+                    }
+                    break;
+
+                case 4:
+                    message2 = "System Fault";
+                    p1 = 15; p2 = sPanelNumber;
+                    p3 = 0; p4 = 55;
+                    evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+                    send_response_amx_and_serial(evnum, "", message2);
+                    break;
+
+                case 5:
+                    message2 = "Fault"; // Out Station Loop Fault
+                    p1 = 8; p2 = sPanelNumber;
+                    p3 = sLoopNumber; p4 = AddressNumber;
+                    evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+                    send_response_amx_and_serial(evnum, "", message2);
+                    break;
+
+                case 7:
+                    if (AddressNumber == 0)
+                    {
+                        message2 = "Zone Disablement";
+                        p1 = 15;
+
+                        switch (sLoopNumber)
+                        {
+                            case 0: p4 = 53; break;
+                            case 1: p4 = 37; break;
+                            case 2: p4 = 38; break;
+                            case 3: p4 = 39; break;
+                            case 4: p4 = 40; break;
+                            case 5: p4 = 41; break;
+                            case 6: p4 = 42; break;
+                            case 7: p4 = 43; break;
+                            case 8: p4 = 44; break;
+                            case 9: p4 = 45; break;
+                            case 10: p4 = 46; break;
+                            case 11: p4 = 47; break;
+                            case 12: p4 = 48; break;
+                            case 13: p4 = 49; break;
+                            case 14: p4 = 50; break;
+                            case 15: p4 = 51; break;
+                            case 16: p4 = 52; break;
+                        }
+                    }
+                    else
+                    {
+                        message2 = "Device Disablement";
+                        p1 = 4;
+                        p4 = AddressNumber;
+                    }
+
+                    p2 = sPanelNumber;
+                    p3 = sLoopNumber;
+                    evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+                    send_response_amx_and_serial(evnum, "", message2, message3);
+                    break;
+
+                case 9:
+                    message2 = "Fire";
+                    p1 = 15; p2 = sPanelNumber;
+                    p3 = sLoopNumber; p4 = 54;
+                    evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+                    send_response_amx_and_serial(evnum, "", message2);
+                    break;
+
+                case 10:
+                    message2 = "Super Fire";
+                    p1 = 15; p2 = sPanelNumber;
+                    p3 = sLoopNumber; p4 = 54;
+                    evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+                    send_response_amx_and_serial(evnum, "", message2);
+                    break;
+
+                case 18:
+                    message2 = "Cancel Buzzer";
+                    p1 = 15; p2 = sPanelNumber;
+                    p3 = sLoopNumber; p4 = 12;
+                    evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+                    send_response_amx_and_serial(evnum, "", message2);
+                    break;
+
+                default:
+                    this.NotifyClient("Unknown sMSB: " + sMSB + " sLSB: " + sLSB, false);
+                    break;
             }
+
             return true;
         }
 
@@ -627,7 +600,7 @@ namespace Drax360Service.Panels
             int sDayWeek = ((int)now.DayOfWeek + 6) % 7 + 1;// Sunday = 1, Monday = 2, etc.
             bool on = true;
  
-            byte[] gbaryDataToTX = new byte[60];
+            byte[] gbaryDataToTX = new byte[59];
 
             string text = action.ToString();
 
@@ -635,13 +608,21 @@ namespace Drax360Service.Panels
             {
                 gbaryDataToTX[i] = 0;
             }
+            if (action == ActionType.kEVACTUATENETWORK)
+            {
+                gbaryDataToTX[0] = 32;
+                text = "Alarms Sounded";
+                inputtype = 15;
+                loop = 0;
+                device = 1;
+                node = 0;
+            }
 
             if (action == ActionType.kEVACTUATE)
             {
                 gbaryDataToTX[0] = 32;
                 text = "Alarms Sounded";
                 inputtype = 15;
-                node = 1;
                 loop = 0;
                 device = 1;
             }
@@ -651,7 +632,6 @@ namespace Drax360Service.Panels
                 gbaryDataToTX[0] = 20;
                 text = "Reset";
                 inputtype = 15;
-                node = 1;
                 loop = 0;
                 device = 9;
             }
@@ -661,7 +641,6 @@ namespace Drax360Service.Panels
                 gbaryDataToTX[0] = 16;
                 text = "Alarms Silenced";
                 inputtype = 15;
-                node = 1;
                 loop = 0;
                 device = 10;
             }
@@ -702,7 +681,6 @@ namespace Drax360Service.Panels
                 gbaryDataToTX[9] = (byte)loop;
                 text = "Zone Disablement";
                 inputtype = 15;
-                node = 1;
 
                 switch (loop)
                 {
@@ -758,7 +736,6 @@ namespace Drax360Service.Panels
                         device = 52;
                         break;
                 }
-  
             }
 
             if (action == ActionType.kENABLEZONE)
@@ -769,7 +746,6 @@ namespace Drax360Service.Panels
                 gbaryDataToTX[9] = (byte)loop;
                 text = "Enable Zone";
                 inputtype = 15;
-                node = 1;
                 on = false;
                 switch (loop)
                 {
