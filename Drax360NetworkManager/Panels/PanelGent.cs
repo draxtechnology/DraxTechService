@@ -830,7 +830,7 @@ namespace Drax360Service.Panels
         }
         public override void SerialPort_Datareceived(object sender, SerialDataReceivedEventArgs e)
         {
-            const int kchunksize = 59; // your fixed packet size
+            const int kchunksize = 59;  // packet size
             const int maxWaitMs = 500;  // how long to wait for remaining bytes
             const int pollDelayMs = 10; // how often to check
 
@@ -850,9 +850,23 @@ namespace Drax360Service.Panels
             int numberread = serialport.Read(readbytes, 0, bytestoread);
             if (numberread == 0) return;
 
-            string hex = BitConverter.ToString(readbytes);
+            // add check for 0606 at the beginning of the message  ??????
+
+            byte[] payload = readbytes;
+
+            if (numberread >= 4 &&
+                readbytes[0] == 0x00 && readbytes[1] == 0x06 &&
+                readbytes[2] == 0x00 && readbytes[3] == 0x06)
+            {
+                payload = new byte[numberread - 4];
+                Array.Copy(readbytes, 4, payload, 0, numberread - 4);
+
+                this.NotifyClient("Stripped 00-06-00-06 from beginning", false);
+            }
+
+            string hex = BitConverter.ToString(payload);
             this.NotifyClient("Received: " + hex, false);
-            Parse(readbytes);
+            Parse(payload);
         }
         /*
         // This method is not used in the current code, but it can be useful for converting byte arrays to escaped strings
