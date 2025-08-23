@@ -8,6 +8,7 @@ using System.IO;
 using System.IO.Pipes;
 using System.IO.Ports;
 using System.Linq;
+using System.Management;
 using System.Net.Sockets;
 using System.Reflection;
 using System.ServiceProcess;
@@ -15,7 +16,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Management;
 
 namespace Drax360Service
 {
@@ -66,11 +66,11 @@ namespace Drax360Service
         const string kpipenamesend = "Drax360PipeSend";
         const string kpipenamereturn = "Drax360PipeReturn";
         const char kpipedelim = '|';
-        const string kappname = "Drax 360 Service";
+        const string kappname = "Drax360 Service";
 
         const int kfaketimertickseconds = 60;
         const int kfakefireinitialwakeseconds = 0;
-
+        const string klogfilefolder = "Log";
         // settings sections
         //const string ksettingsetupsection = "SETUP";
         const string ksettingpanelsection = "PANEL";
@@ -92,6 +92,7 @@ namespace Drax360Service
        
 
         private string panel = "";
+        private string logfilebasefolder="";
 
         private List<AbstractPanel> abstractpanels = new List<AbstractPanel>();
 
@@ -160,9 +161,16 @@ namespace Drax360Service
         {
             filelockmutex.WaitOne();
 
-            string logfile = getpanel().GetFileName + ".log";
+            // changed to new log file path
+            string logdir = Path.Combine(logfilebasefolder, klogfilefolder);
+            if (!Directory.Exists(logdir))
+            {
+                Directory.CreateDirectory(logdir);
+            }
 
-            File.AppendAllText(DateTime.UtcNow.ToString("yyyy-MM-dd-") + logfile, friendlytimestamp() + " " + message + "\r\n");
+            // MIKE CHECK - I've changed this to use local time rather than UTC
+            string workinglogfile = Path.Combine(logdir, DateTime.Now.ToString("yyyy-MM-dd-")+getpanel().GetFileName + ".log");
+            File.AppendAllText(workinglogfile, friendlytimestamp() + " " + message + "\r\n");
 
             filelockmutex.ReleaseMutex();
         }
@@ -268,15 +276,15 @@ namespace Drax360Service
             switch (panel)
             {
                 case "GENT":
-                    ret = new PanelGent(identifier);
+                    ret = new PanelGent(this.logfilebasefolder,identifier);
                     break;
 
                 case "MORLEYMAX":
-                    ret = new PanelMorelyMax(identifier);
+                    ret = new PanelMorelyMax(this.logfilebasefolder, identifier);
                     break;
 
                 case "ADVANCED":
-                    ret = new PanelAdvanced(identifier);
+                    ret = new PanelAdvanced(this.logfilebasefolder, identifier);
                     break;
 
                 default:
@@ -287,8 +295,18 @@ namespace Drax360Service
 
         private void startpipeserver()
         {
-            pipeserversend = new NamedPipeServerStream(kpipenamesend, PipeDirection.InOut, 254, PipeTransmissionMode.Message);
-            ln("Pipe Server Send is Started (" + kpipenamesend + ")");
+            try
+            {
+                pipeserversend = new NamedPipeServerStream(kpipenamesend, PipeDirection.InOut, 254, PipeTransmissionMode.Message);
+                ln("Pipe Server Send is Started (" + kpipenamesend + ")");
+            }
+            catch (Exception ex)
+            {
+                string err = "Error starting Pipe Server.  Check it is not running elsewhere as " + kpipenamesend+" "+ex.Message;
+                // ln(err, EventLogEntryType.Error);
+                throw new Exception(err);
+            }
+
         }
         private async void startpipesend()
         {
@@ -633,36 +651,69 @@ namespace Drax360Service
         public void Run(string[] args)
         {
             this.args = args;
-        
+           
             // singular for now
             panel = ConfigurationManager.AppSettings["Panels"].Trim().ToUpper();
 
-            Console.Title = kappname;
-            string longbar = "".PadRight(48, '-');
+            // New log file path
+            logfilebasefolder = ConfigurationManager.AppSettings["LogFiles"].Trim();
 
+            if (!Directory.Exists(logfilebasefolder))
+            {
+                Directory.CreateDirectory(logfilebasefolder);
+            }
+            firstrun();           
+            if (!Elements.isService)
+            {
+                title("Running In Interactive Mode");
+                Console.Title = kappname;
+            }
+
+            // determine if we are in a fake mode
+            fakemode = Convert.ToInt32(ConfigurationManager.AppSettings["FakeMode"].Trim());
+            if (fakemode > 0)
+            {
+                title("Fake Mode");
+            }
+
+
+            string longbar = "".PadRight(48, '-');
+           
             string msg = " " + kappname + " Started ";
             string shortbar = "".PadRight((longbar.Length - msg.Length) / 2, '-');
             title(longbar);
+            
             title(shortbar + msg + shortbar);
             title(longbar);
 
 
-            // determine if we are in a fake mode
+            
+
             if (args.Length > 0)
             {
                 try
                 {
-                    this.fakemode = Convert.ToInt32(args[0]);
+                    
+                   
                 }
                 catch
                 { }
             }
+            else
+            {
+                EventLogger.WriteToEventLog("No Command Line Args", EventLogEntryType.Warning);
 
-            kvp("Version", Assembly.GetEntryAssembly().GetCustomAttribute<AssemblyFileVersionAttribute>().Version);
+            }
+
+                kvp("Version", Assembly.GetEntryAssembly().GetCustomAttribute<AssemblyFileVersionAttribute>().Version);
 
             kvp("Panel", panel);
             pad();
+            
 
+            // MIKE PLEASE CHECK
+            AMXTransfer amxtransfer = new AMXTransfer();
+            AMXTransfer.Instance.Run(args);
 
             startpipeserver();
 
@@ -674,6 +725,9 @@ namespace Drax360Service
 
             init_service();    // start the service
             //SettingsSingleton.Instance("").SaveSettings();
+
+            CSAMXSingleton.CS.Startup(logfilebasefolder);
+
         }
 
        
@@ -750,6 +804,16 @@ namespace Drax360Service
             watcher.Start();
         }
 
+        private void firstrun()
+        {
+            const string kinifolder = "ini";
+            string inifolder = Path.Combine(this.logfilebasefolder, kinifolder);
+            if (!Directory.Exists(inifolder))
+            {
+                Directory.CreateDirectory(inifolder);
+            }
+        }
+
         private void RescanPorts()
         {
             var availablePorts = SerialPort.GetPortNames();
@@ -768,12 +832,30 @@ namespace Drax360Service
         #region protected methods
         protected override void OnStart(string[] args)
         {
-            Run(args);
+            EventLogger.WriteToEventLog("Service is starting...", EventLogEntryType.Information);
+            try
+            {
+                Run(args);
+            }
+            catch(Exception e)
+            {
+                EventLogger.WriteToEventLog(e.Message, EventLogEntryType.Error);
+                Console.Error.Write(e.Message);
+            }
         }
 
         protected override void OnStop()
         {
-            Stopit();
+            EventLogger.WriteToEventLog("Service is Stopping...", EventLogEntryType.Information);
+            try
+            {
+                Stopit();
+            }
+            catch (Exception e)
+            {
+                EventLogger.WriteToEventLog(e.Message, EventLogEntryType.Error);
+                Console.Error.Write(e.Message);
+            }
         }
         #endregion
     }

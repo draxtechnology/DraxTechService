@@ -10,13 +10,21 @@ namespace Drax360Service
     internal class Elements
     {
 
-        /// <summary>
-        /// Chunk the data in a chunksize elements
-        /// </summary>
-        /// <param name="data"></param>
-        /// <param name="chunksize"></param>
-        /// <returns></returns>
-        public static List<byte[]> Chunker(byte[] data, int chunksize)
+        public static bool isService
+        {
+            get
+            {
+                return Console.IsErrorRedirected;
+            }
+        }
+
+/// <summary>
+/// Chunk the data in a chunksize elements
+/// </summary>
+/// <param name="data"></param>
+/// <param name="chunksize"></param>
+/// <returns></returns>
+public static List<byte[]> Chunker(byte[] data, int chunksize)
         {
             List<byte[]> chunks = new List<byte[]>();
             

@@ -15,6 +15,8 @@ namespace Drax360Service.Panels
         protected const byte kHeartbeatInitialDelaySeconds = 60;
         protected const byte kHeartbeatDelaySeconds = 60;
         protected const string ksettingsetupsection = "SETUP";
+        private const string kinifolder = "ini";
+        
 
         #endregion
 
@@ -31,21 +33,31 @@ namespace Drax360Service.Panels
         public event EventHandler OutsideEvents;
         public string Identifier { get; private set; }
         public string GetFileName { get; private set; }
+        public string FullFilePath { get; private set; }
 
         public DateTime lastDataReceived = DateTime.MinValue;
 
         // Abstract properties
 
         public abstract string FakeString { get; }
+        
         #endregion
 
         #region Constructors
-        public AbstractPanel(string identifier, string inifile)
+        public AbstractPanel(string basesettingsfolder,string identifier, string inifile)
         {
             Identifier = identifier;
+            string inifolder = Path.Combine(basesettingsfolder, kinifolder);
+            if (!Directory.Exists(inifolder))
+            {
+                Directory.CreateDirectory(inifolder);
+            }
+
             this.GetFileName = inifile;
-            
-            
+            this.FullFilePath=Path.Combine(inifolder, inifile);
+
+
+
         }
         #endregion
 
@@ -122,7 +134,7 @@ namespace Drax360Service.Panels
 
         public T GetSetting<T>(string section, string name)
         {
-            return SettingsSingleton.Instance(this.GetFileName).GetSetting<T>(section, name);
+            return SettingsSingleton.Instance(this.FullFilePath).GetSetting<T>(section, name);
         }
 
         #endregion

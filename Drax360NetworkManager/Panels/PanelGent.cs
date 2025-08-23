@@ -38,7 +38,7 @@ namespace Drax360Service.Panels
 
        
 
-        public PanelGent(string identifier) : base(identifier, "GenMan")
+        public PanelGent(string baselogfolder, string identifier) : base(baselogfolder,identifier, "GenMan")
         {
             if (!String.IsNullOrEmpty(identifier))
             {
@@ -46,10 +46,60 @@ namespace Drax360Service.Panels
             }
         }
 
-        public override void Parse(byte[] buffer)
+
+        /*
+        public override void ParseMike(byte[] buffer)
         {
             // Append new data
             this.buffer.AddRange(buffer);
+
+            // Chunk from rolling buffer
+            var chunks = Elements.Chunker(this.buffer.ToArray(), kchunksize);
+
+            bool clean = true;
+            foreach (var chunk in chunks)
+            {
+                if (!processmessage(chunk))
+                {
+                    clean = false;
+                }
+            }
+            if (clean)
+            {
+                // Remove only the processed bytes, keep leftovers
+                int processedBytes = chunks.Count * kchunksize;
+                if (processedBytes > 0)
+                {
+                    this.buffer.RemoveRange(0, processedBytes);
+                }
+            }
+            else
+            {
+                this.buffer.Clear();
+            }
+        }*/
+
+        public override void Parse(byte[] buffer)
+        {
+            if (buffer.Length > 3 &&
+                buffer[0] == 0x00 && buffer[1] == 0x06 &&
+                buffer[2] == 0x00 && buffer[3] == 0x06)
+            {
+                byte[] buffernew = new byte[buffer.Length - 4];
+                Array.Copy(buffernew, 4, buffer, 0, buffer.Length - 4);
+
+    
+
+                this.NotifyClient("Stripped 00-06-00-06 from beginning", false);
+                this.buffer.AddRange(buffernew);
+            }
+            else
+            {
+
+
+                // Append new data
+                this.buffer.AddRange(buffer);
+            }
 
             // Chunk from rolling buffer
             var chunks = Elements.Chunker(this.buffer.ToArray(), kchunksize);
@@ -79,6 +129,10 @@ namespace Drax360Service.Panels
         
         private bool processmessage(byte[] chunk)
         {
+
+            string hex = BitConverter.ToString(chunk);
+            this.NotifyClient("Received: " + hex, false);
+
             // test checksum
             int piMSB = chunk[chunk.Length - 2];
             int piLSB = chunk[chunk.Length - 1];
@@ -828,7 +882,10 @@ namespace Drax360Service.Panels
             serialsend(gbaryDataToTX);
             SendEvent("Gent", type, inputtype, text, on, node, loop, device);
         }
-        public override void SerialPort_Datareceived(object sender, SerialDataReceivedEventArgs e)
+
+
+        /*
+        public override void SerialPort_DatareceivedMike(object sender, SerialDataReceivedEventArgs e)
         {
             const int kchunksize = 59;  // packet size
             const int maxWaitMs = 500;  // how long to wait for remaining bytes
@@ -867,6 +924,33 @@ namespace Drax360Service.Panels
             string hex = BitConverter.ToString(payload);
             this.NotifyClient("Received: " + hex, false);
             Parse(payload);
+        }*/
+
+        public override void SerialPort_Datareceived(object sender, SerialDataReceivedEventArgs e)
+        {
+            const int kchunksize = 59;  // packet size
+            const int maxWaitMs = 500;  // how long to wait for remaining bytes
+            const int pollDelayMs = 10; // how often to check
+
+            lastDataReceived = DateTime.Now;
+            int waited = 0;
+
+            while (serialport.BytesToRead < kchunksize && waited < maxWaitMs)
+            {
+                System.Threading.Thread.Sleep(pollDelayMs);
+                waited += pollDelayMs;
+            }
+
+            int bytestoread = serialport.BytesToRead;
+            if (bytestoread == 0) return;
+
+            byte[] readbytes = new byte[bytestoread];
+            int numberread = serialport.Read(readbytes, 0, bytestoread);
+            if (numberread == 0) return;
+
+            // add check for 0606 at the beginning of the message  ??????
+
+            Parse(readbytes);
         }
         /*
         // This method is not used in the current code, but it can be useful for converting byte arrays to escaped strings

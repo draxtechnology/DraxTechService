@@ -22,13 +22,14 @@ namespace Drax360Service
         /// </summary>
         static async Task Main(string[] args)
         {
-            if (Environment.UserInteractive)
+            // check if running as a service or console app
+            if (!Elements.isService)
             {
                 DraxService service = new DraxService();
                 service.Run(args);
 
-                AMXTransfer amxtransfer = new AMXTransfer();
-                await AMXTransfer.Instance.Run(args);
+                //AMXTransfer amxtransfer = new AMXTransfer();
+                //await AMXTransfer.Instance.Run(args);
 
                 waitcr();
                 service.Stopit();

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.CodeDom.Compiler;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -11,32 +12,39 @@ namespace Drax360Service
         
         private const string kgenextension = "GEN";
         private const int kmaxfilenumber = 1000000;
+        private const string csamxfolder = "Temp";
         #endregion
 
         #region private variables
         private int filenumber = 0;
 
-        private string workingfolder = "";
+        private string logfiles = "";
         private List<NVM> nvms = new List<NVM>();
         #endregion
 
         #region constructor
         public CSAMX()
         {
-            workingfolder = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "Temp");
-            if (!Directory.Exists(workingfolder))
-            {
-                Directory.CreateDirectory(workingfolder);
-            }
+            
 
             // determine starting filenumber
-            determinelastfilenumber();
+           
         }
         
         #endregion
 
         #region public methods
-
+        public void Startup(string logfiles)
+        {
+            this.logfiles = Path.Combine(logfiles, csamxfolder);
+            // check if the temp directory exists   
+            
+            if (!Directory.Exists(this.logfiles))
+            {
+                Directory.CreateDirectory(this.logfiles);
+            }
+            determinelastfilenumber();
+        }
         public int IncrementInputNumber(int inputNumber)
         {
             return (int) (inputNumber + 0x80000000);
@@ -196,7 +204,7 @@ unsigned char *TxFile;
             if (filenumber > kmaxfilenumber) filenumber = 1;
 
             string filename = filenumber.ToString() +"."+ kgenextension;
-            string fullfilename = Path.Combine(workingfolder, filename);
+            string fullfilename = Path.Combine(logfiles, filename);
 
             // Open the file in write mode, changed from append as we need to create a new file on flush
             
@@ -223,7 +231,7 @@ unsigned char *TxFile;
         /// </summary>
         private void determinelastfilenumber()
         {
-            var dirInfo = new DirectoryInfo(workingfolder);
+            var dirInfo = new DirectoryInfo(logfiles);
             var allFiles = dirInfo.GetFiles("*." + kgenextension, SearchOption.TopDirectoryOnly);
             FileInfo lastmodifiedfile = allFiles.OrderBy(fi => fi.LastWriteTime).LastOrDefault();
             if (lastmodifiedfile == null) return;
