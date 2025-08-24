@@ -92,7 +92,7 @@ namespace Drax360Service
        
 
         private string panel = "";
-        private string logfilebasefolder="";
+        private string configurationbasefolder="";
 
         private List<AbstractPanel> abstractpanels = new List<AbstractPanel>();
 
@@ -162,7 +162,7 @@ namespace Drax360Service
             filelockmutex.WaitOne();
 
             // changed to new log file path
-            string logdir = Path.Combine(logfilebasefolder, klogfilefolder);
+            string logdir = Path.Combine(configurationbasefolder, klogfilefolder);
             if (!Directory.Exists(logdir))
             {
                 Directory.CreateDirectory(logdir);
@@ -276,15 +276,15 @@ namespace Drax360Service
             switch (panel)
             {
                 case "GENT":
-                    ret = new PanelGent(this.logfilebasefolder,identifier);
+                    ret = new PanelGent(this.configurationbasefolder,identifier);
                     break;
 
                 case "MORLEYMAX":
-                    ret = new PanelMorelyMax(this.logfilebasefolder, identifier);
+                    ret = new PanelMorelyMax(this.configurationbasefolder, identifier);
                     break;
 
                 case "ADVANCED":
-                    ret = new PanelAdvanced(this.logfilebasefolder, identifier);
+                    ret = new PanelAdvanced(this.configurationbasefolder, identifier);
                     break;
 
                 default:
@@ -651,50 +651,44 @@ namespace Drax360Service
         public void Run(string[] args)
         {
             this.args = args;
-           
+
             // singular for now
             panel = ConfigurationManager.AppSettings["Panels"].Trim().ToUpper();
 
             // New log file path
-            logfilebasefolder = ConfigurationManager.AppSettings["LogFiles"].Trim();
+            configurationbasefolder = ConfigurationManager.AppSettings["Configuration"].Trim();
 
-            if (!Directory.Exists(logfilebasefolder))
+            if (!Directory.Exists(configurationbasefolder))
             {
-                Directory.CreateDirectory(logfilebasefolder);
+                Directory.CreateDirectory(configurationbasefolder);
             }
-            firstrun();           
-            if (!Elements.isService)
-            {
-                title("Running In Interactive Mode");
-                Console.Title = kappname;
-            }
+            if (!firstruncheck()) return;
+
+
 
             // determine if we are in a fake mode
             fakemode = Convert.ToInt32(ConfigurationManager.AppSettings["FakeMode"].Trim());
-            if (fakemode > 0)
-            {
-                title("Fake Mode");
-            }
+
 
 
             string longbar = "".PadRight(48, '-');
-           
+
             string msg = " " + kappname + " Started ";
             string shortbar = "".PadRight((longbar.Length - msg.Length) / 2, '-');
             title(longbar);
-            
+
             title(shortbar + msg + shortbar);
             title(longbar);
 
 
-            
+
 
             if (args.Length > 0)
             {
                 try
                 {
-                    
-                   
+
+
                 }
                 catch
                 { }
@@ -705,11 +699,21 @@ namespace Drax360Service
 
             }
 
-                kvp("Version", Assembly.GetEntryAssembly().GetCustomAttribute<AssemblyFileVersionAttribute>().Version);
-
+            kvp("Version", Assembly.GetEntryAssembly().GetCustomAttribute<AssemblyFileVersionAttribute>().Version);
             kvp("Panel", panel);
+            kvp("Configuration", this.configurationbasefolder);
+            if (!Elements.isService)
+            {
+                title("Interactive Session");
+                Console.Title = kappname;
+            }
+            if (fakemode > 0)
+            {
+                title("Fake Mode");
+            }
+
             pad();
-            
+
 
             // MIKE PLEASE CHECK
             AMXTransfer amxtransfer = new AMXTransfer();
@@ -722,11 +726,12 @@ namespace Drax360Service
             pad();
 
             startpipesend();
+            CSAMXSingleton.CS.Startup(configurationbasefolder);
 
             init_service();    // start the service
-            //SettingsSingleton.Instance("").SaveSettings();
+                               //SettingsSingleton.Instance("").SaveSettings();
 
-            CSAMXSingleton.CS.Startup(logfilebasefolder);
+
 
         }
 
@@ -804,14 +809,21 @@ namespace Drax360Service
             watcher.Start();
         }
 
-        private void firstrun()
+        private bool firstruncheck()
         {
             const string kinifolder = "ini";
-            string inifolder = Path.Combine(this.logfilebasefolder, kinifolder);
+            string inifolder = Path.Combine(this.configurationbasefolder, kinifolder);
             if (!Directory.Exists(inifolder))
             {
                 Directory.CreateDirectory(inifolder);
             }
+            var dirInfo = new DirectoryInfo(inifolder);
+            var allFiles = dirInfo.GetFiles("*." + "ini", SearchOption.TopDirectoryOnly);
+            if (allFiles.Length == 0) {
+                ln("Error No Ini Files Copied into " + inifolder,EventLogEntryType.Error);
+                return false; }
+
+            return true;
         }
 
         private void RescanPorts()
