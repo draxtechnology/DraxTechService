@@ -81,6 +81,7 @@ namespace Drax360Service.Panels
 
         public override void Parse(byte[] buffer)
         {
+            /*
             if (buffer.Length > 3 &&
                 buffer[0] == 0x00 && buffer[1] == 0x06 &&
                 buffer[2] == 0x00 && buffer[3] == 0x06)
@@ -105,6 +106,22 @@ namespace Drax360Service.Panels
                 // Append new data
                 this.buffer.AddRange(buffer);
             }
+            */
+
+            // Strip all leading 00-06-00-06 sequences
+            while (buffer.Length > 3 &&
+                   buffer[0] == 0x00 && buffer[1] == 0x06 &&
+                   buffer[2] == 0x00 && buffer[3] == 0x06)
+            {
+                byte[] bufferNew = new byte[buffer.Length - 4];
+                Array.Copy(buffer, 4, bufferNew, 0, buffer.Length - 4);
+                buffer = bufferNew;
+
+                this.NotifyClient("Stripped 00-06-00-06 from beginning", false);
+            }
+
+            // Always add whatever remains
+            this.buffer.AddRange(buffer);
 
             // Chunk from rolling buffer
             var chunks = Elements.Chunker(this.buffer.ToArray(), kchunksize);

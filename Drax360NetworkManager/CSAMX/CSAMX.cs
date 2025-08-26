@@ -1,6 +1,7 @@
 ﻿using System;
 using System.CodeDom.Compiler;
 using System.Collections.Generic;
+using System.Configuration;
 using System.IO;
 using System.Linq;
 
@@ -223,6 +224,23 @@ unsigned char *TxFile;
                 }
             }
             nvms.Clear();
+
+            int daysOld = 1;
+            var files = Directory.GetFiles(this.logfiles);
+            foreach (var file in files)
+            {
+                try
+                {
+                    DateTime lastWriteTime = File.GetLastWriteTime(file);
+
+                    if (lastWriteTime < DateTime.Now.AddDays(-daysOld))
+                    {
+                        File.Delete(file);
+                    }
+                }
+                catch (Exception ex)
+                {}
+            }
         }
         #endregion
         #region private methods
