@@ -227,15 +227,21 @@ unsigned char *TxFile;
 
             int daysOld = 1;
             var files = Directory.GetFiles(this.logfiles);
+            DateTime previousday = DateTime.Now.AddDays(-daysOld);
             foreach (var file in files)
             {
                 try
                 {
                     DateTime lastWriteTime = File.GetLastWriteTime(file);
 
-                    if (lastWriteTime < DateTime.Now.AddDays(-daysOld))
+                    if (lastWriteTime < previousday)
                     {
-                        File.Delete(file);
+                        try
+                        {
+                            File.Delete(file);
+                        }
+                        catch (Exception ex)
+                        { }
                     }
                 }
                 catch (Exception ex)
