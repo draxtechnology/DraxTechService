@@ -85,18 +85,23 @@ namespace Drax360Service.Panels
                 buffer[0] == 0x00 && buffer[1] == 0x06 &&
                 buffer[2] == 0x00 && buffer[3] == 0x06)
             {
-                byte[] buffernew = new byte[buffer.Length - 4];
-                Array.Copy(buffernew, 4, buffer, 0, buffer.Length - 4);
+                {
+                    // Keep stripping as long as the sequence is at the start
+                    while (buffer.Length > 3 &&
+                           buffer[0] == 0x00 && buffer[1] == 0x06 &&
+                           buffer[2] == 0x00 && buffer[3] == 0x06)
+                    {
+                        byte[] bufferNew = new byte[buffer.Length - 4];
+                        Array.Copy(buffer, 4, bufferNew, 0, buffer.Length - 4);
+                        buffer = bufferNew;
 
-    
-
-                this.NotifyClient("Stripped 00-06-00-06 from beginning", false);
-                this.buffer.AddRange(buffernew);
+                        this.NotifyClient("Stripped 00-06-00-06 from beginning", false);
+                    }
+                    this.buffer.AddRange(buffer);
+                }
             }
             else
             {
-
-
                 // Append new data
                 this.buffer.AddRange(buffer);
             }
@@ -129,7 +134,6 @@ namespace Drax360Service.Panels
         
         private bool processmessage(byte[] chunk)
         {
-
             string hex = BitConverter.ToString(chunk);
             this.NotifyClient("Received: " + hex, false);
 
@@ -140,6 +144,30 @@ namespace Drax360Service.Panels
             if (!gentchecksumvalidation(piMSB, piLSB, chunk, out oiMSB, out oiLSB))
             {
                 this.NotifyClient("Checksum Error: " + " piMSB: " + piMSB + " piLSB: " + piLSB + " oiMSB: " + oiMSB + " oiLSB: " + oiLSB, false);
+
+                string sEventCode1 = "";
+                int sPanelNumber1 = 0;
+                for (int i = 0; i < 11; i++)
+                {
+                    byte b = chunk[i];
+                    int intb = Convert.ToInt32(b);
+                    switch (i)
+                    {
+                        case 0:
+                            sEventCode1 = intb.ToString();
+                            break;
+                        case 1:
+                            sEventCode1 += intb.ToString();
+                            break;
+                        case 10:
+                            sPanelNumber1 = intb;
+                            break;
+                    }
+                }
+                int evnum1 = CSAMXSingleton.CS.MakeInputNumber(sPanelNumber1, 0, 13, 15);
+                string message1 = "Chksum Fail: Evt Code : " + sEventCode1;
+                CSAMXSingleton.CS.SendAlarmToAMX(evnum1, message1, "", "");
+                CSAMXSingleton.CS.FlushMessages();
                 return false;
             }
 
@@ -883,48 +911,6 @@ namespace Drax360Service.Panels
             SendEvent("Gent", type, inputtype, text, on, node, loop, device);
         }
 
-
-        /*
-        public override void SerialPort_DatareceivedMike(object sender, SerialDataReceivedEventArgs e)
-        {
-            const int kchunksize = 59;  // packet size
-            const int maxWaitMs = 500;  // how long to wait for remaining bytes
-            const int pollDelayMs = 10; // how often to check
-
-            lastDataReceived = DateTime.Now;
-            int waited = 0;
-
-            while (serialport.BytesToRead < kchunksize && waited < maxWaitMs)
-            {
-                System.Threading.Thread.Sleep(pollDelayMs);
-                waited += pollDelayMs;
-            }
-
-            int bytestoread = serialport.BytesToRead;
-            if (bytestoread == 0) return;
-
-            byte[] readbytes = new byte[bytestoread];
-            int numberread = serialport.Read(readbytes, 0, bytestoread);
-            if (numberread == 0) return;
-
-            // add check for 0606 at the beginning of the message  ??????
-
-            byte[] payload = readbytes;
-
-            if (numberread >= 4 &&
-                readbytes[0] == 0x00 && readbytes[1] == 0x06 &&
-                readbytes[2] == 0x00 && readbytes[3] == 0x06)
-            {
-                payload = new byte[numberread - 4];
-                Array.Copy(readbytes, 4, payload, 0, numberread - 4);
-
-                this.NotifyClient("Stripped 00-06-00-06 from beginning", false);
-            }
-
-            string hex = BitConverter.ToString(payload);
-            this.NotifyClient("Received: " + hex, false);
-            Parse(payload);
-        }*/
 
         public override void SerialPort_Datareceived(object sender, SerialDataReceivedEventArgs e)
         {
