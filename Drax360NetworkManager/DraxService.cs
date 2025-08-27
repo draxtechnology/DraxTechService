@@ -67,12 +67,11 @@ namespace Drax360Service
         const string kpipenamereturn = "Drax360PipeReturn";
         const char kpipedelim = '|';
         const string kappname = "Drax360 Service";
-
         const int kfaketimertickseconds = 60;
         const int kfakefireinitialwakeseconds = 0;
-        const string klogfilefolder = "Log";
+        const string klogfilefolder = "System";
         // settings sections
-        //const string ksettingsetupsection = "SETUP";
+        const string ksettingsetupsection = "SETUP";
         const string ksettingpanelsection = "PANEL";
 
         protected SerialPort serialport { get; set; }
@@ -90,7 +89,6 @@ namespace Drax360Service
         private System.Timers.Timer _heartbeatTimer;
         private NamedPipeServerStream pipeserversend = null;
        
-
         private string panel = "";
         private string configurationbasefolder="";
 
@@ -98,11 +96,13 @@ namespace Drax360Service
 
         private List<System.Threading.Timer> faketimers = new List<System.Threading.Timer>();
 
-      
         private int indent = 0;
         private string[] args = null;
         private int fakemode = 0;
         private Mutex filelockmutex = new Mutex();
+
+        public bool DebugLog { get; set; }
+
         #endregion
 
         #region private methods
@@ -113,7 +113,6 @@ namespace Drax360Service
             var ukTimeZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
             var ukTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, ukTimeZone);
 
-            //string ret = ukTime.ToString("o", CultureInfo.InvariantCulture);
             string ret = ukTime.ToString("dd-MM-yyyy HH:mm:ss.fff", CultureInfo.InvariantCulture);
 
             return ret + " ";
@@ -121,7 +120,6 @@ namespace Drax360Service
 
         private void ln(string message, EventLogEntryType eventtype = EventLogEntryType.Information)
         {
-
             Console.WriteLine("".PadLeft(indent, '\t') + message);
             Console.ResetColor();
             log(message);
@@ -159,20 +157,22 @@ namespace Drax360Service
 
         private void log(string message, EventLogEntryType eventtype = EventLogEntryType.Information)
         {
-            filelockmutex.WaitOne();
-
-            // changed to new log file path
-            string logdir = Path.Combine(configurationbasefolder, klogfilefolder);
-            if (!Directory.Exists(logdir))
+            if (this.DebugLog == true)
             {
-                Directory.CreateDirectory(logdir);
+                filelockmutex.WaitOne();
+
+                // changed to new log file path
+                string logdir = Path.Combine(configurationbasefolder, klogfilefolder);
+                if (!Directory.Exists(logdir))
+                {
+                    Directory.CreateDirectory(logdir);
+                }
+
+                string workinglogfile = Path.Combine(logdir, DateTime.Now.ToString("yyyy-MM-dd-") + getpanel().GetFileName + ".log");
+                File.AppendAllText(workinglogfile, friendlytimestamp() + " " + message + "\r\n");
+
+                filelockmutex.ReleaseMutex();
             }
-
-            // MIKE CHECK - I've changed this to use local time rather than UTC
-            string workinglogfile = Path.Combine(logdir, DateTime.Now.ToString("yyyy-MM-dd-")+getpanel().GetFileName + ".log");
-            File.AppendAllText(workinglogfile, friendlytimestamp() + " " + message + "\r\n");
-
-            filelockmutex.ReleaseMutex();
         }
 
         private void pad()
@@ -213,7 +213,7 @@ namespace Drax360Service
 
                 string identifier = "COM" + port;
                 AbstractPanel ap = getpanel(identifier);
-                
+                this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DataLogging"));
 
                 ap.StartUp(fakemode);
                 ap.OutsideEvents += Sp_Fire;
@@ -226,10 +226,7 @@ namespace Drax360Service
                     faketimers.Add(new System.Threading.Timer(fake_timer, identifier, kfakefireinitialwakeseconds * 1000, kfaketimertickseconds * 1000));
                 }
                 else
-                {
-                    
-                    
-                }
+                { }
 
                 abstractpanels.Add(ap);
             }
@@ -486,6 +483,7 @@ namespace Drax360Service
                         }
                     }
                     break;
+
                 case "ENABLEZONE":
 
                     if (passedvalues.Length > 0)
@@ -564,7 +562,6 @@ namespace Drax360Service
                     }
                     break;
 
-
                 case "SETTINGSGETKEYSINSECTION":
                     if (partssplit.Length != 1) break;
                     {
@@ -600,6 +597,8 @@ namespace Drax360Service
                     break;
 
                 default:
+
+                    ln("Pipe Message Not Handled " + cmd);
                     throw new Exception("Pipe Message Not Handled " + cmd);
             }
 
@@ -696,7 +695,6 @@ namespace Drax360Service
             else
             {
                 EventLogger.WriteToEventLog("No Command Line Args", EventLogEntryType.Warning);
-
             }
 
             kvp("Version", Assembly.GetEntryAssembly().GetCustomAttribute<AssemblyFileVersionAttribute>().Version);
@@ -714,8 +712,6 @@ namespace Drax360Service
 
             pad();
 
-
-            // MIKE PLEASE CHECK
             AMXTransfer amxtransfer = new AMXTransfer();
             AMXTransfer.Instance.Run(args);
 
@@ -729,9 +725,6 @@ namespace Drax360Service
             CSAMXSingleton.CS.Startup(configurationbasefolder);
 
             init_service();    // start the service
-                               //SettingsSingleton.Instance("").SaveSettings();
-
-
 
         }
 
@@ -755,7 +748,6 @@ namespace Drax360Service
             {
                 result = "Error: " + ex;
             }
-
 
             return result;
         }
@@ -811,7 +803,7 @@ namespace Drax360Service
 
         private bool firstruncheck()
         {
-            const string kinifolder = "ini";
+            const string kinifolder = "";
             string inifolder = Path.Combine(this.configurationbasefolder, kinifolder);
             if (!Directory.Exists(inifolder))
             {

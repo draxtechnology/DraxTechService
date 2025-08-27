@@ -5,7 +5,6 @@ using System.IO.Ports;
 using System.Linq;
 using System.Runtime.InteropServices;
 
-
 namespace Drax360Service.Panels
 {
     internal class PanelGent : AbstractPanel
@@ -43,71 +42,12 @@ namespace Drax360Service.Panels
             if (!String.IsNullOrEmpty(identifier))
             {
                 heartbeat_timer = new System.Threading.Timer(heartbeat_timer_callback, this.Identifier, 500, kheartbeatdelayseconds * 1000);
+                this.Offset = base.GetSetting<int>(ksettingsetupsection, "giAmx1Offset");
             }
         }
 
-
-        /*
-        public override void ParseMike(byte[] buffer)
-        {
-            // Append new data
-            this.buffer.AddRange(buffer);
-
-            // Chunk from rolling buffer
-            var chunks = Elements.Chunker(this.buffer.ToArray(), kchunksize);
-
-            bool clean = true;
-            foreach (var chunk in chunks)
-            {
-                if (!processmessage(chunk))
-                {
-                    clean = false;
-                }
-            }
-            if (clean)
-            {
-                // Remove only the processed bytes, keep leftovers
-                int processedBytes = chunks.Count * kchunksize;
-                if (processedBytes > 0)
-                {
-                    this.buffer.RemoveRange(0, processedBytes);
-                }
-            }
-            else
-            {
-                this.buffer.Clear();
-            }
-        }*/
-
         public override void Parse(byte[] buffer)
         {
-            /*
-            if (buffer.Length > 3 &&
-                buffer[0] == 0x00 && buffer[1] == 0x06 &&
-                buffer[2] == 0x00 && buffer[3] == 0x06)
-            {
-                {
-                    // Keep stripping as long as the sequence is at the start
-                    while (buffer.Length > 3 &&
-                           buffer[0] == 0x00 && buffer[1] == 0x06 &&
-                           buffer[2] == 0x00 && buffer[3] == 0x06)
-                    {
-                        byte[] bufferNew = new byte[buffer.Length - 4];
-                        Array.Copy(buffer, 4, bufferNew, 0, buffer.Length - 4);
-                        buffer = bufferNew;
-
-                        this.NotifyClient("Stripped 00-06-00-06 from beginning", false);
-                    }
-                    this.buffer.AddRange(buffer);
-                }
-            }
-            else
-            {
-                // Append new data
-                this.buffer.AddRange(buffer);
-            }
-            */
-
             // Strip all leading 00-06-00-06 sequences
             while (buffer.Length > 3 &&
                    buffer[0] == 0x00 && buffer[1] == 0x06 &&
@@ -309,6 +249,8 @@ namespace Drax360Service.Panels
                                 p1 = 15; p2 = 1;
                                 p3 = 0; p4 = 55;
 
+                                p2 = p2 + this.Offset;
+                                
                                 evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
                                 send_response_amx_and_serial(evnum, "", message2);
                             }
@@ -320,6 +262,8 @@ namespace Drax360Service.Panels
                                 p1 = 15; p2 = 1;
                                 p3 = 0; p4 = 56;
 
+                                p2 = p2 + this.Offset;
+
                                 evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
                                 send_response_amx_and_serial(evnum, "", message2, message3);
                             }
@@ -329,6 +273,9 @@ namespace Drax360Service.Panels
                             message2 = "Reset";
                             p1 = 15; p2 = sPanelNumber;
                             p3 = 0; p4 = 9;
+
+                            p2 = p2 + this.Offset;
+
                             evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
                             send_response_amx_and_serial(evnum, "", message2);
                             break;
@@ -337,6 +284,9 @@ namespace Drax360Service.Panels
                             message2 = "Faults Cleared";
                             p1 = 8; p2 = sPanelNumber;
                             p3 = 0; p4 = 21;
+
+                            p2 = p2 + this.Offset;
+
                             evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
                             send_response_amx_and_serial(evnum, "", message2);
                             break;
@@ -354,6 +304,9 @@ namespace Drax360Service.Panels
                             }
                             p2 = sPanelNumber;
                             p3 = sLoopNumber; p4 = 53;
+
+                            p2 = p2 + this.Offset;
+
                             evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, false);
                             send_response_amx_and_serial(evnum, "", message2);
                             break;
@@ -362,6 +315,9 @@ namespace Drax360Service.Panels
                             message2 = "Alarms Silenced";
                             p1 = 15; p2 = sPanelNumber;
                             p3 = 0; p4 = 10;
+
+                            p2 = p2 + this.Offset;
+
                             evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
                             send_response_amx_and_serial(evnum, "", message2);
                             break;
@@ -370,6 +326,9 @@ namespace Drax360Service.Panels
                             message2 = "Alarms Sounded";
                             p1 = 15; p2 = sPanelNumber;
                             p3 = 0; p4 = 1;
+
+                            p2 = p2 + this.Offset;
+
                             evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
                             send_response_amx_and_serial(evnum, "", message2);
                             break;
@@ -386,6 +345,9 @@ namespace Drax360Service.Panels
                         message2 = "Cancel Buzzer";
                         p1 = 4; p2 = sPanelNumber;
                         p3 = 0; p4 = 1;
+
+                        p2 = p2 + this.Offset;
+
                         evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
                         send_response_amx_and_serial(evnum, "", message2);
                     }
@@ -402,6 +364,9 @@ namespace Drax360Service.Panels
                             message2 = "Supervisory On";
                             p1 = 15; p2 = sPanelNumber;
                             p3 = 0; p4 = 12;
+
+                            p2 = p2 + this.Offset;
+
                             evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
                             send_response_amx_and_serial(evnum, "", message2);
                             break;
@@ -410,6 +375,9 @@ namespace Drax360Service.Panels
                             message2 = "Supervisory Off";
                             p1 = 15; p2 = sPanelNumber;
                             p3 = 0; p4 = 12;
+
+                            p2 = p2 + this.Offset;
+
                             evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, false);
                             send_response_amx_and_serial(evnum, "", message2);
                             break;
@@ -424,6 +392,9 @@ namespace Drax360Service.Panels
                     message2 = "System Fault";
                     p1 = 15; p2 = sPanelNumber;
                     p3 = 0; p4 = 55;
+
+                    p2 = p2 + this.Offset;
+
                     evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
                     send_response_amx_and_serial(evnum, "", message2);
                     break;
@@ -432,6 +403,9 @@ namespace Drax360Service.Panels
                     message2 = "Fault"; // Out Station Loop Fault
                     p1 = 8; p2 = sPanelNumber;
                     p3 = sLoopNumber; p4 = AddressNumber;
+
+                    p2 = p2 + this.Offset;
+
                     evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
                     send_response_amx_and_serial(evnum, "", message2);
                     break;
@@ -472,6 +446,9 @@ namespace Drax360Service.Panels
 
                     p2 = sPanelNumber;
                     p3 = sLoopNumber;
+
+                    p2 = p2 + this.Offset;
+
                     evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
                     send_response_amx_and_serial(evnum, "", message2, message3);
                     break;
@@ -480,6 +457,9 @@ namespace Drax360Service.Panels
                     message2 = "Fire";
                     p1 = 15; p2 = sPanelNumber;
                     p3 = sLoopNumber; p4 = 54;
+
+                    p2 = p2 + this.Offset;
+
                     evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
                     send_response_amx_and_serial(evnum, "", message2);
                     break;
@@ -488,6 +468,9 @@ namespace Drax360Service.Panels
                     message2 = "Super Fire";
                     p1 = 15; p2 = sPanelNumber;
                     p3 = sLoopNumber; p4 = 54;
+
+                    p2 = p2 + this.Offset;
+
                     evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
                     send_response_amx_and_serial(evnum, "", message2);
                     break;
@@ -496,6 +479,9 @@ namespace Drax360Service.Panels
                     message2 = "Cancel Buzzer";
                     p1 = 15; p2 = sPanelNumber;
                     p3 = sLoopNumber; p4 = 12;
+
+                    p2 = p2 + this.Offset;
+
                     evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
                     send_response_amx_and_serial(evnum, "", message2);
                     break;
@@ -623,9 +609,8 @@ namespace Drax360Service.Panels
                 serialport.Open();
             }
             catch (Exception e)
-
             {
-                base.NotifyClient("Failed To Open " + serialport.PortName, false);
+                base.NotifyClient("Failed To Open " + serialport.PortName + " " + e.ToString(), false);
             }
 
             if (serialport.IsOpen)
@@ -658,7 +643,6 @@ namespace Drax360Service.Panels
         {
             send_message(ActionType.kRESET, NwmData.AlarmToAmx, passedvalues);
         }
-
         public override void DisableDevice(string passedvalues)
         {
             send_message(ActionType.kDISABLEDEVICE, NwmData.IsolationToAmx, passedvalues);
@@ -688,7 +672,6 @@ namespace Drax360Service.Panels
 
             DateTime now = DateTime.Now;
 
-           
             int sHour = now.Hour;
             int sMinute = now.Minute;
             int sSecond = now.Second;
@@ -925,6 +908,8 @@ namespace Drax360Service.Panels
             gbaryDataToTX[58] = (byte)iLSB;
 
             serialsend(gbaryDataToTX);
+
+            node = node + this.Offset;
             SendEvent("Gent", type, inputtype, text, on, node, loop, device);
         }
 

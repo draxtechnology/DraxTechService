@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices.ComTypes;
 using System.Runtime.Remoting.Messaging;
 using System.ServiceProcess;
@@ -27,9 +28,6 @@ namespace Drax360Service
             {
                 DraxService service = new DraxService();
                 service.Run(args);
-
-                //AMXTransfer amxtransfer = new AMXTransfer();
-                //await AMXTransfer.Instance.Run(args);
 
                 waitcr();
                 service.Stopit();

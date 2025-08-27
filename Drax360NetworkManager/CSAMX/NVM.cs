@@ -99,16 +99,9 @@ namespace Drax360Service
 
         }
 
-
-
-
-
         private byte[] rendertimeb()
         {
             long secondsSince1970 = DateTimeOffset.Now.ToUnixTimeSeconds();
-
-
-
 
             return renderlongb(secondsSince1970);
         }

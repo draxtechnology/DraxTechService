@@ -15,9 +15,8 @@ namespace Drax360Service.Panels
         protected const byte kHeartbeatInitialDelaySeconds = 60;
         protected const byte kHeartbeatDelaySeconds = 60;
         protected const string ksettingsetupsection = "SETUP";
-        private const string kinifolder = "ini";
+        private const string kinifolder = "";
         
-
         #endregion
 
         #region private fields
@@ -34,17 +33,18 @@ namespace Drax360Service.Panels
         public string Identifier { get; private set; }
         public string GetFileName { get; private set; }
         public string FullFilePath { get; private set; }
+        public int Offset { get; set; }
 
         public DateTime lastDataReceived = DateTime.MinValue;
 
         // Abstract properties
 
         public abstract string FakeString { get; }
-        
+
         #endregion
 
         #region Constructors
-        public AbstractPanel(string basesettingsfolder,string identifier, string inifile)
+        public AbstractPanel(string basesettingsfolder, string identifier, string inifile)
         {
             Identifier = identifier;
             string inifolder = Path.Combine(basesettingsfolder, kinifolder);
@@ -54,10 +54,7 @@ namespace Drax360Service.Panels
             }
 
             this.GetFileName = inifile;
-            this.FullFilePath=Path.Combine(inifolder, inifile);
-
-
-
+            this.FullFilePath = Path.Combine(inifolder, inifile);
         }
         #endregion
 
@@ -74,9 +71,9 @@ namespace Drax360Service.Panels
         public abstract void DisableZone(string passedValues);
         public abstract void EnableZone(string passedValues);
 
-        public void NotifyClient(string message,bool notifyui)
+        public void NotifyClient(string message, bool notifyui)
         {
-            OutsideEvents?.Invoke(this, new CustomEventArgs(message,notifyui));
+            OutsideEvents?.Invoke(this, new CustomEventArgs(message, notifyui));
         }
 
         public void SendEvent(string panel, NwmData type, int inputtype, string text, bool on, int node = 0, int loop = 0, int device = 0)
@@ -164,9 +161,9 @@ namespace Drax360Service.Panels
        
         private void amxsend(NwmData type, string text, int inputtype, bool on, int node = 0, int loop = 0, int device = 0)
         {
-            int amxoffset = 0; // 0 amxlight
+            //int amxoffset = 0; // 0 amxlight
 
-            int evnum = CSAMXSingleton.CS.MakeInputNumber(node + amxoffset, loop, device, inputtype, on);
+            int evnum = CSAMXSingleton.CS.MakeInputNumber(node, loop, device, inputtype, on);
 
             CSAMXSingleton.CS.WriteData(type, evnum, text, "", "");
             CSAMXSingleton.CS.FlushMessages();
@@ -174,9 +171,9 @@ namespace Drax360Service.Panels
 
         private void amxalarm(string text, int inputtype, bool on, int node = 0, int loop = 0, int device = 0)
         {
-            int amxoffset = 0; // 0 amxlight
-
-            int evnum = CSAMXSingleton.CS.MakeInputNumber(node + amxoffset, loop, device, inputtype, on);
+            //int amxoffset = 0; // 0 amxlight
+            
+            int evnum = CSAMXSingleton.CS.MakeInputNumber(node, loop, device, inputtype, on);
 
             CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", "", text);
             CSAMXSingleton.CS.FlushMessages();
@@ -188,7 +185,6 @@ namespace Drax360Service.Panels
             {
                 if (!SerialPortIsOpen())
                 {
-                    //serialPort.PortName = this.PortName;
                     serialport.Open();
                 }
             }

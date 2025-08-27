@@ -6,7 +6,7 @@ using System.Threading;
 class Program
 {
     static SerialPort serialPort;
-    static string logFile = "c:\\temp\\serial_log.txt";
+    static string SerialTestlogFile = "c:\\temp\\serial_log.txt";
 
     static void Main()
     {
@@ -18,9 +18,9 @@ class Program
         try
         {
             serialPort.Open();
-            Log("Program started, port open: " + serialPort.PortName);
+            SerialTestLog("Program started, port open: " + serialPort.PortName);
 
-            // Send back 0x06 0x06 (change here if you want 00-06-00-06)
+            // Send back 0x06 0x06
             byte[] start = { 0x0, 0x06, 0x0, 0x06 };
             serialPort.Write(start, 0, start.Length);
 
@@ -34,15 +34,15 @@ class Program
 
                     string receivedHex = BitConverter.ToString(buffer);
                     Console.WriteLine(System.DateTime.Now.ToString() + " Received: " + receivedHex);
-                    Log("Received: " + receivedHex);
+                    SerialTestLog("Received: " + receivedHex);
 
-                    // Send back 0x06 0x06 (change here if you want 00-06-00-06)
+                    // Send back 0x06 0x06 
                     byte[] reply = { 0x0, 0x06, 0x0, 0x06 };
                     serialPort.Write(reply, 0, reply.Length);
 
                     string sentHex = BitConverter.ToString(reply);
                     Console.WriteLine(System.DateTime.Now.ToString() + " Sent: " + sentHex);
-                    Log("Sent: " + sentHex);
+                    SerialTestLog("Sent: " + sentHex);
                 }
 
                 Thread.Sleep(500); // Mimics VB6 timer interval
@@ -50,13 +50,13 @@ class Program
         }
         catch (Exception ex)
         {
-            Log("Error: " + ex.Message);
+            SerialTestLog("Error: " + ex.Message);
         }
     }
 
-    private static void Log(string message)
+    private static void SerialTestLog(string message)
     {
         string logEntry = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} - {message}";
-        File.AppendAllText(logFile, logEntry + Environment.NewLine);
+        File.AppendAllText(SerialTestlogFile, logEntry + Environment.NewLine);
     }
 }

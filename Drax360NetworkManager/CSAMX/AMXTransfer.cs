@@ -49,7 +49,7 @@ namespace Drax360Service
                 if (completedTask == timeoutTask)
                 {
                     cancellationTokenSource.Cancel();
-                    Debug.WriteLine("Connection timeout.");
+                    Debug.WriteLine("AMX Connection timeout.");
                     return;
                 }
                 _connected = true;
@@ -80,7 +80,7 @@ namespace Drax360Service
             catch (Exception ex)
             {
                 _connected = false;
-                Debug.WriteLine("Connection failed: " + ex.Message);
+                Debug.WriteLine("AMX Connection failed: " + ex.Message);
             }
         }
         private void StartHeartbeatTimer()
@@ -130,7 +130,7 @@ namespace Drax360Service
 
                 if (!_connected && attempt < maxAttempts)
                 {
-                    Debug.WriteLine($"Not connected unable to sennd");
+                    Debug.WriteLine($"Not connected unable to send");
                 }
             }
 

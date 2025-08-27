@@ -52,6 +52,7 @@ namespace Drax360Service
         }
         public int MakeInputNumber(int node, int loop, int inputn, int inputtype, bool on = true)
         {
+
             int no = inputn + (loop * 0x100) + (node * 0x10000) + (inputtype * 0x8000000);
             if (on)
             {
@@ -115,11 +116,6 @@ unsigned char *TxFile;
 	res += SendEventToAMX1(TxFile, &NwmCmd);	// Now send it
 	return res;
 }
-
-          
-         */
-
-        /*
          
         DllExport __int16  WINAPI SendAlarmToAMX1(AlarmType, EventNumber, LongTime, iPar, Dtext, Dtext2, Dtext3, TxFile)
 __int16 AlarmType;
@@ -224,27 +220,18 @@ unsigned char *TxFile;
                 }
             }
             nvms.Clear();
-
-            int daysOld = 1;
-            var files = Directory.GetFiles(this.logfiles);
-            DateTime previousday = DateTime.Now.AddDays(-daysOld);
+            //File.Delete(fullfilename);  // If I delete the file straight away then nothing appears on AMX
+            var files = Directory.GetFiles(this.logfiles, "*." + kgenextension);
             foreach (var file in files)
             {
                 try
                 {
-                    DateTime lastWriteTime = File.GetLastWriteTime(file);
-
-                    if (lastWriteTime < previousday)
+                    if (!file.Equals(fullfilename, StringComparison.OrdinalIgnoreCase))
                     {
-                        try
-                        {
-                            File.Delete(file);
-                        }
-                        catch (Exception ex)
-                        { }
+                        File.Delete(file);
                     }
                 }
-                catch (Exception ex)
+                catch
                 {}
             }
         }
