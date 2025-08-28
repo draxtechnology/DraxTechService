@@ -3,12 +3,14 @@ using System.Collections.Generic;
 using System.IO.Ports;
 using System.Linq;
 using System.Runtime.ConstrainedExecution;
+using System.Runtime.Remoting.Messaging;
 using System.Security.Cryptography;
 using System.Security.Policy;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace Drax360Service.Panels
 {
@@ -258,12 +260,13 @@ namespace Drax360Service.Panels
             }
 
         }
-        
 
-    
-
-
-
+        int p1 = 0;
+        int p2 = 0;
+        int p3 = 0;
+        int p4 = 0;
+        int evnum = 0;
+        string message2 = "";
 
         public override void Evacuate(string passedvalues)
         {
@@ -271,7 +274,17 @@ namespace Drax360Service.Panels
 
             Byte[] evacnew = DefineControl(evac);
 
-           // Byte[] evactest = new Byte[] { kAdvancedStart, 128, 0, 0, 4, 61, 7, 1, 0, 0, 0, 0, 240, 225, 100, kAdvanedEnd };  VB6 Example Send String
+            // Byte[] evactest = new Byte[] { kAdvancedStart, 128, 0, 0, 4, 61, 7, 1, 0, 0, 0, 0, 240, 225, 100, kAdvanedEnd };  VB6 Example Send String
+
+
+            p1 = 15; p2 = 1;
+            p3 = 0; p4 = 55;
+
+            p2 = p2 + this.Offset;
+            message2 = "Alarms Sounded";
+
+            evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+            send_response_amx_and_serial(evnum, "", message2);
 
             serialsend(evacnew);
         }
@@ -344,6 +357,7 @@ namespace Drax360Service.Panels
 
             serialsend(enabledevicenew);
         }
+
         public override void DisableZone(string passedvalues)
         {
             string[] parts = passedvalues.Split(',');
@@ -363,6 +377,13 @@ namespace Drax360Service.Panels
             Byte[] disablezonenew = DefineControl(disablezone);
 
             serialsend(disablezonenew);
+
+            int inputtype = 15;
+            string text = "Zone Disablement";
+            bool on = true;
+
+            node = node + this.Offset;
+            SendEvent("Advanced", NwmData.IsolationToAmx, inputtype, text, on, node, loop, device);
         }
         public override void EnableZone(string passedvalues)
         {
@@ -504,6 +525,18 @@ namespace Drax360Service.Panels
             }
 
             return result.ToArray();
+        }
+
+        private void send_response_amx_and_serial(int evnum, string message1, string message2, string message3 = "")
+        {
+            string friendlymessage = message2 + (message3.Length > 0 ? (" " + message3) : "");
+
+            // Signal the event back to the main service, so that it can be logged
+            this.NotifyClient(friendlymessage, false);
+
+            CSAMXSingleton.CS.SendAlarmToAMX(evnum, message1, message2, message3);
+            CSAMXSingleton.CS.FlushMessages();
+
         }
     }
 }

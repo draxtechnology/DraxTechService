@@ -619,7 +619,6 @@ namespace Drax360Service.Panels
                 serialport.DiscardOutBuffer();
             }
         }
-
         public override void Evacuate(string passedvalues)
         {
             send_message(ActionType.kEVACTUATE, NwmData.AlarmToAmx, passedvalues);
@@ -678,7 +677,7 @@ namespace Drax360Service.Panels
 
             int sYear = int.Parse(now.ToString("yy"));   // Two-digit year
             int sMonth = int.Parse(now.ToString("MM"));  // Two-digit month
-            int sDay = int.Parse(now.ToString("dd"));   // Two-digit day
+            int sDay = int.Parse(now.ToString("dd"));    // Two-digit day
             int sDayWeek = ((int)now.DayOfWeek + 6) % 7 + 1;// Sunday = 1, Monday = 2, etc.
             bool on = true;
  

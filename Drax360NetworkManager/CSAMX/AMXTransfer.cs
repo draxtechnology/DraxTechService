@@ -14,6 +14,8 @@ namespace Drax360Service
 {
     internal class AMXTransfer
     {
+        public event EventHandler OutsideEvents;
+
         private int _port = 3090;
         private string _address = "localhost";
         private TcpClient _tcpClient;
@@ -49,7 +51,7 @@ namespace Drax360Service
                 if (completedTask == timeoutTask)
                 {
                     cancellationTokenSource.Cancel();
-                    Debug.WriteLine("AMX Connection timeout.");
+                    NotifyClient("AMX Connection timeout");
                     return;
                 }
                 _connected = true;
@@ -68,6 +70,7 @@ namespace Drax360Service
                 isMessageReceive += msg =>
                 {
                     Console.WriteLine("Received From AMX: " + msg);
+                    NotifyClient("Received From AMX: " + msg);
                     if (msg.StartsWith("NWM:") || msg.StartsWith("GEN:"))
                     {
                         DraxService drax = new DraxService();
@@ -80,8 +83,13 @@ namespace Drax360Service
             catch (Exception ex)
             {
                 _connected = false;
-                Debug.WriteLine("AMX Connection failed: " + ex.Message);
+                NotifyClient("AMX Connection failed: " + ex.Message);
             }
+        }
+
+        public void NotifyClient(string message)
+        {
+            OutsideEvents?.Invoke(this, new CustomEventArgs(message, false));
         }
         private void StartHeartbeatTimer()
         {
@@ -118,23 +126,22 @@ namespace Drax360Service
                         }
                         else
                         {
-                            Debug.WriteLine("Stream is not writable.");
+                            NotifyClient("Stream is not writable.");
                         }
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"Send attempt {attempt} failed: {ex.Message}");
+                        NotifyClient($"Send attempt {attempt} failed: {ex.Message}");
                         _connected = false;
                     }
                 }
 
                 if (!_connected && attempt < maxAttempts)
                 {
-                    Debug.WriteLine($"Not connected unable to send");
+                    NotifyClient($"Not connected unable to send");
                 }
             }
-
-            Debug.WriteLine("SendMessage failed after 3 attempts.");
+            NotifyClient("SendMessage failed after 3 attempts.");
         }
 
         public async Task ReceiveDataAsync()

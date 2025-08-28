@@ -30,6 +30,7 @@ namespace Drax360Service.Panels
         protected SerialPort serialport { get; set; }
         public event EventHandler Fire;
         public event EventHandler OutsideEvents;
+
         public string Identifier { get; private set; }
         public string GetFileName { get; private set; }
         public string FullFilePath { get; private set; }

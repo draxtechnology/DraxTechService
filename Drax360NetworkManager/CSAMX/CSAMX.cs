@@ -10,7 +10,9 @@ namespace Drax360Service
     public class CSAMX
     {
         #region constants
-        
+
+        public event EventHandler OutsideEvents;
+
         private const string kgenextension = "GEN";
         private const int kmaxfilenumber = 1000000;
         private const string csamxfolder = "Temp";
@@ -38,14 +40,21 @@ namespace Drax360Service
         public void Startup(string logfiles)
         {
             this.logfiles = Path.Combine(logfiles, csamxfolder);
+            AMXTransfer.Instance.OutsideEvents += Instance_OutsideEvents;
             // check if the temp directory exists   
-            
+
             if (!Directory.Exists(this.logfiles))
             {
                 Directory.CreateDirectory(this.logfiles);
             }
             determinelastfilenumber();
         }
+
+        private void Instance_OutsideEvents(object sender, EventArgs e)
+        {
+            OutsideEvents?.Invoke(this, e);
+        }
+
         public int IncrementInputNumber(int inputNumber)
         {
             return (int) (inputNumber + 0x80000000);

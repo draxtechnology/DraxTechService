@@ -154,7 +154,6 @@ namespace Drax360Service
             indent--;
         }
 
-
         private void log(string message, EventLogEntryType eventtype = EventLogEntryType.Information)
         {
             if (this.DebugLog == true)
@@ -213,7 +212,6 @@ namespace Drax360Service
 
                 string identifier = "COM" + port;
                 AbstractPanel ap = getpanel(identifier);
-                this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DataLogging"));
 
                 ap.StartUp(fakemode);
                 ap.OutsideEvents += Sp_Fire;
@@ -244,6 +242,15 @@ namespace Drax360Service
                 sendreturncmd(msg);
             }
         }
+
+        private void Sp_Log(object sender, EventArgs e)
+        {
+            CustomEventArgs ex = e as CustomEventArgs;
+            string msg = ex.Message.ToString();
+            ln(msg);
+
+        }
+
         private void fake_timer(object sender)
         {
             string identifier = sender.ToString();
@@ -712,7 +719,11 @@ namespace Drax360Service
 
             pad();
 
+            AbstractPanel apbase = getpanel();
+            this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DataLogging"));
+
             AMXTransfer amxtransfer = new AMXTransfer();
+            amxtransfer.OutsideEvents += Sp_Log;
             AMXTransfer.Instance.Run(args);
 
             startpipeserver();
@@ -723,18 +734,16 @@ namespace Drax360Service
 
             startpipesend();
             CSAMXSingleton.CS.Startup(configurationbasefolder);
+            CSAMXSingleton.CS.OutsideEvents += Sp_Log;
 
             init_service();    // start the service
-
         }
-
        
         public string sendreturncmd(string cmd, string parameters = "")
         {
             string strcmd = cmd;
             if (!string.IsNullOrEmpty(parameters))
             {
-
                 strcmd += kpipedelim + parameters;
             }
 
@@ -824,7 +833,6 @@ namespace Drax360Service
 
             foreach (AbstractPanel panel in abstractpanels)
             {
-                //if (!panel.SerialPortIsOpen() && availablePorts.Contains(panel.PortName))
                 if (!panel.SerialPortIsOpen())
                 {
                     panel.TryReconnect();
