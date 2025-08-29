@@ -218,7 +218,6 @@ namespace Drax360Service.Panels
                 sMSB = Convert.ToInt32(sEventCode.Substring(0, 2));
                 sLSB = Convert.ToInt32(sEventCode.Substring(2, 1));
             }
-
             else
             {
                 sMSB = Convert.ToInt32(sEventCode.Substring(0, 1));
@@ -231,7 +230,6 @@ namespace Drax360Service.Panels
             int p4 = AddressNumber;
             string message2 = "";
             string message3 = "";
-
 
             int evnum = 0;
 

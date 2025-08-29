@@ -10,6 +10,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using static System.Collections.Specialized.BitVector32;
 using static System.Net.Mime.MediaTypeNames;
 
 namespace Drax360Service.Panels
@@ -88,7 +89,6 @@ namespace Drax360Service.Panels
             }
         }
         public override void Parse(byte[] buffer)
-
         {
             base.Parse(buffer);
             int foundat = -1;
@@ -129,9 +129,16 @@ namespace Drax360Service.Panels
             // send acknowledge
 
             Byte[] stracknoledge = new Byte[] { kAdvancedStart, 1, 0, packetsequece, 1, kAdvanedEnd };
-            //string stracknoledge = (Convert.ToChar(1).ToString() + Convert.ToChar(0).ToString() + Convert.ToChar(packetsequece).ToString() + Convert.ToChar(1).ToString());
-            //FireFire("FIRE FIRE");
             serialsend(stracknoledge);
+
+            string result = BitConverter.ToString(stracknoledge);
+            this.NotifyClient("Sent " + result, false);
+
+            int inputtype = 15;
+            int evnum1 = CSAMXSingleton.CS.MakeInputNumber(node, loopnumber, deviceaddress, inputtype);
+            string message1 = devicetext;
+            CSAMXSingleton.CS.SendAlarmToAMX(evnum1, message1, "", "");
+            CSAMXSingleton.CS.FlushMessages();
         }
 
         public static string GetAdvancedDeviceType(int deviceType)
@@ -276,17 +283,16 @@ namespace Drax360Service.Panels
 
             // Byte[] evactest = new Byte[] { kAdvancedStart, 128, 0, 0, 4, 61, 7, 1, 0, 0, 0, 0, 240, 225, 100, kAdvanedEnd };  VB6 Example Send String
 
+            serialsend(evacnew);
 
             p1 = 15; p2 = 1;
-            p3 = 0; p4 = 55;
+            p3 = 0; p4 = 70;
 
             p2 = p2 + this.Offset;
-            message2 = "Alarms Sounded";
+            message2 = "Evacuate";
 
             evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
             send_response_amx_and_serial(evnum, "", message2);
-
-            serialsend(evacnew);
         }
         public override void EvacuateNetwork(string passedvalues)
         {
@@ -299,6 +305,15 @@ namespace Drax360Service.Panels
             Byte[] silencenew = DefineControl(silence);
 
             serialsend(silencenew);
+
+            p1 = 15; p2 = 1;
+            p3 = 0; p4 = 70;
+
+            p2 = p2 + this.Offset;
+            message2 = "Alarms Silenced";
+
+            evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+            send_response_amx_and_serial(evnum, "", message2);
         }
 
         public override void Alert(string passedvalues)
@@ -308,6 +323,15 @@ namespace Drax360Service.Panels
             Byte[] alertnew = DefineControl(alert);
 
             serialsend(alertnew);
+
+            p1 = 15; p2 = 1;
+            p3 = 0; p4 = 70;
+
+            p2 = p2 + this.Offset;
+            message2 = "Alert";
+
+            evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+            send_response_amx_and_serial(evnum, "", message2);
         }
 
         public override void MuteBuzzers(string passedvalues)
@@ -322,6 +346,15 @@ namespace Drax360Service.Panels
             Byte[] resetnew = DefineControl(reset);
 
             serialsend(resetnew);
+
+            p1 = 15; p2 = 1;
+            p3 = 0; p4 = 70;
+
+            p2 = p2 + this.Offset;
+            message2 = "Alarms Reset";
+
+            evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+            send_response_amx_and_serial(evnum, "", message2);
         }
         public override void DisableDevice(string passedvalues)
         {
@@ -339,6 +372,14 @@ namespace Drax360Service.Panels
             Byte[] disiceabledevnew = DefineControl(disiceabledev);
 
             serialsend(disiceabledevnew);
+
+            int inputtype = 4;
+            string text = "";
+            bool on = true;
+
+            node = node + this.Offset;
+            SendEvent("Advanced", NwmData.IsolationToAmx, inputtype, text, on, node, loop, device);
+
         }
         public override void EnableDevice(string passedvalues)
         {
@@ -356,6 +397,13 @@ namespace Drax360Service.Panels
             Byte[] enabledevicenew = DefineControl(enabledevice);
 
             serialsend(enabledevicenew);
+
+            int inputtype = 4;
+            string text = "";
+            bool on = false;
+
+            node = node + this.Offset;
+            SendEvent("Advanced", NwmData.IsolationToAmx, inputtype, text, on, node, loop, device);
         }
 
         public override void DisableZone(string passedvalues)
@@ -379,7 +427,7 @@ namespace Drax360Service.Panels
             serialsend(disablezonenew);
 
             int inputtype = 15;
-            string text = "Zone Disablement";
+            string text = "";
             bool on = true;
 
             node = node + this.Offset;
@@ -404,6 +452,13 @@ namespace Drax360Service.Panels
             Byte[] enablezonenew = DefineControl(enablezone);
 
             serialsend(enablezonenew);
+
+            int inputtype = 15;
+            string text = "";
+            bool on = false;
+
+            node = node + this.Offset;
+            SendEvent("Advanced", NwmData.IsolationToAmx, inputtype, text, on, node, loop, device);
         }
 
         public byte[] DefineControl(byte[] evac)

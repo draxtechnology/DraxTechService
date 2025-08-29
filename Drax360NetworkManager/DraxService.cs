@@ -73,6 +73,7 @@ namespace Drax360Service
         // settings sections
         const string ksettingsetupsection = "SETUP";
         const string ksettingpanelsection = "PANEL";
+        const string ksettingmainsection = "MAIN";
 
         protected SerialPort serialport { get; set; }
 
@@ -656,6 +657,7 @@ namespace Drax360Service
         #region public methods
         public void Run(string[] args)
         {
+            this.DebugLog = true;
             this.args = args;
 
             // singular for now
@@ -720,8 +722,18 @@ namespace Drax360Service
             pad();
 
             AbstractPanel apbase = getpanel();
-            this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DataLogging"));
-
+            switch (panel)
+            {
+                case "GENT":
+                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DataLogging"));
+                    break;
+                case "ADVANCED":
+                    this.DebugLog = apbase.GetSetting<bool>(ksettingmainsection, "DesignTime");
+                    break;
+                default:
+                    this.DebugLog = true;
+                    break;
+            }
             AMXTransfer amxtransfer = new AMXTransfer();
             amxtransfer.OutsideEvents += Sp_Log;
             AMXTransfer.Instance.Run(args);
