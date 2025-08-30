@@ -111,6 +111,59 @@ namespace Drax360Service.Panels
             if (ourmessage[1] == 128 & ourmessage[2] == 0 & ourmessage[3] == 0 & ourmessage[4] == 0 & ourmessage[5] == 1) return;
             string cmd = strmsg.Substring(1, 2);
 
+            /* From VB6 Example
+               Public Type DLLDATA     'Array of longs passed to and from DLLs
+                Dat(0 To 32) As Long
+                End Type
+             */
+
+            /*
+              Declare Function GetNWMData Lib "Gen_Netman.dll" Alias "_GetNWMData@24" (ByVal FileName As String, ByVal Index As Integer, LongArray As DLLDATA, ByVal DestString As String, ByVal ExText As String, ByVal ExText2 As String) As Integer
+
+            */
+
+            /*
+            From VB6 Example
+            sPanelNumber = CStr(GetNode(DLL.Dat(9)))
+            
+            Then calling the function to get the node number
+            From C Network Manager
+
+            DllExport __int16 WINAPI GetNode(ipnum)
+                long ipnum;
+            {
+	            return get_board_address(ipnum);
+            }
+              __int16  get_board_address(ip)
+            long ip;
+            {
+    	        return((__int16)((ip & 0x07ff0000)/0x10000));
+               }
+             */
+
+
+
+
+            /*  From VB6 Example
+                    iInputType = CInt(GetInputType(DLL.Dat(9)))
+             
+            
+            DllExport __int16 WINAPI GetInputType(ipnum)
+                long ipnum;
+               {
+	            return get_input_type(ipnum);
+                }
+
+            __int16  get_input_type(ip)
+                long ip;
+            {
+	            return((__int16)((ip & 0x78000000)/0x8000000)); 	// based on offset of 2^25
+            }
+
+             */
+
+
+            int inputtype = (int)(ourmessage[6]); 
             int node = (int)ourmessage[7];
             int loopnumber = (int)ourmessage[8];
             int deviceaddress = (int)ourmessage[9];
@@ -134,12 +187,26 @@ namespace Drax360Service.Panels
             string result = BitConverter.ToString(stracknoledge);
             this.NotifyClient("Sent " + result, false);
 
-            int inputtype = 15;
+            
             int evnum1 = CSAMXSingleton.CS.MakeInputNumber(node, loopnumber, deviceaddress, inputtype);
             string message1 = devicetext;
             CSAMXSingleton.CS.SendAlarmToAMX(evnum1, message1, "", "");
             CSAMXSingleton.CS.FlushMessages();
         }
+
+        // Conversion of C functions, for futre reference
+        /*
+        private int get_input_type(int ip)
+        {
+            return (ip & 0x78000000) / 0x8000000;   // based on offset of 2^25
+        }
+
+        private int get_board_address(int ip)
+        {
+            return (ip & 0x07ff0000) / 0x10000;
+
+        }*/
+
 
         public static string GetAdvancedDeviceType(int deviceType)
         {
