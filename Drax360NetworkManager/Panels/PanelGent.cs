@@ -37,7 +37,7 @@ namespace Drax360Service.Panels
 
        
 
-        public PanelGent(string baselogfolder, string identifier) : base(baselogfolder,identifier, "GenMan")
+        public PanelGent(string baselogfolder, string identifier) : base(baselogfolder,identifier, "GenMan","GEN")
         {
             if (!String.IsNullOrEmpty(identifier))
             {

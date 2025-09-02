@@ -12,7 +12,7 @@ namespace Drax360Service
 
         public event EventHandler OutsideEvents;
 
-        private const string kgenextension = "GEN";
+        //private const string kgenextension = "GEN";
         private const int kmaxfilenumber = 1000000;
         private const string csamxfolder = "Temp";
         #endregion
@@ -21,6 +21,7 @@ namespace Drax360Service
         private int filenumber = 0;
 
         private string logfiles = "";
+        private string extension = "";
         private List<NVM> nvms = new List<NVM>();
         #endregion
 
@@ -36,8 +37,9 @@ namespace Drax360Service
         #endregion
 
         #region public methods
-        public void Startup(string logfiles)
+        public void Startup(string logfiles,string extension)
         {
+            this.extension = extension;
             this.logfiles = Path.Combine(logfiles, csamxfolder);
             AMXTransfer.Instance.OutsideEvents += Instance_OutsideEvents;
             // check if the temp directory exists   
@@ -288,7 +290,7 @@ unsigned char *TxFile;
             filenumber++;
             if (filenumber > kmaxfilenumber) filenumber = 1;
 
-            string filename = filenumber.ToString() +"."+ kgenextension;
+            string filename = filenumber.ToString() +"."+ extension;
             string fullfilename = Path.Combine(logfiles, filename);
 
             // Open the file in write mode, changed from append as we need to create a new file on flush
@@ -309,7 +311,7 @@ unsigned char *TxFile;
             }
             nvms.Clear();
             //File.Delete(fullfilename);  // If I delete the file straight away then nothing appears on AMX
-            var files = Directory.GetFiles(this.logfiles, "*." + kgenextension);
+            var files = Directory.GetFiles(this.logfiles, "*." + extension);
             foreach (var file in files)
             {
                 try
@@ -331,7 +333,7 @@ unsigned char *TxFile;
         private void determinelastfilenumber()
         {
             var dirInfo = new DirectoryInfo(logfiles);
-            var allFiles = dirInfo.GetFiles("*." + kgenextension, SearchOption.TopDirectoryOnly);
+            var allFiles = dirInfo.GetFiles("*." + extension, SearchOption.TopDirectoryOnly);
             FileInfo lastmodifiedfile = allFiles.OrderBy(fi => fi.LastWriteTime).LastOrDefault();
             if (lastmodifiedfile == null) return;
 

@@ -745,7 +745,7 @@ namespace Drax360Service
             pad();
 
             startpipesend();
-            CSAMXSingleton.CS.Startup(configurationbasefolder);
+            CSAMXSingleton.CS.Startup(configurationbasefolder, apbase.Extension);
             CSAMXSingleton.CS.OutsideEvents += Sp_Log;
 
             init_service();    // start the service

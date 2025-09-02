@@ -22,8 +22,9 @@ namespace Drax360Service.Panels
         #region private fields
         protected readonly List<byte> buffer = new List<byte>();
         protected Timer heartbeat_timer;
-        
- 
+        public string Extension;
+
+
         #endregion
 
         #region Properties
@@ -45,7 +46,7 @@ namespace Drax360Service.Panels
         #endregion
 
         #region Constructors
-        public AbstractPanel(string basesettingsfolder, string identifier, string inifile)
+        public AbstractPanel(string basesettingsfolder, string identifier, string inifile,string extension)
         {
             Identifier = identifier;
             string inifolder = Path.Combine(basesettingsfolder, kinifolder);
@@ -54,6 +55,7 @@ namespace Drax360Service.Panels
                 Directory.CreateDirectory(inifolder);
             }
 
+            this.Extension = extension;
             this.GetFileName = inifile;
             this.FullFilePath = Path.Combine(inifolder, inifile);
         }

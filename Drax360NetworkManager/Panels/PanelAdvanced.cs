@@ -81,7 +81,7 @@ namespace Drax360Service.Panels
         }
 
         public string Zone = "";
-        public PanelAdvanced(string baselogfolder, string identifier) : base(baselogfolder,identifier, "AdvMan")
+        public PanelAdvanced(string baselogfolder, string identifier) : base(baselogfolder,identifier, "AdvMan","ADV")
         {
             if (!String.IsNullOrEmpty(identifier))
             {

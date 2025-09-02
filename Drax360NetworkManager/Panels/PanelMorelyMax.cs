@@ -179,7 +179,7 @@ namespace Drax360Service.Panels
 
         }
 
-        public PanelMorelyMax(string baselogfolder,string identifier) : base(baselogfolder,identifier, "MaxMan")
+        public PanelMorelyMax(string baselogfolder,string identifier) : base(baselogfolder,identifier, "MaxMan","GEN")
         {
             if (!String.IsNullOrEmpty(identifier))
             {
