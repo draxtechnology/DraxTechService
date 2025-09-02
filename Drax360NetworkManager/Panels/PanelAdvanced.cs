@@ -244,9 +244,6 @@ namespace Drax360Service.Panels
 	            return((__int16)((ip & 0x78000000)/0x8000000)); 	// based on offset of 2^25
             }
 
-             */
-
-
             int inputtype = (int)(ourmessage[6]); 
             int node = (int)ourmessage[7];
             int loopnumber = (int)ourmessage[8];
