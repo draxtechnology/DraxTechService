@@ -88,6 +88,90 @@ namespace Drax360Service.Panels
                 heartbeat_timer = new Timer(heartbeat_timer_callback, this.Identifier, 1000, kHeartbeatDelaySeconds * 1000);
             }
         }
+
+        public override void Parse(byte[] buffer)
+        {
+            base.Parse(buffer);
+
+            int count = 0;
+
+            while (true) // keep parsing until no more full messages
+            {
+                int startIndex = this.buffer.IndexOf(254); // find start
+                if (startIndex < 0) break; // no start found
+
+                int endIndex = this.buffer.IndexOf(255, startIndex + 1); // find end after start
+                if (endIndex < 0) break; // no end found yet (incomplete message)
+
+                // extract one full message
+                int length = endIndex - startIndex + 1;
+                byte[] ourmessage = this.buffer.Skip(startIndex).Take(length).ToArray();
+
+                // remove processed message from buffer
+                this.buffer.RemoveRange(0, endIndex + 1);
+
+                // sanity check
+                if (ourmessage.Length < 6) continue; // too short to be valid
+                if (ourmessage[0] != 254) continue;
+
+                string strmsg = Encoding.UTF8.GetString(ourmessage, 0, ourmessage.Length - 1);
+
+                if (ourmessage.Length >= 6 &&
+                    ourmessage[1] == 128 && ourmessage[2] == 0 &&
+                    ourmessage[3] == 0 && ourmessage[4] == 0 &&
+                    ourmessage[5] == 1)
+                {
+                    continue; // skip this specific pattern
+                }
+
+                ourmessage = ourmessage.Skip(4).ToArray();
+
+                if (ourmessage[1] == 1)   // Acknowledgement
+                {
+                }
+                if (ourmessage[1] == 15)   // Output Activated by BMS 
+                {
+                }
+                if (ourmessage[1] == 10)   // Device Status
+                {
+                    int node = (int)ourmessage[3];
+                    int loopnumber = (int)ourmessage[4];
+                    int deviceaddress = (int)ourmessage[5];
+                    int devicesubaddress = (int)ourmessage[6];
+                    int zone = (int)ourmessage[7];
+                    int devicestate = (int)ourmessage[9];
+                    string devicetype = GetAdvancedDeviceType((int)ourmessage[11]);
+                    string devicetext = string.Empty;
+                    for (int i = 12; i < 12 + 12 && i < ourmessage.Length; i++)
+                    {
+                        devicetext += (char)ourmessage[i];
+                    }
+
+                    Console.WriteLine(strmsg);
+
+                    byte packetsequece = Convert.ToByte(ourmessage[1]);
+                    // send acknowledge
+                    Byte[] stracknoledge = new Byte[] { kAdvancedStart, 1, 0, packetsequece, 1, kAdvanedEnd };
+                    serialsend(stracknoledge);
+
+                    string result = BitConverter.ToString(stracknoledge);
+                    this.NotifyClient("Sent " + result, false);
+
+                    int inputtype = 10 + count;
+                    if ((int)ourmessage[10] == 4)   // device disabled
+                    {
+                        inputtype = 4;
+                    }
+                    int evnum1 = CSAMXSingleton.CS.MakeInputNumber(node, loopnumber, deviceaddress, inputtype);
+                    string message1 = devicetext;
+                    CSAMXSingleton.CS.SendAlarmToAMX(evnum1, message1, "", "");
+                    CSAMXSingleton.CS.FlushMessages();
+                    count++;
+                }
+            }
+        }
+
+        /*
         public override void Parse(byte[] buffer)
         {
             base.Parse(buffer);
@@ -140,7 +224,7 @@ namespace Drax360Service.Panels
             CSAMXSingleton.CS.SendAlarmToAMX(evnum1, message1, "", "");
             CSAMXSingleton.CS.FlushMessages();
         }
-
+        */
         public static string GetAdvancedDeviceType(int deviceType)
         {
             switch (deviceType)
