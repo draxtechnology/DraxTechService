@@ -85,15 +85,13 @@ namespace Drax360Service.Panels
         {
             if (!String.IsNullOrEmpty(identifier))
             {
-                heartbeat_timer = new Timer(heartbeat_timer_callback, this.Identifier, 1000, kHeartbeatDelaySeconds * 1000);
+                heartbeat_timer = new Timer(heartbeat_timer_callback, this.Identifier, 500, kHeartbeatDelaySeconds * 1000);
             }
         }
 
         public override void Parse(byte[] buffer)
         {
             base.Parse(buffer);
-
-            int count = 0;
 
             while (true) // keep parsing until no more full messages
             {
@@ -109,6 +107,12 @@ namespace Drax360Service.Panels
 
                 // remove processed message from buffer
                 this.buffer.RemoveRange(0, endIndex + 1);
+
+                string hex = BitConverter.ToString(ourmessage);
+                this.NotifyClient("Received (Hex): " + hex, false);
+                string numeric = string.Join(" ", ourmessage.Select(b => b.ToString()));
+                this.NotifyClient("Received (Numeric): " + numeric, false);
+
 
                 // sanity check
                 if (ourmessage.Length < 6) continue; // too short to be valid
@@ -149,24 +153,28 @@ namespace Drax360Service.Panels
 
                     Console.WriteLine(strmsg);
 
-                    byte packetsequece = Convert.ToByte(ourmessage[1]);
+                    byte packetsequence = Convert.ToByte(ourmessage[1]);
                     // send acknowledge
-                    Byte[] stracknoledge = new Byte[] { kAdvancedStart, 1, 0, packetsequece, 1, kAdvanedEnd };
+                    Byte[] stracknoledge = new Byte[] { kAdvancedStart, 1, 0, packetsequence, 1, kAdvanedEnd };
                     serialsend(stracknoledge);
 
                     string result = BitConverter.ToString(stracknoledge);
                     this.NotifyClient("Sent " + result, false);
 
-                    int inputtype = 10 + count;
+                    int inputtype = 0;
                     if ((int)ourmessage[10] == 4)   // device disabled
                     {
                         inputtype = 4;
+                    }
+                    if ((int)ourmessage[9] == 3)   // device missing
+                    {
+                        inputtype = 8;
                     }
                     int evnum1 = CSAMXSingleton.CS.MakeInputNumber(node, loopnumber, deviceaddress, inputtype);
                     string message1 = devicetext;
                     CSAMXSingleton.CS.SendAlarmToAMX(evnum1, message1, "", "");
                     CSAMXSingleton.CS.FlushMessages();
-                    count++;
+
                 }
             }
         }
@@ -388,8 +396,6 @@ namespace Drax360Service.Panels
 
             {
                 base.NotifyClient("Failed To Open " + serialport.PortName, false);
-
-
             }
 
             if (serialport.IsOpen)
@@ -398,8 +404,15 @@ namespace Drax360Service.Panels
                 serialport.DiscardOutBuffer();
                 Byte[] start = new Byte[] { kAdvancedStart, 128, 0, 0, 2, 41, 8, 0, 0, 0, 0, 1, 1, 240, 250, 5, 195, kAdvanedEnd };
                 serialsend(start);
-            }
 
+                Byte[] start1 = new Byte[] { kAdvancedStart, 40, 4, 1,0, kAdvanedEnd };
+                serialsend(start1);
+                base.NotifyClient("Sent Start1", false);
+
+                Byte[] start2 = new Byte[] { kAdvancedStart, 41, 0, 0, 0, 0, 0, 1, 1, kAdvanedEnd };
+                serialsend(start2);
+                base.NotifyClient("Sent Start2", false);
+            }
         }
 
         int p1 = 0;

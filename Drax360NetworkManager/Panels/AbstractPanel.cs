@@ -151,7 +151,10 @@ namespace Drax360Service.Panels
             {
                 serialport.Write(toSend, 0, toSend.Length);
                 string hex = BitConverter.ToString(toSend);
-                this.NotifyClient("Sent: " + hex, false);
+                this.NotifyClient("Sent (Hex): " + hex, false);
+                string numeric = string.Join(" ", toSend.Select(b => b.ToString()));
+                this.NotifyClient("Sent (Numeric): " + numeric, false);
+                Console.WriteLine("Sent: " + numeric); 
             }
         }
         protected void serialsend(string toSend)
