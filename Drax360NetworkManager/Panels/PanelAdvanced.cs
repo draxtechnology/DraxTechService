@@ -60,7 +60,7 @@ namespace Drax360Service.Panels
         int AdvancedDestinationAddress = 0;
         int AdvancedSourceAddress = 0;
         int ControlPacketSequence = 0;
-        
+
 
         public override string FakeString
         {
@@ -82,7 +82,7 @@ namespace Drax360Service.Panels
         }
 
         public string Zone = "";
-        public PanelAdvanced(string baselogfolder, string identifier) : base(baselogfolder,identifier, "AdvMan","ADV")
+        public PanelAdvanced(string baselogfolder, string identifier) : base(baselogfolder, identifier, "AdvMan", "ADV")
         {
             if (!String.IsNullOrEmpty(identifier))
             {
@@ -213,80 +213,80 @@ namespace Drax360Service.Panels
                 End Type
              */
 
-            /*
-              Declare Function GetNWMData Lib "Gen_Netman.dll" Alias "_GetNWMData@24" (ByVal FileName As String, ByVal Index As Integer, LongArray As DLLDATA, ByVal DestString As String, ByVal ExText As String, ByVal ExText2 As String) As Integer
+        /*
+          Declare Function GetNWMData Lib "Gen_Netman.dll" Alias "_GetNWMData@24" (ByVal FileName As String, ByVal Index As Integer, LongArray As DLLDATA, ByVal DestString As String, ByVal ExText As String, ByVal ExText2 As String) As Integer
 
-            */
-
-            /*
-            From VB6 Example
-            sPanelNumber = CStr(GetNode(DLL.Dat(9)))
-            
-            Then calling the function to get the node number
-            From C Network Manager
-
-            DllExport __int16 WINAPI GetNode(ipnum)
-                long ipnum;
-            {
-	            return get_board_address(ipnum);
-            }
-              __int16  get_board_address(ip)
-            long ip;
-            {
-    	        return((__int16)((ip & 0x07ff0000)/0x10000));
-               }
-             */
-
-
-
-
-            /*  From VB6 Example
-                    iInputType = CInt(GetInputType(DLL.Dat(9)))
-             
-            
-            DllExport __int16 WINAPI GetInputType(ipnum)
-                long ipnum;
-               {
-	            return get_input_type(ipnum);
-                }
-
-            __int16  get_input_type(ip)
-                long ip;
-            {
-	            return((__int16)((ip & 0x78000000)/0x8000000)); 	// based on offset of 2^25
-            }
-
-            int inputtype = (int)(ourmessage[6]); 
-            int node = (int)ourmessage[7];
-            int loopnumber = (int)ourmessage[8];
-            int deviceaddress = (int)ourmessage[9];
-            int devicesubaddress = (int)ourmessage[10];
-            int zone = (int)ourmessage[11];
-            string devicetype = GetAdvancedDeviceType((int)ourmessage[15]);
-            string devicetext = string.Empty;
-            for (int i = 16; i < 16 + 12 && i < ourmessage.Length; i++)
-            {
-                devicetext += (char)ourmessage[i];
-            }
-
-            Console.WriteLine(strmsg);
-
-            byte packetsequece = Convert.ToByte(ourmessage[4]);
-            // send acknowledge
-
-            Byte[] stracknoledge = new Byte[] { kAdvancedStart, 1, 0, packetsequece, 1, kAdvanedEnd };
-            serialsend(stracknoledge);
-
-            string result = BitConverter.ToString(stracknoledge);
-            this.NotifyClient("Sent " + result, false);
-
-            
-            int evnum1 = CSAMXSingleton.CS.MakeInputNumber(node, loopnumber, deviceaddress, inputtype);
-            string message1 = devicetext;
-            CSAMXSingleton.CS.SendAlarmToAMX(evnum1, message1, "", "");
-            CSAMXSingleton.CS.FlushMessages();
-        }
         */
+
+        /*
+        From VB6 Example
+        sPanelNumber = CStr(GetNode(DLL.Dat(9)))
+
+        Then calling the function to get the node number
+        From C Network Manager
+
+        DllExport __int16 WINAPI GetNode(ipnum)
+            long ipnum;
+        {
+            return get_board_address(ipnum);
+        }
+          __int16  get_board_address(ip)
+        long ip;
+        {
+            return((__int16)((ip & 0x07ff0000)/0x10000));
+           }
+         */
+
+
+
+
+        /*  From VB6 Example
+                iInputType = CInt(GetInputType(DLL.Dat(9)))
+
+
+        DllExport __int16 WINAPI GetInputType(ipnum)
+            long ipnum;
+           {
+            return get_input_type(ipnum);
+            }
+
+        __int16  get_input_type(ip)
+            long ip;
+        {
+            return((__int16)((ip & 0x78000000)/0x8000000)); 	// based on offset of 2^25
+        }
+
+        int inputtype = (int)(ourmessage[6]); 
+        int node = (int)ourmessage[7];
+        int loopnumber = (int)ourmessage[8];
+        int deviceaddress = (int)ourmessage[9];
+        int devicesubaddress = (int)ourmessage[10];
+        int zone = (int)ourmessage[11];
+        string devicetype = GetAdvancedDeviceType((int)ourmessage[15]);
+        string devicetext = string.Empty;
+        for (int i = 16; i < 16 + 12 && i < ourmessage.Length; i++)
+        {
+            devicetext += (char)ourmessage[i];
+        }
+
+        Console.WriteLine(strmsg);
+
+        byte packetsequece = Convert.ToByte(ourmessage[4]);
+        // send acknowledge
+
+        Byte[] stracknoledge = new Byte[] { kAdvancedStart, 1, 0, packetsequece, 1, kAdvanedEnd };
+        serialsend(stracknoledge);
+
+        string result = BitConverter.ToString(stracknoledge);
+        this.NotifyClient("Sent " + result, false);
+
+
+        int evnum1 = CSAMXSingleton.CS.MakeInputNumber(node, loopnumber, deviceaddress, inputtype);
+        string message1 = devicetext;
+        CSAMXSingleton.CS.SendAlarmToAMX(evnum1, message1, "", "");
+        CSAMXSingleton.CS.FlushMessages();
+    }
+    */
         public static string GetAdvancedDeviceType(int deviceType)
         {
             switch (deviceType)
@@ -354,7 +354,7 @@ namespace Drax360Service.Panels
 
         public override void StartUp(int fakemode)
         {
-            
+
             int setttingbaudrate = base.GetSetting<int>(ksettingsetupsection, "BaudRate");
             string settingparity = base.GetSetting<string>(ksettingsetupsection, "Parity");
             int settingdatabits = base.GetSetting<int>(ksettingsetupsection, "DataBits");
@@ -413,7 +413,7 @@ namespace Drax360Service.Panels
                 serialport.DiscardInBuffer();
                 serialport.DiscardOutBuffer();
                 Byte[] start = new Byte[] { kAdvancedStart, 128, 0, 0, 2, 41, 8, 0, 0, 0, 0, 1, 1, 240, 250, 5, 195, kAdvanedEnd };
-               // serialsend(start);
+                // serialsend(start);
 
                 Thread.Sleep(1000);
 
@@ -441,7 +441,7 @@ namespace Drax360Service.Panels
                 // byte[] start3 = new byte[] { 0xFE, 0x80, 0x00, 0x00, 0x01, 0x28, 0x04, 0x01, 0x00, 0xF0, 0x5A, 0x55, 0xFF, 0x0D, 0x0A };
 
                 serialsend(start3);
-               // base.NotifyClient("Sent Start3", false);
+                // base.NotifyClient("Sent Start3", false);
             }
         }
 
@@ -544,7 +544,7 @@ namespace Drax360Service.Panels
             if (parts.Length > 2) int.TryParse(parts[2], out zone);
             if (parts.Length > 3) int.TryParse(parts[3], out device);
 
-            Byte[] disiceabledev = new Byte[] { 70, 0, 0x85, 1, (byte)node, (byte)device, 0,1 };
+            Byte[] disiceabledev = new Byte[] { 70, 0, 0x85, 1, (byte)node, (byte)device, 0, 1 };
 
             Byte[] disiceabledevnew = DefineControl(disiceabledev);
 
@@ -745,8 +745,8 @@ namespace Drax360Service.Panels
 
             foreach (byte b in message)
             {
-               if (b < 0xFA)
-               {
+                if (b < 0xFA)
+                {
                     result.Add(b);
                 }
                 else
@@ -771,75 +771,41 @@ namespace Drax360Service.Panels
 
         }
 
-        public void SendToAdvanced(string messagePacket, bool useRetries, string psPanelNumber)
+        private byte[] buildadvanced(string messagePacket, bool useRetries, string psPanelNumber)
         {
-            clsAdvancedControl avc = new clsAdvancedControl();
+
             int iSystem;
             int iPanel;
 
-            try
+
+            iSystem = 99;//  GetSystemNumber(Convert.ToInt32(psPanelNumber)); // <-- todo
+
+            // J.M 23/12/08 if global set panel number to 0
+            if (true) //bSendGlobalCommand)  // todo
             {
-                iSystem = GetSystemNumber(Convert.ToInt32(psPanelNumber));
-
-                // J.M 23/12/08 if global set panel number to 0
-                if (bSendGlobalCommand)
-                {
-                    psPanelNumber = "0";
-                }
-
-                iPanel = GetRealPanelNumber(Convert.ToInt32(psPanelNumber));
-
-                if (string.IsNullOrEmpty(psPanelNumber))
-                {
-                    System.Diagnostics.Debug.WriteLine("BLANK");
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine("STA-" + psPanelNumber);
-                }
-
-                // LogMyStuff("sendToAdvanced " + psPanelNumber + " Without Offset : " + iPanel, false);
-
-                avc.ControlString = messagePacket;
-
-                // Acknowledge time
-                if (giNWMPanelTCP != 1)
-                {
-                    avc.AcknowledgeTimeout = 800;
-                }
-                else
-                {
-                    avc.AcknowledgeTimeout = 4800;
-                }
-
-                avc.AcknowledgeMessage = false;
-                avc.PanelNumber = iPanel;
-                avc.Retries = 1;
-                avc.UseRetries = useRetries;
-                avc.DefineControl();  // Create the object
-
-                colADVControls[iSystem].Add(avc);
-
-                // Bring forward the timer if there is no sending in progress
-                if (colADVControls[iSystem].Count <= 1)
-                {
-                    // LogMyStuff("SendtoAdv " + psPanelNumber + " Without Offset : " + iPanel + " System : " + iSystem);
-                    frmADVNetworkManager.tmrAdvancedSend[iSystem].Interval = 50;
-                    frmADVNetworkManager.tmrAdvancedSend[iSystem].Enabled = true;
-                }
-                else if (!frmADVNetworkManager.comADV[0].PortOpen) // JM Port is closed so in Comm fault
-                {
-                    frmADVNetworkManager.tmrAdvancedSend[iSystem].Interval = 50;
-                    frmADVNetworkManager.tmrAdvancedSend[iSystem].Enabled = true;
-                }
+                psPanelNumber = "0";
             }
-            catch (Exception ex)
-            {
-                ErrorBeep("SendToAdvanced Error: " + ex.Message);
-                // Resume Next equivalent is just swallowing the error in VB6,
-                // but in C# you might want to log and continue
-            }
+
+            iPanel = 99; // GetRealPanelNumber(Convert.ToInt32(psPanelNumber));  // <-- todo
+
+            string ControlString = messagePacket;
+
+
+            int AcknowledgeTimeout = 800;
+            // Acknowledge time
+            if (true) // giNWMPanelTCP == 1) // <-- todo if using IP
+                AcknowledgeTimeout = 4800;
+
+
+            bool AcknowledgeMessage = false;
+            int PanelNumber = iPanel;
+            int Retries = 1;
+            bool UseRetries = useRetries;
+
+            // todo construct byte array
+
+            return new byte[] { 0x00 }; // placeholder
+
         }
-
     }
 }
