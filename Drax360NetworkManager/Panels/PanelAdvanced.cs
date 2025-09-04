@@ -178,22 +178,6 @@ namespace Drax360Service.Panels
 
                 Console.WriteLine(strmsg);
 
-                byte packetsequence = Convert.ToByte(ourmessage[0]);
-                // send acknowledge
-                //Byte[] stracknoledge = new Byte[] { kAdvancedStart, 1, 0, packetsequence, 1, kAdvanedEnd };
-                //serialsend(stracknoledge);
-
-                AcknowledgeMessage = true;
-                Byte[] stracknoledge = new Byte[] { 1, 0, packetsequence, 1 };
-
-                Byte[] stracknoledgenew = DefineControl(stracknoledge);
-                serialsend(stracknoledgenew);
-                AcknowledgeMessage = false;
-
-
-                string result = BitConverter.ToString(stracknoledge);
-                this.NotifyClient("Sent " + result, false);
-
                 int inputtype = 0;
                 if ((int)ourmessage[10] == 4)   // device disabled
                 {
@@ -208,6 +192,22 @@ namespace Drax360Service.Panels
                 CSAMXSingleton.CS.SendAlarmToAMX(evnum1, message1, "", "");
                 CSAMXSingleton.CS.FlushMessages();
             }
+
+            byte packetsequence = Convert.ToByte(ourmessage[0]);
+            // send acknowledge
+            //Byte[] stracknowledge = new Byte[] { kAdvancedStart, 1, 0, packetsequence, 1, kAdvanedEnd };
+            //serialsend(stracknowledge);
+
+            AcknowledgeMessage = true;
+            Byte[] stracknowledge = new Byte[] { 1, 0, packetsequence, 1 };
+
+            Byte[] stracknowledgenew = DefineControl(stracknowledge);
+            serialsend(stracknowledgenew);
+            AcknowledgeMessage = false;
+
+            string result = BitConverter.ToString(stracknowledge);
+            this.NotifyClient("Sent " + result, false);
+
             return true;
         }
 
@@ -372,7 +372,8 @@ namespace Drax360Service.Panels
             //serialsend(heartbeat);
 
 
-            Byte[] heartbeat = new Byte[] { 42, 0, 1 };
+            //Byte[] heartbeat = new Byte[] { 42, 0, 1 };
+            Byte[] heartbeat = new Byte[] { 40, 4, 1 };
 
             Byte[] heartbeatnew = DefineControl(heartbeat);
             serialsend(heartbeatnew);
