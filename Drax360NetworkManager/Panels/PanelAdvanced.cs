@@ -136,12 +136,33 @@ namespace Drax360Service.Panels
 
             if (ourmessage[1] == 1)   // Acknowledgement
             {
+                Console.WriteLine("Acknowledgement");
             }
             if (ourmessage[1] == 15)   // Output Activated by BMS 
             {
+                Console.WriteLine("BMS");
+                int node = (int)ourmessage[3];
+                int loopnumber = (int)ourmessage[4];
+                int deviceaddress = (int)ourmessage[5];
+                int devicesubaddress = (int)ourmessage[6];
+
+                int inputtype = 15;
+                if ((int)ourmessage[7] == 1)
+                {
+                    int evnum1 = CSAMXSingleton.CS.MakeInputNumber(node, loopnumber, deviceaddress, inputtype);
+                    CSAMXSingleton.CS.SendAlarmToAMX(evnum1, "", "", "");
+                    CSAMXSingleton.CS.FlushMessages();
+                }
+                else
+                {
+                    int evnum1 = CSAMXSingleton.CS.MakeInputNumber(node, loopnumber, deviceaddress, inputtype,false);
+                    CSAMXSingleton.CS.SendAlarmToAMX(evnum1, "", "", "");
+                    CSAMXSingleton.CS.FlushMessages();
+                }
             }
             if (ourmessage[1] == 10)   // Device Status
             {
+                Console.WriteLine("Device Status");
                 int node = (int)ourmessage[3];
                 int loopnumber = (int)ourmessage[4];
                 int deviceaddress = (int)ourmessage[5];
@@ -157,10 +178,18 @@ namespace Drax360Service.Panels
 
                 Console.WriteLine(strmsg);
 
-                byte packetsequence = Convert.ToByte(ourmessage[1]);
+                byte packetsequence = Convert.ToByte(ourmessage[0]);
                 // send acknowledge
-                Byte[] stracknoledge = new Byte[] { kAdvancedStart, 1, 0, packetsequence, 1, kAdvanedEnd };
-                serialsend(stracknoledge);
+                //Byte[] stracknoledge = new Byte[] { kAdvancedStart, 1, 0, packetsequence, 1, kAdvanedEnd };
+                //serialsend(stracknoledge);
+
+                AcknowledgeMessage = true;
+                Byte[] stracknoledge = new Byte[] { 1, 0, packetsequence, 1 };
+
+                Byte[] stracknoledgenew = DefineControl(stracknoledge);
+                serialsend(stracknoledgenew);
+                AcknowledgeMessage = false;
+
 
                 string result = BitConverter.ToString(stracknoledge);
                 this.NotifyClient("Sent " + result, false);
@@ -178,7 +207,6 @@ namespace Drax360Service.Panels
                 string message1 = devicetext;
                 CSAMXSingleton.CS.SendAlarmToAMX(evnum1, message1, "", "");
                 CSAMXSingleton.CS.FlushMessages();
-
             }
             return true;
         }
@@ -339,15 +367,15 @@ namespace Drax360Service.Panels
             // sPanelNumber = HBT_Panel1 + giMainOffset
             // Call SendToAdvanced(Chr$(42) +Chr$(0) + Chr$(HBT_Panel1), False, sPanelNumber)
 
-            Byte[] heartbeat = new Byte[] { kAdvancedStart, 42, 0, 1, kAdvanedEnd };
+            //Byte[] heartbeat = new Byte[] { kAdvancedStart, 42, 0, 1, kAdvanedEnd };
             //string heartbeat = ((char)42).ToString() + (char)0 + (char)1;
             //serialsend(heartbeat);
 
 
-            byte[] start3 = new byte[] { 0xFE, 0x80, 0x00, 0x00, 0x01, 0x28, 0x04, 0x01, 0x00, 0xF0, 0x5A, 0x55, 0xFF, 0x0D, 0x0A };
+            Byte[] heartbeat = new Byte[] { 42, 0, 1 };
 
-            serialsend(start3);
-            base.NotifyClient("Sent Start3", false);
+            Byte[] heartbeatnew = DefineControl(heartbeat);
+            serialsend(heartbeatnew);
 
             // sendserial(Convert.ToChar(42).ToString() + Convert.ToChar(0).ToString() + Convert.ToChar(1).ToString());
         }
@@ -360,10 +388,8 @@ namespace Drax360Service.Panels
             int settingdatabits = base.GetSetting<int>(ksettingsetupsection, "DataBits");
             int settingstopbits = base.GetSetting<int>(ksettingsetupsection, "StopBits");
 
-
             if (fakemode > 0)
             {
-
                 return;
             }
 
@@ -392,18 +418,17 @@ namespace Drax360Service.Panels
             serialport.Encoding = System.Text.Encoding.ASCII;
             serialport.DtrEnable = true;
 
-            serialport.ReadBufferSize = 8000;
-            serialport.WriteBufferSize = 200;
+            serialport.ReadBufferSize = 14000;
+            serialport.WriteBufferSize = 5000;
 
             serialport.ReadTimeout = 500;
             serialport.ParityReplace = (byte)0;
-            serialport.ReceivedBytesThreshold = 8;
+            serialport.ReceivedBytesThreshold = 1;
             try
             {
                 serialport.Open();
             }
             catch (Exception e)
-
             {
                 base.NotifyClient("Failed To Open " + serialport.PortName, false);
             }
@@ -412,10 +437,22 @@ namespace Drax360Service.Panels
             {
                 serialport.DiscardInBuffer();
                 serialport.DiscardOutBuffer();
-                Byte[] start = new Byte[] { kAdvancedStart, 128, 0, 0, 2, 41, 8, 0, 0, 0, 0, 1, 1, 240, 250, 5, 195, kAdvanedEnd };
+                //Byte[] start = new Byte[] { kAdvancedStart, 128, 0, 0, 2, 41, 8, 0, 0, 0, 0, 1, 1, 240, 250, 5, 195, kAdvanedEnd };
                 // serialsend(start);
 
-                Thread.Sleep(1000);
+
+                Byte[] start = new Byte[] { 40, 4, 1, 0 };
+
+                Byte[] startnew = DefineControl(start);
+                serialsend(startnew);
+
+
+                Byte[] start1 = new Byte[] { 41, 0, 0, 0, 0, 0, 1, 1 };
+
+                Byte[] startnew1 = DefineControl(start1);
+                serialsend(startnew1);
+
+                //Thread.Sleep(1000);
 
                 // SendToAdvanced Chr$(40) + Chr$(4) + Chr$(1) + Chr$(0), False, CStr(iPanelOffset)
 
@@ -435,12 +472,12 @@ namespace Drax360Service.Panels
                 // Byte[] start3 = new Byte[] { kAdvancedStart, 128, 0, 0, 2, 40, 4, 1, 0, 0, 0, 1, 1, 240, 250, 5, 195, kAdvanedEnd };
                 // FE 80 00 00 01 28 04 01 00 F0 5A 55 FF 0D 0A 
 
-                byte[] start3 = new byte[] { 0xFE, 0x80, 0x00, 0x00, 0x02, 0x29, 0x08, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0xF0, 0xFA, 0x05, 0xC3, 0xFF, 0x0D, 0x0A };
+             //   byte[] start3 = new byte[] { 0xFE, 0x80, 0x00, 0x00, 0x02, 0x29, 0x08, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0xF0, 0xFA, 0x05, 0xC3, 0xFF, 0x0D, 0x0A };
 
 
                 // byte[] start3 = new byte[] { 0xFE, 0x80, 0x00, 0x00, 0x01, 0x28, 0x04, 0x01, 0x00, 0xF0, 0x5A, 0x55, 0xFF, 0x0D, 0x0A };
 
-                serialsend(start3);
+                //serialsend(start3);
                 // base.NotifyClient("Sent Start3", false);
             }
         }
@@ -771,7 +808,8 @@ namespace Drax360Service.Panels
 
         }
 
-        private byte[] buildadvanced(string messagePacket, bool useRetries, string psPanelNumber)
+        /*
+        private string buildadvanced(string messagePacket, bool useRetries, string psPanelNumber)
         {
 
             int iSystem;
@@ -804,8 +842,49 @@ namespace Drax360Service.Panels
 
             // todo construct byte array
 
-            return new byte[] { 0x00 }; // placeholder
+            // Ensure ControlString is mutable
+            var sb = new StringBuilder(ControlString);
 
+            // Set the length byte (second character)
+            if (sb.Length >= 2)
+                sb[1] = (char)sb.Length;
+
+            // Add "no more messages"
+            if (!AcknowledgeMessage)
+            {
+                sb.Append((char)240);
+            }
+
+            // Add the packet framing chars (prepend 4 spaces, then replace)
+            sb.Insert(0, "    "); // 4 spaces
+
+            sb[0] = (char)0x80;
+            sb[1] = (char)AdvancedDestinationAddress;
+            sb[2] = (char)AdvancedSourceAddress;
+
+            // Set the packet sequence number
+            if (AcknowledgeMessage)
+            {
+                sb[3] = (char)0;
+            }
+            else
+            {
+                ControlPacketSequence++;
+                if (ControlPacketSequence > 200)
+                    ControlPacketSequence = 1;
+
+                sb[3] = (char)ControlPacketSequence;
+            }
+
+            // Do the CRC, etc.
+            string processed = MakeControlClashCharacters(
+                                   DoTheAdvancedCrcCalculation(sb));
+
+            // Finally, add the SOM and EOM chars
+            ControlString = (char)0xFE + processed + (char)0xFF;
+
+            return ControlString;
         }
+        */
     }
 }
