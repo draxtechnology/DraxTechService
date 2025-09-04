@@ -37,6 +37,43 @@ public static List<byte[]> Chunker(byte[] data, int chunksize)
             return chunks;
 
         }
+    
+
+    public static List<byte[]> Chunker(byte[] data, byte start,byte end,out int removelength)
+        {
+            List<byte[]> chunks = new List<byte[]>();
+            int startpos = -1;
+            int endpos = -1;
+            removelength = 0;
+            
+            for (int intcount = 0; intcount < data.Length; intcount++)
+            {
+                byte workingbyte = data[intcount];
+                if (workingbyte == start)
+                {
+                    startpos = intcount;
+                    continue;
+                }
+
+                if (workingbyte == end)
+                {
+                    endpos = intcount;
+
+                    if (startpos > -1 && endpos > startpos)
+                    {
+                        byte[] ret = data.Skip(startpos+1).Take((endpos - startpos)).ToArray();
+                        chunks.Add(ret);
+                        removelength+= ret.Length+2; // allow for start end char
+                    }
+                    startpos = -1;
+                    endpos = -1;
+
+                }
+
+            }
+            return chunks;
+
+        }
     }
 }
    

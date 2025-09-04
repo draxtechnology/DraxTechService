@@ -23,6 +23,12 @@ namespace Drax360Service
         /// </summary>
         static async Task Main(string[] args)
         {
+            Byte[] heartbeat = new Byte[] { 65, 42, 0, 1, 66,65,1,2,3,4,5,6,7,66 };
+            int removebytes = 0;
+            List<byte[]> chunkedBytes = Elements.Chunker(heartbeat,65,66,out removebytes);
+
+            return;
+
             // check if running as a service or console app
             if (!Elements.isService)
             {
