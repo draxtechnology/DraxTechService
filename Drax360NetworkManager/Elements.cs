@@ -61,7 +61,7 @@ public static List<byte[]> Chunker(byte[] data, int chunksize)
 
                     if (startpos > -1 && endpos > startpos)
                     {
-                        byte[] ret = data.Skip(startpos+1).Take((endpos - startpos)).ToArray();
+                        byte[] ret = data.Skip(startpos+1).Take((endpos - startpos)-1).ToArray();
                         chunks.Add(ret);
                         removelength+= ret.Length+2; // allow for start end char
                     }

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO.Ports;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.ConstrainedExecution;
 using System.Runtime.Remoting.Messaging;
 using System.Security.Cryptography;
@@ -93,90 +94,93 @@ namespace Drax360Service.Panels
         {
             base.Parse(buffer);
 
-            while (true) // keep parsing until no more full messages
+            int removebytes = 0;
+            List<byte[]> chunks = Elements.Chunker(buffer, 254, 255, out removebytes);
+
+            if (chunks.Count == 0)
             {
-                int startIndex = this.buffer.IndexOf(254); // find start
-                if (startIndex < 0) break; // no start found
+                return;
+            }
 
-                int endIndex = this.buffer.IndexOf(255, startIndex + 1); // find end after start
-                if (endIndex < 0) break; // no end found yet (incomplete message)
-
-                // extract one full message
-                int length = endIndex - startIndex + 1;
-                byte[] ourmessage = this.buffer.Skip(startIndex).Take(length).ToArray();
-
-                // remove processed message from buffer
-                this.buffer.RemoveRange(0, endIndex + 1);
-
-                string hex = BitConverter.ToString(ourmessage);
-                this.NotifyClient("Received (Hex): " + hex, false);
-                string numeric = string.Join(" ", ourmessage.Select(b => b.ToString()));
-                this.NotifyClient("Received (Numeric): " + numeric, false);
-
-
-                // sanity check
-                if (ourmessage.Length < 6) continue; // too short to be valid
-                if (ourmessage[0] != 254) continue;
-
-                string strmsg = Encoding.UTF8.GetString(ourmessage, 0, ourmessage.Length - 1);
-
-                if (ourmessage.Length >= 6 &&
-                    ourmessage[1] == 128 && ourmessage[2] == 0 &&
-                    ourmessage[3] == 0 && ourmessage[4] == 0 &&
-                    ourmessage[5] == 1)
+            bool clean = true;
+            foreach (var chunk in chunks)
+            {
+                if (!processmessage(chunk))
                 {
-                    continue; // skip this specific pattern
-                }
-
-                ourmessage = ourmessage.Skip(4).ToArray();
-
-                if (ourmessage[1] == 1)   // Acknowledgement
-                {
-                }
-                if (ourmessage[1] == 15)   // Output Activated by BMS 
-                {
-                }
-                if (ourmessage[1] == 10)   // Device Status
-                {
-                    int node = (int)ourmessage[3];
-                    int loopnumber = (int)ourmessage[4];
-                    int deviceaddress = (int)ourmessage[5];
-                    int devicesubaddress = (int)ourmessage[6];
-                    int zone = (int)ourmessage[7];
-                    int devicestate = (int)ourmessage[9];
-                    string devicetype = GetAdvancedDeviceType((int)ourmessage[11]);
-                    string devicetext = string.Empty;
-                    for (int i = 12; i < 12 + 12 && i < ourmessage.Length; i++)
-                    {
-                        devicetext += (char)ourmessage[i];
-                    }
-
-                    Console.WriteLine(strmsg);
-
-                    byte packetsequence = Convert.ToByte(ourmessage[1]);
-                    // send acknowledge
-                    Byte[] stracknoledge = new Byte[] { kAdvancedStart, 1, 0, packetsequence, 1, kAdvanedEnd };
-                    serialsend(stracknoledge);
-
-                    string result = BitConverter.ToString(stracknoledge);
-                    this.NotifyClient("Sent " + result, false);
-
-                    int inputtype = 0;
-                    if ((int)ourmessage[10] == 4)   // device disabled
-                    {
-                        inputtype = 4;
-                    }
-                    if ((int)ourmessage[9] == 3)   // device missing
-                    {
-                        inputtype = 8;
-                    }
-                    int evnum1 = CSAMXSingleton.CS.MakeInputNumber(node, loopnumber, deviceaddress, inputtype);
-                    string message1 = devicetext;
-                    CSAMXSingleton.CS.SendAlarmToAMX(evnum1, message1, "", "");
-                    CSAMXSingleton.CS.FlushMessages();
-
+                    clean = false;
                 }
             }
+
+            this.buffer.Clear();
+        }
+
+        private bool processmessage(byte[] ourmessage)
+        {
+            string hex = BitConverter.ToString(ourmessage);
+            this.NotifyClient("Received (Hex): " + hex, false);
+            string numeric = string.Join(" ", ourmessage.Select(b => b.ToString()));
+            this.NotifyClient("Received (Numeric): " + numeric, false);
+
+
+            string strmsg = Encoding.UTF8.GetString(ourmessage, 0, ourmessage.Length - 1);
+
+            if (ourmessage.Length >= 6 &&
+                ourmessage[1] == 128 && ourmessage[2] == 0 &&
+                ourmessage[3] == 0 && ourmessage[4] == 0 &&
+                ourmessage[5] == 1)
+            {
+                return true; // skip this specific pattern
+            }
+
+            ourmessage = ourmessage.Skip(3).ToArray();
+
+            if (ourmessage[1] == 1)   // Acknowledgement
+            {
+            }
+            if (ourmessage[1] == 15)   // Output Activated by BMS 
+            {
+            }
+            if (ourmessage[1] == 10)   // Device Status
+            {
+                int node = (int)ourmessage[3];
+                int loopnumber = (int)ourmessage[4];
+                int deviceaddress = (int)ourmessage[5];
+                int devicesubaddress = (int)ourmessage[6];
+                int zone = (int)ourmessage[7];
+                int devicestate = (int)ourmessage[9];
+                string devicetype = GetAdvancedDeviceType((int)ourmessage[11]);
+                string devicetext = string.Empty;
+                for (int i = 12; i < 12 + 12 && i < ourmessage.Length; i++)
+                {
+                    devicetext += (char)ourmessage[i];
+                }
+
+                Console.WriteLine(strmsg);
+
+                byte packetsequence = Convert.ToByte(ourmessage[1]);
+                // send acknowledge
+                Byte[] stracknoledge = new Byte[] { kAdvancedStart, 1, 0, packetsequence, 1, kAdvanedEnd };
+                serialsend(stracknoledge);
+
+                string result = BitConverter.ToString(stracknoledge);
+                this.NotifyClient("Sent " + result, false);
+
+                int inputtype = 0;
+                if ((int)ourmessage[10] == 4)   // device disabled
+                {
+                    inputtype = 4;
+                }
+                if ((int)ourmessage[9] == 3)   // device missing
+                {
+                    inputtype = 8;
+                }
+                int evnum1 = CSAMXSingleton.CS.MakeInputNumber(node, loopnumber, deviceaddress, inputtype);
+                string message1 = devicetext;
+                CSAMXSingleton.CS.SendAlarmToAMX(evnum1, message1, "", "");
+                CSAMXSingleton.CS.FlushMessages();
+
+            }
+            return true;
         }
 
         /*
@@ -337,7 +341,13 @@ namespace Drax360Service.Panels
 
             Byte[] heartbeat = new Byte[] { kAdvancedStart, 42, 0, 1, kAdvanedEnd };
             //string heartbeat = ((char)42).ToString() + (char)0 + (char)1;
-            serialsend(heartbeat);
+            //serialsend(heartbeat);
+
+
+            byte[] start3 = new byte[] { 0xFE, 0x80, 0x00, 0x00, 0x01, 0x28, 0x04, 0x01, 0x00, 0xF0, 0x5A, 0x55, 0xFF, 0x0D, 0x0A };
+
+            serialsend(start3);
+            base.NotifyClient("Sent Start3", false);
 
             // sendserial(Convert.ToChar(42).ToString() + Convert.ToChar(0).ToString() + Convert.ToChar(1).ToString());
         }
@@ -403,15 +413,35 @@ namespace Drax360Service.Panels
                 serialport.DiscardInBuffer();
                 serialport.DiscardOutBuffer();
                 Byte[] start = new Byte[] { kAdvancedStart, 128, 0, 0, 2, 41, 8, 0, 0, 0, 0, 1, 1, 240, 250, 5, 195, kAdvanedEnd };
-                serialsend(start);
+               // serialsend(start);
 
+                Thread.Sleep(1000);
+
+                // SendToAdvanced Chr$(40) + Chr$(4) + Chr$(1) + Chr$(0), False, CStr(iPanelOffset)
+
+                /*
                 Byte[] start1 = new Byte[] { kAdvancedStart, 40, 4, 1,0, kAdvanedEnd };
                 serialsend(start1);
                 base.NotifyClient("Sent Start1", false);
 
+                Thread.Sleep(1000);
+
                 Byte[] start2 = new Byte[] { kAdvancedStart, 41, 0, 0, 0, 0, 0, 1, 1, kAdvanedEnd };
                 serialsend(start2);
                 base.NotifyClient("Sent Start2", false);
+                */
+                //Byte[] start3 = new Byte[] { kAdvancedStart, 128,0,0,2, 40, 4, 1, 0, kAdvanedEnd };
+
+                // Byte[] start3 = new Byte[] { kAdvancedStart, 128, 0, 0, 2, 40, 4, 1, 0, 0, 0, 1, 1, 240, 250, 5, 195, kAdvanedEnd };
+                // FE 80 00 00 01 28 04 01 00 F0 5A 55 FF 0D 0A 
+
+                byte[] start3 = new byte[] { 0xFE, 0x80, 0x00, 0x00, 0x02, 0x29, 0x08, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0xF0, 0xFA, 0x05, 0xC3, 0xFF, 0x0D, 0x0A };
+
+
+                // byte[] start3 = new byte[] { 0xFE, 0x80, 0x00, 0x00, 0x01, 0x28, 0x04, 0x01, 0x00, 0xF0, 0x5A, 0x55, 0xFF, 0x0D, 0x0A };
+
+                serialsend(start3);
+               // base.NotifyClient("Sent Start3", false);
             }
         }
 
@@ -740,5 +770,76 @@ namespace Drax360Service.Panels
             CSAMXSingleton.CS.FlushMessages();
 
         }
+
+        public void SendToAdvanced(string messagePacket, bool useRetries, string psPanelNumber)
+        {
+            clsAdvancedControl avc = new clsAdvancedControl();
+            int iSystem;
+            int iPanel;
+
+            try
+            {
+                iSystem = GetSystemNumber(Convert.ToInt32(psPanelNumber));
+
+                // J.M 23/12/08 if global set panel number to 0
+                if (bSendGlobalCommand)
+                {
+                    psPanelNumber = "0";
+                }
+
+                iPanel = GetRealPanelNumber(Convert.ToInt32(psPanelNumber));
+
+                if (string.IsNullOrEmpty(psPanelNumber))
+                {
+                    System.Diagnostics.Debug.WriteLine("BLANK");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("STA-" + psPanelNumber);
+                }
+
+                // LogMyStuff("sendToAdvanced " + psPanelNumber + " Without Offset : " + iPanel, false);
+
+                avc.ControlString = messagePacket;
+
+                // Acknowledge time
+                if (giNWMPanelTCP != 1)
+                {
+                    avc.AcknowledgeTimeout = 800;
+                }
+                else
+                {
+                    avc.AcknowledgeTimeout = 4800;
+                }
+
+                avc.AcknowledgeMessage = false;
+                avc.PanelNumber = iPanel;
+                avc.Retries = 1;
+                avc.UseRetries = useRetries;
+                avc.DefineControl();  // Create the object
+
+                colADVControls[iSystem].Add(avc);
+
+                // Bring forward the timer if there is no sending in progress
+                if (colADVControls[iSystem].Count <= 1)
+                {
+                    // LogMyStuff("SendtoAdv " + psPanelNumber + " Without Offset : " + iPanel + " System : " + iSystem);
+                    frmADVNetworkManager.tmrAdvancedSend[iSystem].Interval = 50;
+                    frmADVNetworkManager.tmrAdvancedSend[iSystem].Enabled = true;
+                }
+                else if (!frmADVNetworkManager.comADV[0].PortOpen) // JM Port is closed so in Comm fault
+                {
+                    frmADVNetworkManager.tmrAdvancedSend[iSystem].Interval = 50;
+                    frmADVNetworkManager.tmrAdvancedSend[iSystem].Enabled = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                ErrorBeep("SendToAdvanced Error: " + ex.Message);
+                // Resume Next equivalent is just swallowing the error in VB6,
+                // but in C# you might want to log and continue
+            }
+        }
+
     }
 }
