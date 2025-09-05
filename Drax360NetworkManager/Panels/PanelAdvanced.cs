@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using static System.Collections.Specialized.BitVector32;
 using static System.Net.Mime.MediaTypeNames;
+using System.IO;
 
 namespace Drax360Service.Panels
 {
@@ -131,6 +132,12 @@ namespace Drax360Service.Panels
             {
                 return true; // skip this specific pattern
             }
+
+            string filePath = @"C:\Temp\Advanced_c#.txt";
+            string messageText = string.Join(" ", ourmessage);
+            string logLine = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+                           + " - " + messageText;
+            File.AppendAllText(filePath, logLine + Environment.NewLine);
 
             ourmessage = ourmessage.Skip(3).ToArray();
 
@@ -383,7 +390,6 @@ namespace Drax360Service.Panels
 
         public override void StartUp(int fakemode)
         {
-
             int setttingbaudrate = base.GetSetting<int>(ksettingsetupsection, "BaudRate");
             string settingparity = base.GetSetting<string>(ksettingsetupsection, "Parity");
             int settingdatabits = base.GetSetting<int>(ksettingsetupsection, "DataBits");
@@ -438,48 +444,15 @@ namespace Drax360Service.Panels
             {
                 serialport.DiscardInBuffer();
                 serialport.DiscardOutBuffer();
-                //Byte[] start = new Byte[] { kAdvancedStart, 128, 0, 0, 2, 41, 8, 0, 0, 0, 0, 1, 1, 240, 250, 5, 195, kAdvanedEnd };
-                // serialsend(start);
-
 
                 Byte[] start = new Byte[] { 40, 4, 1, 0 };
-
                 Byte[] startnew = DefineControl(start);
                 serialsend(startnew);
 
 
                 Byte[] start1 = new Byte[] { 41, 0, 0, 0, 0, 0, 1, 1 };
-
                 Byte[] startnew1 = DefineControl(start1);
                 serialsend(startnew1);
-
-                //Thread.Sleep(1000);
-
-                // SendToAdvanced Chr$(40) + Chr$(4) + Chr$(1) + Chr$(0), False, CStr(iPanelOffset)
-
-                /*
-                Byte[] start1 = new Byte[] { kAdvancedStart, 40, 4, 1,0, kAdvanedEnd };
-                serialsend(start1);
-                base.NotifyClient("Sent Start1", false);
-
-                Thread.Sleep(1000);
-
-                Byte[] start2 = new Byte[] { kAdvancedStart, 41, 0, 0, 0, 0, 0, 1, 1, kAdvanedEnd };
-                serialsend(start2);
-                base.NotifyClient("Sent Start2", false);
-                */
-                //Byte[] start3 = new Byte[] { kAdvancedStart, 128,0,0,2, 40, 4, 1, 0, kAdvanedEnd };
-
-                // Byte[] start3 = new Byte[] { kAdvancedStart, 128, 0, 0, 2, 40, 4, 1, 0, 0, 0, 1, 1, 240, 250, 5, 195, kAdvanedEnd };
-                // FE 80 00 00 01 28 04 01 00 F0 5A 55 FF 0D 0A 
-
-             //   byte[] start3 = new byte[] { 0xFE, 0x80, 0x00, 0x00, 0x02, 0x29, 0x08, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0xF0, 0xFA, 0x05, 0xC3, 0xFF, 0x0D, 0x0A };
-
-
-                // byte[] start3 = new byte[] { 0xFE, 0x80, 0x00, 0x00, 0x01, 0x28, 0x04, 0x01, 0x00, 0xF0, 0x5A, 0x55, 0xFF, 0x0D, 0x0A };
-
-                //serialsend(start3);
-                // base.NotifyClient("Sent Start3", false);
             }
         }
 
@@ -808,84 +781,5 @@ namespace Drax360Service.Panels
             CSAMXSingleton.CS.FlushMessages();
 
         }
-
-        /*
-        private string buildadvanced(string messagePacket, bool useRetries, string psPanelNumber)
-        {
-
-            int iSystem;
-            int iPanel;
-
-
-            iSystem = 99;//  GetSystemNumber(Convert.ToInt32(psPanelNumber)); // <-- todo
-
-            // J.M 23/12/08 if global set panel number to 0
-            if (true) //bSendGlobalCommand)  // todo
-            {
-                psPanelNumber = "0";
-            }
-
-            iPanel = 99; // GetRealPanelNumber(Convert.ToInt32(psPanelNumber));  // <-- todo
-
-            string ControlString = messagePacket;
-
-
-            int AcknowledgeTimeout = 800;
-            // Acknowledge time
-            if (true) // giNWMPanelTCP == 1) // <-- todo if using IP
-                AcknowledgeTimeout = 4800;
-
-
-            bool AcknowledgeMessage = false;
-            int PanelNumber = iPanel;
-            int Retries = 1;
-            bool UseRetries = useRetries;
-
-            // todo construct byte array
-
-            // Ensure ControlString is mutable
-            var sb = new StringBuilder(ControlString);
-
-            // Set the length byte (second character)
-            if (sb.Length >= 2)
-                sb[1] = (char)sb.Length;
-
-            // Add "no more messages"
-            if (!AcknowledgeMessage)
-            {
-                sb.Append((char)240);
-            }
-
-            // Add the packet framing chars (prepend 4 spaces, then replace)
-            sb.Insert(0, "    "); // 4 spaces
-
-            sb[0] = (char)0x80;
-            sb[1] = (char)AdvancedDestinationAddress;
-            sb[2] = (char)AdvancedSourceAddress;
-
-            // Set the packet sequence number
-            if (AcknowledgeMessage)
-            {
-                sb[3] = (char)0;
-            }
-            else
-            {
-                ControlPacketSequence++;
-                if (ControlPacketSequence > 200)
-                    ControlPacketSequence = 1;
-
-                sb[3] = (char)ControlPacketSequence;
-            }
-
-            // Do the CRC, etc.
-            string processed = MakeControlClashCharacters(
-                                   DoTheAdvancedCrcCalculation(sb));
-
-            // Finally, add the SOM and EOM chars
-            ControlString = (char)0xFE + processed + (char)0xFF;
-
-            return ControlString;
-        }
-        */
     }
 }
