@@ -19,6 +19,8 @@ namespace Drax360Service.Panels
 {
     internal class PanelAdvanced : AbstractPanel
     {
+        const byte kackbyte = 0x06;
+        const byte kheartbeatdelayseconds = 5;
         private const byte kAdvancedStart = 254;
         private const byte kAdvanedEnd = 255;
 
@@ -133,90 +135,116 @@ namespace Drax360Service.Panels
                 return true; // skip this specific pattern
             }
 
+            
             string filePath = @"C:\Temp\Advanced_c#.txt";
             string messageText = string.Join(" ", ourmessage);
             string logLine = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
                            + " - " + messageText;
             File.AppendAllText(filePath, logLine + Environment.NewLine);
+       
+            int removebytes = 0;
 
-            ourmessage = ourmessage.Skip(3).ToArray();
+            List<byte[]> chunks = advancedchunker(1, ourmessage.Skip(3).ToArray(), 240, out removebytes);
 
-            if (ourmessage[1] == 1)   // Acknowledgement
+            foreach (var chunk in chunks)
             {
-                Console.WriteLine("Acknowledgement");
-            }
-            if (ourmessage[1] == 15)   // Output Activated by BMS 
-            {
-                Console.WriteLine("BMS");
-                int node = (int)ourmessage[3];
-                int loopnumber = (int)ourmessage[4];
-                int deviceaddress = (int)ourmessage[5];
-                int devicesubaddress = (int)ourmessage[6];
-
+                int node = 0;
+                int loopnumber = 0;
+                int deviceaddress = 0;
+                int devicesubaddress = 0;
+                int zone = 0;
                 int inputtype = 15;
-                if ((int)ourmessage[7] == 1)
+                int evnum1 = 0;
+                bool on = true;
+
+                switch (chunk[0])
                 {
-                    int evnum1 = CSAMXSingleton.CS.MakeInputNumber(node, loopnumber, deviceaddress, inputtype);
-                    CSAMXSingleton.CS.SendAlarmToAMX(evnum1, "", "", "");
-                    CSAMXSingleton.CS.FlushMessages();
+                    case 1:  // Acknowledgement
+
+                        Console.WriteLine("Acknowledgement");
+                        break;
+
+                    case 15:   // Output Activated by BMS 
+
+                        Console.WriteLine("BMS");
+                        node = (int)chunk[2];
+                        loopnumber = (int)chunk[3];
+                        deviceaddress = (int)chunk[4];
+                        devicesubaddress = (int)chunk[5];
+
+                        if ((int)chunk[6] == 1)
+                        {
+                            evnum1 = CSAMXSingleton.CS.MakeInputNumber(node, loopnumber, deviceaddress, inputtype);
+                            CSAMXSingleton.CS.SendAlarmToAMX(evnum1, "", "", "");
+                            CSAMXSingleton.CS.FlushMessages();
+                        }
+                        else
+                        {
+                            evnum1 = CSAMXSingleton.CS.MakeInputNumber(node, loopnumber, deviceaddress, inputtype, false);
+                            CSAMXSingleton.CS.SendAlarmToAMX(evnum1, "", "", "");
+                            CSAMXSingleton.CS.FlushMessages();
+                        }
+                        break;
+
+                    case 10:   // Device Status
+
+                        Console.WriteLine("Device Status");
+                        node = (int)chunk[2];
+                        loopnumber = (int)chunk[3];
+                        deviceaddress = (int)chunk[4];
+                        devicesubaddress = (int)chunk[5];
+                        zone = (int)chunk[6];
+                        int devicestate = (int)chunk[8];
+                        string devicetype = GetAdvancedDeviceType((int)chunk[10]);
+                        string devicetext = string.Empty;
+                        for (int i = 11; i < 12 + 12 && i < chunk.Length; i++)
+                        {
+                            devicetext += (char)chunk[i];
+                        }
+
+                        Console.WriteLine(strmsg);
+
+                        if ((int)chunk[9] == 4)   // device disabled
+                        {
+                            inputtype = 4;
+                        }
+                        if ((int)chunk[9] == 4)   // device enabled
+                        {
+                            inputtype = 4;
+                            on = false;
+                        }
+                        if ((int)chunk[8] == 3)   // device missing
+                        {
+                            inputtype = 8;
+                        }
+                        evnum1 = CSAMXSingleton.CS.MakeInputNumber(node, loopnumber, deviceaddress, inputtype, on);
+                        string message1 = devicetext;
+                        CSAMXSingleton.CS.SendAlarmToAMX(evnum1, message1, "", "");
+                        CSAMXSingleton.CS.FlushMessages();
+                        break;
+
+                    default:
+
+                        Console.WriteLine("Unknown Command: " + chunk[0]);
+                        this.NotifyClient("Unknown Command: " + chunk[0], false);
+                        break;
                 }
-                else
-                {
-                    int evnum1 = CSAMXSingleton.CS.MakeInputNumber(node, loopnumber, deviceaddress, inputtype,false);
-                    CSAMXSingleton.CS.SendAlarmToAMX(evnum1, "", "", "");
-                    CSAMXSingleton.CS.FlushMessages();
-                }
+
+                byte packetsequence = Convert.ToByte(ourmessage[0]);
+
+                // send acknowledge
+                AcknowledgeMessage = true;
+                Byte[] stracknowledge = new Byte[] { 1, 0, packetsequence, 1 };
+                Byte[] stracknowledgenew = DefineControl(stracknowledge);
+                serialsend(stracknowledgenew);
+                AcknowledgeMessage = false;
+
+                string result = BitConverter.ToString(stracknowledge);
+                this.NotifyClient("Sent " + result, false);
             }
-            if (ourmessage[1] == 10)   // Device Status
-            {
-                Console.WriteLine("Device Status");
-                int node = (int)ourmessage[3];
-                int loopnumber = (int)ourmessage[4];
-                int deviceaddress = (int)ourmessage[5];
-                int devicesubaddress = (int)ourmessage[6];
-                int zone = (int)ourmessage[7];
-                int devicestate = (int)ourmessage[9];
-                string devicetype = GetAdvancedDeviceType((int)ourmessage[11]);
-                string devicetext = string.Empty;
-                for (int i = 12; i < 12 + 12 && i < ourmessage.Length; i++)
-                {
-                    devicetext += (char)ourmessage[i];
-                }
-
-                Console.WriteLine(strmsg);
-
-                int inputtype = 0;
-                if ((int)ourmessage[10] == 4)   // device disabled
-                {
-                    inputtype = 4;
-                }
-                if ((int)ourmessage[9] == 3)   // device missing
-                {
-                    inputtype = 8;
-                }
-                int evnum1 = CSAMXSingleton.CS.MakeInputNumber(node, loopnumber, deviceaddress, inputtype);
-                string message1 = devicetext;
-                CSAMXSingleton.CS.SendAlarmToAMX(evnum1, message1, "", "");
-                CSAMXSingleton.CS.FlushMessages();
-            }
-
-            byte packetsequence = Convert.ToByte(ourmessage[0]);
-            // send acknowledge
-            //Byte[] stracknowledge = new Byte[] { kAdvancedStart, 1, 0, packetsequence, 1, kAdvanedEnd };
-            //serialsend(stracknowledge);
-
-            AcknowledgeMessage = true;
-            Byte[] stracknowledge = new Byte[] { 1, 0, packetsequence, 1 };
-
-            Byte[] stracknowledgenew = DefineControl(stracknowledge);
-            serialsend(stracknowledgenew);
-            AcknowledgeMessage = false;
-
-            string result = BitConverter.ToString(stracknowledge);
-            this.NotifyClient("Sent " + result, false);
-
             return true;
         }
+        
 
         /*
         public override void Parse(byte[] buffer)
@@ -779,6 +807,40 @@ namespace Drax360Service.Panels
 
             CSAMXSingleton.CS.SendAlarmToAMX(evnum, message1, message2, message3);
             CSAMXSingleton.CS.FlushMessages();
+
+        }
+
+        private List<byte[]> advancedchunker(int lengthofchar, byte[] data, byte end, out int removelength)
+        {
+            List<byte[]> chunks = new List<byte[]>();
+            int startpos = 1;
+            removelength = 0;
+
+            while (true)
+            {
+                if (startpos + lengthofchar >= data.Length)
+                {
+
+                    break;
+                }
+                byte workingcommand = data[startpos];
+                if (workingcommand == end)
+                {
+                    break;
+                }
+                byte workinglength = data[startpos + lengthofchar];
+
+
+                byte[] workingbytes = data.Skip(startpos).Take(workinglength).ToArray();
+                chunks.Add(workingbytes);
+                removelength += workingbytes.Length;
+                // mover to end pos
+                startpos += workingbytes.Length;
+
+            }
+
+
+            return chunks;
 
         }
     }

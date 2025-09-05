@@ -74,35 +74,6 @@ namespace Drax360Service
             return chunks;
 
         }
-
-        // [5] 1 2 3 4 5 [7] 1 2 3 4 5 6 7 [8] 12 3 4 5 7
-        public static List<byte[]> Chunker(byte[] data, byte end, out int removelength)
-        {
-            List<byte[]> chunks = new List<byte[]>();
-            int startpos = 1;
-            removelength = 0;
-
-            while (true)
-            {
-                byte workinglength = data[startpos];
-                if (workinglength == end  || startpos==data.Length)
-                {
-                    // include the end byte in the remove length
-                    removelength += 1;
-                    break;
-                }
-                byte[] workingbytes = data.Skip(startpos + 1).Take(workinglength).ToArray();
-                chunks.Add(workingbytes);
-                removelength+= workinglength+1;
-                // mover to end pos
-                startpos += workinglength + 1;
-
-            }
-
-
-            return chunks;
-
-        }
     }
 }
    

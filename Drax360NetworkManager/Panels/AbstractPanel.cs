@@ -12,8 +12,8 @@ namespace Drax360Service.Panels
 {    internal abstract class AbstractPanel
     {
         #region Constants
-        protected const byte kHeartbeatInitialDelaySeconds = 5;
-        protected const byte kHeartbeatDelaySeconds = 5;
+        protected const byte kHeartbeatInitialDelaySeconds = 60;
+        protected const byte kHeartbeatDelaySeconds = 60;
         protected const string ksettingsetupsection = "SETUP";
         private const string kinifolder = "";
         

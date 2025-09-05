@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 
 
 namespace Drax360Service
@@ -273,7 +274,6 @@ unsigned char *TxFile;
         {
             if (nvms.Count == 0) return;
 
-
             List<byte> contents = new List<byte>();
             foreach (NVM ournvm in nvms)
             {
@@ -324,6 +324,8 @@ unsigned char *TxFile;
                 catch
                 {}
             }
+
+            Thread.Sleep(100);
         }
         #endregion
         #region private methods
