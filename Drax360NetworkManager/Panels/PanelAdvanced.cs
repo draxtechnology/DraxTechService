@@ -153,7 +153,7 @@ namespace Drax360Service.Panels
                 int deviceaddress = 0;
                 int devicesubaddress = 0;
                 int zone = 0;
-                int inputtype = 15;
+                int inputtype = 13;
                 int evnum1 = 0;
                 bool on = true;
 
@@ -204,18 +204,93 @@ namespace Drax360Service.Panels
 
                         Console.WriteLine(strmsg);
 
-                        if ((int)chunk[9] == 4)   // device disabled
-                        {
-                            inputtype = 4;
-                        }
-                        if ((int)chunk[9] == 4)   // device enabled
+                        if ((int)chunk[9] == 0)   // Device Enabled
                         {
                             inputtype = 4;
                             on = false;
                         }
-                        if ((int)chunk[8] == 3)   // device missing
+                        if ((int)chunk[9] == 4)   // Device Disabled
                         {
-                            inputtype = 8;
+                            inputtype = 4;
+                            on = true;
+                        }
+
+                        switch (chunk[8])
+                        {
+                            case 3:   // Device Missing
+
+                                inputtype = 8;
+                                on = true;
+                                devicetext = devicetype + " Device Missing";
+                                break;
+
+                            case 25:  // Silence
+
+                                inputtype = 15;
+                                on = true;
+                                deviceaddress = 61;
+                                devicetext = "Silence Key";
+                                break;
+
+                            case 26:  // Resound
+
+                                inputtype = 15;
+                                on = true;
+                                deviceaddress = 63;
+                                devicetext = "Resound Key";
+                                break;
+
+                            case 27:  // Mute
+
+                                inputtype = 15;
+                                on = true;
+                                deviceaddress = 60;
+                                devicetext = "Mute Key";
+                                break;
+
+                            case 28:  // Reset
+
+                                inputtype = 15;
+                                on = true;
+                                deviceaddress = 59;
+                                devicetext = "Reset Key";
+                                break;
+
+                            case 30:  // Pre Alarm
+
+                                inputtype = 15;
+                                on = true;
+                                deviceaddress = 59;
+                                devicetext = "Pre Alarm Key";
+                                break;
+
+                            case 31:  // Security Alert
+
+                                inputtype = 15;
+                                on = true;
+                                deviceaddress = 59;
+                                devicetext = "Security Alert";
+                                break;
+
+                            case 32:   // Evacuate
+
+                                inputtype = 15;
+                                on = true;
+                                deviceaddress = 62;
+                                devicetext = "Evacuate Key";
+                                break;
+
+                            case 33:   // Fire Alarm
+
+                                inputtype = 0;
+                                on = true;
+                                break;
+
+                            case 34:   // Fire Test
+
+                                inputtype = 0;
+                                on = true;
+                                break;
                         }
                         evnum1 = CSAMXSingleton.CS.MakeInputNumber(node, loopnumber, deviceaddress, inputtype, on);
                         string message1 = devicetext;
