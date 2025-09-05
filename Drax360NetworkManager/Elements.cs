@@ -75,7 +75,7 @@ namespace Drax360Service
 
         }
 
-
+        // [5] 1 2 3 4 5 [7] 1 2 3 4 5 6 7 [8] 12 3 4 5 7
         public static List<byte[]> Chunker(byte[] data, byte end, out int removelength)
         {
             List<byte[]> chunks = new List<byte[]>();
@@ -85,7 +85,7 @@ namespace Drax360Service
             while (true)
             {
                 byte workinglength = data[startpos];
-                if (workinglength == end)
+                if (workinglength == end  || startpos==data.Length)
                 {
                     // include the end byte in the remove length
                     removelength += 1;
