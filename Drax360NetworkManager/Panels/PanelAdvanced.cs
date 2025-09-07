@@ -2,25 +2,17 @@
 using System.Collections.Generic;
 using System.IO.Ports;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Runtime.ConstrainedExecution;
-using System.Runtime.Remoting.Messaging;
-using System.Security.Cryptography;
-using System.Security.Policy;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
-using System.Xml.Linq;
-using static System.Collections.Specialized.BitVector32;
-using static System.Net.Mime.MediaTypeNames;
 using System.IO;
 
 namespace Drax360Service.Panels
 {
     internal class PanelAdvanced : AbstractPanel
     {
-        const byte kackbyte = 0x06;
-        const byte kheartbeatdelayseconds = 5;
+        #region constants
+        private const byte kackbyte = 0x06;
+        private const byte kheartbeatdelayseconds = 5;
         private const byte kAdvancedStart = 254;
         private const byte kAdvanedEnd = 255;
 
@@ -58,13 +50,32 @@ namespace Drax360Service.Panels
         private const string adtFLAME = "Flame";
         private const string adtINPUT1 = "Input";
         private const string adtINPUT2 = "Input";
+        #endregion
 
-        bool AcknowledgeMessage = false;
-        int AdvancedDestinationAddress = 0;
-        int AdvancedSourceAddress = 0;
-        int ControlPacketSequence = 0;
+        #region private variables
+        private bool AcknowledgeMessage = false;
+        private  int AdvancedDestinationAddress = 0;
+        private int AdvancedSourceAddress = 0;
+        private int ControlPacketSequence = 0;
+        int p1 = 0;
+        int p2 = 0;
+        int p3 = 0;
+        int p4 = 0;
+        int evnum = 0;
+        string message2 = "";
+        #endregion
 
+        #region constructors
+        public PanelAdvanced(string baselogfolder, string identifier) : base(baselogfolder, identifier, "AdvMan", "ADV")
+        {
+            if (!String.IsNullOrEmpty(identifier))
+            {
+                heartbeat_timer = new Timer(heartbeat_timer_callback, this.Identifier, 500, kHeartbeatDelaySeconds * 1000);
+            }
+        }
+        #endregion
 
+        #region public methods
         public override string FakeString
         {
             get
@@ -83,16 +94,6 @@ namespace Drax360Service.Panels
                 return Encoding.Default.GetString(readbhyte);
             }
         }
-
-        public string Zone = "";
-        public PanelAdvanced(string baselogfolder, string identifier) : base(baselogfolder, identifier, "AdvMan", "ADV")
-        {
-            if (!String.IsNullOrEmpty(identifier))
-            {
-                heartbeat_timer = new Timer(heartbeat_timer_callback, this.Identifier, 500, kHeartbeatDelaySeconds * 1000);
-            }
-        }
-
         public override void Parse(byte[] buffer)
         {
             base.Parse(buffer);
@@ -105,390 +106,13 @@ namespace Drax360Service.Panels
                 return;
             }
 
-            bool clean = true;
-            foreach (var chunk in chunks)
-            {
-                if (!processmessage(chunk))
-                {
-                    clean = false;
-                }
-            }
-
-            this.buffer.Clear();
-        }
-
-        private bool processmessage(byte[] ourmessage)
-        {
-            string hex = BitConverter.ToString(ourmessage);
-            this.NotifyClient("Received (Hex): " + hex, false);
-            string numeric = string.Join(" ", ourmessage.Select(b => b.ToString()));
-            this.NotifyClient("Received (Numeric): " + numeric, false);
-
-
-            string strmsg = Encoding.UTF8.GetString(ourmessage, 0, ourmessage.Length - 1);
-
-            if (ourmessage.Length >= 6 &&
-                ourmessage[1] == 128 && ourmessage[2] == 0 &&
-                ourmessage[3] == 0 && ourmessage[4] == 0 &&
-                ourmessage[5] == 1)
-            {
-                return true; // skip this specific pattern
-            }
-
-            
-            string filePath = @"C:\Temp\Advanced_c#.txt";
-            string messageText = string.Join(" ", ourmessage);
-            string logLine = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
-                           + " - " + messageText;
-            File.AppendAllText(filePath, logLine + Environment.NewLine);
-       
-            int removebytes = 0;
-
-            List<byte[]> chunks = advancedchunker(1, ourmessage.Skip(3).ToArray(), 240, out removebytes);
 
             foreach (var chunk in chunks)
             {
-                int node = 0;
-                int loopnumber = 0;
-                int deviceaddress = 0;
-                int devicesubaddress = 0;
-                int zone = 0;
-                int inputtype = 13;
-                int evnum1 = 0;
-                bool on = true;
-
-                switch (chunk[0])
-                {
-                    case 1:  // Acknowledgement
-
-                        Console.WriteLine("Acknowledgement");
-                        break;
-
-                    case 15:   // Output Activated by BMS 
-
-                        Console.WriteLine("BMS");
-                        node = (int)chunk[2];
-                        loopnumber = (int)chunk[3];
-                        deviceaddress = (int)chunk[4];
-                        devicesubaddress = (int)chunk[5];
-
-                        if ((int)chunk[6] == 1)
-                        {
-                            evnum1 = CSAMXSingleton.CS.MakeInputNumber(node, loopnumber, deviceaddress, inputtype);
-                            CSAMXSingleton.CS.SendAlarmToAMX(evnum1, "", "", "");
-                            CSAMXSingleton.CS.FlushMessages();
-                        }
-                        else
-                        {
-                            evnum1 = CSAMXSingleton.CS.MakeInputNumber(node, loopnumber, deviceaddress, inputtype, false);
-                            CSAMXSingleton.CS.SendAlarmToAMX(evnum1, "", "", "");
-                            CSAMXSingleton.CS.FlushMessages();
-                        }
-                        break;
-
-                    case 10:   // Device Status
-
-                        Console.WriteLine("Device Status");
-                        node = (int)chunk[2];
-                        loopnumber = (int)chunk[3];
-                        deviceaddress = (int)chunk[4];
-                        devicesubaddress = (int)chunk[5];
-                        zone = (int)chunk[6];
-                        int devicestate = (int)chunk[8];
-                        string devicetype = GetAdvancedDeviceType((int)chunk[10]);
-                        string devicetext = string.Empty;
-                        for (int i = 11; i < 12 + 12 && i < chunk.Length; i++)
-                        {
-                            devicetext += (char)chunk[i];
-                        }
-
-                        Console.WriteLine(strmsg);
-
-                        if ((int)chunk[9] == 0)   // Device Enabled
-                        {
-                            inputtype = 4;
-                            on = false;
-                        }
-                        if ((int)chunk[9] == 4)   // Device Disabled
-                        {
-                            inputtype = 4;
-                            on = true;
-                        }
-
-                        switch (chunk[8])
-                        {
-                            case 3:   // Device Missing
-
-                                inputtype = 8;
-                                on = true;
-                                devicetext = devicetype + " Device Missing";
-                                break;
-
-                            case 25:  // Silence
-
-                                inputtype = 15;
-                                on = true;
-                                deviceaddress = 61;
-                                devicetext = "Silence Key";
-                                break;
-
-                            case 26:  // Resound
-
-                                inputtype = 15;
-                                on = true;
-                                deviceaddress = 63;
-                                devicetext = "Resound Key";
-                                break;
-
-                            case 27:  // Mute
-
-                                inputtype = 15;
-                                on = true;
-                                deviceaddress = 60;
-                                devicetext = "Mute Key";
-                                break;
-
-                            case 28:  // Reset
-
-                                inputtype = 15;
-                                on = true;
-                                deviceaddress = 59;
-                                devicetext = "Reset Key";
-                                break;
-
-                            case 30:  // Pre Alarm
-
-                                inputtype = 15;
-                                on = true;
-                                deviceaddress = 59;
-                                devicetext = "Pre Alarm Key";
-                                break;
-
-                            case 31:  // Security Alert
-
-                                inputtype = 15;
-                                on = true;
-                                deviceaddress = 59;
-                                devicetext = "Security Alert";
-                                break;
-
-                            case 32:   // Evacuate
-
-                                inputtype = 15;
-                                on = true;
-                                deviceaddress = 62;
-                                devicetext = "Evacuate Key";
-                                break;
-
-                            case 33:   // Fire Alarm
-
-                                inputtype = 0;
-                                on = true;
-                                break;
-
-                            case 34:   // Fire Test
-
-                                inputtype = 0;
-                                on = true;
-                                break;
-                        }
-                        evnum1 = CSAMXSingleton.CS.MakeInputNumber(node, loopnumber, deviceaddress, inputtype, on);
-                        string message1 = devicetext;
-                        CSAMXSingleton.CS.SendAlarmToAMX(evnum1, message1, "", "");
-                        CSAMXSingleton.CS.FlushMessages();
-                        break;
-
-                    default:
-
-                        Console.WriteLine("Unknown Command: " + chunk[0]);
-                        this.NotifyClient("Unknown Command: " + chunk[0], false);
-                        break;
-                }
-
-                byte packetsequence = Convert.ToByte(ourmessage[0]);
-
-                // send acknowledge
-                AcknowledgeMessage = true;
-                Byte[] stracknowledge = new Byte[] { 1, 0, packetsequence, 1 };
-                Byte[] stracknowledgenew = DefineControl(stracknowledge);
-                serialsend(stracknowledgenew);
-                AcknowledgeMessage = false;
-
-                string result = BitConverter.ToString(stracknowledge);
-                this.NotifyClient("Sent " + result, false);
+                processmessage(chunk);
             }
-            return true;
-        }
-        
 
-        /*
-        public override void Parse(byte[] buffer)
-        {
-            base.Parse(buffer);
-            int foundat = -1;
-            int bufferlength = this.buffer.Count;
-
-            byte[] ourmessage = this.buffer.ToArray();
-            for (int i = 0; i < ourmessage.Length; i++)
-            {
-                if (ourmessage[i] == 255)
-                {
-                    foundat = i;
-                    break;
-                }
-            }
-            ;
-            if (foundat <= 0) return;
             this.buffer.Clear();
-            string strmsg = Encoding.UTF8.GetString(ourmessage, 0, foundat - 1);
-            if (ourmessage[0] != 254) return;
-            if (ourmessage[1] == 128 & ourmessage[2] == 0 & ourmessage[3] == 0 & ourmessage[4] == 0 & ourmessage[5] == 1) return;
-            string cmd = strmsg.Substring(1, 2);
-
-            /* From VB6 Example
-               Public Type DLLDATA     'Array of longs passed to and from DLLs
-                Dat(0 To 32) As Long
-                End Type
-             */
-
-        /*
-          Declare Function GetNWMData Lib "Gen_Netman.dll" Alias "_GetNWMData@24" (ByVal FileName As String, ByVal Index As Integer, LongArray As DLLDATA, ByVal DestString As String, ByVal ExText As String, ByVal ExText2 As String) As Integer
-
-        */
-
-        /*
-        From VB6 Example
-        sPanelNumber = CStr(GetNode(DLL.Dat(9)))
-
-        Then calling the function to get the node number
-        From C Network Manager
-
-        DllExport __int16 WINAPI GetNode(ipnum)
-            long ipnum;
-        {
-            return get_board_address(ipnum);
-        }
-          __int16  get_board_address(ip)
-        long ip;
-        {
-            return((__int16)((ip & 0x07ff0000)/0x10000));
-           }
-         */
-
-
-
-
-        /*  From VB6 Example
-                iInputType = CInt(GetInputType(DLL.Dat(9)))
-
-
-        DllExport __int16 WINAPI GetInputType(ipnum)
-            long ipnum;
-           {
-            return get_input_type(ipnum);
-            }
-
-        __int16  get_input_type(ip)
-            long ip;
-        {
-            return((__int16)((ip & 0x78000000)/0x8000000)); 	// based on offset of 2^25
-        }
-
-        int inputtype = (int)(ourmessage[6]); 
-        int node = (int)ourmessage[7];
-        int loopnumber = (int)ourmessage[8];
-        int deviceaddress = (int)ourmessage[9];
-        int devicesubaddress = (int)ourmessage[10];
-        int zone = (int)ourmessage[11];
-        string devicetype = GetAdvancedDeviceType((int)ourmessage[15]);
-        string devicetext = string.Empty;
-        for (int i = 16; i < 16 + 12 && i < ourmessage.Length; i++)
-        {
-            devicetext += (char)ourmessage[i];
-        }
-
-        Console.WriteLine(strmsg);
-
-        byte packetsequece = Convert.ToByte(ourmessage[4]);
-        // send acknowledge
-
-        Byte[] stracknoledge = new Byte[] { kAdvancedStart, 1, 0, packetsequece, 1, kAdvanedEnd };
-        serialsend(stracknoledge);
-
-        string result = BitConverter.ToString(stracknoledge);
-        this.NotifyClient("Sent " + result, false);
-
-
-        int evnum1 = CSAMXSingleton.CS.MakeInputNumber(node, loopnumber, deviceaddress, inputtype);
-        string message1 = devicetext;
-        CSAMXSingleton.CS.SendAlarmToAMX(evnum1, message1, "", "");
-        CSAMXSingleton.CS.FlushMessages();
-    }
-    */
-        public static string GetAdvancedDeviceType(int deviceType)
-        {
-            switch (deviceType)
-            {
-                case 0: return adtUNKNOWNDEVICE;
-                case 1: return adtAPOLLOIONISATION;
-                case 2: return adtAPOLLOOPTICAL;
-                case 3: return adtAPOLLOMULTISENSOR;
-                case 4: return adtAPOLLOHEAT;
-                case 5: return adtZONEMONITOR;
-                case 6: return adtCALLPOINT;
-                case 7: return adtTEMPERATURESENSOR;
-                case 8: return adtVOLTS1;
-                case 9: return adtVOLTS2;
-                case 10: return adtVOLTS3;
-                case 11: return adtSWITCH;
-                case 12: return adtSOUNDER;
-                case 13: return adtMONITOREDRELAY;
-                case 14: return adtRELAY;
-                case 15: return adtMONITOR;
-                case 16: return adtCURRENT;
-                case 17: return adtCURRENT;
-                case 18: return adtCO_FIRE;
-                case 19: return adtCO_GASSENSOR;
-                case 20: return adtFLAMEDETECTOR;
-                case 21: return adtSWITCH_MONITORED;
-                case 22: return adtHOCHIKIIONISATION;
-                case 23: return adtHOCHIKIOPTICAL;
-                case 24: return adtHOCHIKIMULTISENSOR;
-                case 25: return adtHOCHIKIHEAT;
-                case 26: return adtDOUBLEADDRESS;
-                case 27: return adtBEACON;
-                case 28: return adtMULTIHEAT;
-                case 29: return adtRATEOFRISEHEAT;
-                case 30: return adtOPTICALSMOKE;
-                case 31: return adtFLAME;
-                case 32: return adtINPUT1;
-                case 33: return adtINPUT2;
-                default: return string.Empty;        // unknown / unsupported
-            }
-        }
-
-
-        protected override void heartbeat_timer_callback(object sender)
-        {
-
-            Console.WriteLine("Sent Heartbeat");
-
-            // VB6 Code
-            // sPanelNumber = HBT_Panel1 + giMainOffset
-            // Call SendToAdvanced(Chr$(42) +Chr$(0) + Chr$(HBT_Panel1), False, sPanelNumber)
-
-            //Byte[] heartbeat = new Byte[] { kAdvancedStart, 42, 0, 1, kAdvanedEnd };
-            //string heartbeat = ((char)42).ToString() + (char)0 + (char)1;
-            //serialsend(heartbeat);
-
-
-            //Byte[] heartbeat = new Byte[] { 42, 0, 1 };
-            Byte[] heartbeat = new Byte[] { 40, 4, 1 };
-
-            Byte[] heartbeatnew = DefineControl(heartbeat);
-            serialsend(heartbeatnew);
-
-            // sendserial(Convert.ToChar(42).ToString() + Convert.ToChar(0).ToString() + Convert.ToChar(1).ToString());
         }
 
         public override void StartUp(int fakemode)
@@ -549,28 +173,23 @@ namespace Drax360Service.Panels
                 serialport.DiscardOutBuffer();
 
                 Byte[] start = new Byte[] { 40, 4, 1, 0 };
-                Byte[] startnew = DefineControl(start);
+                Byte[] startnew = definecontrol(start);
                 serialsend(startnew);
 
 
                 Byte[] start1 = new Byte[] { 41, 0, 0, 0, 0, 0, 1, 1 };
-                Byte[] startnew1 = DefineControl(start1);
+                Byte[] startnew1 = definecontrol(start1);
                 serialsend(startnew1);
             }
         }
 
-        int p1 = 0;
-        int p2 = 0;
-        int p3 = 0;
-        int p4 = 0;
-        int evnum = 0;
-        string message2 = "";
+       
 
         public override void Evacuate(string passedvalues)
         {
             Byte[] evac = new Byte[] { 61, 0, 1, 0, 0, 0, 0 };
 
-            Byte[] evacnew = DefineControl(evac);
+            Byte[] evacnew = definecontrol(evac);
 
             // Byte[] evactest = new Byte[] { kAdvancedStart, 128, 0, 0, 4, 61, 7, 1, 0, 0, 0, 0, 240, 225, 100, kAdvanedEnd };  VB6 Example Send String
 
@@ -583,7 +202,7 @@ namespace Drax360Service.Panels
             message2 = "Evacuate";
 
             evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-            send_response_amx_and_serial(evnum, "", message2);
+            send_response_amx(evnum, "", message2);
         }
         public override void EvacuateNetwork(string passedvalues)
         {
@@ -593,7 +212,7 @@ namespace Drax360Service.Panels
         {
             Byte[] silence = new Byte[] { 60, 0, 32, 0, 0, 0 };
 
-            Byte[] silencenew = DefineControl(silence);
+            Byte[] silencenew = definecontrol(silence);
 
             serialsend(silencenew);
 
@@ -604,14 +223,14 @@ namespace Drax360Service.Panels
             message2 = "Alarms Silenced";
 
             evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-            send_response_amx_and_serial(evnum, "", message2);
+            send_response_amx(evnum, "", message2);
         }
 
         public override void Alert(string passedvalues)
         {
             Byte[] alert = new Byte[] { 61, 0, 2, 0, 0, 0, 0 };
 
-            Byte[] alertnew = DefineControl(alert);
+            Byte[] alertnew = definecontrol(alert);
 
             serialsend(alertnew);
 
@@ -622,7 +241,7 @@ namespace Drax360Service.Panels
             message2 = "Alert";
 
             evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-            send_response_amx_and_serial(evnum, "", message2);
+            send_response_amx(evnum, "", message2);
         }
 
         public override void MuteBuzzers(string passedvalues)
@@ -634,7 +253,7 @@ namespace Drax360Service.Panels
         {
             Byte[] reset = new Byte[] { 60, 0, 2, 0, 0, 0 };
 
-            Byte[] resetnew = DefineControl(reset);
+            Byte[] resetnew = definecontrol(reset);
 
             serialsend(resetnew);
 
@@ -645,7 +264,7 @@ namespace Drax360Service.Panels
             message2 = "Alarms Reset";
 
             evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-            send_response_amx_and_serial(evnum, "", message2);
+            send_response_amx(evnum, "", message2);
         }
         public override void DisableDevice(string passedvalues)
         {
@@ -660,7 +279,7 @@ namespace Drax360Service.Panels
 
             Byte[] disiceabledev = new Byte[] { 70, 0, 0x85, 1, (byte)node, (byte)device, 0, 1 };
 
-            Byte[] disiceabledevnew = DefineControl(disiceabledev);
+            Byte[] disiceabledevnew = definecontrol(disiceabledev);
 
             serialsend(disiceabledevnew);
 
@@ -685,7 +304,7 @@ namespace Drax360Service.Panels
 
             Byte[] enabledevice = new Byte[] { 70, 0, 0x85, 1, (byte)node, (byte)device, 0, 0 };
 
-            Byte[] enabledevicenew = DefineControl(enabledevice);
+            Byte[] enabledevicenew = definecontrol(enabledevice);
 
             serialsend(enabledevicenew);
 
@@ -713,7 +332,7 @@ namespace Drax360Service.Panels
 
             Byte[] disablezone = new Byte[] { 70, 0, 0x83, lowByte, highByte, 0, 0, 1 };
 
-            Byte[] disablezonenew = DefineControl(disablezone);
+            Byte[] disablezonenew = definecontrol(disablezone);
 
             serialsend(disablezonenew);
 
@@ -740,7 +359,7 @@ namespace Drax360Service.Panels
 
             Byte[] enablezone = new Byte[] { 70, 0, 0x83, lowByte, highByte, 0, 0, 0 };
 
-            Byte[] enablezonenew = DefineControl(enablezone);
+            Byte[] enablezonenew = definecontrol(enablezone);
 
             serialsend(enablezonenew);
 
@@ -751,8 +370,10 @@ namespace Drax360Service.Panels
             node = node + this.Offset;
             SendEvent("Advanced", NwmData.IsolationToAmx, inputtype, text, on, node, loop, device);
         }
+        #endregion
 
-        public byte[] DefineControl(byte[] evac)
+        #region private methods
+        private byte[] definecontrol(byte[] evac)
         {
             // Convert input into a mutable list for easier manipulation
             List<byte> controlBytes = new List<byte>(evac);
@@ -796,7 +417,7 @@ namespace Drax360Service.Panels
             fullPacket.AddRange(controlBytes);
 
             // Do CRC and adjust for clash characters
-            byte[] processed = DoTheAdvancedCrcCalculation(fullPacket.ToArray());
+            byte[] processed = doadvancedcrccalculation(fullPacket.ToArray());
             processed = MakeControlClashCharacters(processed);
 
             // Wrap with SOM (0xFE) and EOM (0xFF)
@@ -809,8 +430,266 @@ namespace Drax360Service.Panels
 
             return finalPacket.ToArray();
         }
+        private bool processmessage(byte[] ourmessage)
+        {
+            string hex = BitConverter.ToString(ourmessage);
+            this.NotifyClient("Received (Hex): " + hex, false);
+            string numeric = string.Join(" ", ourmessage.Select(b => b.ToString()));
+            this.NotifyClient("Received (Numeric): " + numeric, false);
 
-        private byte[] DoTheAdvancedCrcCalculation(byte[] message)
+
+            string strmsg = Encoding.UTF8.GetString(ourmessage, 0, ourmessage.Length - 1);
+
+            if (ourmessage.Length >= 6 &&
+                ourmessage[1] == 128 && ourmessage[2] == 0 &&
+                ourmessage[3] == 0 && ourmessage[4] == 0 &&
+                ourmessage[5] == 1)
+            {
+                return true; // skip this specific pattern
+            }
+
+            
+            string filePath = @"C:\Temp\Advanced_c#.txt";
+            string messageText = string.Join(" ", ourmessage);
+            string logLine = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+                           + " - " + messageText;
+            File.AppendAllText(filePath, logLine + Environment.NewLine);
+       
+            int removebytes = 0;
+
+            List<byte[]> chunks = advancedchunker(1, ourmessage.Skip(3).ToArray(), 240, out removebytes);
+
+            foreach (var chunk in chunks)
+            {
+                int node = 0;
+                int loopnumber = 0;
+                int deviceaddress = 0;
+                int devicesubaddress = 0;
+                int zone = 0;
+                int inputtype = 13;
+                int evnum1 = 0;
+                bool on = true;
+
+                switch (chunk[0])
+                {
+                    case 1:  // Acknowledgement
+                        Console.WriteLine("Acknowledgement");
+                        break;
+
+                    case 15:   // Output Activated by BMS 
+                        Console.WriteLine("BMS");
+                        node = (int)chunk[2];
+                        loopnumber = (int)chunk[3];
+                        deviceaddress = (int)chunk[4];
+                        devicesubaddress = (int)chunk[5];
+
+                        if ((int)chunk[6] == 1)
+                        {
+                            evnum1 = CSAMXSingleton.CS.MakeInputNumber(node, loopnumber, deviceaddress, inputtype);
+                            CSAMXSingleton.CS.SendAlarmToAMX(evnum1, "", "", "");
+                            CSAMXSingleton.CS.FlushMessages();
+                        }
+                        else
+                        {
+                            evnum1 = CSAMXSingleton.CS.MakeInputNumber(node, loopnumber, deviceaddress, inputtype, false);
+                            CSAMXSingleton.CS.SendAlarmToAMX(evnum1, "", "", "");
+                            CSAMXSingleton.CS.FlushMessages();
+                        }
+                        break;
+
+                    case 10:   // Device Status
+                        Console.WriteLine("Device Status");
+                        node = (int)chunk[2];
+                        loopnumber = (int)chunk[3];
+                        deviceaddress = (int)chunk[4];
+                        devicesubaddress = (int)chunk[5];
+                        zone = (int)chunk[6];
+                        int devicestate = (int)chunk[8];
+                        string devicetype = getadvanceddevicetype((int)chunk[10]);
+                        string devicetext = string.Empty;
+                        for (int i = 11; i < 12 + 12 && i < chunk.Length; i++)
+                        {
+                            devicetext += (char)chunk[i];
+                        }
+
+                        Console.WriteLine(strmsg);
+
+                        if ((int)chunk[9] == 0)   // Device Enabled
+                        {
+                            inputtype = 4;
+                            on = false;
+                        }
+                        if ((int)chunk[9] == 4)   // Device Disabled
+                        {
+                            inputtype = 4;
+                            on = true;
+                        }
+
+                        switch (chunk[8])
+                        {
+                            case 3:   // Device Missing
+                                inputtype = 8;
+                                on = true;
+                                devicetext = devicetype + " Device Missing";
+                                break;
+
+                            case 25:  // Silence
+                                inputtype = 15;
+                                on = true;
+                                deviceaddress = 61;
+                                devicetext = "Silence Key";
+                                break;
+
+                            case 26:  // Resound
+                                inputtype = 15;
+                                on = true;
+                                deviceaddress = 63;
+                                devicetext = "Resound Key";
+                                break;
+
+                            case 27:  // Mute
+                                inputtype = 15;
+                                on = true;
+                                deviceaddress = 60;
+                                devicetext = "Mute Key";
+                                break;
+
+                            case 28:  // Reset
+                                inputtype = 15;
+                                on = true;
+                                deviceaddress = 59;
+                                devicetext = "Reset Key";
+                                break;
+
+                            case 30:  // Pre Alarm
+                                inputtype = 15;
+                                on = true;
+                                deviceaddress = 59;
+                                devicetext = "Pre Alarm Key";
+                                break;
+
+                            case 31:  // Security Alert
+                                inputtype = 15;
+                                on = true;
+                                deviceaddress = 59;
+                                devicetext = "Security Alert";
+                                break;
+
+                            case 32:   // Evacuate
+                                inputtype = 15;
+                                on = true;
+                                deviceaddress = 62;
+                                devicetext = "Evacuate Key";
+                                break;
+
+                            case 33:   // Fire Alarm
+                                inputtype = 0;
+                                on = true;
+                                break;
+
+                            case 34:   // Fire Test
+                                inputtype = 0;
+                                on = true;
+                                break;
+                        }
+                        evnum1 = CSAMXSingleton.CS.MakeInputNumber(node, loopnumber, deviceaddress, inputtype, on);
+                        string message1 = devicetext;
+                        CSAMXSingleton.CS.SendAlarmToAMX(evnum1, message1, "", "");
+                        CSAMXSingleton.CS.FlushMessages();
+                        break;
+
+                    default:
+                        Console.WriteLine("Unknown Command: " + chunk[0]);
+                        this.NotifyClient("Unknown Command: " + chunk[0], false);
+
+                        // Mike should we return false here?
+
+                        break;
+                }
+
+                byte packetsequence = ourmessage[0];
+
+                // send acknowledge
+                AcknowledgeMessage = true;
+                Byte[] stracknowledge = new Byte[] { 1, 0, packetsequence, 1 };
+                Byte[] stracknowledgenew = definecontrol(stracknowledge);
+                serialsend(stracknowledgenew);
+                AcknowledgeMessage = false;
+
+                string result = BitConverter.ToString(stracknowledge);
+                this.NotifyClient("Sent " + result, false);
+            }
+            return true;
+        }
+        
+        private string getadvanceddevicetype(int deviceType)
+        {
+            switch (deviceType)
+            {
+                case 0: return adtUNKNOWNDEVICE;
+                case 1: return adtAPOLLOIONISATION;
+                case 2: return adtAPOLLOOPTICAL;
+                case 3: return adtAPOLLOMULTISENSOR;
+                case 4: return adtAPOLLOHEAT;
+                case 5: return adtZONEMONITOR;
+                case 6: return adtCALLPOINT;
+                case 7: return adtTEMPERATURESENSOR;
+                case 8: return adtVOLTS1;
+                case 9: return adtVOLTS2;
+                case 10: return adtVOLTS3;
+                case 11: return adtSWITCH;
+                case 12: return adtSOUNDER;
+                case 13: return adtMONITOREDRELAY;
+                case 14: return adtRELAY;
+                case 15: return adtMONITOR;
+                case 16: return adtCURRENT;
+                case 17: return adtCURRENT;
+                case 18: return adtCO_FIRE;
+                case 19: return adtCO_GASSENSOR;
+                case 20: return adtFLAMEDETECTOR;
+                case 21: return adtSWITCH_MONITORED;
+                case 22: return adtHOCHIKIIONISATION;
+                case 23: return adtHOCHIKIOPTICAL;
+                case 24: return adtHOCHIKIMULTISENSOR;
+                case 25: return adtHOCHIKIHEAT;
+                case 26: return adtDOUBLEADDRESS;
+                case 27: return adtBEACON;
+                case 28: return adtMULTIHEAT;
+                case 29: return adtRATEOFRISEHEAT;
+                case 30: return adtOPTICALSMOKE;
+                case 31: return adtFLAME;
+                case 32: return adtINPUT1;
+                case 33: return adtINPUT2;
+                default: return string.Empty;        // unknown / unsupported
+            }
+        }
+
+
+        protected override void heartbeat_timer_callback(object sender)
+        {
+
+            Console.WriteLine("Sent Heartbeat");
+
+            // VB6 Code
+            // sPanelNumber = HBT_Panel1 + giMainOffset
+            // Call SendToAdvanced(Chr$(42) +Chr$(0) + Chr$(HBT_Panel1), False, sPanelNumber)
+
+            //Byte[] heartbeat = new Byte[] { kAdvancedStart, 42, 0, 1, kAdvanedEnd };
+            //string heartbeat = ((char)42).ToString() + (char)0 + (char)1;
+            //serialsend(heartbeat);
+
+
+            //Byte[] heartbeat = new Byte[] { 42, 0, 1 };
+            Byte[] heartbeat = new Byte[] { 40, 4, 1 };
+
+            Byte[] heartbeatnew = definecontrol(heartbeat);
+            serialsend(heartbeatnew);
+
+            // sendserial(Convert.ToChar(42).ToString() + Convert.ToChar(0).ToString() + Convert.ToChar(1).ToString());
+        }
+
+        
+        private byte[] doadvancedcrccalculation(byte[] message)
         {
             // Append two spaces (0x20) for CRC storage
             byte[] extended = new byte[message.Length + 2];
@@ -819,7 +698,7 @@ namespace Drax360Service.Panels
             extended[extended.Length - 1] = 0x20;
 
             // Call external CRC function - assumes it modifies `extended` in-place
-            bool success = AdvancedCrcCalculate(extended, extended.Length);
+            bool success = advancedcrccalculate(extended, extended.Length);
 
             if (!success)
             {
@@ -829,7 +708,7 @@ namespace Drax360Service.Panels
             return extended;
         }
 
-        private bool AdvancedCrcCalculate(byte[] data, int length)
+        private bool advancedcrccalculate(byte[] data, int length)
         {
             if (length < 2) return false;
 
@@ -873,7 +752,7 @@ namespace Drax360Service.Panels
             return result.ToArray();
         }
 
-        private void send_response_amx_and_serial(int evnum, string message1, string message2, string message3 = "")
+        private void send_response_amx(int evnum, string message1, string message2, string message3 = "")
         {
             string friendlymessage = message2 + (message3.Length > 0 ? (" " + message3) : "");
 
@@ -885,6 +764,7 @@ namespace Drax360Service.Panels
 
         }
 
+        // Advanced chunker to handle length-prefixed chunks with end byte
         private List<byte[]> advancedchunker(int lengthofchar, byte[] data, byte end, out int removelength)
         {
             List<byte[]> chunks = new List<byte[]>();
@@ -895,28 +775,26 @@ namespace Drax360Service.Panels
             {
                 if (startpos + lengthofchar >= data.Length)
                 {
-
                     break;
                 }
+
                 byte workingcommand = data[startpos];
                 if (workingcommand == end)
                 {
                     break;
                 }
-                byte workinglength = data[startpos + lengthofchar];
 
-
-                byte[] workingbytes = data.Skip(startpos).Take(workinglength).ToArray();
-                chunks.Add(workingbytes);
-                removelength += workingbytes.Length;
+                byte chunklength = data[startpos + lengthofchar];
+                byte[] chunk = data.Skip(startpos).Take(chunklength).ToArray();
+                chunks.Add(chunk);
+                removelength += chunk.Length;
                 // mover to end pos
-                startpos += workingbytes.Length;
+                startpos += chunk.Length;
 
             }
 
-
             return chunks;
-
         }
     }
+    #endregion 
 }
