@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.IO.Ports;
 using System.Linq;
+using System.Runtime;
 using System.Text;
 using System.Threading;
-using System.IO;
 
 namespace Drax360Service.Panels
 {
@@ -15,6 +16,7 @@ namespace Drax360Service.Panels
         private const byte kheartbeatdelayseconds = 5;
         private const byte kAdvancedStart = 254;
         private const byte kAdvanedEnd = 255;
+        private const string AdvancedZoneTextFile = "\\Temp\\AdvZones.Txt";
 
         private const string adtUNKNOWNDEVICE = "Unknown Device";
         private const string adtAPOLLOIONISATION = "Ionisation Smoke";
@@ -121,7 +123,10 @@ namespace Drax360Service.Panels
             string settingparity = base.GetSetting<string>(ksettingsetupsection, "Parity");
             int settingdatabits = base.GetSetting<int>(ksettingsetupsection, "DataBits");
             int settingstopbits = base.GetSetting<int>(ksettingsetupsection, "StopBits");
+            int giNWMDefaultZoneText = base.GetSetting<int>(ksettingsetupsection, "DefaultZoneText");
+            int giNMWRefreshZonesStart = base.GetSetting<int>(ksettingsetupsection, "RefreshZonesStart");
 
+            string x = GetZoneText(1.ToString());
             if (fakemode > 0)
             {
                 return;
@@ -176,10 +181,17 @@ namespace Drax360Service.Panels
                 Byte[] startnew = definecontrol(start);
                 serialsend(startnew);
 
-
-                Byte[] start1 = new Byte[] { 41, 0, 0, 0, 0, 0, 1, 1 };
-                Byte[] startnew1 = definecontrol(start1);
-                serialsend(startnew1);
+                if (giNMWRefreshZonesStart == 1)
+                {
+                    base.NotifyClient("Startup - initialising zone text requests", false);
+                    Byte[] start1 = new Byte[] { 41, 0, 0, 0, 0, 0, 1, 1 };
+                    Byte[] startnew1 = definecontrol(start1);
+                    serialsend(startnew1);
+                }
+                else
+                {
+                    base.NotifyClient("Startup - zone text requests not required", false);
+                }
             }
         }
 
@@ -593,7 +605,8 @@ namespace Drax360Service.Panels
                                 break;
                         }
                         evnum1 = CSAMXSingleton.CS.MakeInputNumber(node, loopnumber, deviceaddress, inputtype, on);
-                        string message1 = devicetext;
+                        string message1 = GetZoneText(zone.ToString()) + " " + devicetext;
+                        
                         CSAMXSingleton.CS.SendAlarmToAMX(evnum1, message1, "", "");
                         CSAMXSingleton.CS.FlushMessages();
                         break;
@@ -603,8 +616,7 @@ namespace Drax360Service.Panels
                         this.NotifyClient("Unknown Command: " + chunk[0], false);
 
                         // Mike should we return false here?
-
-                        break;
+                        return false;
                 }
 
                 byte packetsequence = ourmessage[0];
@@ -667,28 +679,14 @@ namespace Drax360Service.Panels
 
         protected override void heartbeat_timer_callback(object sender)
         {
-
             Console.WriteLine("Sent Heartbeat");
 
-            // VB6 Code
-            // sPanelNumber = HBT_Panel1 + giMainOffset
-            // Call SendToAdvanced(Chr$(42) +Chr$(0) + Chr$(HBT_Panel1), False, sPanelNumber)
-
-            //Byte[] heartbeat = new Byte[] { kAdvancedStart, 42, 0, 1, kAdvanedEnd };
-            //string heartbeat = ((char)42).ToString() + (char)0 + (char)1;
-            //serialsend(heartbeat);
-
-
-            //Byte[] heartbeat = new Byte[] { 42, 0, 1 };
             Byte[] heartbeat = new Byte[] { 40, 4, 1 };
 
             Byte[] heartbeatnew = definecontrol(heartbeat);
             serialsend(heartbeatnew);
-
-            // sendserial(Convert.ToChar(42).ToString() + Convert.ToChar(0).ToString() + Convert.ToChar(1).ToString());
         }
 
-        
         private byte[] doadvancedcrccalculation(byte[] message)
         {
             // Append two spaces (0x20) for CRC storage
@@ -761,7 +759,6 @@ namespace Drax360Service.Panels
 
             CSAMXSingleton.CS.SendAlarmToAMX(evnum, message1, message2, message3);
             CSAMXSingleton.CS.FlushMessages();
-
         }
 
         // Advanced chunker to handle length-prefixed chunks with end byte
@@ -788,13 +785,84 @@ namespace Drax360Service.Panels
                 byte[] chunk = data.Skip(startpos).Take(chunklength).ToArray();
                 chunks.Add(chunk);
                 removelength += chunk.Length;
-                // mover to end pos
+                // move to end pos
                 startpos += chunk.Length;
-
             }
 
             return chunks;
         }
+        private string GetZoneText(string zone)
+        {
+            string result;
+            string sDefText = "";
+            if (giNWMDefaultZoneText != 0)
+            {
+                sDefText = $"Zone {zone}";
+            }
+
+            try
+            {
+                result = ReadFromIniFile("Zones", zone, sDefText, AdvancedZoneTextFile);
+            }
+            catch (Exception ex)
+            {
+                base.NotifyClient($"GetZoneText Error {ex.HResult} ({ex.Message}) in procedure GetZoneText of Module ADVNetManager",false);
+                result = $"Error getting text for Zone {zone}";
+            }
+
+            return result;
+        }
+
+        public static string ReadFromIniFile(string section, string key, string defaultValue, string fileName)
+        {
+            try
+            {
+                fileName = fileName.TrimStart('\\', '/');
+                string fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);
+  
+                if (!File.Exists(fullPath))
+                    return defaultValue;
+
+                string currentSection = "";
+                foreach (var line in File.ReadAllLines(fullPath))
+                {
+                    string trimmed = line.Trim();
+
+                    // Skip empty lines or comments
+                    if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith(";") || trimmed.StartsWith("#"))
+                        continue;
+
+                    // Check for section header [Section]
+                    if (trimmed.StartsWith("[") && trimmed.EndsWith("]"))
+                    {
+                        currentSection = trimmed.Substring(1, trimmed.Length - 2).Trim();
+                        continue;
+                    }
+
+                    // Only process lines within the desired section
+                    if (string.Equals(currentSection, section, StringComparison.OrdinalIgnoreCase))
+                    {
+                        int equalsIndex = trimmed.IndexOf('=');
+                        if (equalsIndex > 0)
+                        {
+                            string keyName = trimmed.Substring(0, equalsIndex).Trim();
+                            string value = trimmed.Substring(equalsIndex + 1).Trim();
+
+                            if (string.Equals(keyName, key, StringComparison.OrdinalIgnoreCase))
+                                return value;
+                        }
+                    }
+                }
+
+                // If section/key not found, return default
+                return defaultValue;
+            }
+            catch
+            {
+                return defaultValue;
+            }
+        }
     }
-    #endregion 
+    #endregion
 }
+
