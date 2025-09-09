@@ -315,7 +315,6 @@ namespace Drax360Service
         }
         private async void startpipesend()
         {
-           
             while (pipeserversend != null)
             {
                 await pipeserversend.WaitForConnectionAsync();
@@ -337,7 +336,6 @@ namespace Drax360Service
                 catch (Exception ex)
                 {
                     ln("Error sending response: " + ex.Message, EventLogEntryType.Error);
-
                 }
             }
         }

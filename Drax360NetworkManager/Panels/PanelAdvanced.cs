@@ -4,8 +4,10 @@ using System.IO;
 using System.IO.Ports;
 using System.Linq;
 using System.Runtime;
+using System.Security.Policy;
 using System.Text;
 using System.Threading;
+using System.Xml.Linq;
 
 namespace Drax360Service.Panels
 {
@@ -59,6 +61,12 @@ namespace Drax360Service.Panels
         private  int AdvancedDestinationAddress = 0;
         private int AdvancedSourceAddress = 0;
         private int ControlPacketSequence = 0;
+        private int giNWMDefaultZoneText = 0;
+        private int giIgnoreNullZoneText = 0;
+        private int giNWMRefreshZonesConfig = 0;
+        private byte HBT_Panel1 = 0;
+        private int giSubAddressOffset = 0;
+        private int gbUseSubAddressOffset = 0;
         int p1 = 0;
         int p2 = 0;
         int p3 = 0;
@@ -73,6 +81,7 @@ namespace Drax360Service.Panels
             if (!String.IsNullOrEmpty(identifier))
             {
                 heartbeat_timer = new Timer(heartbeat_timer_callback, this.Identifier, 500, kHeartbeatDelaySeconds * 1000);
+                this.Offset = base.GetSetting<int>(ksettingsetupsection, "Amx1Offset");
             }
         }
         #endregion
@@ -123,8 +132,13 @@ namespace Drax360Service.Panels
             string settingparity = base.GetSetting<string>(ksettingsetupsection, "Parity");
             int settingdatabits = base.GetSetting<int>(ksettingsetupsection, "DataBits");
             int settingstopbits = base.GetSetting<int>(ksettingsetupsection, "StopBits");
-            int giNWMDefaultZoneText = base.GetSetting<int>(ksettingsetupsection, "DefaultZoneText");
             int giNMWRefreshZonesStart = base.GetSetting<int>(ksettingsetupsection, "RefreshZonesStart");
+            giNWMDefaultZoneText = base.GetSetting<int>(ksettingsetupsection, "DefaultZoneText");
+            giIgnoreNullZoneText = base.GetSetting<int>(ksettingsetupsection, "IgnoreNullZoneText");
+            giNWMRefreshZonesConfig = base.GetSetting<int>(ksettingsetupsection, "RefreshZonesConfig");
+            HBT_Panel1 = base.GetSetting<byte>(ksettingpanelsection + "1", "hb");
+            giSubAddressOffset = base.GetSetting<int>(ksettingsetupsection, "SubAddressOffset");
+            gbUseSubAddressOffset = base.GetSetting<int>(ksettingsetupsection, "UseSubAddressOffset");
 
             string x = GetZoneText(1.ToString());
             if (fakemode > 0)
@@ -194,8 +208,6 @@ namespace Drax360Service.Panels
                 }
             }
         }
-
-       
 
         public override void Evacuate(string passedvalues)
         {
@@ -488,27 +500,6 @@ namespace Drax360Service.Panels
                         Console.WriteLine("Acknowledgement");
                         break;
 
-                    case 15:   // Output Activated by BMS 
-                        Console.WriteLine("BMS");
-                        node = (int)chunk[2];
-                        loopnumber = (int)chunk[3];
-                        deviceaddress = (int)chunk[4];
-                        devicesubaddress = (int)chunk[5];
-
-                        if ((int)chunk[6] == 1)
-                        {
-                            evnum1 = CSAMXSingleton.CS.MakeInputNumber(node, loopnumber, deviceaddress, inputtype);
-                            CSAMXSingleton.CS.SendAlarmToAMX(evnum1, "", "", "");
-                            CSAMXSingleton.CS.FlushMessages();
-                        }
-                        else
-                        {
-                            evnum1 = CSAMXSingleton.CS.MakeInputNumber(node, loopnumber, deviceaddress, inputtype, false);
-                            CSAMXSingleton.CS.SendAlarmToAMX(evnum1, "", "", "");
-                            CSAMXSingleton.CS.FlushMessages();
-                        }
-                        break;
-
                     case 10:   // Device Status
                         Console.WriteLine("Device Status");
                         node = (int)chunk[2];
@@ -519,6 +510,7 @@ namespace Drax360Service.Panels
                         int devicestate = (int)chunk[8];
                         string devicetype = getadvanceddevicetype((int)chunk[10]);
                         string devicetext = string.Empty;
+                        int iNodeOffset = this.Offset;
                         for (int i = 11; i < 12 + 12 && i < chunk.Length; i++)
                         {
                             devicetext += (char)chunk[i];
@@ -528,11 +520,19 @@ namespace Drax360Service.Panels
 
                         if ((int)chunk[9] == 0)   // Device Enabled
                         {
+                            if (giSubAddressOffset == 1 && (devicetype == "Switch" || devicetype == "Relay" || devicetype == "Zone Monitor"))
+                            {
+                                iNodeOffset = giSubAddressOffset;
+                            }
                             inputtype = 4;
                             on = false;
                         }
                         if ((int)chunk[9] == 4)   // Device Disabled
                         {
+                            if (giSubAddressOffset == 1 && (devicetype == "Switch" || devicetype == "Relay" || devicetype == "Zone Monitor"))
+                            {
+                                iNodeOffset = giSubAddressOffset;
+                            }
                             inputtype = 4;
                             on = true;
                         }
@@ -604,18 +604,100 @@ namespace Drax360Service.Panels
                                 on = true;
                                 break;
                         }
-                        evnum1 = CSAMXSingleton.CS.MakeInputNumber(node, loopnumber, deviceaddress, inputtype, on);
-                        string message1 = GetZoneText(zone.ToString()) + " " + devicetext;
+                        evnum1 = CSAMXSingleton.CS.MakeInputNumber(node + iNodeOffset, loopnumber, deviceaddress, inputtype, on);
+                        string message1 = devicetext;
                         
-                        CSAMXSingleton.CS.SendAlarmToAMX(evnum1, message1, "", "");
+                        CSAMXSingleton.CS.SendAlarmToAMX(evnum1, GetZoneText(zone.ToString()),message1, "");
                         CSAMXSingleton.CS.FlushMessages();
+                        break;
+
+                    case 11:  // Node Status
+
+                        this.NotifyClient("Node Status", false);
+                        break;
+
+                    case 12:   // Network Configuration Change
+
+                        this.NotifyClient("Zone Text Rrefesh", false);
+
+                        string zonetext_refresh = string.Empty;
+                        for (int i = 4; i < 35 && i < chunk.Length; i++)
+                        {
+                            if ((char)chunk[i] == '\0')  // Chr(0)
+                                break;
+
+                            zonetext_refresh += (char)chunk[i];
+                        }
+                        zone = (int)chunk[2];
+
+                        if (zonetext_refresh.Length > 0 || giNWMRefreshZonesConfig == 0)
+                        {
+                            WriteToIniFile("Zones", zone.ToString(), zone + " - " + zonetext_refresh, AdvancedZoneTextFile);
+                        }
+                        break;
+
+                    case 13:   // Zone Text 
+
+                        this.NotifyClient("Zone Text", false);
+
+                        string zonetext = string.Empty;
+                        for (int i = 4; i < 35 && i < chunk.Length; i++)
+                        {
+                            if ((char)chunk[i] == '\0')  // Chr(0)
+                                break;
+
+                            zonetext += (char)chunk[i];
+                        }
+                        zone = (int)chunk[2];
+
+                        if (zonetext.Length > 0 || giIgnoreNullZoneText == 0)
+                        {
+                            WriteToIniFile("Zones", zone.ToString(), zone + " - " + zonetext, AdvancedZoneTextFile);
+                        }
+                        break;
+
+                    case 14:   // Analogue Value
+
+                        this.NotifyClient("Analogue Values", false);
+
+                        string DeviceAnalogueValue = "";
+
+                        for (int n = 0; n <= 7; n++)
+                        {
+                            char c = (char)chunk[7 + n];
+                            if (c == '\0')  // Chr(0)
+                                break;
+
+                            DeviceAnalogueValue += c;
+                        }
+                        break;
+
+                    case 15:   // Output Activated by BMS 
+
+                        Console.WriteLine("BMS");
+                        node = (int)chunk[2];
+                        loopnumber = (int)chunk[3];
+                        deviceaddress = (int)chunk[4];
+                        devicesubaddress = (int)chunk[5];
+
+                        if ((int)chunk[6] == 1)
+                        {
+                            evnum1 = CSAMXSingleton.CS.MakeInputNumber(node + this.Offset, loopnumber, deviceaddress, inputtype);
+                            CSAMXSingleton.CS.SendAlarmToAMX(evnum1, "", "", "");
+                            CSAMXSingleton.CS.FlushMessages();
+                        }
+                        else
+                        {
+                            evnum1 = CSAMXSingleton.CS.MakeInputNumber(node + this.Offset, loopnumber, deviceaddress, inputtype, false);
+                            CSAMXSingleton.CS.SendAlarmToAMX(evnum1, "", "", "");
+                            CSAMXSingleton.CS.FlushMessages();
+                        }
                         break;
 
                     default:
                         Console.WriteLine("Unknown Command: " + chunk[0]);
                         this.NotifyClient("Unknown Command: " + chunk[0], false);
 
-                        // Mike should we return false here?
                         return false;
                 }
 
@@ -676,12 +758,11 @@ namespace Drax360Service.Panels
             }
         }
 
-
         protected override void heartbeat_timer_callback(object sender)
         {
             Console.WriteLine("Sent Heartbeat");
 
-            Byte[] heartbeat = new Byte[] { 40, 4, 1 };
+            Byte[] heartbeat = new Byte[] { 42, 0, HBT_Panel1 };
 
             Byte[] heartbeatnew = definecontrol(heartbeat);
             serialsend(heartbeatnew);
@@ -806,7 +887,7 @@ namespace Drax360Service.Panels
             }
             catch (Exception ex)
             {
-                base.NotifyClient($"GetZoneText Error {ex.HResult} ({ex.Message}) in procedure GetZoneText of Module ADVNetManager",false);
+                base.NotifyClient($"GetZoneText Error {ex.HResult} ({ex.Message}) in procedure GetZoneText of Module ADVNetManager", false);
                 result = $"Error getting text for Zone {zone}";
             }
 
@@ -862,6 +943,94 @@ namespace Drax360Service.Panels
                 return defaultValue;
             }
         }
+
+        public static void WriteToIniFile(string section, string key, string value, string fileName)
+        {
+            try
+            {
+                fileName = fileName.TrimStart('\\', '/');
+                string fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);
+
+                List<string> lines = File.Exists(fullPath)
+                    ? File.ReadAllLines(fullPath).ToList()
+                    : new List<string>();
+
+                bool sectionFound = false;
+                bool keyWritten = false;
+                string currentSection = "";
+
+                for (int i = 0; i < lines.Count; i++)
+                {
+                    string trimmed = lines[i].Trim();
+
+                    // Skip comments/empty lines
+                    if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith(";") || trimmed.StartsWith("#"))
+                        continue;
+
+                    // Check for section header
+                    if (trimmed.StartsWith("[") && trimmed.EndsWith("]"))
+                    {
+                        if (sectionFound && !keyWritten)
+                        {
+                            // We reached the next section but didn’t find the key → add it before this section
+                            lines.Insert(i, $"{key}={value}");
+                            keyWritten = true;
+                            break;
+                        }
+
+                        currentSection = trimmed.Substring(1, trimmed.Length - 2).Trim();
+
+                        if (string.Equals(currentSection, section, StringComparison.OrdinalIgnoreCase))
+                        {
+                            sectionFound = true;
+                        }
+
+                        continue;
+                    }
+
+                    // If inside target section
+                    if (sectionFound)
+                    {
+                        int equalsIndex = trimmed.IndexOf('=');
+                        if (equalsIndex > 0)
+                        {
+                            string keyName = trimmed.Substring(0, equalsIndex).Trim();
+                            if (string.Equals(keyName, key, StringComparison.OrdinalIgnoreCase))
+                            {
+                                // Update key value
+                                lines[i] = $"{key}={value}";
+                                keyWritten = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // If section not found, create it
+                if (!sectionFound)
+                {
+                    if (lines.Count > 0 && !string.IsNullOrWhiteSpace(lines.Last()))
+                        lines.Add(""); // add a blank line before new section
+
+                    lines.Add($"[{section}]");
+                    lines.Add($"{key}={value}");
+                    keyWritten = true;
+                }
+                else if (!keyWritten)
+                {
+                    // Section was found but key not present → append at end of section
+                    lines.Add($"{key}={value}");
+                }
+
+                File.WriteAllLines(fullPath, lines);
+            }
+            catch
+            {
+                // You can decide to swallow errors like VB6 or throw them
+                throw;
+            }
+        }
+
     }
     #endregion
 }
