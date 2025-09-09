@@ -325,14 +325,20 @@ namespace Drax360Service
                 ln("Message received from client: " + strresponse);
                 string strret = handlepiperesponse(strresponse);
                 //prepare some response
-                byte[] response = Encoding.UTF8.GetBytes(strret);
+                byte[] response = null;
 
+                try
+                {
+                    response = Encoding.UTF8.GetBytes(strret);
+                }
+                catch
+                { }
 
                 //send response to a client
                 try
                 {
+                    pipeserversend?.Write(response ?? Array.Empty<byte>(), 0, response?.Length ?? 0);
 
-                    pipeserversend.Write(response, 0, response.Length);
                     pipeserversend.Disconnect();
                 }
                 catch (Exception ex)

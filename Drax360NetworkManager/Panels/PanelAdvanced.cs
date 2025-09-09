@@ -5,6 +5,7 @@ using System.IO.Ports;
 using System.Linq;
 using System.Runtime;
 using System.Security.Policy;
+using System.ServiceProcess;
 using System.Text;
 using System.Threading;
 using System.Xml.Linq;
@@ -65,8 +66,9 @@ namespace Drax360Service.Panels
         private int giIgnoreNullZoneText = 0;
         private int giNWMRefreshZonesConfig = 0;
         private byte HBT_Panel1 = 0;
+        private bool gbUseSubAddressOffset = false;
         private int giSubAddressOffset = 0;
-        private int gbUseSubAddressOffset = 0;
+        private int UseClassicIsolations = 0;
         int p1 = 0;
         int p2 = 0;
         int p3 = 0;
@@ -136,8 +138,9 @@ namespace Drax360Service.Panels
             giIgnoreNullZoneText = base.GetSetting<int>(ksettingsetupsection, "IgnoreNullZoneText");
             giNWMRefreshZonesConfig = base.GetSetting<int>(ksettingsetupsection, "RefreshZonesConfig");
             HBT_Panel1 = base.GetSetting<byte>(ksettingpanelsection + "1", "hb");
+            gbUseSubAddressOffset = base.GetSetting<bool>(ksettingsetupsection, "UseSubAddressOffset");
             giSubAddressOffset = base.GetSetting<int>(ksettingsetupsection, "SubAddressOffset");
-            gbUseSubAddressOffset = base.GetSetting<int>(ksettingsetupsection, "UseSubAddressOffset");
+            UseClassicIsolations = base.GetSetting<int>(ksettingsetupsection, "UseClassicIsolations");
 
             string x = GetZoneText(1.ToString());
             if (fakemode > 0)
@@ -496,10 +499,12 @@ namespace Drax360Service.Panels
                 switch (chunk[0])
                 {
                     case 1:  // Acknowledgement
+
                         Console.WriteLine("Acknowledgement");
                         break;
 
                     case 10:   // Device Status
+
                         Console.WriteLine("Device Status");
                         node = (int)chunk[2];
                         loopnumber = (int)chunk[3];
@@ -510,6 +515,9 @@ namespace Drax360Service.Panels
                         string devicetype = getadvanceddevicetype((int)chunk[10]);
                         string devicetext = string.Empty;
                         int iNodeOffset = this.Offset;
+                        bool bSubAddressTest = false;
+                        string devicetypetext = string.Empty;
+
                         for (int i = 11; i < 12 + 12 && i < chunk.Length; i++)
                         {
                             devicetext += (char)chunk[i];
@@ -526,19 +534,69 @@ namespace Drax360Service.Panels
                             inputtype = 4;
                             on = false;
                         }
+
                         if ((int)chunk[9] == 4)   // Device Disabled
                         {
-                            if (giSubAddressOffset == 1 && (devicetype == "Switch" || devicetype == "Relay" || devicetype == "Zone Monitor"))
+                            this.NotifyClient("Device Disabled", false);
+                            this.NotifyClient("Device Type: " + devicetype, false);
+                            if (UseClassicIsolations == 0)
                             {
-                                iNodeOffset = giSubAddressOffset;
+                                if (devicesubaddress == 0)
+                                {
+                                    if (devicetype == "Switch" || devicetype == "Relay" || devicetype == "Zone Monitor")
+                                    {
+                                        iNodeOffset = giSubAddressOffset;
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                this.NotifyClient("*** Use Classic Isolations ***", false);
+                                bSubAddressTest = false;
                             }
                             inputtype = 4;
                             on = true;
+
+                            if (devicetype == "Zone Monitor")
+                            {
+                                if (loopnumber == 0)
+                                {
+                                    loopnumber = 1;
+                                }
+                                bSubAddressTest = false;
+                            }
+
+                            if (devicetype != "Sounder" & devicetype != "Beacon")
+                            {
+                                if (loopnumber != 0 & !bSubAddressTest)
+                                {
+                                    if (devicetype == "Zone Monitor")
+                                    {
+                                        loopnumber = 0;
+                                    }
+
+                                    this.NotifyClient("************* Disable Module ************ " + devicetype + " - Sub Address : " + devicesubaddress, false);
+                                    if (devicesubaddress == 1)
+                                    {
+                                        this.NotifyClient("*****************  Sub Address 1 Disable ***************** " + node + this.Offset + " - " + loopnumber + " - " + deviceaddress, false);
+                                        devicetypetext = devicetype + " " + deviceaddress + ".1 Disabled";
+                                        if (gbUseSubAddressOffset)
+                                        {
+                                            inputtype = 1;
+                                        }
+                                        else
+                                        {
+                                            inputtype = 11;
+                                        }
+                                    }
+                                }
+                            }
                         }
 
                         switch (chunk[8])
                         {
                             case 3:   // Device Missing
+                                this.NotifyClient("Device Missing", false);
                                 inputtype = 8;
                                 on = true;
                                 devicetext = devicetype + " Device Missing";
@@ -606,7 +664,7 @@ namespace Drax360Service.Panels
                         evnum1 = CSAMXSingleton.CS.MakeInputNumber(node + iNodeOffset, loopnumber, deviceaddress, inputtype, on);
                         string message1 = devicetext;
                         
-                        CSAMXSingleton.CS.SendAlarmToAMX(evnum1, GetZoneText(zone.ToString()),message1, "");
+                        CSAMXSingleton.CS.SendAlarmToAMX(evnum1, GetZoneText(zone.ToString()),message1, devicetypetext);
                         CSAMXSingleton.CS.FlushMessages();
                         break;
 
