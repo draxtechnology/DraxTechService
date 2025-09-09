@@ -327,9 +327,11 @@ namespace Drax360Service
                 //prepare some response
                 byte[] response = Encoding.UTF8.GetBytes(strret);
 
+
                 //send response to a client
                 try
                 {
+
                     pipeserversend.Write(response, 0, response.Length);
                     pipeserversend.Disconnect();
                 }

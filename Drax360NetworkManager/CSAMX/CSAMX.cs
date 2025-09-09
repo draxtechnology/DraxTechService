@@ -325,7 +325,7 @@ unsigned char *TxFile;
                 {}
             }
 
-            Thread.Sleep(500);
+            Thread.Sleep(100);
         }
         #endregion
         #region private methods

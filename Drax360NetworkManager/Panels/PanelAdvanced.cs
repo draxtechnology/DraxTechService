@@ -91,7 +91,6 @@ namespace Drax360Service.Panels
         {
             get
             {
-
                 byte[] readbhyte = new byte[]
                 {
                         254, 128, 0, 0, 26, 10, 19, 1, 1, 1, 0, 1, 0, 1, 4, 2, 83, 77, 79, 75, 69, 32, 49, 0,
