@@ -9,6 +9,7 @@ using System.ServiceProcess;
 using System.Text;
 using System.Threading;
 using System.Xml.Linq;
+using static System.Collections.Specialized.BitVector32;
 
 namespace Drax360Service.Panels
 {
@@ -19,7 +20,7 @@ namespace Drax360Service.Panels
         private const byte kheartbeatdelayseconds = 5;
         private const byte kAdvancedStart = 254;
         private const byte kAdvanedEnd = 255;
-        private const string AdvancedZoneTextFile = "\\Temp\\AdvZones.Txt";
+        private const string AdvancedZoneTextFile = "Temp\\AdvZones";
 
         private const string adtUNKNOWNDEVICE = "Unknown Device";
         private const string adtAPOLLOIONISATION = "Ionisation Smoke";
@@ -689,7 +690,9 @@ namespace Drax360Service.Panels
 
                         if (zonetext_refresh.Length > 0 || giNWMRefreshZonesConfig == 0)
                         {
-                            WriteToIniFile("Zones", zone.ToString(), zone + " - " + zonetext_refresh, AdvancedZoneTextFile);
+                            SettingsSingletonCustom.Filename(AdvancedZoneTextFile).SetSetting("Zones", zone.ToString(), zone + " - " + zonetext_refresh);
+                            SettingsSingletonCustom.Filename(AdvancedZoneTextFile).SaveSettings();
+                            //WriteToIniFile("Zones", zone.ToString(), zone + " - " + zonetext_refresh, AdvancedZoneTextFile);
                         }
                         break;
 
@@ -709,7 +712,9 @@ namespace Drax360Service.Panels
 
                         if (zonetext.Length > 0 || giIgnoreNullZoneText == 0)
                         {
-                            WriteToIniFile("Zones", zone.ToString(), zone + " - " + zonetext, AdvancedZoneTextFile);
+                            SettingsSingletonCustom.Filename(AdvancedZoneTextFile).SetSetting("Zones", zone.ToString(), zone + " - " + zonetext);
+                            SettingsSingletonCustom.Filename(AdvancedZoneTextFile).SaveSettings();
+                            //WriteToIniFile("Zones", zone.ToString(), zone + " - " + zonetext, AdvancedZoneTextFile);
                         }
                         break;
 
@@ -940,7 +945,7 @@ namespace Drax360Service.Panels
 
             try
             {
-                result = ReadFromIniFile("Zones", zone, sDefText, AdvancedZoneTextFile);
+                result = SettingsSingletonCustom.Filename(AdvancedZoneTextFile).GetSetting<string>("Zones", zone);
             }
             catch (Exception ex)
             {
@@ -950,144 +955,6 @@ namespace Drax360Service.Panels
 
             return result;
         }
-
-        public static string ReadFromIniFile(string section, string key, string defaultValue, string fileName)
-        {
-            try
-            {
-                fileName = fileName.TrimStart('\\', '/');
-                string fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);
-  
-                if (!File.Exists(fullPath))
-                    return defaultValue;
-
-                string currentSection = "";
-                foreach (var line in File.ReadAllLines(fullPath))
-                {
-                    string trimmed = line.Trim();
-
-                    // Skip empty lines or comments
-                    if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith(";") || trimmed.StartsWith("#"))
-                        continue;
-
-                    // Check for section header [Section]
-                    if (trimmed.StartsWith("[") && trimmed.EndsWith("]"))
-                    {
-                        currentSection = trimmed.Substring(1, trimmed.Length - 2).Trim();
-                        continue;
-                    }
-
-                    // Only process lines within the desired section
-                    if (string.Equals(currentSection, section, StringComparison.OrdinalIgnoreCase))
-                    {
-                        int equalsIndex = trimmed.IndexOf('=');
-                        if (equalsIndex > 0)
-                        {
-                            string keyName = trimmed.Substring(0, equalsIndex).Trim();
-                            string value = trimmed.Substring(equalsIndex + 1).Trim();
-
-                            if (string.Equals(keyName, key, StringComparison.OrdinalIgnoreCase))
-                                return value;
-                        }
-                    }
-                }
-
-                // If section/key not found, return default
-                return defaultValue;
-            }
-            catch
-            {
-                return defaultValue;
-            }
-        }
-
-        public static void WriteToIniFile(string section, string key, string value, string fileName)
-        {
-            try
-            {
-                fileName = fileName.TrimStart('\\', '/');
-                string fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);
-
-                List<string> lines = File.Exists(fullPath)
-                    ? File.ReadAllLines(fullPath).ToList()
-                    : new List<string>();
-
-                bool sectionFound = false;
-                bool keyWritten = false;
-                string currentSection = "";
-
-                for (int i = 0; i < lines.Count; i++)
-                {
-                    string trimmed = lines[i].Trim();
-
-                    // Skip comments/empty lines
-                    if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith(";") || trimmed.StartsWith("#"))
-                        continue;
-
-                    // Check for section header
-                    if (trimmed.StartsWith("[") && trimmed.EndsWith("]"))
-                    {
-                        if (sectionFound && !keyWritten)
-                        {
-                            // We reached the next section but didn’t find the key → add it before this section
-                            lines.Insert(i, $"{key}={value}");
-                            keyWritten = true;
-                            break;
-                        }
-
-                        currentSection = trimmed.Substring(1, trimmed.Length - 2).Trim();
-
-                        if (string.Equals(currentSection, section, StringComparison.OrdinalIgnoreCase))
-                        {
-                            sectionFound = true;
-                        }
-
-                        continue;
-                    }
-
-                    // If inside target section
-                    if (sectionFound)
-                    {
-                        int equalsIndex = trimmed.IndexOf('=');
-                        if (equalsIndex > 0)
-                        {
-                            string keyName = trimmed.Substring(0, equalsIndex).Trim();
-                            if (string.Equals(keyName, key, StringComparison.OrdinalIgnoreCase))
-                            {
-                                // Update key value
-                                lines[i] = $"{key}={value}";
-                                keyWritten = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                // If section not found, create it
-                if (!sectionFound)
-                {
-                    if (lines.Count > 0 && !string.IsNullOrWhiteSpace(lines.Last()))
-                        lines.Add(""); // add a blank line before new section
-
-                    lines.Add($"[{section}]");
-                    lines.Add($"{key}={value}");
-                    keyWritten = true;
-                }
-                else if (!keyWritten)
-                {
-                    // Section was found but key not present → append at end of section
-                    lines.Add($"{key}={value}");
-                }
-
-                File.WriteAllLines(fullPath, lines);
-            }
-            catch
-            {
-                // You can decide to swallow errors like VB6 or throw them
-                throw;
-            }
-        }
-
     }
     #endregion
 }
