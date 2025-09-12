@@ -546,7 +546,8 @@ namespace Drax360Service.Panels
                             {
                                 if (devicesubaddress == 0)
                                 {
-                                    if (devicetype == "Switch" || devicetype == "Relay" || devicetype == "Zone Monitor")
+                                    if (giSubAddressOffset == 1 && (ElementsExtensions.In(devicetype, "Relay", "Zone Monitor")))
+                                        // if (devicetype == "Switch" || devicetype == "Relay" || devicetype == "Zone Monitor")
                                     {
                                         iNodeOffset = giSubAddressOffset;
                                     }
@@ -569,7 +570,8 @@ namespace Drax360Service.Panels
                                 bSubAddressTest = false;
                             }
 
-                            if (devicetype != "Sounder" & devicetype != "Beacon")
+                            if (!ElementsExtensions.In(devicetype, "Sounder", "Beacon"))
+                            //if (devicetype != "Sounder" & devicetype != "Beacon")
                             {
                                 if (loopnumber != 0 & !bSubAddressTest)
                                 {

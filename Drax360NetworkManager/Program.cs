@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 using System.Runtime.Remoting.Messaging;
 using System.ServiceProcess;
@@ -18,13 +19,16 @@ namespace Drax360Service
 {
     public class Program
     {
+
+       
+
         /// <summary>
         /// The main entry point for the application.
         /// </summary>
         static async Task Main(string[] args)
         {
-
-
+           
+           
             // check if running as a service or console app
             if (!Elements.isService)
             {
