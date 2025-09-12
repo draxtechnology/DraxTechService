@@ -528,7 +528,9 @@ namespace Drax360Service.Panels
 
                         if ((int)chunk[9] == 0)   // Device Enabled
                         {
-                            if (giSubAddressOffset == 1 && (devicetype == "Switch" || devicetype == "Relay" || devicetype == "Zone Monitor"))
+
+                            if (giSubAddressOffset == 1 && (ElementsExtensions.In(devicetype,"Switch","Relay","Zone Monitor")))
+                                // if (giSubAddressOffset == 1 && (devicetype == "Switch" || devicetype == "Relay" || devicetype == "Zone Monitor"))
                             {
                                 iNodeOffset = giSubAddressOffset;
                             }

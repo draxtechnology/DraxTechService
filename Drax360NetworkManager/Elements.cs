@@ -7,9 +7,19 @@ using System.Threading.Tasks;
 
 namespace Drax360Service
 {
+    // Move the extension method to a non-generic static class
+    internal static class ElementsExtensions
+    {
+        public static bool In<T>(this T item, params T[] items)
+        {
+            if (items == null)
+                throw new ArgumentNullException("items");
+            return items.Contains(item);
+        }
+    }
+
     internal class Elements
     {
-
         public static bool isService
         {
             get
@@ -37,7 +47,6 @@ namespace Drax360Service
             return chunks;
 
         }
-
 
         public static List<byte[]> Chunker(byte[] data, byte start, byte end, out int removelength)
         {
@@ -76,4 +85,3 @@ namespace Drax360Service
         }
     }
 }
-   
