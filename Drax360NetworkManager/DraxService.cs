@@ -292,6 +292,10 @@ namespace Drax360Service
                     ret = new PanelAdvanced(this.configurationbasefolder, identifier);
                     break;
 
+                case "TAKTIS":
+                    ret = new PanelTaktis(this.configurationbasefolder, identifier);
+                    break;
+
                 default:
                     throw new Exception("Panel Undefined " + panel);
             }
@@ -687,7 +691,7 @@ namespace Drax360Service
 
             string longbar = "".PadRight(48, '-');
 
-            string msg = " " + kappname + " Started ";
+            string msg = " " + kappname + " Started  ";
             string shortbar = "".PadRight((longbar.Length - msg.Length) / 2, '-');
             title(longbar);
 

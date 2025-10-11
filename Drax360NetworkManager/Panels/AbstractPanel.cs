@@ -76,7 +76,7 @@ namespace Drax360Service.Panels
         public abstract void DisableZone(string passedValues);
         public abstract void EnableZone(string passedValues);
 
-        public void NotifyClient(string message, bool notifyui)
+        public void NotifyClient(string message, bool notifyui = false)
         {
             OutsideEvents?.Invoke(this, new CustomEventArgs(message, notifyui));
         }
