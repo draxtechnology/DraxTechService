@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 /*
 namespace TakTisControl
 {
-    /*
+    
     #region Enums
     public enum TakSendType
     {

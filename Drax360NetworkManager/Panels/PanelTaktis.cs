@@ -2,7 +2,11 @@
 using System.Collections.Generic;
 using System.Net;
 using System.Threading;
+using System.Net.Sockets;
 using static Drax360Service.Panels.PanelTaktis;
+using System.Text;
+using System.Linq;
+using System.Net.Http.Headers;
 
 
 
@@ -135,6 +139,8 @@ namespace Drax360Service.Panels
         #endregion
 
         #region private fields   
+        private System.Timers.Timer _txTimer;
+        private System.Timers.Timer _rxTimer;
 
         private readonly Queue<TakControl> _txQueue = new Queue<TakControl>();
         private readonly Queue<TakControlRX> _rxQueue = new Queue<TakControlRX>();
@@ -165,6 +171,10 @@ namespace Drax360Service.Panels
         public event EventHandler<TimerEventArgs> StartRxTimer;
         #endregion
 
+        #region public properties
+        public int TxQueueCount => _txQueue.Count;
+        public int RxQueueCount => _rxQueue.Count;
+        #endregion
         public override string FakeString => throw new NotImplementedException();
 
         public override void Alert(string passedValues)
@@ -226,11 +236,39 @@ namespace Drax360Service.Panels
                        clientID: 1);
         }
 
+        private string gsIPAddress;
+        private string gsIPPort;
         public override void StartUp(int fakemode)
         {
-            string gsIPAddress = base.GetSetting<string>(ksettingsetupsection, "PanelIPAddress");
-            string gsIPPort = base.GetSetting<string>(ksettingsetupsection, "IPPort");
-            
+            gsIPAddress = base.GetSetting<string>(ksettingsetupsection, "PanelIPAddress");
+            gsIPPort = base.GetSetting<string>(ksettingsetupsection, "IPPort");
+
+
+            // RJ switched off timers
+            //_messageSender.LogMessage += OnLogMessage;
+            //SendImmediateRequest += OnSendImmediateRequest;
+            //StartTxTimer += OnStartTxTimer;
+            //StartRxTimer += OnStartRxTimer;
+
+            // Initialize timers
+            _txTimer = new System.Timers.Timer();
+            _txTimer.Elapsed += TxTimer_Elapsed;
+            // added a start
+            _txTimer.Start();
+
+            _rxTimer = new System.Timers.Timer();
+            _rxTimer.Elapsed += RxTimer_Elapsed;
+
+            _rxTimer.Start();
+
+        }
+
+        
+
+
+        private void OnSendImmediateRequest(object sender, SendImmediateEventArgs e)
+        {
+            SendImmediateRequest?.Invoke(this, e);
         }
 
         public PanelTaktis(string baselogfolder, string identifier) : base(baselogfolder, identifier, "TAKMan","TAK")
@@ -272,16 +310,13 @@ namespace Drax360Service.Panels
                 }
 
 
-                // RJ Removed 
-
-                /*
                 // Handle message sent state
                 if (_messageSent)
                 {
                     stopSending = true;
                     // Timer would be disabled here
                 }
-                */
+                
 
                 // Build message based on type
                 string[] dataToSend = buildmessage(
@@ -311,11 +346,18 @@ namespace Drax360Service.Panels
                     immediateTxSend = false;
 
                     NotifyClient($"Send {rxTx} Immediate");
-                    OnSendImmediateRequest(new SendImmediateEventArgs
+                    /*OnSendImmediateRequest(new SendImmediateEventArgs
                     {
                         Data = dataToSend,
                         TransmissionType = rxTx
                     });
+                    */
+
+
+                    // RJ New
+                    QueueMessage(dataToSend, rxTx, stopSending);
+                    TxTimer_Elapsed(this, null);
+
                     return;
                 }
 
@@ -747,7 +789,7 @@ namespace Drax360Service.Panels
                 if (_txQueue.Count > 0)
                 {
                     NotifyClient("Turn Send timer on");
-                    OnStartTxTimer(new TimerEventArgs { Interval = 1000 });
+                    OnStartTxTimer(new TimerEventArgs {Interval = 1000 });
                 }
 
                 if (_rxQueue.Count > 0)
@@ -836,8 +878,118 @@ namespace Drax360Service.Panels
             StartRxTimer?.Invoke(this, e);
         }
 
+        private void TxTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        {
+            _txTimer.Stop();
 
+            var message = DequeueNextTxMessage();
+            if (message != null)
+            {
+                Console.WriteLine($"[TX TIMER] Sending queued message: {string.Join(",", message.EncodedPacket)}");
+                // Implement actual network send here
+                SendBytesToPanel( message.EncodedPacket);
+                // If more messages in queue, restart timer
+                if (TxQueueCount > 0)
+                {
+                    _txTimer.Start();
+                }
+            }
+        }
 
-        #endregion
+        private void RxTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        {
+            _rxTimer.Stop();
+
+            var message = DequeueNextRxMessage();
+            if (message != null)
+            {
+                Console.WriteLine($"[RX TIMER] Sending queued message: {string.Join(",", message.EncodedPacket)}");
+                // Implement actual network send here
+               SendBytesToPanel(message.EncodedPacket);
+
+                // If more messages in queue, restart timer
+                if (RxQueueCount > 0)
+                {
+                    _rxTimer.Start();
+                }
+            }
+        }
+
+        public TakControl DequeueNextTxMessage()
+        {
+            return _txQueue.Count > 0 ? _txQueue.Dequeue() : null;
+        }
+
+        public TakControlRX DequeueNextRxMessage()
+        {
+            return _rxQueue.Count > 0 ? _rxQueue.Dequeue() : null;
+        }
+
+        private void SendBytesToPanel(string[] tosend)
+        {
+            if (string.IsNullOrWhiteSpace(gsIPAddress) || string.IsNullOrWhiteSpace(gsIPPort))
+            {
+                NotifyClient("IP address or port is not set.");
+                return;
+            }
+
+            if (!int.TryParse(gsIPPort, out int port))
+            {
+                NotifyClient($"Invalid port: {gsIPPort}");
+                return;
+            }
+
+            byte[] data = convertstringarraytobytearray(tosend);
+            try
+            {
+                using (var client = new TcpClient())
+                {
+                    client.Connect(gsIPAddress, port);
+                    using (var stream = client.GetStream())
+                    {
+                        // Send data
+                        stream.Write(data, 0, data.Length);
+                        stream.Flush();
+
+                        // Read response
+                        var responseBuffer = new byte[1024];
+                        int bytesRead = stream.Read(responseBuffer, 0, responseBuffer.Length);
+                        if (bytesRead > 0)
+                        {
+                            // Convert response to hex string for readability
+                            string responseHex = BitConverter.ToString(responseBuffer, 0, bytesRead);
+                            NotifyClient($"Received response ({bytesRead} bytes): {responseHex}");
+                        }
+                        else
+                        {
+                            NotifyClient("No response received from panel.");
+                        }
+                    }
+                }
+                NotifyClient($"Sent {data.Length} bytes to {gsIPAddress}:{port}");
+            }
+            catch (Exception ex)
+            {
+                NotifyClient($"Error sending bytes: {ex.Message}");
+            }
+        }
+
+        private byte[] convertstringarraytobytearray(string[] stringArray)
+        {   
+            List<byte> ret = new List<byte>();
+            foreach (string str in stringArray)
+            {
+                if (str == null) break; // bail if we get a null;
+                byte b = Convert.ToByte(str);
+                ret.Add(b);
+            }
+            return ret.ToArray();
+
+           
+        }
     }
+
+
+    #endregion
 }
+
