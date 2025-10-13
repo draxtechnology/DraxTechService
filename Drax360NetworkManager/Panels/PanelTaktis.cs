@@ -250,6 +250,11 @@ namespace Drax360Service.Panels
             //StartTxTimer += OnStartTxTimer;
             //StartRxTimer += OnStartRxTimer;
 
+
+            sendtotaktis(
+           TakSendType.TAKSendRequestActEventsTX,
+           clientID: 1);
+
             // Initialize timers
             _txTimer = new System.Timers.Timer();
             _txTimer.Elapsed += TxTimer_Elapsed;
@@ -669,7 +674,7 @@ namespace Drax360Service.Panels
         private string[] CreateConnectionMessage(string clientID, string command)
         {
             var data = new string[12];
-            for (int i = 0; i < 8; i++)
+            for (int i = 0; i < 11; i++)
                 data[i] = "0";
             data[3] = "12";
             data[7] = command;
@@ -680,7 +685,7 @@ namespace Drax360Service.Panels
         private string[] CreateHeartbeatMessage(string clientID)
         {
             var data = new string[12];
-            for (int i = 0; i < 8; i++)
+            for (int i = 0; i < 11; i++)
                 data[i] = "0";
             data[3] = "12";
             data[7] = TakCommands.CMD_HEARTBEAT;
@@ -880,7 +885,11 @@ namespace Drax360Service.Panels
 
         private void TxTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
-            _txTimer.Stop();
+            try
+            {
+                _txTimer.Stop();
+            }
+            catch { }
 
             var message = DequeueNextTxMessage();
             if (message != null)

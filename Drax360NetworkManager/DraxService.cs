@@ -750,9 +750,12 @@ namespace Drax360Service
 
             startpipeserver();
 
-            pad();
-            dumpavailableserialports();
-            pad();
+            if (panel != "Taktis")
+            {
+                pad();
+                dumpavailableserialports();
+                pad();
+            }
 
             startpipesend();
             CSAMXSingleton.CS.Startup(configurationbasefolder, apbase.Extension);
