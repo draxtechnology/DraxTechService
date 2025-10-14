@@ -1,12 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Net;
-using System.Threading;
-using System.Net.Sockets;
-using static Drax360Service.Panels.PanelTaktis;
-using System.Text;
 using System.Linq;
+using System.Management.Instrumentation;
+using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Sockets;
+using System.Runtime.Remoting.Messaging;
+using System.Security.Policy;
+using System.Text;
+using System.Threading;
+using System.Xml.Linq;
+using static Drax360Service.Panels.PanelTaktis;
 
 
 
@@ -231,9 +235,7 @@ namespace Drax360Service.Panels
         protected override void heartbeat_timer_callback(object sender)
         {
             base.heartbeat_timer_callback(sender);
-            sendtotaktis(
-                       TakSendType.TAKSendHeartBeatTX,
-                       clientID: 1);
+            sendtotaktis(TakSendType.TAKSendHeartBeatTX,clientID: 1);
         }
 
         private string gsIPAddress;
@@ -251,9 +253,10 @@ namespace Drax360Service.Panels
             //StartRxTimer += OnStartRxTimer;
 
 
-            sendtotaktis(
-           TakSendType.TAKSendRequestActEventsTX,
-           clientID: 1);
+            sendtotaktis(TakSendType.TAKSendRequestActEvents, clientID: 1);
+
+            //sendtotaktis(TakSendType.TAKSendRequestActEventsTX, clientID: 1);
+
 
             // Initialize timers
             _txTimer = new System.Timers.Timer();
@@ -280,7 +283,7 @@ namespace Drax360Service.Panels
         {
             if (!String.IsNullOrEmpty(identifier))
             {
-                heartbeat_timer = new Timer(heartbeat_timer_callback, this.Identifier, 1000, kHeartbeatDelaySeconds * 1000);
+                // heartbeat_timer = new Timer(heartbeat_timer_callback, this.Identifier, 1000, kHeartbeatDelaySeconds * 1000);
             }
         }
 
@@ -299,7 +302,7 @@ namespace Drax360Service.Panels
         {
             try
             {
-                
+
                 NotifyClient($"SendToTakTis - Type: {sendType}");
 
                 bool stopSending = false;
@@ -321,7 +324,7 @@ namespace Drax360Service.Panels
                     stopSending = true;
                     // Timer would be disabled here
                 }
-                
+
 
                 // Build message based on type
                 string[] dataToSend = buildmessage(
@@ -393,14 +396,27 @@ namespace Drax360Service.Panels
             string[] serialNoStr = convertserialnumber(serialNo);
             string clientIDStr = clientID.ToString();
             string panelNo = node.ToString();
-
+            string dataString = "";
+            //serialNoStr[0] = "0";
+            //serialNoStr[1] = "0";
+            //serialNoStr[2] = "1";
+            //serialNoStr[3] = "227";
             switch (sendType)
             {
                 case TakSendType.TAKSendRequestActEvents:
                     NotifyClient("Request Active Events RX");
                     _messageSent = true;
-                    data = CreateBasicMessage(8, TakCommands.CMD_REQUEST_ACTIVE_EVENTS);
+                    //data = CreateBasicMessage(8, TakCommands.CMD_REQUEST_ACTIVE_EVENTS);
+                    
+                    
+                    data = new string[8];
+                    for (int i = 0; i < 8 - 1; i++)
+                        data[i] = "0";
+                    data[3] = 8.ToString();
+                    data[7] = 79.ToString();
+
                     rxTx = TransmissionType.RX;
+                    immediateRxSend = true;
                     if (_reconnect)
                         immediateRxSend = true;
                     break;
@@ -408,7 +424,17 @@ namespace Drax360Service.Panels
                 case TakSendType.TAKSendRequestActEventsTX:
                     NotifyClient("Request Active Events TX");
                     _messageSent = true;
-                    data = CreateBasicMessage(8, TakCommands.CMD_REQUEST_ACTIVE_EVENTS);
+                    //data = CreateBasicMessage(8, TakCommands.CMD_REQUEST_ACTIVE_EVENTS);
+
+                    data = new string[8];
+                    for (int i = 0; i < 8 - 1; i++)
+                        data[i] = "0";
+                    data[3] = 8.ToString();
+                    data[7] = 79.ToString();
+
+                    dataString = string.Join(",", data);
+                    Console.WriteLine("Request Active Events TX: " + dataString);
+                    immediateTxSend = true;
                     rxTx = TransmissionType.TX;
                     if (_reconnect)
                         immediateTxSend = true;
@@ -437,6 +463,8 @@ namespace Drax360Service.Panels
                     immediateRxSend = true;
                     _messageSent = true;
                     data = CreateMessageWithSerialNo(12, TakCommands.CMD_EVENT_ACK, serialNoStr);
+                    dataString = string.Join(",", data);
+                    Console.WriteLine("Send Event ACK RX: " + dataString);
                     rxTx = TransmissionType.RX;
                     break;
 
@@ -445,6 +473,8 @@ namespace Drax360Service.Panels
                     immediateTxSend = true;
                     _messageSent = true;
                     data = CreateMessageWithSerialNo(12, TakCommands.CMD_EVENT_ACK, serialNoStr);
+                    dataString = string.Join(",", data);
+                    Console.WriteLine("Send Event ACK TX: " + dataString);
                     rxTx = TransmissionType.TX;
                     break;
 
@@ -453,6 +483,8 @@ namespace Drax360Service.Panels
                     _messageSent = true;
                     immediateRxSend = true;
                     data = CreateBasicMessage(8, TakCommands.CMD_ACK);
+                    dataString = string.Join(",", data);
+                    Console.WriteLine("Send ACK Immediate: " + dataString);
                     rxTx = TransmissionType.RX;
                     break;
 
@@ -648,7 +680,18 @@ namespace Drax360Service.Panels
                 serialNo[3].ToString()
             };
         }
+
         private string[] CreateBasicMessage(int length, string command)
+        {
+            var data = new string[length];
+            for (int i = 0; i < length - 1; i++)
+                data[i] = "0";
+            data[3] = length.ToString();
+            data[length - 5] = command;
+            return data;
+        }
+
+        private string[] CreateBasicMessageOLD(int length, string command)
         {
             var data = new string[length];
             for (int i = 0; i < length - 1; i++)
@@ -885,11 +928,10 @@ namespace Drax360Service.Panels
 
         private void TxTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
-            try
+            if (_txTimer != null)
             {
                 _txTimer.Stop();
             }
-            catch { }
 
             var message = DequeueNextTxMessage();
             if (message != null)
@@ -917,7 +959,7 @@ namespace Drax360Service.Panels
                SendBytesToPanel(message.EncodedPacket);
 
                 // If more messages in queue, restart timer
-                if (RxQueueCount > 0)
+                //if (RxQueueCount > 0)
                 {
                     _rxTimer.Start();
                 }
@@ -960,6 +1002,8 @@ namespace Drax360Service.Panels
                         stream.Write(data, 0, data.Length);
                         stream.Flush();
 
+                        Thread.Sleep(1000); // wait for response
+
                         // Read response
                         var responseBuffer = new byte[1024];
                         int bytesRead = stream.Read(responseBuffer, 0, responseBuffer.Length);
@@ -968,6 +1012,10 @@ namespace Drax360Service.Panels
                             // Convert response to hex string for readability
                             string responseHex = BitConverter.ToString(responseBuffer, 0, bytesRead);
                             NotifyClient($"Received response ({bytesRead} bytes): {responseHex}");
+
+                            DecodeMessage(responseHex);
+
+                            sendtotaktis(TakSendType.TAKSendEventACKRX, clientID: 1);
                         }
                         else
                         {
@@ -983,6 +1031,237 @@ namespace Drax360Service.Panels
             }
         }
 
+        private void DecodeMessage(string responseHex)
+        {
+            string sLocationText = "";
+            string sPanelText = "";
+            string sZoneText = "";
+            string sEventGroup = "";
+            string sEventType = "";
+            string sEventCode = "";
+            string sNode = "";
+            string sAddressType = "";
+            string sAddress = "";
+            string sLoop = "";
+            string sZone = "";
+            string sSubAddress = "";
+            string sInputAction = "";
+            string sMessageType = "";
+            string sTimeStamp = "";
+            string[] sSerialNo = new string[4];
+            int iCharCount = 0;
+            string[] aryHexMessage = responseHex.Split('-');
+            // Skip the first 8 elements and create a new array
+            aryHexMessage = aryHexMessage.Skip(8).ToArray();
+
+            while (iCharCount < aryHexMessage.Length)
+            {
+                switch (iCharCount)
+                {
+                    case 4:
+                    case 5:
+                    case 6:
+                    case 7:
+                        sMessageType += aryHexMessage[iCharCount].ToString();
+                        break;
+
+                    case 8:
+
+                        //glSerialNo[0] = Convert.ToInt64("&H" + aryHexMessage[iCharCount], 16);
+                        sSerialNo[0] = aryHexMessage[iCharCount].ToString();
+
+                        break;
+
+                    case 9:
+
+                        //glSerialNo[1] = Convert.ToInt64("&H" + aryHexMessage[iCharCount], 16);
+                        sSerialNo[1] = aryHexMessage[iCharCount].ToString();
+
+                        break;
+
+                    case 10:
+
+                        //glSerialNo[2] = Convert.ToInt64("&H" + aryHexMessage[iCharCount], 16);
+                        sSerialNo[2] = aryHexMessage[iCharCount].ToString();
+
+                        break;
+
+                    case 11:
+
+                        //glSerialNo[3] = Convert.ToInt64("&H" + aryHexMessage[iCharCount], 16);
+                        sSerialNo[3] = aryHexMessage[iCharCount].ToString();
+
+                        break;
+
+                    case 12:
+                    case 13:
+                    case 14:
+                    case 15:
+
+                        sEventGroup += aryHexMessage[iCharCount].ToString();
+                        break;
+
+                    case 16:
+                    case 17:
+                    case 18:
+                    case 19:
+
+                        sEventType += aryHexMessage[iCharCount].ToString();
+                        break;
+
+                    case 20:
+                    case 21:
+                    case 22:
+                    case 23:
+                        sEventCode += aryHexMessage[iCharCount].ToString();
+                        break;
+
+                    case 24:
+                    case 25:
+                    case 26:
+                    case 27:
+
+                        sNode += aryHexMessage[iCharCount].ToString();
+                        break;
+
+                    case 28:
+                    case 29:
+                    case 30:
+                    case 31:
+
+                        sAddressType += aryHexMessage[iCharCount].ToString();
+                        break;
+
+                    case 32:
+                    case 33:
+                    case 34:
+                    case 35:
+                        sAddress += aryHexMessage[iCharCount].ToString();
+                        break;
+
+                    case 36:
+                    case 37:
+                    case 38:
+                    case 39:
+                        sSubAddress += aryHexMessage[iCharCount].ToString();
+                        break;
+
+                    case 40:
+                    case 41:
+                    case 42:
+                    case 43:
+
+                        sLoop += aryHexMessage[iCharCount].ToString();
+                        break;
+
+                    case 44:
+                    case 45:
+                    case 46:
+                    case 47:
+
+                        sZone += aryHexMessage[iCharCount].ToString();
+                        break;
+
+                    case 48:
+                    case 49:
+                    case 50:
+                    case 51:
+
+                        sInputAction += aryHexMessage[iCharCount].ToString();
+                        break;
+
+                    case 52:
+                    case 53:
+                    case 54:
+                    case 55:
+
+                        sTimeStamp += aryHexMessage[iCharCount].ToString();
+                        break;
+
+                    case int n when (n >= 56 && n <= 135):
+                        int sAscii = Convert.ToInt32(aryHexMessage[iCharCount], 16);
+                        if (sAscii != 0)
+                            sLocationText += Convert.ToChar(sAscii);
+                        break;
+
+                    case int n when (n >= 136 && n <= 167):
+
+                        if (string.IsNullOrEmpty(aryHexMessage[iCharCount])) aryHexMessage[iCharCount] = "0";
+                        sAscii = Convert.ToInt32(aryHexMessage[iCharCount], 16);
+                        if (sAscii != 0)
+                            sPanelText += Convert.ToChar(sAscii);
+                        break;
+
+                    case int n when (n >= 168 && n <= 248):
+
+                        if (string.IsNullOrEmpty(aryHexMessage[iCharCount])) aryHexMessage[iCharCount] = "0";
+                        sAscii = Convert.ToInt32(aryHexMessage[iCharCount], 16);
+                        if (sAscii != 0)
+                            sZoneText += Convert.ToChar(sAscii);
+                        break;
+                }
+                iCharCount++;
+            }
+            // Replace all '0' with spaces, trim, then convert spaces back to '0'
+            sMessageType = sMessageType.Replace('0', ' ').Trim().Replace(' ', '0');
+
+            // If the result is empty or null, set to "0"
+            if (string.IsNullOrEmpty(sMessageType))
+            {
+                sMessageType = "0";
+            }
+            long iMessageType = Convert.ToInt64(sMessageType, 16);
+
+            if (sEventGroup == "")
+            {
+                sEventGroup = "0";
+            }
+
+            if (sEventCode == "")
+            {
+                sEventCode = "0";
+            }
+
+            if (sEventType == "")
+            {
+                sEventType = "0";
+            }
+
+            if (sNode == "")
+            {
+                sNode = "0";
+            }
+            long iNode = Convert.ToInt64(sNode, 16);
+            long iAddress = Convert.ToInt64(sAddress, 16);
+            int evnum = 0;
+
+            switch (iMessageType)
+            {
+                case 0:    // NAK
+                    break;
+                case 1:    // ACK
+                    break;
+                case 2:    // Packet Type Event ID
+                    break;
+                case 133:  // Start Event Message
+
+                    evnum = CSAMXSingleton.CS.MakeInputNumber(Convert.ToInt32(iNode), Convert.ToInt32(sLoop), Convert.ToInt32(iAddress), 15);
+                    send_response_amx(evnum, "", "Test Message");
+                    break;
+            }
+
+        }
+
+        private void send_response_amx(int evnum, string message1, string message2, string message3 = "")
+        {
+            string friendlymessage = message2 + (message3.Length > 0 ? (" " + message3) : "");
+
+            // Signal the event back to the main service, so that it can be logged
+            this.NotifyClient(friendlymessage, false);
+
+            CSAMXSingleton.CS.SendAlarmToAMX(evnum, message1, message2, message3);
+            CSAMXSingleton.CS.FlushMessages();
+        }
         private byte[] convertstringarraytobytearray(string[] stringArray)
         {   
             List<byte> ret = new List<byte>();
