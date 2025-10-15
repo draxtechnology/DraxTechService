@@ -54,6 +54,7 @@
     <Compile Include="EventLogger.cs" />
     <Compile Include="Panels\PanelTaktis.cs" />
     <Compile Include="Panels\CONVERTED TaktisMock.cs" />
+    <Compile Include="Panels\partials\PanelTaktisDecode.cs" />
     <Compile Include="ProjectInstaller.cs">
       <SubType>Component</SubType>
     </Compile>
