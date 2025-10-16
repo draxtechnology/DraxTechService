@@ -12,8 +12,7 @@ using System.Text;
 using System.Threading;
 using System.Xml.Linq;
 using static Drax360Service.Panels.PanelTaktis;
-
-
+using System.Threading.Tasks;
 
 namespace Drax360Service.Panels
 {
@@ -63,256 +62,256 @@ namespace Drax360Service.Panels
     }
 
     public enum enmTAKEventCode
-{
-    TAKNone = 0,
-    TAKPsFault = 1,
-    TAKCalibrationFault = 2,
-    TAKOutput1OpenFault = 3,
-    TAKOutput1ShortFault = 4,
-    TAKOutput2OpenFault = 5,
-    TAKOutput2ShortFault = 6,
-    TAKInputOpenFault = 7,
-    TAKInputShortFault = 8,
-    TAKInternalFault = 9,
-    TAKMaintenanceFault = 10,
-    TAKDetectorFault = 11,
-    TAKSlaveOpenFault = 12,
-    TAKSlaveShortFault = 13,
-    TAKSlave1ShortFault = 14,
-    TAKSlave2ShortFault = 15,
-    TAKDisconnectedFault = 16,
-    TAKDoubleAddressFault = 17,
-    TAKMonitoredOutputFault = 18,
-    TAKUnknownDeviceFault = 19,
-    TAKUnexpectedDeviceFault = 20,
-    TAKWrongDeviceFault = 21,
-    TAKInitialisingDevice = 22,
-    TAKStart = 23,
-    TAKAutolearn = 24,
-    TAKPcConfig = 25,
-    TAKEarthFault = 26,
-    TAKLoopWiringFault = 27,
-    TAKLoopShortCctFault = 28,
-    TAKLoopOpenCctFault = 29,
-    TAKMainsFailedFault = 30,
-    TAKLowBatteryFault = 31,
-    TAKBatteryDisconnectedFault = 32,
-    TAKBatteryOverchargeFault = 33,
-    TAKAux24vFuseFault = 34,
-    TAKChargerFault = 35,
-    TAKRomFault = 36,
-    TAKRamFault = 37,
-    TAKWatchDogOperated = 38,
-    TAKBadDataFault = 39,
-    TAKUnknownEventFault = 40,
-    TAKModemActive = 41,
-    TAKPrinterFault = 42,
-    TAKEn54VersionFault = 43,
-    TAKEventPreAlarm = 44,
-    TAKCalibrationFailedFault = 45,
-    TAKModemFault = 46,
-    TAKInitDevice = 47,
-    TAKInputActivated = 48,
-    TAKOpticalElementFault = 49,
-    TAKHeatElementFault = 50,
-    TAKBothElementFault = 51,
-    TAKSelfTestFailedFault = 52,
-    TAKCeActive = 53,
-    TAKLoopProtocolFault = 54,
-    TAKLoopMissing = 55,
-    TAKLoopUnexpected = 56,
-    TAKSubAddressLimit = 57,
-    TAKIoModMissing = 58,
-    TAKIoModUnexpected = 59,
-    TAKSerialInput = 60,
-    TAKNetUnexpectedNode = 61,
-    TAKNetUnknownType = 62,
-    TAKNetMissingNode = 63,
-    TAKNetUnexpectedCard = 64,
-    TAKNetMissingCard = 65,
-    TAKNetWrongAddress = 66,
-    TAKNetBroken = 67,
-    TAKNetCommsFault = 68,
-    TAKNetCommsTimeout = 69,
-    TAKNetInvalidAddress = 70,
-    TAKSounderBoardUnexpected = 71,
-    TAKRelayBoardUnexpected = 72,
-    TAKSounderBoardMissing = 73,
-    TAKRelayBoardMissing = 74,
-    TAKZoneIoUnexpected = 75,
-    TAKZoneIoMissing = 76,
-    TAKSystemFault = 77,
-    TAKDisableDevice = 78,
-    TAKDisableZone = 79,
-    TAKDisableLoop = 80,
-    TAKDisableSounders = 81,
-    TAKDisablePanelInput = 82,
-    TAKDisablePanelOutput = 83,
-    TAKDisableCe = 84,
-    TAKDisableBuzzer = 85,
-    TAKDisablePrinter = 86,
-    TAKDisableEarthFault = 87,
-    TAKDayNightDisable = 88,
-    TAKGeneralDisablement = 89,
-    TAKOemDevice = 90,
-    TAKEventTest = 91,
-    TAKZoneIoUnexpectedUsa = 92,
-    TAKZoneIoMissingUsa = 93,
-    TAKDisableImmediateOutput = 94,
-    TAKMemoryWriteEnableOn = 95,
-    TAKAnnunMissing = 96,
-    TAKAnnunUnexpected = 97,
-    TAKLcdPowerFault = 98,
-    TAKModulePowerSupplyFault = 99,
-    TAKOutputShortFault = 100,
-    TAKOutputOpenFault = 101,
-    TAKAddressing = 102,
-    TAKAutoAddressingFailure = 103,
-    TAKDevBatteryLow = 104,
-    TAKDevTamperFault = 105,
-    TAKDevExtInterference = 106,
-    TAKDevFataFault = 107,
-    TAKIsolatorOpen = 108,
-    TAKMicroProcessorFault = 109,
-    TAKPrismReflectorTrgetting = 110,
-    TAKAlignmentMode = 111,
-    TAKHighSpeedFault = 112,
-    TAKContaminationReached = 113,
-    TAKAudioFault = 114,
-    TAKHeadMissingFault = 115,
-    TAKTamperFault = 116,
-    TAKSignalStrengthFault = 117,
-    TAKRadBatteryFault = 118,
-    TAKSounderMissingFault = 119,
-    TAKDevBackBatteryLow = 120,
-    TAKSlaveExpLoss = 121,
-    TAK8ZoneMimicMissing = 122,
-    TAK8ZoneMimicUnexpected = 123,
-    TAK16ZoneMimicMissing = 124,
-    TAK16ZoneMimicUnexpected = 125,
-    TAKBattImpFailed = 126,
-    TAKAerialTamperFault = 127,
-    TAKBackGroundOutOfRange = 128,
-    TAKHeadFault = 129,
-    TAKHeadDirtyCompensation = 130,
-    TAKTamperInputFault = 131,
-    TAKReceiverFault = 132,
-    TAKBatteryFault = 133,
-    TAKFuseTrip = 134,
-    TAKCurrentLimitFault = 135,
-    TAKVoltageLimitFault = 136,
-    TAKWeakOpenCircuit = 137,
-    TAKWeakShortCircuit = 138,
-    TAKOpenCircuitFault = 139,
-    TAKShortCircuitFault = 140,
-    TAKBoardAMissing = 141,
-    TAKBoardBMissing = 142,
-    TAKLoopCommsTimeout = 143,
-    TAKAllOutputDisabled = 144,
-    TAKAllSoundersDisabled = 145,
-    TAKAllZoneDisabled = 146,
-    TAKLoopPrimUnderVoltage = 147,
-    TAKLoopSecUnderVoltage = 148,
-    TAKLoopBoardMissing = 149,
-    TAKLoopBoardUnexpected = 150,
-    TAKPSUEarthFault = 151,
-    TAKExtinguishantActivated = 152,
-    TAKPSUFault = 153,
-    TAKUserLoggedIn = 154,
-    TAKAutolearnDevice = 155,
-    TAKClassWiringFault = 156,
-    TAKIfamMissing = 157,
-    TAKCommunicatorMissing = 158,
-    TAKCommsFailure = 159,
-    TAKCommsRestored = 160,
-    TAKVnetTrouble = 161,
-    TAKVnetOpen = 162,
-    TAKVnetShorted = 163,
-    TAKVnetRestored = 164,
-    TAKVnetTransFailure = 165,
-    TAKVnetNodeMissing = 166,
-    TAKVnetExtraNode = 167,
-    TAKVnetTransRestored = 168,
-    TAKLanNotConnected = 169,
-    TAKLanNetNotRecognised = 170,
-    TAKLanGatewayAccessFail = 171,
-    TAKLanToDcCommsFail = 172,
-    TAKLanToDcCommsRestored = 173,
-    TAKDcCommsFailure = 174,
-    TAKDcCommsRestored = 175,
-    TAKPhoneLine1Trouble = 176,
-    TAKPhoneLine1Restored = 177,
-    TAKPhoneLine2Trouble = 178,
-    TAKPhoneLine2Restored = 179,
-    TAKVerification = 180,
-    TAKAllPlantOutputDisabled = 181,
-    TAKEventLogCleared = 182,
-    TAKBootloaderUpdate = 183,
-    TAKBootloaderFailed = 184,
-    TAKDelayExtended = 185,
-    TAKDisableModuleIoChannel = 186,
-    TAKMissingIoModTaktisSounder = 187,
-    TAKMissingIoModTaktisZone = 188,
-    TAKMissingIoModTaktisRelay = 189,
-    TAKMissingIoModTaktisMultiIo = 190,
-    TAKUnexpectedIoModTaktisSounder = 191,
-    TAKUnexpectedIoModTaktisZone = 192,
-    TAKUnexpectedIoModTaktisRelay = 193,
-    TAKUnexpectedIoModTaktisMultiIo = 194,
-    TAKMgwAct1ComsTrouble = 195,
-    TAKMgwAct1ConfTrouble = 196,
-    TAKMgwAct2ComsTrouble = 197,
-    TAKMgwAct2ConfTrouble = 198,
-    TAKMgwAct3ComsTrouble = 199,
-    TAKMgwAct3ConfTrouble = 200,
-    TAKMgwAct4ComsTrouble = 201,
-    TAKMgwAct4ConfTrouble = 202,
-    TAKMgwIpnetConfTrouble = 203,
-    TAKMgwIpnetComsTrouble = 204,
-    TAKMgwInternalTrouble = 205,
-    TAKMgwMissing = 206,
-    TAKMgwDisabled = 207,
-    TAKNetworkOutputPartialShortCircuitFault = 208,
-    TAKNetworkOutputPartialOpenCircuitFault = 209,
-    TAKNetworkOutputFullShortCircuitFault = 210,
-    TAKNetworkOutputFullOpenCircuitFault = 211,
-    TAKNetworkOutputConnectionFault = 212,
-    TAKNetworkOutputCommunicationFault = 213,
-    TAKNetworkInputPartialShortCircuitFault = 214,
-    TAKNetworkInputPartialOpenCircuitFault = 215,
-    TAKNetworkInputFullShortCircuitFault = 216,
-    TAKNetworkInputFullOpenCircuitFault = 217,
-    TAKNetworkInputConnectionFault = 218,
-    TAKNetworkInputCommunicationFault = 219,
-    TAKNetworkMissingNodes = 220,
-    TAKNetworkConnectionFault = 221,
-    TAKNetworkRepeatAddress = 222,
-    TAKLedMissingBoard = 223,
-    TAKMissingIoModFan = 224,
-    TAKMissingIoModAncillery = 225,
-    TAKMissingIoModLed = 226,
-    TAKUnexpectedIoModFan = 227,
-    TAKUnexpectedIoModAncillery = 228,
-    TAKUnexpectedIoModLed = 229,
-    TAKTestOnOutput = 230,
-    TAKTestOnLed = 231,
-    TAKTestOnIsolator = 232,
-    TAKStorageInserted = 233,
-    TAKMonitoredInputFault = 234,
-    TAKImportRead = 235,
-    TAKImportWrite = 236,
-    TAKExportWrite = 237,
-    TAKMgwUnexpected = 238,
-    TAKMgwCoElementFault = 239,
-    TAKCoLifeFault = 240,
-    TAKEepromFault = 241,
-    TAKPositiveAlarmDisabled = 242,
-    TAKCeNotRunning = 243,
-    TAKMgwLicenceMissing = 244,
-    TAKMgwDialerDisabled = 245,
-    TAKLoopPowerOff = 246,
-    TAKDisableNetwork = 247
-}
+    {
+        TAKNone = 0,
+        TAKPsFault = 1,
+        TAKCalibrationFault = 2,
+        TAKOutput1OpenFault = 3,
+        TAKOutput1ShortFault = 4,
+        TAKOutput2OpenFault = 5,
+        TAKOutput2ShortFault = 6,
+        TAKInputOpenFault = 7,
+        TAKInputShortFault = 8,
+        TAKInternalFault = 9,
+        TAKMaintenanceFault = 10,
+        TAKDetectorFault = 11,
+        TAKSlaveOpenFault = 12,
+        TAKSlaveShortFault = 13,
+        TAKSlave1ShortFault = 14,
+        TAKSlave2ShortFault = 15,
+        TAKDisconnectedFault = 16,
+        TAKDoubleAddressFault = 17,
+        TAKMonitoredOutputFault = 18,
+        TAKUnknownDeviceFault = 19,
+        TAKUnexpectedDeviceFault = 20,
+        TAKWrongDeviceFault = 21,
+        TAKInitialisingDevice = 22,
+        TAKStart = 23,
+        TAKAutolearn = 24,
+        TAKPcConfig = 25,
+        TAKEarthFault = 26,
+        TAKLoopWiringFault = 27,
+        TAKLoopShortCctFault = 28,
+        TAKLoopOpenCctFault = 29,
+        TAKMainsFailedFault = 30,
+        TAKLowBatteryFault = 31,
+        TAKBatteryDisconnectedFault = 32,
+        TAKBatteryOverchargeFault = 33,
+        TAKAux24vFuseFault = 34,
+        TAKChargerFault = 35,
+        TAKRomFault = 36,
+        TAKRamFault = 37,
+        TAKWatchDogOperated = 38,
+        TAKBadDataFault = 39,
+        TAKUnknownEventFault = 40,
+        TAKModemActive = 41,
+        TAKPrinterFault = 42,
+        TAKEn54VersionFault = 43,
+        TAKEventPreAlarm = 44,
+        TAKCalibrationFailedFault = 45,
+        TAKModemFault = 46,
+        TAKInitDevice = 47,
+        TAKInputActivated = 48,
+        TAKOpticalElementFault = 49,
+        TAKHeatElementFault = 50,
+        TAKBothElementFault = 51,
+        TAKSelfTestFailedFault = 52,
+        TAKCeActive = 53,
+        TAKLoopProtocolFault = 54,
+        TAKLoopMissing = 55,
+        TAKLoopUnexpected = 56,
+        TAKSubAddressLimit = 57,
+        TAKIoModMissing = 58,
+        TAKIoModUnexpected = 59,
+        TAKSerialInput = 60,
+        TAKNetUnexpectedNode = 61,
+        TAKNetUnknownType = 62,
+        TAKNetMissingNode = 63,
+        TAKNetUnexpectedCard = 64,
+        TAKNetMissingCard = 65,
+        TAKNetWrongAddress = 66,
+        TAKNetBroken = 67,
+        TAKNetCommsFault = 68,
+        TAKNetCommsTimeout = 69,
+        TAKNetInvalidAddress = 70,
+        TAKSounderBoardUnexpected = 71,
+        TAKRelayBoardUnexpected = 72,
+        TAKSounderBoardMissing = 73,
+        TAKRelayBoardMissing = 74,
+        TAKZoneIoUnexpected = 75,
+        TAKZoneIoMissing = 76,
+        TAKSystemFault = 77,
+        TAKDisableDevice = 78,
+        TAKDisableZone = 79,
+        TAKDisableLoop = 80,
+        TAKDisableSounders = 81,
+        TAKDisablePanelInput = 82,
+        TAKDisablePanelOutput = 83,
+        TAKDisableCe = 84,
+        TAKDisableBuzzer = 85,
+        TAKDisablePrinter = 86,
+        TAKDisableEarthFault = 87,
+        TAKDayNightDisable = 88,
+        TAKGeneralDisablement = 89,
+        TAKOemDevice = 90,
+        TAKEventTest = 91,
+        TAKZoneIoUnexpectedUsa = 92,
+        TAKZoneIoMissingUsa = 93,
+        TAKDisableImmediateOutput = 94,
+        TAKMemoryWriteEnableOn = 95,
+        TAKAnnunMissing = 96,
+        TAKAnnunUnexpected = 97,
+        TAKLcdPowerFault = 98,
+        TAKModulePowerSupplyFault = 99,
+        TAKOutputShortFault = 100,
+        TAKOutputOpenFault = 101,
+        TAKAddressing = 102,
+        TAKAutoAddressingFailure = 103,
+        TAKDevBatteryLow = 104,
+        TAKDevTamperFault = 105,
+        TAKDevExtInterference = 106,
+        TAKDevFataFault = 107,
+        TAKIsolatorOpen = 108,
+        TAKMicroProcessorFault = 109,
+        TAKPrismReflectorTrgetting = 110,
+        TAKAlignmentMode = 111,
+        TAKHighSpeedFault = 112,
+        TAKContaminationReached = 113,
+        TAKAudioFault = 114,
+        TAKHeadMissingFault = 115,
+        TAKTamperFault = 116,
+        TAKSignalStrengthFault = 117,
+        TAKRadBatteryFault = 118,
+        TAKSounderMissingFault = 119,
+        TAKDevBackBatteryLow = 120,
+        TAKSlaveExpLoss = 121,
+        TAK8ZoneMimicMissing = 122,
+        TAK8ZoneMimicUnexpected = 123,
+        TAK16ZoneMimicMissing = 124,
+        TAK16ZoneMimicUnexpected = 125,
+        TAKBattImpFailed = 126,
+        TAKAerialTamperFault = 127,
+        TAKBackGroundOutOfRange = 128,
+        TAKHeadFault = 129,
+        TAKHeadDirtyCompensation = 130,
+        TAKTamperInputFault = 131,
+        TAKReceiverFault = 132,
+        TAKBatteryFault = 133,
+        TAKFuseTrip = 134,
+        TAKCurrentLimitFault = 135,
+        TAKVoltageLimitFault = 136,
+        TAKWeakOpenCircuit = 137,
+        TAKWeakShortCircuit = 138,
+        TAKOpenCircuitFault = 139,
+        TAKShortCircuitFault = 140,
+        TAKBoardAMissing = 141,
+        TAKBoardBMissing = 142,
+        TAKLoopCommsTimeout = 143,
+        TAKAllOutputDisabled = 144,
+        TAKAllSoundersDisabled = 145,
+        TAKAllZoneDisabled = 146,
+        TAKLoopPrimUnderVoltage = 147,
+        TAKLoopSecUnderVoltage = 148,
+        TAKLoopBoardMissing = 149,
+        TAKLoopBoardUnexpected = 150,
+        TAKPSUEarthFault = 151,
+        TAKExtinguishantActivated = 152,
+        TAKPSUFault = 153,
+        TAKUserLoggedIn = 154,
+        TAKAutolearnDevice = 155,
+        TAKClassWiringFault = 156,
+        TAKIfamMissing = 157,
+        TAKCommunicatorMissing = 158,
+        TAKCommsFailure = 159,
+        TAKCommsRestored = 160,
+        TAKVnetTrouble = 161,
+        TAKVnetOpen = 162,
+        TAKVnetShorted = 163,
+        TAKVnetRestored = 164,
+        TAKVnetTransFailure = 165,
+        TAKVnetNodeMissing = 166,
+        TAKVnetExtraNode = 167,
+        TAKVnetTransRestored = 168,
+        TAKLanNotConnected = 169,
+        TAKLanNetNotRecognised = 170,
+        TAKLanGatewayAccessFail = 171,
+        TAKLanToDcCommsFail = 172,
+        TAKLanToDcCommsRestored = 173,
+        TAKDcCommsFailure = 174,
+        TAKDcCommsRestored = 175,
+        TAKPhoneLine1Trouble = 176,
+        TAKPhoneLine1Restored = 177,
+        TAKPhoneLine2Trouble = 178,
+        TAKPhoneLine2Restored = 179,
+        TAKVerification = 180,
+        TAKAllPlantOutputDisabled = 181,
+        TAKEventLogCleared = 182,
+        TAKBootloaderUpdate = 183,
+        TAKBootloaderFailed = 184,
+        TAKDelayExtended = 185,
+        TAKDisableModuleIoChannel = 186,
+        TAKMissingIoModTaktisSounder = 187,
+        TAKMissingIoModTaktisZone = 188,
+        TAKMissingIoModTaktisRelay = 189,
+        TAKMissingIoModTaktisMultiIo = 190,
+        TAKUnexpectedIoModTaktisSounder = 191,
+        TAKUnexpectedIoModTaktisZone = 192,
+        TAKUnexpectedIoModTaktisRelay = 193,
+        TAKUnexpectedIoModTaktisMultiIo = 194,
+        TAKMgwAct1ComsTrouble = 195,
+        TAKMgwAct1ConfTrouble = 196,
+        TAKMgwAct2ComsTrouble = 197,
+        TAKMgwAct2ConfTrouble = 198,
+        TAKMgwAct3ComsTrouble = 199,
+        TAKMgwAct3ConfTrouble = 200,
+        TAKMgwAct4ComsTrouble = 201,
+        TAKMgwAct4ConfTrouble = 202,
+        TAKMgwIpnetConfTrouble = 203,
+        TAKMgwIpnetComsTrouble = 204,
+        TAKMgwInternalTrouble = 205,
+        TAKMgwMissing = 206,
+        TAKMgwDisabled = 207,
+        TAKNetworkOutputPartialShortCircuitFault = 208,
+        TAKNetworkOutputPartialOpenCircuitFault = 209,
+        TAKNetworkOutputFullShortCircuitFault = 210,
+        TAKNetworkOutputFullOpenCircuitFault = 211,
+        TAKNetworkOutputConnectionFault = 212,
+        TAKNetworkOutputCommunicationFault = 213,
+        TAKNetworkInputPartialShortCircuitFault = 214,
+        TAKNetworkInputPartialOpenCircuitFault = 215,
+        TAKNetworkInputFullShortCircuitFault = 216,
+        TAKNetworkInputFullOpenCircuitFault = 217,
+        TAKNetworkInputConnectionFault = 218,
+        TAKNetworkInputCommunicationFault = 219,
+        TAKNetworkMissingNodes = 220,
+        TAKNetworkConnectionFault = 221,
+        TAKNetworkRepeatAddress = 222,
+        TAKLedMissingBoard = 223,
+        TAKMissingIoModFan = 224,
+        TAKMissingIoModAncillery = 225,
+        TAKMissingIoModLed = 226,
+        TAKUnexpectedIoModFan = 227,
+        TAKUnexpectedIoModAncillery = 228,
+        TAKUnexpectedIoModLed = 229,
+        TAKTestOnOutput = 230,
+        TAKTestOnLed = 231,
+        TAKTestOnIsolator = 232,
+        TAKStorageInserted = 233,
+        TAKMonitoredInputFault = 234,
+        TAKImportRead = 235,
+        TAKImportWrite = 236,
+        TAKExportWrite = 237,
+        TAKMgwUnexpected = 238,
+        TAKMgwCoElementFault = 239,
+        TAKCoLifeFault = 240,
+        TAKEepromFault = 241,
+        TAKPositiveAlarmDisabled = 242,
+        TAKCeNotRunning = 243,
+        TAKMgwLicenceMissing = 244,
+        TAKMgwDialerDisabled = 245,
+        TAKLoopPowerOff = 246,
+        TAKDisableNetwork = 247
+    }
 
 
     public class TimerEventArgs : EventArgs
@@ -394,7 +393,7 @@ namespace Drax360Service.Panels
             TAKSendControlStartTest
         }
 
-        
+
         #endregion
 
         #region Constants
@@ -522,12 +521,10 @@ namespace Drax360Service.Panels
         {
             throw new NotImplementedException();
         }
-
-
         protected override void heartbeat_timer_callback(object sender)
         {
             base.heartbeat_timer_callback(sender);
-            sendtotaktis(TakSendType.TAKSendHeartBeatTX,clientID: 1);
+            sendtotaktis(TakSendType.TAKSendHeartBeatTX, clientID: 1);
         }
 
         private string gsIPAddress;
@@ -536,7 +533,6 @@ namespace Drax360Service.Panels
         {
             gsIPAddress = base.GetSetting<string>(ksettingsetupsection, "PanelIPAddress");
             gsIPPort = base.GetSetting<string>(ksettingsetupsection, "IPPort");
-
 
             // RJ switched off timers
             //_messageSender.LogMessage += OnLogMessage;
@@ -561,17 +557,28 @@ namespace Drax360Service.Panels
 
             _rxTimer.Start();
 
+            Thread.Sleep(1000); // wait for response
+            
+            var tcp = new TcpClientWithEvents(gsIPAddress, Convert.ToInt32(gsIPPort));
+            tcp.DataReceived += (sender, data) =>
+            {
+                // Convert received bytes to hex string
+                string responseHex = BitConverter.ToString(data);
+                int bytesRead = data.Length;
+
+                NotifyClient($"Event Received response ({bytesRead} bytes): {responseHex}");
+
+                DecodeMessage(responseHex);
+            };
+            
         }
-
-        
-
 
         private void OnSendImmediateRequest(object sender, SendImmediateEventArgs e)
         {
             SendImmediateRequest?.Invoke(this, e);
         }
 
-        public PanelTaktis(string baselogfolder, string identifier) : base(baselogfolder, identifier, "TAKMan","TAK")
+        public PanelTaktis(string baselogfolder, string identifier) : base(baselogfolder, identifier, "TAKMan", "TAK")
         {
             if (!String.IsNullOrEmpty(identifier))
             {
@@ -699,8 +706,8 @@ namespace Drax360Service.Panels
                     NotifyClient("Request Active Events RX");
                     _messageSent = true;
                     //data = CreateBasicMessage(8, TakCommands.CMD_REQUEST_ACTIVE_EVENTS);
-                    
-                    
+
+
                     data = new string[8];
                     for (int i = 0; i < 8 - 1; i++)
                         data[i] = "0";
@@ -1129,7 +1136,7 @@ namespace Drax360Service.Panels
                 if (_txQueue.Count > 0)
                 {
                     NotifyClient("Turn Send timer on");
-                    OnStartTxTimer(new TimerEventArgs {Interval = 1000 });
+                    OnStartTxTimer(new TimerEventArgs { Interval = 1000 });
                 }
 
                 if (_rxQueue.Count > 0)
@@ -1230,7 +1237,7 @@ namespace Drax360Service.Panels
             {
                 Console.WriteLine($"[TX TIMER] Sending queued message: {string.Join(",", message.EncodedPacket)}");
                 // Implement actual network send here
-                SendBytesToPanel( message.EncodedPacket);
+                SendBytesToPanel(message.EncodedPacket);
                 // If more messages in queue, restart timer
                 if (TxQueueCount > 0)
                 {
@@ -1248,7 +1255,7 @@ namespace Drax360Service.Panels
             {
                 Console.WriteLine($"[RX TIMER] Sending queued message: {string.Join(",", message.EncodedPacket)}");
                 // Implement actual network send here
-               SendBytesToPanel(message.EncodedPacket);
+                SendBytesToPanel(message.EncodedPacket);
 
                 // If more messages in queue, restart timer
                 //if (RxQueueCount > 0)
@@ -1322,7 +1329,6 @@ namespace Drax360Service.Panels
                 NotifyClient($"Error sending bytes: {ex.Message}");
             }
         }
-
         private void DecodeMessage(string responseHex)
         {
             string sLocationText = "";
@@ -1524,20 +1530,21 @@ namespace Drax360Service.Panels
             {
                 sNode = "0";
             }
-            long iNode = Convert.ToInt64(sNode, 16);
-            long iAddress = Convert.ToInt64(sAddress, 16);
+            int iNode = Convert.ToInt32(sNode, 16);
+            int iAddress = Convert.ToInt32(sAddress, 16);
             long lEventCode = Convert.ToInt64(sEventCode, 16);
             long lEventGroup = Convert.ToInt64(sEventGroup, 16);
             long lEventType = Convert.ToInt64(sEventType, 16);
-            long iAddressType = Convert.ToInt64(sAddressType, 16);
-            long iSubAddress = Convert.ToInt64(sSubAddress, 16);
-            long iLoop = Convert.ToInt64(sLoop, 16);
-            long iZone = Convert.ToInt64(sZone, 16);
-            long iInputAction = Convert.ToInt64(sInputAction, 16);
+            int iAddressType = Convert.ToInt32(sAddressType, 16);
+            int iSubAddress = Convert.ToInt32(sSubAddress, 16);
+            int iLoop = Convert.ToInt32(sLoop, 16);
+            int iZone = Convert.ToInt32(sZone, 16);
+            int iInputAction = Convert.ToInt32(sInputAction, 16);
             long lTimeStamp = Convert.ToInt64(sTimeStamp, 16);
             enmTAKMessageType gMessageType = (enmTAKMessageType)iMessageType;
             enmTAKEventType gEventType = (enmTAKEventType)lEventType;
             enmTAKEventCode gEventCode = (enmTAKEventCode)lEventCode;
+            long[] serialNumbers = Array.ConvertAll(sSerialNo, s => Convert.ToInt64(s, 16));
 
             switch (iMessageType)
             {
@@ -1549,171 +1556,10 @@ namespace Drax360Service.Panels
                     break;
                 case 133:  // Start Event Message
 
-                    ParseTAKMessage(gMessageType, sSerialNo, lEventGroup, gEventType, gEventCode, iNode, iAddressType, iAddress, iSubAddress, iLoop, iZone, iInputAction, lTimeStamp, sLocationText, sPanelText, sZoneText, "", true);
- 
+                    ParseTAKMessage(gMessageType, serialNumbers, lEventGroup, gEventType, gEventCode, iNode, iAddressType, iAddress, iSubAddress, iLoop, iZone, iInputAction, lTimeStamp, sLocationText, sPanelText, sZoneText, "", true);
+
                     break;
             }
-        }
-
-        public void ParseTAKMessage(
-            enmTAKMessageType pMessageType,
-            string[] plSerialNo,
-            long plEventGroup,
-            enmTAKEventType plEventType,
-            enmTAKEventCode plEventCode,
-            long piNode,
-            long piAddressType,
-            long piAddress,
-            long piSubAddress,
-            long piLoop,
-            long piZone,
-            long piInputAction,
-            long plTimeStamp,
-            string psLocationText,
-            string psPanelText,
-            string psZoneText,
-            string psDevicetype,
-            bool pbAlarmOn)
-        {
-            int evnum = 0;
-            string zonetext = "Zone " + piZone;
-            string sEventText = "";
-            int iFinalAddress = 0;
-            int iFirstAddress = 0;
-            int iInputType = 0;
-            string gsTextSummary= "";   
-            enmTAKEventType gEventType = enmTAKEventType.TAKEventUnknown;
-
-            switch (plEventCode)
-            {
-                case enmTAKEventCode.TAKInputActivated: // 48
-                    gEventType = enmTAKEventType.TAKEventTechAlarm;
-                    sEventText = "Input Activated";
-                    if ((int)plEventType == 11 & piAddressType == 6)
-                    {
-                        if (piAddress == 4)
-                        {
-                            piAddress = 243;
-                        }
-                        if (piAddress == 5)
-                        {
-                            piAddress = 244;
-                        }
-                        if (piAddress == 6)
-                        {
-                            piAddress = 245;
-                        }
-                    }
-                    else
-                    {
-                        if ((int)plEventType == 0 || (int)plEventType == 5 || (int)plEventType == 6 || (int)plEventType == 4 || (int)plEventType == 2)
-                        { }
-                        else
-                        {
-                            piAddress = 48;
-                            iFirstAddress = 48;
-                        }
-                    }
-                    break;
-            }
-
-            switch (plEventGroup)
-            {
-                case 10: // NoGroup
-                    if (gEventType != enmTAKEventType.TAKEventDisablement)
-                    {
-                        gEventType = enmTAKEventType.TAKEventStatus;
-                    }
-                    break;
-            }
-
-            switch ((int)piInputAction)
-            {
-                case 2:
-                    break;
-            }
-
-            switch (gEventType)
-            {
-                case enmTAKEventType.TAKEventStatus:  // 9
-                    if (plEventCode == enmTAKEventCode.TAKDisableZone || plEventCode == enmTAKEventCode.TAKAllZoneDisabled)
-                    {
-                        iInputType = 11;
-                    }
-                    else
-                    {
-                        iInputType = 15;
-                    }
-                    break;
-            }
-
-            switch (piAddressType)
-            {
-                case 3:
-                    break;
-            }
-
-            switch (plEventType)
-            {
-                case enmTAKEventType.TAKEventFault:
-                    if (plEventCode == enmTAKEventCode.TAKInputActivated)
-                    {
-                        switch (piSubAddress)
-                        {
-                            case 1:
-                                {
-                                    iInputType = 1;
-                                }
-                                break;
-                            case 2:
-                                {
-                                    iInputType = 3;
-                                }
-                                break;
-                            case 3:
-                                {
-                                    iInputType = 9;
-                                }
-                                break;
-                            case 4:
-                                {
-                                    iInputType = 10;
-                                }
-                                break;
-                            default:
-                                {
-                                    iInputType = 8;
-                                }
-                                break;
-                        }
-                    }
-                    break;
-            }
-
-            if (piAddressType == 0 & piSubAddress > 0)
-            {
-                if (psLocationText == "")
-                {
-                    psLocationText = "IO";
-                }
-                psZoneText = "Zone " + piZone + " " + psZoneText;
-                gsTextSummary = sEventText + " Sub Address " + piSubAddress;
-                psDevicetype = psZoneText;
-
-                if (plEventCode == enmTAKEventCode.TAKInputActivated)
-                {
-                    if (plEventType == enmTAKEventType.TAKEventFault)
-                    {
-                        iInputType = 8;
-                    }
-                }
-            }
-
-            piLoop = piLoop + 1;
-
-            evnum = CSAMXSingleton.CS.MakeInputNumber(Convert.ToInt32(piNode), Convert.ToInt32(piLoop), Convert.ToInt32(piAddress), iInputType);
-            send_response_amx(evnum, psLocationText, zonetext, gsTextSummary);
-
         }
 
         private void send_response_amx(int evnum, string message1, string message2, string message3 = "")
@@ -1727,7 +1573,7 @@ namespace Drax360Service.Panels
             CSAMXSingleton.CS.FlushMessages();
         }
         private byte[] convertstringarraytobytearray(string[] stringArray)
-        {   
+        {
             List<byte> ret = new List<byte>();
             foreach (string str in stringArray)
             {
@@ -1736,12 +1582,78 @@ namespace Drax360Service.Panels
                 ret.Add(b);
             }
             return ret.ToArray();
+        }
 
-           
+        #endregion
+
+        public class TcpClientWithEvents : IDisposable
+        {
+            private readonly TcpClient _client;
+            private NetworkStream _stream;
+            private CancellationTokenSource _cts;
+
+            // Your custom event (similar to SerialPort.DataReceived)
+            public event EventHandler<byte[]> DataReceived;
+
+            public bool IsConnected => _client?.Connected ?? false;
+
+            public TcpClientWithEvents(string host, int port)
+            {
+                _client = new TcpClient();
+                _client.Connect(host, port);
+                _stream = _client.GetStream();
+                _cts = new CancellationTokenSource();
+
+                // Start background listener
+                Task.Run(() => ListenAsync(_cts.Token));
+            }
+
+            private async Task ListenAsync(CancellationToken token)
+            {
+                var buffer = new byte[1024];
+                try
+                {
+                    while (!token.IsCancellationRequested)
+                    {
+                        if (_stream.CanRead)
+                        {
+                            int bytesRead = await _stream.ReadAsync(buffer, 0, buffer.Length, token);
+                            if (bytesRead > 0)
+                            {
+                                byte[] data = new byte[bytesRead];
+                                Array.Copy(buffer, data, bytesRead);
+
+                                // Trigger your event (like SerialPort.DataReceived)
+                                DataReceived?.Invoke(this, data);
+                            }
+                            else
+                            {
+                                // Connection closed
+                                break;
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[TCP ERROR] {ex.Message}");
+                }
+            }
+
+            public async Task SendAsync(string message)
+            {
+                if (!_client.Connected) return;
+                var data = Encoding.UTF8.GetBytes(message);
+                await _stream.WriteAsync(data, 0, data.Length);
+            }
+
+            public void Dispose()
+            {
+                _cts.Cancel();
+                _stream?.Dispose();
+                _client?.Close();
+            }
         }
     }
-
-
-    #endregion
 }
 

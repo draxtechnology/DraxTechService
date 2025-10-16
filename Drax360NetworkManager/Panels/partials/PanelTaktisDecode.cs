@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
+using System.Runtime.Remoting.Contexts;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace Drax360Service.Panels
 {
@@ -14,18 +17,17 @@ namespace Drax360Service.Panels
         private bool _sendRequestActiveEvents;
         private long[] _serialNo = new long[4];
         private long _numMessages;
-        private readonly AlarmListManager _alarmList;
-        private readonly ZoneDisableListManager _zoneDisableList;
-        private readonly FaultListManager _faultList;
+        private AlarmListManager _alarmList;
+        private ZoneDisableListManager _zoneDisableList;
+        private FaultListManager _faultList;
         private readonly int _amx1Offset;
         private readonly bool _ulSettings;
         private readonly string _ioModuleSettings;
         private readonly string _ioModuleSettingsPanels;
-        private readonly ILogger _logger;
         private readonly IAMX1Writer _amx1Writer;
         private readonly INetworkManager _networkManager;
 
-        public void xxxParseTAKMessage(
+        public void ParseTAKMessage(
            enmTAKMessageType messageType,
            long[] serialNo,
            long eventGroup,
@@ -54,6 +56,9 @@ namespace Drax360Service.Panels
                 int finalAddress = 0;
                 int doubleFaultInputType = 0;
                 bool _ulSettings = false;
+                _alarmList = new AlarmListManager();
+                _zoneDisableList = new ZoneDisableListManager();
+                _faultList = new FaultListManager();
 
                 // Increment message counter
                 if (_numMessages > 1_000_000)
@@ -141,9 +146,9 @@ namespace Drax360Service.Panels
                 }
 
                 // Get transfer file
-                string transferFile = _amx1Writer.GetCurrentTransferFile();
+                //string transferFile = _amx1Writer.GetCurrentTransferFile();
 
-                _logger.Log($"ParseTAKMessages : {loop} : {address}");
+                this.NotifyClient($"ParseTAKMessages : {loop} : {address}");
 
                 // Create input number
                 long inputNumber = MakeInputNumber(node + _amx1Offset, loop, address, inputType);
@@ -158,8 +163,8 @@ namespace Drax360Service.Panels
                 // Add/remove from alarm list
                 if (alarmOn)
                 {
-                    _logger.Log("Add to Alarm List");
-                    _alarmList.Add(inputType, inputNumber);
+                    this.NotifyClient("Add to Alarm List");
+                      _alarmList.Add(inputType, inputNumber);  
                 }
 
                 // Handle zone disablement
@@ -176,18 +181,16 @@ namespace Drax360Service.Panels
                     ref doubleFaultInputType);
 
                 // Send to AMX
-                SendToAMX(alarmOn, inputNumber, transferFile, locationText,
-                    deviceType, textSummary, oneShotReset);
+                int evnum = CSAMXSingleton.CS.MakeInputNumber(Convert.ToInt32(node), Convert.ToInt32(loop), Convert.ToInt32(address), inputType);
+                send_response_amx(evnum, locationText, deviceType, textSummary);
 
-                // Flush messages
-                _logger.Log("Flushing");
-                _amx1Writer.FlushAMX1Messages();
             }
             catch (Exception ex)
             {
-                _logger.LogError($"ParseTAKMessages error: {ex.Message}");
+                this.NotifyClient($"ParseTAKMessages error: {ex.Message}");
             }
         }
+
 
         private string BuildTextSummary(string eventText, int inputType, int zone,
      ref string zoneText, ref string deviceType, ref string locationText,
@@ -267,12 +270,6 @@ namespace Drax360Service.Panels
             void StartResetDelayTimer(int milliseconds);
             void StopHeartbeatTimer();
             void CloseConnections();
-        }
-
-        public interface ILogger
-        {
-            void Log(string message);
-            void LogError(string message);
         }
 
         public interface IAMX1Writer
@@ -603,7 +600,7 @@ namespace Drax360Service.Panels
                 case enmTAKEventCode.TAKDisableDevice:
                     parsedType = enmTAKEventType.TAKEventDisablement;
                     eventText = "Device Disabled";
-                    _logger.Log("***************** Device Disable **********************");
+                    this.NotifyClient("***************** Device Disable **********************");
                     break;
 
                 case enmTAKEventCode.TAKGeneralDisablement:
@@ -637,7 +634,7 @@ namespace Drax360Service.Panels
                     break;
             }
 
-            _logger.Log($"Event Text {eventText} TAKEventStatus {enmTAKEventType.TAKEventStatus}");
+            this.NotifyClient($"Event Text {eventText} TAKEventStatus {enmTAKEventType.TAKEventStatus}");
 
             return (eventText, parsedType);
         }
@@ -647,7 +644,7 @@ namespace Drax360Service.Panels
             switch (eventGroup)
             {
                 case 1: // Fire
-                    _logger.Log("***** FIRE ******");
+                    this.NotifyClient("***** FIRE ******");
                     return enmTAKEventType.TAKEventFire;
 
                 case 2: // Pre Alarm
@@ -661,12 +658,12 @@ namespace Drax360Service.Panels
                 case 11: // Calibration
                     if (inputAction == 1)
                     {
-                        _logger.Log("***** FIRE DURING CALIBRATION ******");
+                        this.NotifyClient("***** FIRE DURING CALIBRATION ******");
                         return enmTAKEventType.TAKEventFire;
                     }
                     if (inputAction == 5)
                     {
-                        _logger.Log("***** EVACUATE DURING CALIBRATION ******");
+                        this.NotifyClient("***** EVACUATE DURING CALIBRATION ******");
                         return enmTAKEventType.TAKEventEvacuate;
                     }
                     break;
@@ -687,7 +684,7 @@ namespace Drax360Service.Panels
             switch (inputAction)
             {
                 case 4: // Tech Alarm
-                    _logger.Log("*************** Tech Alarm ***************");
+                    this.NotifyClient("*************** Tech Alarm ***************");
                     eventText = _techWord;
                     address = 1;
                     originalEventType = enmTAKEventType.TAKEventTechAlarm;
@@ -696,7 +693,7 @@ namespace Drax360Service.Panels
                 case 5: // Evacuate
                     if (eventType == enmTAKEventType.TAKEventStatus && _ulSettings)
                     {
-                        _logger.Log("*************** Evacuate ***************");
+                        this.NotifyClient("*************** Evacuate ***************");
                         eventText = _evacWord;
                         address = 2;
                         originalEventType = enmTAKEventType.TAKEventEvacuate;
@@ -714,7 +711,7 @@ namespace Drax360Service.Panels
                     break;
 
                 case 7: // Security Alarm
-                    _logger.Log("*************** Security Alarm - Input Action ***************");
+                    this.NotifyClient("*************** Security Alarm - Input Action ***************");
                     eventText = "Security Alarm";
                     address = 3;
                     originalEventType = enmTAKEventType.TAKEventSecurity;
@@ -801,7 +798,7 @@ namespace Drax360Service.Panels
                 case enmTAKEventType.TAKEventSecurity:
                     inputType = 6;
                     oneShotReset = false;
-                    _logger.Log("******************** Security Alarm ********************");
+                    this.NotifyClient("******************** Security Alarm ********************");
                     finalAddress = firstAddress;
                     break;
 
@@ -812,14 +809,14 @@ namespace Drax360Service.Panels
                     break;
 
                 case enmTAKEventType.TAKEventDisablement:
-                    _logger.Log("******************* Event Disable ****************");
+                    this.NotifyClient("******************* Event Disable ****************");
                     inputType = 4;
                     oneShotReset = false;
                     finalAddress = firstAddress;
                     break;
 
                 case enmTAKEventType.TAKEventTechAlarm:
-                    _logger.Log("******************** Tech Alarm 2 ********************");
+                    this.NotifyClient("******************** Tech Alarm 2 ********************");
                     inputType = 7;
                     oneShotReset = false;
                     finalAddress = firstAddress;
@@ -941,7 +938,7 @@ namespace Drax360Service.Panels
 
                 case enmTAKEventType.TAKEventOther:
                     inputType = 15;
-                    _logger.Log("********** TAKEventOther **************");
+                    this.NotifyClient("********** TAKEventOther **************");
                     break;
             }
         }
@@ -1006,7 +1003,7 @@ namespace Drax360Service.Panels
             if (eventCode != enmTAKEventCode.TAKDisableZone)
                 return;
 
-            _logger.Log("Zone Disable Detected");
+            this.NotifyClient("Zone Disable Detected");
 
             if (node == 254)
                 node = 1;
@@ -1015,13 +1012,13 @@ namespace Drax360Service.Panels
 
             if (alarmOn)
             {
-                _logger.Log($"Zone Alarm Disable Zone - Add to List {address}");
+                this.NotifyClient($"Zone Alarm Disable Zone - Add to List {address}");
                 _zoneDisableList.Add(node, zone, address, loop);
                 inputNumber = MakeInputNumber(node + _amx1Offset, loop, address, inputType);
             }
             else
             {
-                _logger.Log($"Zone Alarm Disable Zone - Remove from List {panelZone}");
+                this.NotifyClient($"Zone Alarm Disable Zone - Remove from List {panelZone}");
                 _zoneDisableList.Remove(node, zone, address, loop);
                 inputNumber = MakeInputNumber(node + _amx1Offset, loop, address, inputType);
             }
@@ -1033,18 +1030,18 @@ namespace Drax360Service.Panels
             if (eventType != enmTAKEventType.TAKEventAlarmTest)
                 return;
 
-            _logger.Log("Zone Test Detected");
+            this.NotifyClient("Zone Test Detected");
 
             string panelZone = $"{node:00}{zone:000}";
 
             if (alarmOn)
             {
-                _logger.Log($"Alarm Zone Test {address}");
+                this.NotifyClient($"Alarm Zone Test {address}");
                 _zoneDisableList.Add(node, zone, address, loop);
 
                 if (address == -1)
                 {
-                    _logger.Log("Zone Test Count over 255 - so ignore");
+                    this.NotifyClient("Zone Test Count over 255 - so ignore");
                     inputNumber = 0;
                     return;
                 }
@@ -1053,7 +1050,7 @@ namespace Drax360Service.Panels
             }
             else
             {
-                _logger.Log($"Zone Alarm Test - Remove from List {panelZone}");
+                this.NotifyClient($"Zone Alarm Test - Remove from List {panelZone}");
                 _zoneDisableList.Remove(node, zone, address, loop);
                 inputNumber = MakeInputNumber(node + _amx1Offset, loop, address, inputType);
             }
@@ -1166,8 +1163,8 @@ namespace Drax360Service.Panels
             if (eventType != enmTAKEventType.TAKEventFault)
                 return;
 
-            _logger.Log($"Device Fault Detected - {locationText} {eventText}");
-
+            this.NotifyClient($"Device Fault Detected - {locationText} {eventText}");
+            return; //TODO
             if (alarmOn)
             {
                 doubleFaultInputType = inputType;
@@ -1182,11 +1179,11 @@ namespace Drax360Service.Panels
                 {
                     if (_duplicate)
                     {
-                        _logger.Log("gbDuplicate - MakeInputNumberSkipped");
+                        this.NotifyClient("gbDuplicate - MakeInputNumberSkipped");
                     }
                     else
                     {
-                        _logger.Log($"Fault Added to list {inputNumber} {doubleFaultInputType}");
+                        this.NotifyClient($"Fault Added to list {inputNumber} {doubleFaultInputType}");
                         inputType = doubleFaultInputType;
                         inputNumber = MakeInputNumber(node + _amx1Offset, loop, address, inputType);
                     }
@@ -1194,80 +1191,28 @@ namespace Drax360Service.Panels
             }
             else
             {
-                _logger.Log($"Remove from List {inputNumber}");
+                this.NotifyClient($"Remove from List {inputNumber}");
                 doubleFaultInputType = 0;
 
                 if (!_faultList.Remove(inputNumber, eventText, ref doubleFaultInputType))
                 {
-                    _logger.Log($"============== Not Found In Fault List {inputNumber}");
+                    this.NotifyClient($"============== Not Found In Fault List {inputNumber}");
                     inputNumber = MakeInputNumber(node + _amx1Offset, loop, address, inputType);
                 }
                 else
                 {
-                    _logger.Log($"============== Found In Fault List {inputNumber}-{doubleFaultInputType}");
+                    this.NotifyClient($"============== Found In Fault List {inputNumber}-{doubleFaultInputType}");
                     inputType = doubleFaultInputType;
                     inputNumber = MakeInputNumber(node + _amx1Offset, loop, address, inputType);
                 }
             }
         }
 
-        private void SendToAMX(bool alarmOn, long inputNumber, string transferFile,
-            string locationText, string deviceType, string textSummary, bool oneShotReset)
-        {
-            string queueSize = $"Panel Number: {inputNumber:X}";
-
-            if (alarmOn)
-            {
-                _logger.Log("Not Cleared Event");
-
-                if (!_duplicate)
-                {
-                    _logger.Log($"MakeInputNumber : lInputNumber: {inputNumber}");
-                    _logger.Log($"Sending : {queueSize} TransFile: {transferFile} " +
-                               $"Text: {locationText?.Trim()} - {deviceType?.Trim()} - {textSummary?.Trim()}");
-
-                    _amx1Writer.WriteNWMData(
-                        transferFile,
-                        1,
-                        inputNumber | 0x80000000,
-                        new long[16],
-                        locationText?.Trim() ?? "",
-                        deviceType?.Trim() ?? "",
-                        textSummary?.Trim() ?? "",
-                        true);
-
-                    _logger.Log("Message Sent");
-                }
-            }
-            else
-            {
-                _logger.Log("Cleared Event");
-                _logger.Log($"Sending Clear : {queueSize} lInputNumber: {inputNumber} " +
-                           $"TransFile: {transferFile} Text: {textSummary} {locationText} {deviceType}");
-
-                _amx1Writer.WriteNWMData(
-                    transferFile,
-                    1,
-                    inputNumber,
-                    new long[16],
-                    locationText?.Trim() ?? "",
-                    deviceType?.Trim() ?? "",
-                    textSummary?.Trim() ?? "",
-                    false);
-            }
-
-            if (oneShotReset)
-            {
-                _amx1Writer.FlushAMX1Messages();
-                Thread.Sleep(0);
-                _amx1Writer.ForceEvmAttribute(transferFile, inputNumber, 13, 1);
-            }
-        }
-
+  
         private void HandleReset()
         {
             _networkManager.StopActiveEventsTimer();
-            _logger.Log("********* Reset - So Clear all events from Event list ************");
+            this.NotifyClient("********* Reset - So Clear all events from Event list ************");
 
             _alarmList.Clear();
 
@@ -1284,7 +1229,7 @@ namespace Drax360Service.Panels
             _networkManager.StartResetDelayTimer(10000);
             _networkManager.StopHeartbeatTimer();
 
-            _logger.Log("********* Reset - Close the connection ************");
+            this.NotifyClient("********* Reset - Close the connection ************");
             _networkManager.CloseConnections();
         }
 
@@ -1294,7 +1239,7 @@ namespace Drax360Service.Panels
             // Pack values into a single long
             // Assuming bit layout: [node][loop][address][inputType]
             long result = ((long)node << 24) | ((long)loop << 16) | ((long)address << 8) | inputType;
-            _logger.Log($"MakeInputNumber: Node={node}, Loop={loop}, Address={address}, Type={inputType} => {result}");
+            this.NotifyClient($"MakeInputNumber: Node={node}, Loop={loop}, Address={address}, Type={inputType} => {result}");
             return result;
         }
     }
