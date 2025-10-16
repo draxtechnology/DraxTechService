@@ -338,7 +338,7 @@ namespace Drax360Service.Panels
         public string[] Data { get; set; }
         public TransmissionType TransmissionType { get; set; }
     }
-    internal class PanelTaktis : AbstractPanel
+    internal partial class PanelTaktis : AbstractPanel
     {
 
         #region Enums
