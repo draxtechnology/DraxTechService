@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Drax360Service.Panels
@@ -10,7 +11,20 @@ namespace Drax360Service.Panels
     {
         private bool _duplicate;
         private bool _clearedEvent;
+        private bool _sendRequestActiveEvents;
+        private long[] _serialNo = new long[4];
         private long _numMessages;
+        private readonly AlarmListManager _alarmList;
+        private readonly ZoneDisableListManager _zoneDisableList;
+        private readonly FaultListManager _faultList;
+        private readonly int _amx1Offset;
+        private readonly bool _ulSettings;
+        private readonly string _ioModuleSettings;
+        private readonly string _ioModuleSettingsPanels;
+        private readonly ILogger _logger;
+        private readonly IAMX1Writer _amx1Writer;
+        private readonly INetworkManager _networkManager;
+
         public void xxxParseTAKMessage(
            enmTAKMessageType messageType,
            long[] serialNo,
@@ -175,7 +189,100 @@ namespace Drax360Service.Panels
             }
         }
 
+        private string BuildTextSummary(string eventText, int inputType, int zone,
+     ref string zoneText, ref string deviceType, ref string locationText,
+     int addressType, int subAddress, int address, enmTAKEventCode eventCode,
+     int loop, ref string panelText, enmTAKEventType eventType, int inputAction, int node)
+        {
+            string textSummary = "";
 
+            if (inputType == 15)
+            {
+                if (zone > 0)
+                {
+                    zoneText = $"Zone {zone} {zoneText}";
+                    textSummary = eventText;
+                    deviceType = zoneText;
+                }
+                else
+                {
+                    textSummary = eventText;
+                }
+            }
+            else
+            {
+                if (addressType == 0 && subAddress > 0)
+                {
+                    if (string.IsNullOrEmpty(locationText))
+                        locationText = "IO";
+
+                    zoneText = $"Zone {zone} {zoneText}";
+                    textSummary = $"{eventText} Sub Address {subAddress}";
+                    deviceType = zoneText;
+                }
+                else
+                {
+                    zoneText = $"Zone {zone} {zoneText}";
+                    textSummary = eventText;
+                    deviceType = zoneText;
+                }
+            }
+
+            return textSummary;
+        }
+
+        public class AlarmListManager
+        {
+            private readonly List<AlarmEntry> _alarms = new List<AlarmEntry>();
+
+            public void Add(int inputType, long inputNumber)
+            {
+                if (!_alarms.Any(a => a.InputNumber == inputNumber && a.InputType == inputType))
+                {
+                    _alarms.Add(new AlarmEntry { InputType = inputType, InputNumber = inputNumber });
+                }
+            }
+
+            public void Remove(int inputType, long inputNumber)
+            {
+                _alarms.RemoveAll(a => a.InputNumber == inputNumber && a.InputType == inputType);
+            }
+
+            public void Clear()
+            {
+                _alarms.Clear();
+            }
+
+            private class AlarmEntry
+            {
+                public int InputType { get; set; }
+                public long InputNumber { get; set; }
+            }
+        }
+
+        public interface INetworkManager
+        {
+            void StopActiveEventsTimer();
+            void StartActiveEventsTimer();
+            void StartResetDelayTimer(int milliseconds);
+            void StopHeartbeatTimer();
+            void CloseConnections();
+        }
+
+        public interface ILogger
+        {
+            void Log(string message);
+            void LogError(string message);
+        }
+
+        public interface IAMX1Writer
+        {
+            string GetCurrentTransferFile();
+            void WriteNWMData(string transferFile, int value1, long inputNumber, long[] parameters,
+                string locationText, string deviceType, string textSummary, bool alarmState);
+            void FlushAMX1Messages();
+            void ForceEvmAttribute(string transferFile, long inputNumber, int attributeId, int value);
+        }
 
         private (string EventText, enmTAKEventType EventType) ParseEventCode(
            enmTAKEventCode eventCode, ref enmTAKEventType eventType, ref int address,
@@ -583,11 +690,11 @@ namespace Drax360Service.Panels
                     _logger.Log("*************** Tech Alarm ***************");
                     eventText = _techWord;
                     address = 1;
-                    originalEventType = enmTAKEventType.TechAlarm;
-                    return enmTAKEventType.TechAlarm;
+                    originalEventType = enmTAKEventType.TAKEventTechAlarm;
+                    return enmTAKEventType.TAKEventTechAlarm;
 
                 case 5: // Evacuate
-                    if (eventType == enmTAKEventType.Status && _ulSettings)
+                    if (eventType == enmTAKEventType.TAKEventStatus && _ulSettings)
                     {
                         _logger.Log("*************** Evacuate ***************");
                         eventText = _evacWord;
@@ -893,5 +1000,302 @@ namespace Drax360Service.Panels
             }
         }
 
+        private void HandleZoneDisablement(enmTAKEventCode eventCode, int node, int zone,
+         int address, int loop, bool alarmOn, ref long inputNumber, int inputType)
+        {
+            if (eventCode != enmTAKEventCode.TAKDisableZone)
+                return;
+
+            _logger.Log("Zone Disable Detected");
+
+            if (node == 254)
+                node = 1;
+
+            string panelZone = $"{node:00}{zone:000}";
+
+            if (alarmOn)
+            {
+                _logger.Log($"Zone Alarm Disable Zone - Add to List {address}");
+                _zoneDisableList.Add(node, zone, address, loop);
+                inputNumber = MakeInputNumber(node + _amx1Offset, loop, address, inputType);
+            }
+            else
+            {
+                _logger.Log($"Zone Alarm Disable Zone - Remove from List {panelZone}");
+                _zoneDisableList.Remove(node, zone, address, loop);
+                inputNumber = MakeInputNumber(node + _amx1Offset, loop, address, inputType);
+            }
+        }
+
+        private void HandleZoneTest(enmTAKEventType eventType, int node, int zone,
+            int address, int loop, bool alarmOn, ref long inputNumber, int inputType)
+        {
+            if (eventType != enmTAKEventType.TAKEventAlarmTest)
+                return;
+
+            _logger.Log("Zone Test Detected");
+
+            string panelZone = $"{node:00}{zone:000}";
+
+            if (alarmOn)
+            {
+                _logger.Log($"Alarm Zone Test {address}");
+                _zoneDisableList.Add(node, zone, address, loop);
+
+                if (address == -1)
+                {
+                    _logger.Log("Zone Test Count over 255 - so ignore");
+                    inputNumber = 0;
+                    return;
+                }
+
+                inputNumber = MakeInputNumber(node + _amx1Offset, loop, address, inputType);
+            }
+            else
+            {
+                _logger.Log($"Zone Alarm Test - Remove from List {panelZone}");
+                _zoneDisableList.Remove(node, zone, address, loop);
+                inputNumber = MakeInputNumber(node + _amx1Offset, loop, address, inputType);
+            }
+        }
+
+
+        /// <summary>
+        /// Manages zone disable and test list
+        /// </summary>
+        public class ZoneDisableListManager
+        {
+            private readonly List<ZoneEntry> _zones = new List<ZoneEntry>();
+
+            public void Add(int node, int zone, int address, int loop)
+            {
+                var entry = new ZoneEntry
+                {
+                    Node = node,
+                    Zone = zone,
+                    Address = address,
+                    Loop = loop
+                };
+
+                if (!_zones.Any(z => z.Node == node && z.Zone == zone && z.Address == address))
+                {
+                    _zones.Add(entry);
+                }
+            }
+
+            public void Remove(int node, int zone, int address, int loop)
+            {
+                _zones.RemoveAll(z => z.Node == node && z.Zone == zone && z.Address == address);
+            }
+
+            public void Clear()
+            {
+                _zones.Clear();
+            }
+
+            private class ZoneEntry
+            {
+                public int Node { get; set; }
+                public int Zone { get; set; }
+                public int Address { get; set; }
+                public int Loop { get; set; }
+            }
+        }
+
+        /// <summary>
+        /// Manages device fault list with double-fault detection
+        /// </summary>
+        public class FaultListManager
+        {
+            private readonly List<FaultEntry> _faults = new List<FaultEntry>();
+
+            public bool Add(long inputNumber, string eventText, ref int doubleFaultInputType)
+            {
+                var existing = _faults.FirstOrDefault(f => f.InputNumber == inputNumber);
+
+                if (existing != null)
+                {
+                    // Double fault detected - increment input type
+                    doubleFaultInputType = existing.InputType + 1;
+                    existing.InputType = doubleFaultInputType;
+                    existing.EventText = eventText;
+                    return true;
+                }
+
+                _faults.Add(new FaultEntry
+                {
+                    InputNumber = inputNumber,
+                    EventText = eventText,
+                    InputType = doubleFaultInputType
+                });
+
+                return false;
+            }
+
+            public bool Remove(long inputNumber, string eventText, ref int doubleFaultInputType)
+            {
+                var existing = _faults.FirstOrDefault(f => f.InputNumber == inputNumber);
+
+                if (existing != null)
+                {
+                    doubleFaultInputType = existing.InputType;
+                    _faults.Remove(existing);
+                    return true;
+                }
+
+                return false;
+            }
+
+            public void Clear()
+            {
+                _faults.Clear();
+            }
+
+            private class FaultEntry
+            {
+                public long InputNumber { get; set; }
+                public string EventText { get; set; }
+                public int InputType { get; set; }
+            }
+        }
+
+        private void HandleDeviceFault(enmTAKEventType eventType, string locationText,
+    string eventText, bool alarmOn, int node, int loop, int address,
+    ref int inputType, ref long inputNumber, ref int doubleFaultInputType)
+        {
+            if (eventType != enmTAKEventType.TAKEventFault)
+                return;
+
+            _logger.Log($"Device Fault Detected - {locationText} {eventText}");
+
+            if (alarmOn)
+            {
+                doubleFaultInputType = inputType;
+
+                if (_faultList.Add(inputNumber, eventText, ref doubleFaultInputType))
+                {
+                    // Already in list, use new input type
+                    inputType = doubleFaultInputType;
+                    inputNumber = MakeInputNumber(node + _amx1Offset, loop, address, inputType);
+                }
+                else
+                {
+                    if (_duplicate)
+                    {
+                        _logger.Log("gbDuplicate - MakeInputNumberSkipped");
+                    }
+                    else
+                    {
+                        _logger.Log($"Fault Added to list {inputNumber} {doubleFaultInputType}");
+                        inputType = doubleFaultInputType;
+                        inputNumber = MakeInputNumber(node + _amx1Offset, loop, address, inputType);
+                    }
+                }
+            }
+            else
+            {
+                _logger.Log($"Remove from List {inputNumber}");
+                doubleFaultInputType = 0;
+
+                if (!_faultList.Remove(inputNumber, eventText, ref doubleFaultInputType))
+                {
+                    _logger.Log($"============== Not Found In Fault List {inputNumber}");
+                    inputNumber = MakeInputNumber(node + _amx1Offset, loop, address, inputType);
+                }
+                else
+                {
+                    _logger.Log($"============== Found In Fault List {inputNumber}-{doubleFaultInputType}");
+                    inputType = doubleFaultInputType;
+                    inputNumber = MakeInputNumber(node + _amx1Offset, loop, address, inputType);
+                }
+            }
+        }
+
+        private void SendToAMX(bool alarmOn, long inputNumber, string transferFile,
+            string locationText, string deviceType, string textSummary, bool oneShotReset)
+        {
+            string queueSize = $"Panel Number: {inputNumber:X}";
+
+            if (alarmOn)
+            {
+                _logger.Log("Not Cleared Event");
+
+                if (!_duplicate)
+                {
+                    _logger.Log($"MakeInputNumber : lInputNumber: {inputNumber}");
+                    _logger.Log($"Sending : {queueSize} TransFile: {transferFile} " +
+                               $"Text: {locationText?.Trim()} - {deviceType?.Trim()} - {textSummary?.Trim()}");
+
+                    _amx1Writer.WriteNWMData(
+                        transferFile,
+                        1,
+                        inputNumber | 0x80000000,
+                        new long[16],
+                        locationText?.Trim() ?? "",
+                        deviceType?.Trim() ?? "",
+                        textSummary?.Trim() ?? "",
+                        true);
+
+                    _logger.Log("Message Sent");
+                }
+            }
+            else
+            {
+                _logger.Log("Cleared Event");
+                _logger.Log($"Sending Clear : {queueSize} lInputNumber: {inputNumber} " +
+                           $"TransFile: {transferFile} Text: {textSummary} {locationText} {deviceType}");
+
+                _amx1Writer.WriteNWMData(
+                    transferFile,
+                    1,
+                    inputNumber,
+                    new long[16],
+                    locationText?.Trim() ?? "",
+                    deviceType?.Trim() ?? "",
+                    textSummary?.Trim() ?? "",
+                    false);
+            }
+
+            if (oneShotReset)
+            {
+                _amx1Writer.FlushAMX1Messages();
+                Thread.Sleep(0);
+                _amx1Writer.ForceEvmAttribute(transferFile, inputNumber, 13, 1);
+            }
+        }
+
+        private void HandleReset()
+        {
+            _networkManager.StopActiveEventsTimer();
+            _logger.Log("********* Reset - So Clear all events from Event list ************");
+
+            _alarmList.Clear();
+
+            // Clear serial numbers
+            for (int i = 0; i < _serialNo.Length; i++)
+                _serialNo[i] = 0;
+
+            _sendRequestActiveEvents = false;
+            _duplicate = false;
+            _zoneDisableList.Clear();
+            _faultList.Clear();
+
+            _networkManager.StartActiveEventsTimer();
+            _networkManager.StartResetDelayTimer(10000);
+            _networkManager.StopHeartbeatTimer();
+
+            _logger.Log("********* Reset - Close the connection ************");
+            _networkManager.CloseConnections();
+        }
+
+
+        private long MakeInputNumber(int node, int loop, int address, int inputType)
+        {
+            // Pack values into a single long
+            // Assuming bit layout: [node][loop][address][inputType]
+            long result = ((long)node << 24) | ((long)loop << 16) | ((long)address << 8) | inputType;
+            _logger.Log($"MakeInputNumber: Node={node}, Loop={loop}, Address={address}, Type={inputType} => {result}");
+            return result;
+        }
     }
 }
