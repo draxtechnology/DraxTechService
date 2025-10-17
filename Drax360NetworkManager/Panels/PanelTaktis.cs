@@ -529,6 +529,7 @@ namespace Drax360Service.Panels
 
         private string gsIPAddress;
         private string gsIPPort;
+        private TcpClientWithEvents _tcp;
         public override void StartUp(int fakemode)
         {
             gsIPAddress = base.GetSetting<string>(ksettingsetupsection, "PanelIPAddress");
@@ -548,6 +549,7 @@ namespace Drax360Service.Panels
 
             // Initialize timers
             _txTimer = new System.Timers.Timer();
+            _txTimer.Interval = 1000;
             _txTimer.Elapsed += TxTimer_Elapsed;
             // added a start
             _txTimer.Start();
@@ -558,19 +560,8 @@ namespace Drax360Service.Panels
             _rxTimer.Start();
 
             Thread.Sleep(1000); // wait for response
-            
-            var tcp = new TcpClientWithEvents(gsIPAddress, Convert.ToInt32(gsIPPort));
-            tcp.DataReceived += (sender, data) =>
-            {
-                // Convert received bytes to hex string
-                string responseHex = BitConverter.ToString(data);
-                int bytesRead = data.Length;
 
-                NotifyClient($"Event Received response ({bytesRead} bytes): {responseHex}");
-
-                DecodeMessage(responseHex);
-            };
-            
+            sendtotaktis(TakSendType.TAKSendStartConnectionMonitoringTX, clientID: 1);
         }
 
         private void OnSendImmediateRequest(object sender, SendImmediateEventArgs e)
@@ -1229,7 +1220,7 @@ namespace Drax360Service.Panels
         {
             if (_txTimer != null)
             {
-                _txTimer.Stop();
+               // _txTimer.Stop();
             }
 
             var message = DequeueNextTxMessage();
@@ -1241,7 +1232,7 @@ namespace Drax360Service.Panels
                 // If more messages in queue, restart timer
                 if (TxQueueCount > 0)
                 {
-                    _txTimer.Start();
+                  //  _txTimer.Start();
                 }
             }
         }
@@ -1303,22 +1294,25 @@ namespace Drax360Service.Panels
 
                         Thread.Sleep(1000); // wait for response
 
-                        // Read response
-                        var responseBuffer = new byte[1024];
-                        int bytesRead = stream.Read(responseBuffer, 0, responseBuffer.Length);
-                        if (bytesRead > 0)
+                        while (stream.DataAvailable)
                         {
-                            // Convert response to hex string for readability
-                            string responseHex = BitConverter.ToString(responseBuffer, 0, bytesRead);
-                            NotifyClient($"Received response ({bytesRead} bytes): {responseHex}");
+                            // Read response
+                            var responseBuffer = new byte[1024];
+                            int bytesRead = stream.Read(responseBuffer, 0, responseBuffer.Length);
+                            if (bytesRead > 0)
+                            {
+                                // Convert response to hex string for readability
+                                string responseHex = BitConverter.ToString(responseBuffer, 0, bytesRead);
+                                NotifyClient($"Received response ({bytesRead} bytes): {responseHex}");
 
-                            DecodeMessage(responseHex);
+                                DecodeMessage(responseHex);
 
-                            sendtotaktis(TakSendType.TAKSendEventACKRX, clientID: 1);
-                        }
-                        else
-                        {
-                            NotifyClient("No response received from panel.");
+                                sendtotaktis(TakSendType.TAKSendEventACKRX, clientID: 1);
+                            }
+                            else
+                            {
+                                NotifyClient("No response received from panel.");
+                            }
                         }
                     }
                 }
@@ -1588,68 +1582,78 @@ namespace Drax360Service.Panels
 
         public class TcpClientWithEvents : IDisposable
         {
-            private readonly TcpClient _client;
+            private TcpClient _client;
             private NetworkStream _stream;
             private CancellationTokenSource _cts;
 
-            // Your custom event (similar to SerialPort.DataReceived)
+            /// <summary>Triggered whenever new data arrives from the panel.</summary>
             public event EventHandler<byte[]> DataReceived;
+
+            /// <summary>Triggered when connection is closed or an error occurs.</summary>
+            public event EventHandler<string> ConnectionClosed;
 
             public bool IsConnected => _client?.Connected ?? false;
 
-            public TcpClientWithEvents(string host, int port)
+            public TcpClientWithEvents()
             {
                 _client = new TcpClient();
-                _client.Connect(host, port);
-                _stream = _client.GetStream();
-                _cts = new CancellationTokenSource();
-
-                // Start background listener
-                Task.Run(() => ListenAsync(_cts.Token));
             }
 
+            /// <summary>Connects asynchronously to the panel.</summary>
+            public async Task ConnectAsync(string host, int port)
+            {
+                _cts = new CancellationTokenSource();
+
+                await _client.ConnectAsync(host, port);
+                _stream = _client.GetStream();
+
+                // Start background listener
+                _ = Task.Run(() => ListenAsync(_cts.Token));
+            }
+
+            /// <summary>Sends data asynchronously to the panel.</summary>
+            public async Task SendAsync(byte[] data)
+            {
+                if (_stream == null) throw new InvalidOperationException("Not connected.");
+                await _stream.WriteAsync(data, 0, data.Length);
+                await _stream.FlushAsync();
+            }
+
+            /// <summary>Continuously listens for incoming data in the background.</summary>
             private async Task ListenAsync(CancellationToken token)
             {
                 var buffer = new byte[1024];
+
                 try
                 {
                     while (!token.IsCancellationRequested)
                     {
-                        if (_stream.CanRead)
+                        int bytesRead = await _stream.ReadAsync(buffer, 0, buffer.Length, token);
+                        if (bytesRead == 0)
                         {
-                            int bytesRead = await _stream.ReadAsync(buffer, 0, buffer.Length, token);
-                            if (bytesRead > 0)
-                            {
-                                byte[] data = new byte[bytesRead];
-                                Array.Copy(buffer, data, bytesRead);
-
-                                // Trigger your event (like SerialPort.DataReceived)
-                                DataReceived?.Invoke(this, data);
-                            }
-                            else
-                            {
-                                // Connection closed
-                                break;
-                            }
+                            ConnectionClosed?.Invoke(this, "Connection closed by remote host");
+                            break;
                         }
+
+                        var data = new byte[bytesRead];
+                        Array.Copy(buffer, data, bytesRead);
+
+                        DataReceived?.Invoke(this, data);
                     }
+                }
+                catch (OperationCanceledException)
+                {
+                    // Expected when Dispose() is called
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[TCP ERROR] {ex.Message}");
+                    ConnectionClosed?.Invoke(this, $"TCP read error: {ex.Message}");
                 }
-            }
-
-            public async Task SendAsync(string message)
-            {
-                if (!_client.Connected) return;
-                var data = Encoding.UTF8.GetBytes(message);
-                await _stream.WriteAsync(data, 0, data.Length);
             }
 
             public void Dispose()
             {
-                _cts.Cancel();
+                _cts?.Cancel();
                 _stream?.Dispose();
                 _client?.Close();
             }

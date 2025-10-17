@@ -594,7 +594,13 @@ namespace Drax360Service.Panels
                     }
                     break;
 
-                // Additional cases would continue here...
+                case enmTAKEventCode.TAKMgwIpnetComsTrouble:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "MGW IPNET COMS " + _faultWord;
+                    address = 204;
+                    break;
+
+                // Additional cases would continue here...   TODO
                 // (Abbreviated for length - full conversion would include all 247+ cases)
 
                 case enmTAKEventCode.TAKDisableDevice:
