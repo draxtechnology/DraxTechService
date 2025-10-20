@@ -600,9 +600,6 @@ namespace Drax360Service.Panels
                     this.NotifyClient("***************** Device Disable **********************");
                     break;
 
-
-
-
                 case enmTAKEventCode.TAKDisableZone:
                     parsedType = enmTAKEventType.TAKEventStatus;
                     eventText = "Disable Zone";
@@ -940,14 +937,432 @@ namespace Drax360Service.Panels
                     address = 133;
                     break;
 
+                case enmTAKEventCode.TAKFuseTrip:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Fuse Trip";
+                    address = 134;
+                    break;
 
+                case enmTAKEventCode.TAKCurrentLimitFault:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = $"Current Limit {_faultWord}";
+                    address = 135;
+                    break;
 
+                case enmTAKEventCode.TAKVoltageLimitFault:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = $"Voltage Limit {_faultWord}";
+                    address = 136;
+                    break;
+
+                case enmTAKEventCode.TAKWeakOpenCircuit:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Weak Open Circuit";
+                    address = 137;
+                    break;
+
+                case enmTAKEventCode.TAKWeakShortCircuit:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Weak Short Circuit";
+                    address = 138;
+                    break;
+
+                case enmTAKEventCode.TAKOpenCircuitFault:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = $"Open Circuit {_faultWord}";
+                    address = 139;
+                    break;
+
+                case enmTAKEventCode.TAKShortCircuitFault:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = $"Short Circuit {_faultWord}";
+                    address = 140;
+                    break;
+
+                case enmTAKEventCode.TAKBoardAMissing:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Board A Missing";
+                    address = 141;
+                    break;
+
+                case enmTAKEventCode.TAKBoardBMissing:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Board B Missing";
+                    address = 142;
+                    break;
+
+                case enmTAKEventCode.TAKLoopCommsTimeout:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Loop Comms Timeout";
+                    address = 143;
+                    break;
+
+                case enmTAKEventCode.TAKAllOutputDisabled:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "All Outputs Disabled";
+                    address = 144;
+                    break;
+
+                case enmTAKEventCode.TAKAllSoundersDisabled:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "All Sounders Disabled";
+                    address = 145;
+                    break;
+
+                case enmTAKEventCode.TAKAllZoneDisabled:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "All Zone Disabled";
+                    address = 146;
+                    break;
+
+                case enmTAKEventCode.TAKLoopPrimUnderVoltage:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Loop Prim Under Voltage";
+                    address = 147;
+                    break;
+
+                case enmTAKEventCode.TAKLoopSecUnderVoltage:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Loop Sec Under Voltage";
+                    address = 148;
+                    break;
+
+                case enmTAKEventCode.TAKLoopBoardMissing:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Loop Board Missing";
+                    address = 149;
+                    break;
+
+                case enmTAKEventCode.TAKLoopBoardUnexpected:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Loop Board Unexpected";
+                    address = 150;
+                    break;
+
+                case enmTAKEventCode.TAKPSUEarthFault:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = $"PSU {_earthFaultWord}";
+                    address = 151;
+                    break;
+
+                case enmTAKEventCode.TAKExtinguishantActivated:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Extinguishant Activated";
+                    address = 152;
+                    break;
+
+                case enmTAKEventCode.TAKPSUFault:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = $"PSU {_faultWord}";
+                    address = 153;
+                    break;
+
+                case enmTAKEventCode.TAKUserLoggedIn:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "User Logged In";
+                    address = 154;
+                    break;
+
+                case enmTAKEventCode.TAKAutolearnDevice:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Auto Learn Device";
+                    address = 155;
+                    break;
+
+                case enmTAKEventCode.TAKClassWiringFault:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = $"Class Wiring {_faultWord}";
+                    address = 156;
+                    break;
+
+                case enmTAKEventCode.TAKIfamMissing:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "IFAM Missing";
+                    address = 157;
+                    break;
+
+                case enmTAKEventCode.TAKCommunicatorMissing:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Communicator Missing";
+                    address = 158;
+                    break;
+
+                case enmTAKEventCode.TAKCommsFailure:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Comms Failure";
+                    address = 159;
+                    break;
+
+                case enmTAKEventCode.TAKCommsRestored:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Comms Restored";
+                    address = 160;
+                    break;
+
+                case enmTAKEventCode.TAKVnetTrouble:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = $"VNET {_faultWord}";
+                    address = 161;
+                    break;
+
+                case enmTAKEventCode.TAKVnetOpen:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "VNET Open";
+                    address = 162;
+                    break;
+
+                case enmTAKEventCode.TAKVnetShorted:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "VNET Shorted";
+                    address = 163;
+                    break;
+
+                case enmTAKEventCode.TAKVnetRestored:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "VNET Restored";
+                    address = 164;
+                    break;
+
+                case enmTAKEventCode.TAKVnetTransFailure:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "VNET Trans Failure";
+                    address = 165;
+                    break;
+
+                case enmTAKEventCode.TAKVnetNodeMissing:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "VNET Node Missing";
+                    address = 166;
+                    break;
+
+                case enmTAKEventCode.TAKVnetExtraNode:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "VNET Extra Node";
+                    address = 167;
+                    break;
+
+                case enmTAKEventCode.TAKVnetTransRestored:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "VNET Trans Restored";
+                    address = 168;
+                    break;
+
+                case enmTAKEventCode.TAKLanNotConnected:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "LAN Not Connected";
+                    address = 169;
+                    break;
+
+                case enmTAKEventCode.TAKLanNetNotRecognised:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "LAN NET Not Recognised";
+                    address = 170;
+                    break;
+
+                case enmTAKEventCode.TAKLanGatewayAccessFail:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "LAN Gateway Access Fail";
+                    address = 171;
+                    break;
+
+                case enmTAKEventCode.TAKLanToDcCommsFail:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "LAN to DC Comms Fail";
+                    address = 172;
+                    break;
+
+                case enmTAKEventCode.TAKLanToDcCommsRestored:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "LAN To DC COMMS Restored";
+                    address = 173;
+                    break;
+
+                case enmTAKEventCode.TAKDcCommsFailure:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "DC COMMS Failure";
+                    address = 174;
+                    break;
+
+                case enmTAKEventCode.TAKDcCommsRestored:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "DC COMMS Restored";
+                    address = 175;
+                    break;
+
+                case enmTAKEventCode.TAKPhoneLine1Trouble:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = $"Phone Line 1 {_faultWord}";
+                    address = 176;
+                    break;
+
+                case enmTAKEventCode.TAKPhoneLine1Restored:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Phone Line 1 Restored";
+                    address = 177;
+                    break;
+
+                case enmTAKEventCode.TAKPhoneLine2Trouble:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = $"Phone Line 2 {_faultWord}";
+                    address = 178;
+                    break;
+
+                case enmTAKEventCode.TAKPhoneLine2Restored:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Phone Line 2 Restored";
+                    address = 179;
+                    break;
+
+                case enmTAKEventCode.TAKVerification:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Verification";
+                    address = 180;
+                    break;
+
+                case enmTAKEventCode.TAKAllPlantOutputDisabled:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "All Plant Output Disabled";
+                    address = 181;
+                    break;
+
+                case enmTAKEventCode.TAKEventLogCleared:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Event Log Cleared";
+                    address = 182;
+                    break;
+
+                case enmTAKEventCode.TAKBootloaderUpdate:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Bootloader Update";
+                    address = 183;
+                    break;
+
+                case enmTAKEventCode.TAKBootloaderFailed:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Bootloader Failed";
+                    address = 184;
+                    break;
+
+                case enmTAKEventCode.TAKDelayExtended:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Delay Extended";
+                    address = 185;
+                    break;
+
+                case enmTAKEventCode.TAKDisableModuleIoChannel:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Disable Module IO Channel";
+                    address = 186;
+                    break;
+
+                case enmTAKEventCode.TAKMissingIoModTaktisSounder:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Missing IO Mod Taktis Sounder";
+                    address = 187;
+                    break;
+
+                case enmTAKEventCode.TAKMissingIoModTaktisZone:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Missing IO Mode Taktis Zone";
+                    address = 188;
+                    break;
+
+                case enmTAKEventCode.TAKMissingIoModTaktisRelay:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Missing IO MOD Taktis Relay";
+                    address = 189;
+                    break;
+
+                case enmTAKEventCode.TAKMissingIoModTaktisMultiIo:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Unexpected IO MOD Taktis Sounder";
+                    address = 190;
+                    break;
+
+                case enmTAKEventCode.TAKUnexpectedIoModTaktisSounder:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Unexpected IO MOD Taktis Sounder";
+                    address = 191;
+                    break;
+
+                case enmTAKEventCode.TAKUnexpectedIoModTaktisZone:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Unexpected IO MOD Taktis Zone";
+                    address = 192;
+                    break;
+
+                case enmTAKEventCode.TAKUnexpectedIoModTaktisRelay:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Unexpected IO MOD Taktis Relay";
+                    address = 193;
+                    break;
+
+                case enmTAKEventCode.TAKUnexpectedIoModTaktisMultiIo:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Unexpected IO MODE Taktis Multi IO";
+                    address = 194;
+                    break;
+
+                case enmTAKEventCode.TAKMgwAct1ComsTrouble:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = $"MGW ACT1 ComS {_faultWord}";
+                    address = 195;
+                    break;
+
+                case enmTAKEventCode.TAKMgwAct1ConfTrouble:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = $"MGW ACT1 ComF {_faultWord}";
+                    address = 196;
+                    break;
+
+                case enmTAKEventCode.TAKMgwAct2ComsTrouble:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = $"MGW ACT2 ComS {_faultWord}";
+                    address = 197;
+                    break;
+
+                case enmTAKEventCode.TAKMgwAct2ConfTrouble:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = $"MGW ACT2 ComF {_faultWord}";
+                    address = 198;
+                    break;
+
+                case enmTAKEventCode.TAKMgwAct3ComsTrouble:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = $"MGW ACT3 ComS {_faultWord}";
+                    address = 199;
+                    break;
+
+                case enmTAKEventCode.TAKMgwAct3ConfTrouble:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = $"MGW ACT3 ComF {_faultWord}";
+                    address = 200;
+                    break;
+
+                case enmTAKEventCode.TAKMgwAct4ComsTrouble:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = $"MGW ACT4 ComS {_faultWord}";
+                    address = 201;
+                    break;
+
+                case enmTAKEventCode.TAKMgwAct4ConfTrouble:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = $"MGW ACT4 ComF {_faultWord}";
+                    address = 202;
+                    break;
+
+                case enmTAKEventCode.TAKMgwIpnetConfTrouble:
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "MGW IPNET CONF " + _faultWord;
+                    address = 203;
+                    break;
 
                 case enmTAKEventCode.TAKMgwIpnetComsTrouble:
                     parsedType = enmTAKEventType.TAKEventStatus;
                     eventText = "MGW IPNET COMS " + _faultWord;
                     address = 204;
                     break;
+
                 case enmTAKEventCode.TAKMgwInternalTrouble:
                     parsedType = enmTAKEventType.TAKEventStatus;
                     eventText = $"MGW Internal {_faultWord}";
@@ -1187,6 +1602,9 @@ namespace Drax360Service.Panels
                     eventText = "Disable Network";
                     address = 247;
                     break;
+
+                // 243, 244, 245 used for Input Activated  Event Code 48,  Event Group 10,  Address Type 6
+                // 248 is spare
 
                 default:
                     eventText = $"Unknown Event Code {(int)eventCode}";
