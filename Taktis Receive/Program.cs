@@ -20,6 +20,7 @@ using (var client = new TcpClient())
     client.Connect(gsIPAddress, gsIPPort);
     using (var stream = client.GetStream())
     {
+        // send initial request TAKSendRequestActEvents
         string[] tosend = null;
 
         tosend = new string[8];
@@ -43,11 +44,53 @@ using (var client = new TcpClient())
         string response = Encoding.UTF8.GetString(responseBuffer, 0, bytesRead);
         Console.WriteLine("Initial Received response: " + response);
 
+        // ACK 
+        tosend = new string[12];
+        for (int i = 0; i < 12 - 1; i++)
+            tosend[i] = "0";
+        tosend[3] = 12.ToString();
+        tosend[7] = 134.ToString();
+        tosend[10] = 2.ToString();
+        tosend[11] = 72.ToString();
+
+        data = convertstringarraytobytearray(tosend);
+
+        stream.Write(data, 0, data.Length);
+        stream.Flush();
+
+        Thread.Sleep(1000); // wait for response
+
+        int counter = 73;
+
         do
         {
-            bytesRead = stream.Read(responseBuffer, 0, responseBuffer.Length);
-            response = Encoding.UTF8.GetString(responseBuffer, 0, bytesRead);
-            Console.WriteLine("Subsequent Received response: " + response);
+            if (stream.DataAvailable)
+            {
+                bytesRead = stream.Read(responseBuffer, 0, responseBuffer.Length);
+                response = Encoding.UTF8.GetString(responseBuffer, 0, bytesRead);
+                Console.WriteLine("Subsequent Received response: " + response);
+
+
+                // ACK 
+                tosend = new string[12];
+                for (int i = 0; i < 12 - 1; i++)
+                    tosend[i] = "0";
+                tosend[3] = 12.ToString();
+                tosend[7] = 134.ToString();
+                tosend[10] = 2.ToString();
+                tosend[11] = counter.ToString();
+
+                data = convertstringarraytobytearray(tosend);
+
+                stream.Write(data, 0, data.Length);
+                stream.Flush();
+
+                Thread.Sleep(1000); // wait for response
+
+                counter++;
+            }
+
+
         } while (true);
     }
 
