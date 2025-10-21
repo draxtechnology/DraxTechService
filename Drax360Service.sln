@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SerialTest", "SerialTest\Se
 EndProject
 Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "DraxServiceSetup", "DraxServiceSetup\DraxServiceSetup.vdproj", "{2BF99BE1-8586-9FCF-61E8-C8FB31257986}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Taktis Receive", "Taktis Receive\Taktis Receive.csproj", "{CD812DF2-7475-44D4-87C4-E3C2BBFD98ED}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -25,6 +27,10 @@ Global
 		{34876FC6-1EC6-49FA-AFF9-BF958F7EB38D}.Release|Any CPU.Build.0 = Release|Any CPU
 		{2BF99BE1-8586-9FCF-61E8-C8FB31257986}.Debug|Any CPU.ActiveCfg = Debug
 		{2BF99BE1-8586-9FCF-61E8-C8FB31257986}.Release|Any CPU.ActiveCfg = Release
+		{CD812DF2-7475-44D4-87C4-E3C2BBFD98ED}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CD812DF2-7475-44D4-87C4-E3C2BBFD98ED}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CD812DF2-7475-44D4-87C4-E3C2BBFD98ED}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CD812DF2-7475-44D4-87C4-E3C2BBFD98ED}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
