@@ -60,6 +60,8 @@ namespace Drax360Service.Panels
                 _zoneDisableList = new ZoneDisableListManager();
                 _faultList = new FaultListManager();
 
+                int iFirstAddress = address;
+
                 // Increment message counter
                 if (_numMessages > 1_000_000)
                     _numMessages = 0;
@@ -97,11 +99,11 @@ namespace Drax360Service.Panels
                 // Adjust loop (convert from 0-based to 1-based)
                 loop++;
 
-                if (finalAddress > 0)
-                {
-                    address = finalAddress;
-                    finalAddress = 0;
-                }
+                //if (finalAddress > 0)
+                //{
+                //    address = finalAddress;
+                //    finalAddress = 0;
+                //}
 
                 // Handle panel input with loop 0
                 if (loop == 0 && inputType != 15)

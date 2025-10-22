@@ -62,7 +62,7 @@ using (var client = new TcpClient())
 
         int counter = 73;
 
-        do
+        while (stream.DataAvailable)
         {
             if (stream.DataAvailable)
             {
@@ -91,7 +91,7 @@ using (var client = new TcpClient())
             }
 
 
-        } while (true);
+        } 
     }
 
 }
