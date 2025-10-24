@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Management.Instrumentation;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Sockets;
 using System.Reflection;
+using System.Reflection.Emit;
+using System.Runtime.InteropServices.ComTypes;
 using System.Runtime.Remoting.Contexts;
 using System.Runtime.Remoting.Messaging;
 using System.Security.Policy;
@@ -566,9 +569,30 @@ namespace Drax360Service.Panels
 
             Thread.Sleep(10000); // wait for response needs to be long enough to decode message to get serial number
 
-            //  sendtotaktis(TakSendType.TAKSendRequestEventLogEx, glSerialNo);
+            sendtotaktis(TakSendType.TAKSendRequestEventLogEx, glSerialNo);
 
-            //      sendtotaktis(TakSendType.TAKSendStartConnectionMonitoringTX, glSerialNo, clientID: 1);
+            /*
+            string[] tosend = new string[12];
+            for (int i = 0; i < 12 - 1; i++)
+                tosend[i] = "0";
+            tosend[3] = 12.ToString();
+            tosend[7] = 78.ToString();
+            tosend[8] = glSerialNo[0].ToString()
+            tosend[9] = glSerialNo[1].ToString();
+            tosend[10] = glSerialNo[2].ToString();
+            tosend[11] = glSerialNo[3].ToString();
+
+            byte[] data = convertstringarraytobytearray(tosend);
+
+            stream.Write(data, 0, data.Length);
+            stream.Flush();
+            */
+
+            //sendtotaktis(TakSendType.TAKSendStartConnectionMonitoringTX, glSerialNo, clientID: 1);
+
+            StartListening();
+
+
         }
 
         private void OnSendImmediateRequest(object sender, SendImmediateEventArgs e)
@@ -744,6 +768,7 @@ namespace Drax360Service.Panels
 
                 case TakSendType.TAKSendRequestEventLogEx:
                     NotifyClient(_reconnect ? "Send Request Event Log EX - Immediate" : "Send Request Event Log EX");
+                    immediateRxSend = true;
                     //_messageSent = true;
                     _requestEventLogEXSent = true;
                     data = CreateMessageWithSerialNo(12, TakCommands.CMD_REQUEST_EVENT_LOG, serialNoStr);
@@ -1330,7 +1355,7 @@ namespace Drax360Service.Panels
                             stream.Write(data, 0, data.Length);
                             stream.Flush();
 
-                            Thread.Sleep(1000); // wait for response
+                            Thread.Sleep(100); // wait for response
                         }
                         else
                         {
@@ -1359,33 +1384,83 @@ namespace Drax360Service.Panels
 
         private void StartListening()
         {
-            EnsureConnected();
-            var stream = client.GetStream();
-            var buffer = new byte[1024];
-
-            while (client.Connected)
+            while (true)
             {
-                if (stream.DataAvailable)
+                EnsureConnected();
+
+                if (client == null || !client.Connected)
                 {
-                    int bytesRead = stream.Read(buffer, 0, buffer.Length);
-                    if (bytesRead > 0)
+                    Thread.Sleep(100); // wait before retrying
+                    continue;
+                }
+                int counter = 72;
+                NetworkStream stream = null;
+                try
+                {
+                    stream = client.GetStream();
+
+                    while (client.Connected)
                     {
-                        string responseHex = BitConverter.ToString(buffer, 0, bytesRead);
-                        NotifyClient($"Received response ({bytesRead} bytes): {responseHex}");
+                        if (stream == null || !stream.CanRead)
+                            break;
 
-                        DecodeMessage(responseHex); // ✅ Continually decoding each chunk
+                        //   sendtotaktis(TakSendType.TAKSendHeartBeatTX, glSerialNo, clientID: 1);
 
-                        // Optional ACK condition:
-                        if (bytesRead > 12)
+                        string[] tosend1 = new string[12];
+                        for (int i = 0; i < 12 - 1; i++)
+                            tosend1[i] = "0";
+                        tosend1[3] = 12.ToString();
+                        tosend1[7] = 86.ToString();
+                        tosend1[11] = 1.ToString();
+
+                        byte[] data1 = convertstringarraytobytearray(tosend1);
+
+                        stream.Write(data1, 0, data1.Length);
+                        stream.Flush();
+
+                        if (stream.DataAvailable)
                         {
-                            sendtotaktis(TakSendType.TAKSendEventACKRX, glSerialNo, clientID: 1);
+                            var buffer = new byte[1024];
+                            int bytesRead = stream.Read(buffer, 0, buffer.Length);
+                            if (bytesRead > 8)
+                            {
+                                string responseHex = BitConverter.ToString(buffer, 0, bytesRead);
+                                NotifyClient($"Received response ({bytesRead} bytes): {responseHex}");
+
+                                DecodeMessage(responseHex);
+
+                                // sendtotaktis(TakSendType.TAKSendEventACKRX, glSerialNo, clientID: 1);
+
+                                // ACK 
+                                string[] tosend = new string[12];
+                                for (int i = 0; i < 12 - 1; i++)
+                                    tosend[i] = "0";
+                                tosend[3] = 12.ToString();
+                                tosend[7] = 134.ToString();
+                                tosend[10] = 2.ToString();
+                                tosend[11] = counter.ToString();
+
+                                byte[] data = convertstringarraytobytearray(tosend);
+
+                                stream.Write(data, 0, data.Length);
+                                stream.Flush();
+                            }
                         }
+
+                        Thread.Sleep(1000);
                     }
                 }
-
-                Thread.Sleep(50); // small pause to prevent CPU overuse
+                catch (ObjectDisposedException)
+                {
+                    NotifyClient("NetworkStream has been disposed, reconnecting...");
+                }
+                catch (Exception ex)
+                {
+                    NotifyClient($"Unexpected error: {ex.Message}");
+                }
             }
         }
+
 
         private void DecodeMessage(string responseHex)
         {
@@ -1411,7 +1486,10 @@ namespace Drax360Service.Panels
             if (aryHexMessage.Length > 8)
             {
                 // Skip the first 8 elements and create a new array
-                aryHexMessage = aryHexMessage.Skip(8).ToArray();
+                if (aryHexMessage[0] == "00" & aryHexMessage[1] == "00" & aryHexMessage[2] == "00" & aryHexMessage[3] == "08" & aryHexMessage[4] == "00" & aryHexMessage[5] == "00" & aryHexMessage[6] == "00" & aryHexMessage[7] == "01")
+                {
+                    aryHexMessage = aryHexMessage.Skip(8).ToArray();
+                }
 
                 while (iCharCount < aryHexMessage.Length)
                 {
@@ -1649,6 +1727,9 @@ namespace Drax360Service.Panels
                     case 1:    // ACK
                         break;
                     case 2:    // Packet Type Event ID
+
+                        sendtotaktis(TakSendType.TAKSendStartConnectionMonitoringTX, glSerialNo, clientID: 1);
+
                         break;
                     case 133:  // Start Event Message
 
