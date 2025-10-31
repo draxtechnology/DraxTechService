@@ -589,7 +589,7 @@ namespace Drax360Service.Panels
             */
 
             //sendtotaktis(TakSendType.TAKSendStartConnectionMonitoringTX, glSerialNo, clientID: 1);
-
+            EnsureConnected();
             StartListening();
 
 
@@ -1382,17 +1382,62 @@ namespace Drax360Service.Panels
             }
         }
 
+
+
         private void StartListening()
+        {
+            NetworkStream stream = client.GetStream();
+            while (true)
+            {
+                try
+                {
+                    if (client == null || !client.Connected)
+                    {
+                        Thread.Sleep(100); // wait before retrying
+                        continue;
+                    }
+                    if (stream == null || !stream.CanRead)
+                        continue;
+                    if (stream.DataAvailable)
+                    {
+                        var buffer = new byte[1024];
+                        int bytesRead = stream.Read(buffer, 0, buffer.Length);
+                        if (bytesRead > 8)
+                        {
+                            string responseHex = BitConverter.ToString(buffer, 0, bytesRead);
+                            NotifyClient($"Received response ({bytesRead} bytes): {responseHex}");
+                            DecodeMessage(responseHex);
+                        }
+                    }
+                    Thread.Sleep(1000);
+                }
+                catch (ObjectDisposedException)
+                {
+                    NotifyClient("NetworkStream has been disposed, reconnecting...");
+                }
+                catch (Exception ex)
+                {
+                    NotifyClient($"Unexpected error: {ex.Message}");
+                }
+            }
+
+
+        }
+        private void StartListeningxxx()
         {
             while (true)
             {
-                EnsureConnected();
+                // EnsureConnected();
 
+                /*
                 if (client == null || !client.Connected)
                 {
                     Thread.Sleep(100); // wait before retrying
                     continue;
                 }
+                */
+
+
                 int counter = 72;
                 NetworkStream stream = null;
                 try

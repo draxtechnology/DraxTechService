@@ -6,6 +6,7 @@
     <RootNamespace>Taktis_Receive</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <StartupObject>Taktis_Receive.Program</StartupObject>
   </PropertyGroup>
 
 </Project>
