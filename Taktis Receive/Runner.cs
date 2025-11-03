@@ -11,6 +11,7 @@ using System.Text;
 using System.Threading.Tasks;
 using static System.Formats.Asn1.AsnWriter;
 using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.Globalization;
 
 namespace Taktis_Receive
 {
@@ -30,7 +31,8 @@ namespace Taktis_Receive
         NetworkStream stream;
         
         private long serialnumber = -1;
-        private byte[] serialnumberbytes = new byte[4];
+        private byte[] sSerialNo = new byte[4];
+        private long[] glSerialNo = new long[4];
 
         public void Run()
         {
@@ -40,6 +42,7 @@ namespace Taktis_Receive
 
             // send initial request TAKSendRequestActEvents
             write(sendinitialstring);
+            Thread.Sleep(1000); // wait for response
             readsusbsequent();
 
             // todo go get the serial number from the initial response
@@ -47,14 +50,14 @@ namespace Taktis_Receive
             // send start monitoring
 
             Console.WriteLine("Start Monitoring");
-            write(sendstartmonitoringstring);
-            readsusbsequent();
-
-
-            write(sendstartmonitoringstring);
-            readsusbsequent();
 
             write(sendstartstring);
+            //readsusbsequent();
+
+            write(sendstartmonitoringstring);
+            readsusbsequent();
+
+
             while (true)
             {
                 Console.WriteLine("Heartbeat");
@@ -87,12 +90,14 @@ namespace Taktis_Receive
             {
                 stream.Write(data, 0, data.Length);
                 stream.Flush();
+                string logFilePath = @"C:\temp\c#log.txt";
+                string hexString = BitConverter.ToString(data);
+                string decimalString = string.Join(" ", data);
+                File.AppendAllText(logFilePath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} Sent: {decimalString}{Environment.NewLine}");
 
             }
             catch (Exception)
-            {
-
-            }
+            {}
         }
 
         private string[] sendstartstring
@@ -130,16 +135,14 @@ namespace Taktis_Receive
             get
             {
                 string[] tosend = new string[12];
-                for (int i = 0; i < 12 - 1; i++)
+                for (int i = 0; i < 12; i++)
                     tosend[i] = "0";
                 tosend[3] = 12.ToString();
                 tosend[7] = CMD_EVENT_ACK;
-                tosend[8] =  serialnumberbytes[0].ToString();
-                tosend[9] = serialnumberbytes[1].ToString();
-                tosend[10] = serialnumberbytes[2].ToString();
-                tosend[11] = serialnumberbytes[3].ToString();
-
-
+                tosend[8] = glSerialNo[0].ToString();
+                tosend[9] = glSerialNo[1].ToString();
+                tosend[10] = glSerialNo[2].ToString();
+                tosend[11] = glSerialNo[3].ToString();
 
                 return tosend;
             }
@@ -149,7 +152,7 @@ namespace Taktis_Receive
             get
             {
                 string[] tosend = new string[8];
-                for (int i = 0; i < 8 - 1; i++)
+                for (int i = 0; i < 8; i++)
                     tosend[i] = "0";
                 tosend[3] = 8.ToString();
                 tosend[7] = CMD_REQUEST_ACTIVE_EVENTS;
@@ -163,14 +166,13 @@ namespace Taktis_Receive
             get
             {
                 string[] tosend = new string[12];
-                for (int i = 0; i < 11 - 1; i++)
+                for (int i = 0; i < 12; i++)
                     tosend[i] = "0";
                 tosend[3] = 12.ToString();
                 tosend[7] = CMD_HEARTBEAT;
                 tosend[11] = "1";
 
                 return tosend;
-
             }
         }
 
@@ -179,18 +181,16 @@ namespace Taktis_Receive
             get
             {
                 string[] tosend = new string[12];
-                for (int i = 0; i < 8 - 1; i++)
+                for (int i = 0; i < 12; i++)
                     tosend[i] = "0";
                 tosend[3] = 12.ToString();
                 tosend[7] = CMD_REQUEST_EVENT_LOG;
-                tosend[8] = serialnumberbytes[0].ToString();
-                tosend[9] = serialnumberbytes[1].ToString();
-                tosend[10] = serialnumberbytes[2].ToString();
-                tosend[11] = serialnumberbytes[3].ToString();
-
+                tosend[8] = glSerialNo[0].ToString();
+                tosend[9] = glSerialNo[1].ToString();
+                tosend[10] = glSerialNo[2].ToString();
+                tosend[11] = glSerialNo[3].ToString();
 
                 return tosend;
-
             }
         }
 
@@ -243,44 +243,45 @@ namespace Taktis_Receive
         private void decodeserialnumberfromresponse(byte[] aryHexMessage,int messagelength)
         {
             serialnumber = 0;
-            int start = 16;
+            int start = 8;
             long ourvalue = 0;
 
             if (messagelength == 8)
             {
                 return;
-
             }
 
-            if (messagelength==248)
+            if (messagelength==256)
             {
-                start = 8;
-
+                start = 16;
             }
 
-            int messagetype = aryHexMessage[7];
-            if (messagetype == 133) return; // ack message no serial number
+            string sMessageType = "";
 
-            serialnumber += Convert.ToInt64(aryHexMessage[start]) << 3;
-            ourvalue = base10Tohexasint(aryHexMessage[start]);
-            serialnumberbytes[0] = (byte)ourvalue;
+            for (int i = start - 4; i <= start - 1; i++)
+            {
+                sMessageType += aryHexMessage[i].ToString("X2"); // format as 2-digit hex
+            }
+
+            // ourvalue = base10Tohexasint(aryHexMessage[start]);
+            //sSerialNo[0] = (byte)ourvalue;
+            glSerialNo[0] = aryHexMessage[start];
             start++;
             
-            serialnumber += Convert.ToInt64(aryHexMessage[start]) << 2;
-            ourvalue = base10Tohexasint(aryHexMessage[start]);
-            serialnumberbytes[1] = (byte)ourvalue;
+            //ourvalue = base10Tohexasint(aryHexMessage[start]);
+            //sSerialNo[1] = (byte)ourvalue;
+            glSerialNo[1] = aryHexMessage[start];
             start++;
 
-            serialnumber += Convert.ToInt64(aryHexMessage[start]) << 1;
-            ourvalue = base10Tohexasint(aryHexMessage[start]);
-            serialnumberbytes[2] = (byte)ourvalue;
+            //ourvalue = base10Tohexasint(aryHexMessage[start]);
+            //sSerialNo[2] = (byte)ourvalue;
+            glSerialNo[2] = aryHexMessage[start];
             start++;
 
-            serialnumber += Convert.ToInt64(aryHexMessage[start]);
-            ourvalue = base10Tohexasint(aryHexMessage[start]);
-            serialnumberbytes[3] = (byte)ourvalue;
+            //ourvalue = base10Tohexasint(aryHexMessage[start]);
+            //sSerialNo[3] = (byte)ourvalue;
+            glSerialNo[3] = aryHexMessage[start];
 
-               
         }
 
         private int base10Tohexasint(byte base10val)
