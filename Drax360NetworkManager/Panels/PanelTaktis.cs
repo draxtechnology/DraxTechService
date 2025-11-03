@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -17,6 +18,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using static Drax360Service.Panels.PanelTaktis;
+using System.Globalization;
 
 namespace Drax360Service.Panels
 {
@@ -475,7 +477,7 @@ namespace Drax360Service.Panels
         #region public properties
         public int TxQueueCount => _txQueue.Count;
         public int RxQueueCount => _rxQueue.Count;
-        public static long[] glSerialNo = new long[4];
+        public long[] glSerialNo = new long[4];
         #endregion
         public override string FakeString => throw new NotImplementedException();
 
@@ -569,7 +571,7 @@ namespace Drax360Service.Panels
 
             Thread.Sleep(10000); // wait for response needs to be long enough to decode message to get serial number
 
-            sendtotaktis(TakSendType.TAKSendRequestEventLogEx, glSerialNo);
+            sendtotaktis(TakSendType.TAKSendRequestEventLog, glSerialNo);
 
             /*
             string[] tosend = new string[12];
@@ -587,6 +589,8 @@ namespace Drax360Service.Panels
             stream.Write(data, 0, data.Length);
             stream.Flush();
             */
+
+            //sendtotaktis(TakSendType.TAKSendRequestEventLogEx, glSerialNo);
 
             //sendtotaktis(TakSendType.TAKSendStartConnectionMonitoringTX, glSerialNo, clientID: 1);
             EnsureConnected();
@@ -1319,8 +1323,12 @@ namespace Drax360Service.Panels
                     stream.Write(data, 0, data.Length);
                     stream.Flush();
 
+                    string logFilePath = @"C:\temp\c#amxlog.txt";
+                    string hexString = BitConverter.ToString(data);
+                    string decimalString = string.Join(" ", data);
+                    File.AppendAllText(logFilePath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} Sent: {decimalString}{Environment.NewLine}");
+
                     Thread.Sleep(1000); // wait for response
-                    int counter = 72;
 
                     while (stream.DataAvailable)
                     {
@@ -1343,17 +1351,24 @@ namespace Drax360Service.Panels
 
                             // ACK 
                             tosend = new string[12];
-                            for (int i = 0; i < 12 - 1; i++)
+                            for (int i = 0; i < 12; i++)
                                 tosend[i] = "0";
                             tosend[3] = 12.ToString();
                             tosend[7] = 134.ToString();
-                            tosend[10] = 2.ToString();
-                            tosend[11] = counter.ToString();
+                            tosend[8] = glSerialNo[0].ToString();
+                            tosend[9] = glSerialNo[1].ToString();
+                            tosend[10] = glSerialNo[2].ToString();
+                            tosend[11] = glSerialNo[3].ToString();
 
                             data = convertstringarraytobytearray(tosend);
 
                             stream.Write(data, 0, data.Length);
                             stream.Flush();
+
+                            logFilePath = @"C:\temp\c#amxlog.txt";
+                            hexString = BitConverter.ToString(data);
+                            decimalString = string.Join(" ", data);
+                            File.AppendAllText(logFilePath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} Sent: {decimalString}{Environment.NewLine}");
 
                             Thread.Sleep(100); // wait for response
                         }
@@ -1393,11 +1408,10 @@ namespace Drax360Service.Panels
                 {
                     if (client == null || !client.Connected)
                     {
+                        EnsureConnected();
                         Thread.Sleep(100); // wait before retrying
                         continue;
                     }
-                    if (stream == null || !stream.CanRead)
-                        continue;
                     if (stream.DataAvailable)
                     {
                         var buffer = new byte[1024];
@@ -1420,93 +1434,8 @@ namespace Drax360Service.Panels
                     NotifyClient($"Unexpected error: {ex.Message}");
                 }
             }
-
-
         }
-        private void StartListeningxxx()
-        {
-            while (true)
-            {
-                // EnsureConnected();
-
-                /*
-                if (client == null || !client.Connected)
-                {
-                    Thread.Sleep(100); // wait before retrying
-                    continue;
-                }
-                */
-
-
-                int counter = 72;
-                NetworkStream stream = null;
-                try
-                {
-                    stream = client.GetStream();
-
-                    while (client.Connected)
-                    {
-                        if (stream == null || !stream.CanRead)
-                            break;
-
-                        //   sendtotaktis(TakSendType.TAKSendHeartBeatTX, glSerialNo, clientID: 1);
-
-                        string[] tosend1 = new string[12];
-                        for (int i = 0; i < 12 - 1; i++)
-                            tosend1[i] = "0";
-                        tosend1[3] = 12.ToString();
-                        tosend1[7] = 86.ToString();
-                        tosend1[11] = 1.ToString();
-
-                        byte[] data1 = convertstringarraytobytearray(tosend1);
-
-                        stream.Write(data1, 0, data1.Length);
-                        stream.Flush();
-
-                        if (stream.DataAvailable)
-                        {
-                            var buffer = new byte[1024];
-                            int bytesRead = stream.Read(buffer, 0, buffer.Length);
-                            if (bytesRead > 8)
-                            {
-                                string responseHex = BitConverter.ToString(buffer, 0, bytesRead);
-                                NotifyClient($"Received response ({bytesRead} bytes): {responseHex}");
-
-                                DecodeMessage(responseHex);
-
-                                // sendtotaktis(TakSendType.TAKSendEventACKRX, glSerialNo, clientID: 1);
-
-                                // ACK 
-                                string[] tosend = new string[12];
-                                for (int i = 0; i < 12 - 1; i++)
-                                    tosend[i] = "0";
-                                tosend[3] = 12.ToString();
-                                tosend[7] = 134.ToString();
-                                tosend[10] = 2.ToString();
-                                tosend[11] = counter.ToString();
-
-                                byte[] data = convertstringarraytobytearray(tosend);
-
-                                stream.Write(data, 0, data.Length);
-                                stream.Flush();
-                            }
-                        }
-
-                        Thread.Sleep(1000);
-                    }
-                }
-                catch (ObjectDisposedException)
-                {
-                    NotifyClient("NetworkStream has been disposed, reconnecting...");
-                }
-                catch (Exception ex)
-                {
-                    NotifyClient($"Unexpected error: {ex.Message}");
-                }
-            }
-        }
-
-
+ 
         private void DecodeMessage(string responseHex)
         {
             string sLocationText = "";
@@ -1524,14 +1453,14 @@ namespace Drax360Service.Panels
             string sInputAction = "";
             string sMessageType = "";
             string sTimeStamp = "";
-            string[] sSerialNo = new string[4];
             int iCharCount = 0;
-            string[] aryHexMessage = responseHex.Split('-');
+            string[] hexStrings = responseHex.Split('-');
+            byte[] aryHexMessage = hexStrings.Select(h => Convert.ToByte(h, 16)).ToArray();
 
             if (aryHexMessage.Length > 8)
             {
                 // Skip the first 8 elements and create a new array
-                if (aryHexMessage[0] == "00" & aryHexMessage[1] == "00" & aryHexMessage[2] == "00" & aryHexMessage[3] == "08" & aryHexMessage[4] == "00" & aryHexMessage[5] == "00" & aryHexMessage[6] == "00" & aryHexMessage[7] == "01")
+                if (hexStrings[0] == "00" & hexStrings[1] == "00" & hexStrings[2] == "00" & hexStrings[3] == "08" & hexStrings[4] == "00" & hexStrings[5] == "00" & hexStrings[6] == "00" & hexStrings[7] == "01")
                 {
                     aryHexMessage = aryHexMessage.Skip(8).ToArray();
                 }
@@ -1544,35 +1473,27 @@ namespace Drax360Service.Panels
                         case 5:
                         case 6:
                         case 7:
-                            sMessageType += aryHexMessage[iCharCount].ToString();
+                            sMessageType += aryHexMessage[iCharCount].ToString("X2"); // format as 2-digit hex
                             break;
 
                         case 8:
 
-                            glSerialNo[0] = Convert.ToInt64(aryHexMessage[iCharCount], 16);
-                            sSerialNo[0] = aryHexMessage[iCharCount].ToString();
-
+                            glSerialNo[0] = aryHexMessage[iCharCount];
                             break;
 
                         case 9:
 
-                            glSerialNo[1] = Convert.ToInt64(aryHexMessage[iCharCount], 16);
-                            sSerialNo[1] = aryHexMessage[iCharCount].ToString();
-
+                            glSerialNo[1] = aryHexMessage[iCharCount];
                             break;
 
                         case 10:
 
-                            glSerialNo[2] = Convert.ToInt64(aryHexMessage[iCharCount], 16);
-                            sSerialNo[2] = aryHexMessage[iCharCount].ToString();
-
+                            glSerialNo[2] = aryHexMessage[iCharCount];
                             break;
 
                         case 11:
 
-                            glSerialNo[3] = Convert.ToInt64(aryHexMessage[iCharCount], 16);
-                            sSerialNo[3] = aryHexMessage[iCharCount].ToString();
-
+                            glSerialNo[3] = aryHexMessage[iCharCount];
                             break;
 
                         case 12:
@@ -1649,37 +1570,30 @@ namespace Drax360Service.Panels
                         case 50:
                         case 51:
 
-                            sInputAction += aryHexMessage[iCharCount].ToString();
+                            sInputAction += hexStrings[iCharCount].ToString();
                             break;
 
                         case 52:
                         case 53:
                         case 54:
                         case 55:
-
-                            sTimeStamp += aryHexMessage[iCharCount].ToString();
+                            // If you want the timestamp as a string of numbers
+                            sTimeStamp += aryHexMessage[iCharCount]; // pad with 0 if needed
                             break;
 
                         case int n when (n >= 56 && n <= 135):
-                            int sAscii = Convert.ToInt32(aryHexMessage[iCharCount], 16);
-                            if (sAscii != 0)
-                                sLocationText += Convert.ToChar(sAscii);
+                            if (aryHexMessage[iCharCount] != 0)
+                                sLocationText += Convert.ToChar(aryHexMessage[iCharCount]);
                             break;
 
                         case int n when (n >= 136 && n <= 167):
-
-                            if (string.IsNullOrEmpty(aryHexMessage[iCharCount])) aryHexMessage[iCharCount] = "0";
-                            sAscii = Convert.ToInt32(aryHexMessage[iCharCount], 16);
-                            if (sAscii != 0)
-                                sPanelText += Convert.ToChar(sAscii);
+                            if (aryHexMessage[iCharCount] != 0)
+                                sPanelText += Convert.ToChar(aryHexMessage[iCharCount]);
                             break;
 
                         case int n when (n >= 168 && n <= 248):
-
-                            if (string.IsNullOrEmpty(aryHexMessage[iCharCount])) aryHexMessage[iCharCount] = "0";
-                            sAscii = Convert.ToInt32(aryHexMessage[iCharCount], 16);
-                            if (sAscii != 0)
-                                sZoneText += Convert.ToChar(sAscii);
+                            if (aryHexMessage[iCharCount] != 0)
+                                sZoneText += Convert.ToChar(aryHexMessage[iCharCount]);
                             break;
                     }
                     iCharCount++;
@@ -1749,21 +1663,20 @@ namespace Drax360Service.Panels
                     sTimeStamp = "0";
                 }
 
-                int iNode = Convert.ToInt32(sNode, 16);
-                int iAddress = Convert.ToInt32(sAddress, 16);
-                long lEventCode = Convert.ToInt64(sEventCode, 16);
-                long lEventGroup = Convert.ToInt64(sEventGroup, 16);
-                long lEventType = Convert.ToInt64(sEventType, 16);
-                int iAddressType = Convert.ToInt32(sAddressType, 16);
-                int iSubAddress = Convert.ToInt32(sSubAddress, 16);
-                int iLoop = Convert.ToInt32(sLoop, 16);
-                int iZone = Convert.ToInt32(sZone, 16);
-                int iInputAction = Convert.ToInt32(sInputAction, 16);
-                long lTimeStamp = Convert.ToInt64(sTimeStamp, 16);
+                int iNode = Convert.ToInt32(sNode);
+                int iAddress = Convert.ToInt32(sAddress);
+                long lEventCode = Convert.ToInt64(sEventCode);
+                long lEventGroup = Convert.ToInt64(sEventGroup);
+                long lEventType = Convert.ToInt64(sEventType);
+                int iAddressType = Convert.ToInt32(sAddressType);
+                int iSubAddress = Convert.ToInt32(sSubAddress);
+                int iLoop = Convert.ToInt32(sLoop);
+                int iZone = Convert.ToInt32(sZone);
+                int iInputAction = Convert.ToInt32(sInputAction);
+                long lTimeStamp = Convert.ToInt64(sTimeStamp);
                 enmTAKMessageType gMessageType = (enmTAKMessageType)iMessageType;
                 enmTAKEventType gEventType = (enmTAKEventType)lEventType;
                 enmTAKEventCode gEventCode = (enmTAKEventCode)lEventCode;
-                long[] serialNumbers = Array.ConvertAll(sSerialNo, s => Convert.ToInt64(s, 16));
 
                 switch (iMessageType)
                 {
@@ -1773,12 +1686,12 @@ namespace Drax360Service.Panels
                         break;
                     case 2:    // Packet Type Event ID
 
-                        sendtotaktis(TakSendType.TAKSendStartConnectionMonitoringTX, glSerialNo, clientID: 1);
+        //                sendtotaktis(TakSendType.TAKSendStartConnectionMonitoringTX, glSerialNo, clientID: 1);
 
                         break;
                     case 133:  // Start Event Message
 
-                        ParseTAKMessage(gMessageType, serialNumbers, lEventGroup, gEventType, gEventCode, iNode, iAddressType, iAddress, iSubAddress, iLoop, iZone, iInputAction, lTimeStamp, sLocationText, sPanelText, sZoneText, "", true);
+                        ParseTAKMessage(gMessageType, glSerialNo, lEventGroup, gEventType, gEventCode, iNode, iAddressType, iAddress, iSubAddress, iLoop, iZone, iInputAction, lTimeStamp, sLocationText, sPanelText, sZoneText, "", true);
 
                         break;
                 }

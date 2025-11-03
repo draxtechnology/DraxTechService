@@ -17,7 +17,6 @@ namespace Taktis_Receive
 {
     internal class Runner
     {
-
         string gsIPAddress = "10.0.11.100";
         int gsIPPort = 100;
 
@@ -29,53 +28,14 @@ namespace Taktis_Receive
         public const string CMD_STOP_MONITORING = "244";
         TcpClient client;
         NetworkStream stream;
-        
-        private long serialnumber = -1;
-        private byte[] sSerialNo = new byte[4];
+
         private long[] glSerialNo = new long[4];
 
         public void Run()
         {
             //client = new TcpClient();
 
-
-
-            // send initial request TAKSendRequestActEvents
-            write(sendinitialstring);
-            Thread.Sleep(1000); // wait for response
-            readsusbsequent();
-
-            // todo go get the serial number from the initial response
-
-            // send start monitoring
-
-            Console.WriteLine("Start Monitoring");
-
-            write(sendstartstring);
-            //readsusbsequent();
-
-            write(sendstartmonitoringstring);
-            readsusbsequent();
-
-
-            while (true)
-            {
-                Console.WriteLine("Heartbeat");
-                write(sendheartbeatstring);
-                readsusbsequent();
-
-
-                //write(sendstartstring);
-                //readsusbsequent();
-                //write(sendstopstring);
-
-            }
-
-        }
-
-        private void write(string[] towrite)
-        {
-            if (client==null)
+            if (client == null)
             {
                 client = new TcpClient();
 
@@ -83,7 +43,37 @@ namespace Taktis_Receive
                 stream = client.GetStream();
             }
 
-            //if (!client.Connected) return;
+            write(sendinitialstring);
+            Thread.Sleep(500); // wait for response
+            readinitial();
+
+            // send start monitoring
+
+            Console.WriteLine("Start Monitoring");
+
+            write(sendstartstring);
+
+            write(sendstartmonitoringstring);
+            readsusbsequent();
+
+            while (true)
+            {
+                Console.WriteLine("Heartbeat");
+                write(sendheartbeatstring);
+                readsusbsequent();
+            }
+        }
+
+        private void write(string[] towrite)
+        {
+            if (client==null || !client.Connected )
+            {
+                client = new TcpClient();
+           
+                client.Connect(gsIPAddress, gsIPPort);
+                stream = client.GetStream();
+           }
+
             byte[] data = convertstringarraytobytearray(towrite);
 
             try
@@ -194,19 +184,22 @@ namespace Taktis_Receive
             }
         }
 
-        private void readsusbsequent()
+        private void readinitial()
 
         {
             int counter = 1;
 
-            while (client.Connected)
+            while (stream.DataAvailable)
             {
                 byte[] responseBuffer = new byte[1024];
                 int bytesRead = 0;
 
                 try
                 {
-                    bytesRead = stream.Read(responseBuffer, 0, responseBuffer.Length);
+                    if (stream.DataAvailable)
+                    {
+                        bytesRead = stream.Read(responseBuffer, 0, responseBuffer.Length);
+                    }
                 }
                 catch (Exception e)
                 {
@@ -220,38 +213,74 @@ namespace Taktis_Receive
                 }
 
                 string response = Encoding.UTF8.GetString(responseBuffer, 0, bytesRead);
-                Console.WriteLine("Subsequent Received response: " + response+ " read ="+bytesRead);
-                //if (serialnumber==-1)
-                //{
-                    // get serial number from response
-                    decodeserialnumberfromresponse(responseBuffer, bytesRead);
-                //}
+                Console.WriteLine("Initial Received Response: " + response + " read = " + bytesRead);
+
+                // get serial number from response
+                decodeserialnumberfromresponse(responseBuffer, bytesRead);
+
+                write(sendackstring);
+                Thread.Sleep(500); // wait for response
+
+                counter++;
+            }
+            Console.WriteLine("Exited Initial read loop Connected = "+client.Connected);
+        }
+
+        private void readsusbsequent()
+
+        {
+            int counter = 1;
+
+            while (client.Connected)
+            {
+                byte[] responseBuffer = new byte[1024];
+                int bytesRead = 0;
+
+                try
+                {
+                    if (stream.DataAvailable)
+                    {
+                        bytesRead = stream.Read(responseBuffer, 0, responseBuffer.Length);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                    break;
+                }
+
+                if (bytesRead == 0)
+                {
+                    continue;
+                }
+
+                string response = Encoding.UTF8.GetString(responseBuffer, 0, bytesRead);
+                Console.WriteLine("Subsequent Received Response: " + response + " read = " + bytesRead);
+
+                // get serial number from response
+                decodeserialnumberfromresponse(responseBuffer, bytesRead);
 
                 Thread.Sleep(1000); // wait for response
                 write(sendackstring);
-                
+
                 counter++;
             }
-            Console.WriteLine("Exited read loop Connected = "+client.Connected);
-            client.Close();
-            client.Dispose();
-            client = null;
-
-
+            Console.WriteLine("Exited Subsuquent read loop Connected = " + client.Connected);
+            //client.Close();
+            //client.Dispose();
+            //client = null;
         }
 
         private void decodeserialnumberfromresponse(byte[] aryHexMessage,int messagelength)
         {
-            serialnumber = 0;
             int start = 8;
-            long ourvalue = 0;
 
             if (messagelength == 8)
             {
                 return;
             }
 
-            if (messagelength==256)
+            if (messagelength == 256)
             {
                 start = 16;
             }
@@ -263,32 +292,17 @@ namespace Taktis_Receive
                 sMessageType += aryHexMessage[i].ToString("X2"); // format as 2-digit hex
             }
 
-            // ourvalue = base10Tohexasint(aryHexMessage[start]);
-            //sSerialNo[0] = (byte)ourvalue;
             glSerialNo[0] = aryHexMessage[start];
             start++;
-            
-            //ourvalue = base10Tohexasint(aryHexMessage[start]);
-            //sSerialNo[1] = (byte)ourvalue;
+
             glSerialNo[1] = aryHexMessage[start];
             start++;
 
-            //ourvalue = base10Tohexasint(aryHexMessage[start]);
-            //sSerialNo[2] = (byte)ourvalue;
             glSerialNo[2] = aryHexMessage[start];
             start++;
 
-            //ourvalue = base10Tohexasint(aryHexMessage[start]);
-            //sSerialNo[3] = (byte)ourvalue;
             glSerialNo[3] = aryHexMessage[start];
 
-        }
-
-        private int base10Tohexasint(byte base10val)
-
-        { 
-            string stringhex = base10val.ToString("X");
-            return int.Parse(stringhex);
         }
         byte[] convertstringarraytobytearray(string[] stringArray)
         {
