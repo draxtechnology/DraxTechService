@@ -466,6 +466,14 @@ namespace Drax360Service.Panels
 
         private bool _commError = false;
         public TcpClient client;
+        NetworkStream stream;
+
+        public const string CMD_REQUEST_EVENT_LOG = "78";
+        public const string CMD_REQUEST_ACTIVE_EVENTS = "79";
+        public const string CMD_HEARTBEAT = "86";
+        public const string CMD_EVENT_ACK = "134";
+        public const string CMD_START_MONITORING = "231";
+        public const string CMD_STOP_MONITORING = "244";
         #endregion
 
         #region Events
@@ -536,68 +544,300 @@ namespace Drax360Service.Panels
             sendtotaktis(TakSendType.TAKSendHeartBeatTX, clientID: 1);
         }
 
-        private string gsIPAddress;
-        private string gsIPPort;
-        private TcpClientWithEvents _tcp;
+        string gsIPAddress = "10.0.11.100";
+        string gsIPPort = "100";
+
+        // private TcpClientWithEvents _tcp;
         public override void StartUp(int fakemode)
         {
-            gsIPAddress = base.GetSetting<string>(ksettingsetupsection, "PanelIPAddress");
-            gsIPPort = base.GetSetting<string>(ksettingsetupsection, "IPPort");
-            EnsureConnected();
+            //client = new TcpClient();
 
-            // RJ switched off timers
-            //_messageSender.LogMessage += OnLogMessage;
-            //SendImmediateRequest += OnSendImmediateRequest;
-            //StartTxTimer += OnStartTxTimer;
-            //StartRxTimer += OnStartRxTimer;
+            if (client == null)
+            {
+                client = new TcpClient();
 
+                client.Connect(gsIPAddress, Convert.ToInt32(gsIPPort));
+                stream = client.GetStream();
+            }
 
-            sendtotaktis(TakSendType.TAKSendRequestActEvents);
+            write(sendinitialstring);
+            Thread.Sleep(500); // wait for response
+            readinitial();
 
-            //sendtotaktis(TakSendType.TAKSendRequestActEventsTX, clientID: 1);
+            // send start monitoring
 
+            Console.WriteLine("Start Monitoring");
 
-            // Initialize timers
-            _txTimer = new System.Timers.Timer();
-            _txTimer.Interval = 1000;
-            _txTimer.Elapsed += TxTimer_Elapsed;
-            // added a start
-            _txTimer.Start();
+            write(sendstartstring);
 
-            _rxTimer = new System.Timers.Timer();
-            _rxTimer.Elapsed += RxTimer_Elapsed;
-            _rxTimer.Interval = 1000;
-            _rxTimer.Start();
+            write(sendstartmonitoringstring);
+            readsusbsequent();
 
-            Thread.Sleep(10000); // wait for response needs to be long enough to decode message to get serial number
-
-            sendtotaktis(TakSendType.TAKSendRequestEventLog, glSerialNo);
-
-            /*
-            string[] tosend = new string[12];
-            for (int i = 0; i < 12 - 1; i++)
-                tosend[i] = "0";
-            tosend[3] = 12.ToString();
-            tosend[7] = 78.ToString();
-            tosend[8] = glSerialNo[0].ToString()
-            tosend[9] = glSerialNo[1].ToString();
-            tosend[10] = glSerialNo[2].ToString();
-            tosend[11] = glSerialNo[3].ToString();
-
-            byte[] data = convertstringarraytobytearray(tosend);
-
-            stream.Write(data, 0, data.Length);
-            stream.Flush();
-            */
-
-            //sendtotaktis(TakSendType.TAKSendRequestEventLogEx, glSerialNo);
-
-            //sendtotaktis(TakSendType.TAKSendStartConnectionMonitoringTX, glSerialNo, clientID: 1);
-            EnsureConnected();
-            StartListening();
-
+            while (true)
+            {
+                Console.WriteLine("Heartbeat");
+                write(sendheartbeatstring);
+                readsusbsequent();
+            }
 
         }
+
+        private void write(string[] towrite)
+        {
+            if (client == null || !client.Connected)
+            {
+                client = new TcpClient();
+
+                client.Connect(gsIPAddress, Convert.ToInt32(gsIPPort));
+                stream = client.GetStream();
+            }
+
+            byte[] data = convertstringarraytobytearray(towrite);
+
+            try
+            {
+                stream.Write(data, 0, data.Length);
+                stream.Flush();
+                string logFilePath = @"C:\temp\c#log.txt";
+                string hexString = BitConverter.ToString(data);
+                string decimalString = string.Join(" ", data);
+                File.AppendAllText(logFilePath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} Sent: {decimalString}{Environment.NewLine}");
+
+            }
+            catch (Exception)
+            { }
+        }
+
+        private string[] sendstartstring
+        {
+            get
+            {
+                string[] tosend = new string[12];
+                for (int i = 0; i < 12 - 1; i++)
+                    tosend[i] = "0";
+                tosend[3] = 12.ToString();
+                tosend[7] = CMD_START_MONITORING;
+                tosend[11] = "1";
+
+                return tosend;
+            }
+        }
+
+        private string[] sendackstring
+        {
+            get
+            {
+                string[] tosend = new string[12];
+                for (int i = 0; i < 12; i++)
+                    tosend[i] = "0";
+                tosend[3] = 12.ToString();
+                tosend[7] = CMD_EVENT_ACK;
+                tosend[8] = glSerialNo[0].ToString();
+                tosend[9] = glSerialNo[1].ToString();
+                tosend[10] = glSerialNo[2].ToString();
+                tosend[11] = glSerialNo[3].ToString();
+
+                return tosend;
+            }
+        }
+        private string[] sendinitialstring
+        {
+            get
+            {
+                string[] tosend = new string[8];
+                for (int i = 0; i < 8; i++)
+                    tosend[i] = "0";
+                tosend[3] = 8.ToString();
+                tosend[7] = CMD_REQUEST_ACTIVE_EVENTS;
+                return tosend;
+
+            }
+        }
+
+        private string[] sendheartbeatstring
+        {
+            get
+            {
+                string[] tosend = new string[12];
+                for (int i = 0; i < 12; i++)
+                    tosend[i] = "0";
+                tosend[3] = 12.ToString();
+                tosend[7] = CMD_HEARTBEAT;
+                tosend[11] = "1";
+
+                return tosend;
+            }
+        }
+
+        private string[] sendstartmonitoringstring
+        {
+            get
+            {
+                string[] tosend = new string[12];
+                for (int i = 0; i < 12; i++)
+                    tosend[i] = "0";
+                tosend[3] = 12.ToString();
+                tosend[7] = CMD_REQUEST_EVENT_LOG;
+                tosend[8] = glSerialNo[0].ToString();
+                tosend[9] = glSerialNo[1].ToString();
+                tosend[10] = glSerialNo[2].ToString();
+                tosend[11] = glSerialNo[3].ToString();
+
+                return tosend;
+            }
+        }
+
+        private void readinitial()
+
+        {
+            int counter = 1;
+
+            while (stream.DataAvailable)
+            {
+                byte[] responseBuffer = new byte[1024];
+                int bytesRead = 0;
+
+                try
+                {
+                    if (stream.DataAvailable)
+                    {
+                        bytesRead = stream.Read(responseBuffer, 0, responseBuffer.Length);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                    break;
+                }
+
+                if (bytesRead == 0)
+                {
+                    continue;
+                }
+
+                string response = Encoding.UTF8.GetString(responseBuffer, 0, bytesRead);
+                Console.WriteLine("Initial Received Response: " + response + " read = " + bytesRead);
+
+                // get serial number from response
+                decodeserialnumberfromresponse(responseBuffer, bytesRead);
+
+                // Convert response to hex string for readability
+                string responseHex = BitConverter.ToString(responseBuffer, 0, bytesRead);
+                NotifyClient($"Initial response ({bytesRead} bytes): {responseHex}");
+                Console.WriteLine("Initial Received response: " + responseHex);
+                DecodeMessage(responseHex);
+
+                write(sendackstring);
+                Thread.Sleep(500); // wait for response
+
+                counter++;
+            }
+            Console.WriteLine("Exited Initial read loop Connected = " + client.Connected);
+        }
+
+        private void readsusbsequent()
+
+        {
+            int counter = 1;
+
+            while (client.Connected)
+            {
+                byte[] responseBuffer = new byte[1024];
+                int bytesRead = 0;
+
+                try
+                {
+                    if (stream.DataAvailable)
+                    {
+                        bytesRead = stream.Read(responseBuffer, 0, responseBuffer.Length);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                    break;
+                }
+
+                if (bytesRead == 0)
+                {
+                    continue;
+                }
+
+                string response = Encoding.UTF8.GetString(responseBuffer, 0, bytesRead);
+                Console.WriteLine("Subsequent Received Response: " + response + " read = " + bytesRead);
+
+                // get serial number from response
+                decodeserialnumberfromresponse(responseBuffer, bytesRead);
+
+                // Convert response to hex string for readability
+                string responseHex = BitConverter.ToString(responseBuffer, 0, bytesRead);
+                NotifyClient($"Received response ({bytesRead} bytes): {responseHex}");
+                Console.WriteLine("Subsequent Received response: " + responseHex);
+                DecodeMessage(responseHex);
+
+                Thread.Sleep(1000); // wait for response
+                write(sendackstring);
+
+                counter++;
+            }
+            Console.WriteLine("Exited Subsuquent read loop Connected = " + client.Connected);
+            //client.Close();
+            //client.Dispose();
+            //client = null;
+        }
+
+        private void decodeserialnumberfromresponse(byte[] aryHexMessage, int messagelength)
+        {
+            int start = 8;
+
+            if (messagelength == 8)
+            {
+                return;
+            }
+
+            if (messagelength == 256)
+            {
+                start = 16;
+            }
+
+            string sMessageType = "";
+
+            for (int i = start - 4; i <= start - 1; i++)
+            {
+                sMessageType += aryHexMessage[i].ToString("X2"); // format as 2-digit hex
+            }
+
+            glSerialNo[0] = aryHexMessage[start];
+            start++;
+
+            glSerialNo[1] = aryHexMessage[start];
+            start++;
+
+            glSerialNo[2] = aryHexMessage[start];
+            start++;
+
+            glSerialNo[3] = aryHexMessage[start];
+
+        }
+        byte[] convertstringarraytobytearray(string[] stringArray)
+        {
+            List<byte> ret = new List<byte>();
+            foreach (string str in stringArray)
+            {
+                if (str == null) break; // bail if we get a null;
+                byte b = Convert.ToByte(str);
+                ret.Add(b);
+            }
+            return ret.ToArray();
+        }
+
+
+
+
+
+
+
+
 
         private void OnSendImmediateRequest(object sender, SendImmediateEventArgs e)
         {
@@ -1317,7 +1557,7 @@ namespace Drax360Service.Panels
             {
                 EnsureConnected();
 
-                using (var stream = client.GetStream())
+                using (stream = client.GetStream())
                 {
                     // Send data
                     stream.Write(data, 0, data.Length);
@@ -1401,41 +1641,61 @@ namespace Drax360Service.Panels
 
         private void StartListening()
         {
-            NetworkStream stream = client.GetStream();
-            while (true)
+            while (client.Connected)
             {
+                byte[] responseBuffer = new byte[1024];
+                int bytesRead = 0;
+
                 try
                 {
-                    if (client == null || !client.Connected)
-                    {
-                        EnsureConnected();
-                        Thread.Sleep(100); // wait before retrying
-                        continue;
-                    }
                     if (stream.DataAvailable)
                     {
-                        var buffer = new byte[1024];
-                        int bytesRead = stream.Read(buffer, 0, buffer.Length);
-                        if (bytesRead > 8)
-                        {
-                            string responseHex = BitConverter.ToString(buffer, 0, bytesRead);
-                            NotifyClient($"Received response ({bytesRead} bytes): {responseHex}");
-                            DecodeMessage(responseHex);
-                        }
+                        bytesRead = stream.Read(responseBuffer, 0, responseBuffer.Length);
                     }
-                    Thread.Sleep(1000);
                 }
-                catch (ObjectDisposedException)
+                catch (Exception e)
                 {
-                    NotifyClient("NetworkStream has been disposed, reconnecting...");
+                    Console.WriteLine(e.Message);
+                    break;
                 }
-                catch (Exception ex)
+
+                if (bytesRead == 0)
                 {
-                    NotifyClient($"Unexpected error: {ex.Message}");
+                    continue;
                 }
+
+                string response = Encoding.UTF8.GetString(responseBuffer, 0, bytesRead);
+                Console.WriteLine("Subsequent Received Response: " + response + " read = " + bytesRead);
+
+                // get serial number from response
+                decodeserialnumberfromresponse(responseBuffer, bytesRead);
+
+                Thread.Sleep(1000); // wait for response
+
+                //write(sendackstring);
+                //sendtotaktis(TakSendType.TAKSendACK, glSerialNo);
+
+
+                string[] tosend = new string[12];
+                for (int i = 0; i < 12; i++)
+                    tosend[i] = "0";
+                tosend[3] = 12.ToString();
+                tosend[7] = 134.ToString();
+                tosend[8] = glSerialNo[0].ToString();
+                tosend[9] = glSerialNo[1].ToString();
+                tosend[10] = glSerialNo[2].ToString();
+                tosend[11] = glSerialNo[3].ToString();
+                byte[] data = convertstringarraytobytearray(tosend);
+
+                stream.Write(data, 0, data.Length);
+                stream.Flush();
+
             }
+            Console.WriteLine("Exited Subsuquent read loop Connected = " + client.Connected);
         }
- 
+
+  
+
         private void DecodeMessage(string responseHex)
         {
             string sLocationText = "";
@@ -1672,11 +1932,22 @@ namespace Drax360Service.Panels
                 int iSubAddress = Convert.ToInt32(sSubAddress);
                 int iLoop = Convert.ToInt32(sLoop);
                 int iZone = Convert.ToInt32(sZone);
-                int iInputAction = Convert.ToInt32(sInputAction);
+                int iInputAction = 1;
+                try
+                {
+                    iInputAction = Convert.ToInt32(sInputAction);
+                }
+                catch
+                { }
                 long lTimeStamp = Convert.ToInt64(sTimeStamp);
                 enmTAKMessageType gMessageType = (enmTAKMessageType)iMessageType;
                 enmTAKEventType gEventType = (enmTAKEventType)lEventType;
                 enmTAKEventCode gEventCode = (enmTAKEventCode)lEventCode;
+
+                if (iNode == 254)  // ' MH Added 140923
+                {
+                    iNode = 1;
+                }
 
                 switch (iMessageType)
                 {
@@ -1708,20 +1979,10 @@ namespace Drax360Service.Panels
             CSAMXSingleton.CS.SendAlarmToAMX(evnum, message1, message2, message3);
             CSAMXSingleton.CS.FlushMessages();
         }
-        private byte[] convertstringarraytobytearray(string[] stringArray)
-        {
-            List<byte> ret = new List<byte>();
-            foreach (string str in stringArray)
-            {
-                if (str == null) break; // bail if we get a null;
-                byte b = Convert.ToByte(str);
-                ret.Add(b);
-            }
-            return ret.ToArray();
-        }
+
 
         #endregion
-
+        /*
         public class TcpClientWithEvents : IDisposable
         {
             private TcpClient _client;
@@ -1742,24 +2003,24 @@ namespace Drax360Service.Panels
             }
 
             /// <summary>Connects asynchronously to the panel.</summary>
-            public async Task ConnectAsync(string host, int port)
-            {
-                _cts = new CancellationTokenSource();
+   //         public async Task ConnectAsync(string host, int port)
+   //         {
+   //             _cts = new CancellationTokenSource();
 
-                await _client.ConnectAsync(host, port);
-                _stream = _client.GetStream();
+   //             await _client.ConnectAsync(host, port);
+   //             _stream = _client.GetStream();
 
-                // Start background listener
-                _ = Task.Run(() => ListenAsync(_cts.Token));
-            }
+   //             // Start background listener
+    //            _ = Task.Run(() => ListenAsync(_cts.Token));
+    //        }
 
             /// <summary>Sends data asynchronously to the panel.</summary>
-            public async Task SendAsync(byte[] data)
-            {
-                if (_stream == null) throw new InvalidOperationException("Not connected.");
-                await _stream.WriteAsync(data, 0, data.Length);
-                await _stream.FlushAsync();
-            }
+   //         public async Task SendAsync(byte[] data)
+   //         {
+   //             if (_stream == null) throw new InvalidOperationException("Not connected.");
+   //             await _stream.WriteAsync(data, 0, data.Length);
+   //             await _stream.FlushAsync();
+   //         }
 
             /// <summary>Continuously listens for incoming data in the background.</summary>
             private async Task ListenAsync(CancellationToken token)
@@ -1800,6 +2061,7 @@ namespace Drax360Service.Panels
                 _client?.Close();
             }
         }
+        */
     }
 }
 

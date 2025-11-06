@@ -2190,7 +2190,7 @@ namespace Drax360Service.Panels
   
         private void HandleReset()
         {
-            _networkManager.StopActiveEventsTimer();
+            //_networkManager.StopActiveEventsTimer();
             this.NotifyClient("********* Reset - So Clear all events from Event list ************");
 
             _alarmList.Clear();
@@ -2204,12 +2204,12 @@ namespace Drax360Service.Panels
             _zoneDisableList.Clear();
             _faultList.Clear();
 
-            _networkManager.StartActiveEventsTimer();
-            _networkManager.StartResetDelayTimer(10000);
-            _networkManager.StopHeartbeatTimer();
+            //_networkManager.StartActiveEventsTimer();
+            //_networkManager.StartResetDelayTimer(10000);
+            //_networkManager.StopHeartbeatTimer();
 
             this.NotifyClient("********* Reset - Close the connection ************");
-            _networkManager.CloseConnections();
+            //_networkManager.CloseConnections();
         }
 
 
