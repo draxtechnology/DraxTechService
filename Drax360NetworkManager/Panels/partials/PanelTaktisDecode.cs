@@ -183,7 +183,7 @@ namespace Drax360Service.Panels
                     ref doubleFaultInputType);
 
                 // Send to AMX
-                int evnum = CSAMXSingleton.CS.MakeInputNumber(Convert.ToInt32(node), Convert.ToInt32(loop), Convert.ToInt32(address), inputType);
+                int evnum = CSAMXSingleton.CS.MakeInputNumber(Convert.ToInt32(node), Convert.ToInt32(loop), Convert.ToInt32(address), inputType, alarmOn);
                 send_response_amx(evnum, locationText, deviceType, textSummary);
 
             }

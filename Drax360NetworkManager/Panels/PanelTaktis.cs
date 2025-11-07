@@ -728,7 +728,7 @@ namespace Drax360Service.Panels
                 DecodeMessage(responseHex);
 
                 write(sendackstring);
-                Thread.Sleep(500); // wait for response
+                Thread.Sleep(1500); // wait for response if reduce down not all events appear on first load of AMX
 
                 counter++;
             }
@@ -1932,13 +1932,7 @@ namespace Drax360Service.Panels
                 int iSubAddress = Convert.ToInt32(sSubAddress);
                 int iLoop = Convert.ToInt32(sLoop);
                 int iZone = Convert.ToInt32(sZone);
-                int iInputAction = 1;
-                try
-                {
-                    iInputAction = Convert.ToInt32(sInputAction);
-                }
-                catch
-                { }
+                int iInputAction = Convert.ToInt32(sInputAction, 16);   // Hex to Int32
                 long lTimeStamp = Convert.ToInt64(sTimeStamp);
                 enmTAKMessageType gMessageType = (enmTAKMessageType)iMessageType;
                 enmTAKEventType gEventType = (enmTAKEventType)lEventType;
@@ -1963,6 +1957,11 @@ namespace Drax360Service.Panels
                     case 133:  // Start Event Message
 
                         ParseTAKMessage(gMessageType, glSerialNo, lEventGroup, gEventType, gEventCode, iNode, iAddressType, iAddress, iSubAddress, iLoop, iZone, iInputAction, lTimeStamp, sLocationText, sPanelText, sZoneText, "", true);
+
+                        break;
+                    case 135:  // Alarm Off
+
+                        ParseTAKMessage(gMessageType, glSerialNo, lEventGroup, gEventType, gEventCode, iNode, iAddressType, iAddress, iSubAddress, iLoop, iZone, iInputAction, lTimeStamp, sLocationText, sPanelText, sZoneText, "", false);
 
                         break;
                 }
