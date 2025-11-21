@@ -285,11 +285,15 @@ namespace Drax360Service
                     break;
 
                 case "MORLEYMAX":
-                    ret = new PanelMorelyMax(this.configurationbasefolder, identifier);
+                    ret = new PanelMorleyMax(this.configurationbasefolder, identifier);
                     break;
 
                 case "ADVANCED":
                     ret = new PanelAdvanced(this.configurationbasefolder, identifier);
+                    break;
+
+                case "NOTIFIER":
+                    ret = new PanelNotifier(this.configurationbasefolder, identifier);
                     break;
 
                 case "TAKTIS":

@@ -52,6 +52,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="EventLogger.cs" />
+    <Compile Include="Panels\PanelNotifier.cs" />
     <Compile Include="Panels\PanelTaktis.cs" />
     <Compile Include="Panels\CONVERTED TaktisMock.cs" />
     <Compile Include="Panels\partials\PanelTaktisDecode.cs" />
@@ -93,6 +94,7 @@
     <None Include="ini\MAXMan.ini">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="ini\NOTMan.ini" />
     <None Include="ini\Takman.ini">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
