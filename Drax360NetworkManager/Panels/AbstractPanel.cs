@@ -159,6 +159,32 @@ namespace Drax360Service.Panels
                 Console.WriteLine("Sent: " + numeric); 
             }
         }
+        protected void serialstringsend(string toSend)
+        {
+            if (serialport?.IsOpen == true)
+            {
+                serialport.Write(toSend);  // sends the string directly
+
+                this.NotifyClient("Sent (String): " + toSend, false);
+                Console.WriteLine("Sent: " + toSend);
+            }
+        }
+        protected void SendChar(char ch)
+        {
+            if (serialport?.IsOpen != true)
+            {
+                serialport.Open();
+            }
+
+            // Send a single character as ASCII byte
+            byte[] b = Encoding.ASCII.GetBytes(new char[] { ch });
+            serialport.Write(b, 0, b.Length);
+
+            this.NotifyClient("Sent Char: " + ch + " (" + ((int)ch) + ")", false);
+            
+            //Console.WriteLine("Sent Char: " + ch + " (" + ((int)ch) + ")");
+        }
+
         protected void serialsend(string toSend)
         {
             serialsend(Encoding.ASCII.GetBytes(toSend));
