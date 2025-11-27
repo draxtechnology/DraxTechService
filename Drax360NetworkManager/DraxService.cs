@@ -208,6 +208,10 @@ namespace Drax360Service
                 
                 // now work out the settings for this panel                               
                 int port = apbase.GetSetting<int>(panel, "CommPort");
+                if (apbase.Extension == "MAX")   // Richard Morley Max special case as in the ini file the port is under SETUP not PANELx
+                {
+                    port = apbase.GetSetting<int>("SETUP", "CommPort");
+                }
 
                 if (port <= 0) continue;
 

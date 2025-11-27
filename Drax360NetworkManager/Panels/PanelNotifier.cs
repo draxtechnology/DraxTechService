@@ -269,7 +269,7 @@ namespace Drax360Service.Panels
                 decimal zone = 0;
                 try
                 {
-                    Convert.ToDecimal(Encoding.UTF8.GetString(ourmessage, 18 - 1, 5));
+                    zone = Convert.ToDecimal(Encoding.UTF8.GetString(ourmessage, 18 - 1, 5));
                 }
                 catch { }
                 string sensor = Encoding.UTF8.GetString(ourmessage, 23 - 1, 1);
@@ -281,6 +281,8 @@ namespace Drax360Service.Panels
                     address = Convert.ToInt32(straddress, 16);
                 }
                 catch { }
+                giAddressNumber = address;
+                bool on = true;
 
                 string sDevicetype = "";
                 try
@@ -325,8 +327,6 @@ namespace Drax360Service.Panels
                     sChecksum += Encoding.UTF8.GetString(new byte[] { ourmessage[ourmessage.Length - 1] });
                 }
                 bValidChecksum = CheckSumValidation(sChecksum, ourmessage);
-
-                giAddressNumber = address;
 
                 switch ((enmNotEventType)eventcode)
                 {
@@ -398,9 +398,14 @@ namespace Drax360Service.Panels
 
                     case enmNotEventType.Deviceenabled:
                         Console.WriteLine("Device " + address + " Enabled");
+                        gAlarmType = enmNotAlarmType.NOTIsolate.ToString();
+                        gsTextField = "Device " + address + " Enabled";
+                        on = false;
                         break;
 
                     case enmNotEventType.Devicedisabled:
+                        gAlarmType = enmNotAlarmType.NOTIsolate.ToString();
+                        gsTextField = "Device " + address + " Disabled";
                         Console.WriteLine("Device " + address + " Disabled");
                         break;
 
@@ -799,6 +804,13 @@ namespace Drax360Service.Panels
 
                     case enmNotEventType.AccessLevel2:  // 206
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 77;
+                        gsTextField = "Access Level 2";
+                        Console.WriteLine(gsTextField);
+                        break;
+
+                    case enmNotEventType.AccessLevel3:  // 207
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 78;
                         gsTextField = "Access Level 3";
                         Console.WriteLine(gsTextField);
@@ -891,7 +903,7 @@ namespace Drax360Service.Panels
                 {
                     zonetext = "Zone " + zone;
                 }
-                evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+                evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, on);
                 send_response_amx_and_serial(evnum, gsTextField, gsDeviceText, zonetext);
             }
         }
