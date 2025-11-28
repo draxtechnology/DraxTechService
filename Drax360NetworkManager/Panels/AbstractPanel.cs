@@ -159,16 +159,6 @@ namespace Drax360Service.Panels
                 Console.WriteLine("Sent: " + numeric); 
             }
         }
-        protected void serialstringsend(string toSend)
-        {
-            if (serialport?.IsOpen == true)
-            {
-                serialport.Write(toSend);  // sends the string directly
-
-                this.NotifyClient("Sent (String): " + toSend, false);
-                Console.WriteLine("Sent: " + toSend);
-            }
-        }
         protected void SendChar(char ch)
         {
             if (serialport?.IsOpen != true)
