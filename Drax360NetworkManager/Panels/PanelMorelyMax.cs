@@ -426,12 +426,33 @@ namespace Drax360Service.Panels
 
                     case enmEventType.EnableZone:
                         gAlarmType = enmAlarmType.MAXDisableZone.ToString();
-                        Console.WriteLine("Zone " + zone + " Enabled");
+                        gsTextField = "Entire Zone " + zone + " Enabled";
+                        Console.WriteLine("Entire Zone " + zone + " Enabled");
+                        loop = (int)(zone / 255) + 1;
+                        if (giAddressNumber >= 255)
+                        {
+                            giAddressNumber = (zone + 1) % 255;   // MH Change 20022024 to get around 255 mod 255 equals zero
+                        }
+                        else
+                        {
+                            giAddressNumber = zone % 255;
+                        }
+                        on = false;
                         break;
 
-                    case enmEventType.DisableZone:  // MH TODO
+                    case enmEventType.DisableZone:
                         gAlarmType = enmAlarmType.MAXDisableZone.ToString();
-                        Console.WriteLine("Zone " + zone + " Disabled");
+                        Console.WriteLine("Entire Zone " + zone + " Disabled");
+                        gsTextField = "Entire Zone " + zone + " Disabled";
+                        loop = (int)(zone / 255) + 1;
+                        if (giAddressNumber >= 255)
+                        {
+                            giAddressNumber = (zone + 1) % 255;   // MH Change 20022024 to get around 255 mod 255 equals zero
+                        }
+                        else
+                        {
+                            giAddressNumber = zone % 255;
+                        }
                         break;
 
                     case enmEventType.LIBCardLoopCPUFault:
@@ -789,6 +810,7 @@ namespace Drax360Service.Panels
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 97;
                         gsTextField = "Entire Zone Enable";
+                        on = false;
                         Console.WriteLine(gsTextField);
                         break;
 

@@ -478,11 +478,14 @@ namespace Drax360Service.Panels
 
                     case enmNotEventType.EnableZone:
                         gAlarmType = enmNotAlarmType.NOTDisableZone.ToString();
+                        gsTextField = "Zone " + zone + " Enabled";
+                        on = false;
                         Console.WriteLine("Zone " + zone + " Enabled");
                         break;
 
                     case enmNotEventType.DisableZone:
                         gAlarmType = enmNotAlarmType.NOTDisableZone.ToString();
+                        gsTextField = "Zone " + zone + " Disabled";
                         Console.WriteLine("Zone " + zone + " Disabled");
                         break;
 
@@ -841,6 +844,7 @@ namespace Drax360Service.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 97;
                         gsTextField = "Entire Zone Enable";
+                        on = false;
                         Console.WriteLine(gsTextField);
                         break;
 
