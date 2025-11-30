@@ -11,179 +11,6 @@ using System.Xml.Schema;
 
 namespace Drax360Service.Panels
 {
-    public enum enmNotEventType
-    {
-        Fire = 1,
-        FireDisabled = 2,
-        TestFire = 3,
-        NoReplyMissing = 5,
-        TypeMisMatch = 6,
-        SensorModuleFault = 8,
-        PreAlarm = 10,
-        RemovedDisabled = 13,
-        FireCleared = 19,
-        FaultCleared = 20,
-        MissingCleared = 21,
-        Deviceenabled = 23,
-        Devicedisabled = 24,
-        ModuleLoadShortCircuit = 33,
-        OutputModuleTestActivation = 34,
-        OutputModuleTestDeActivation = 35,
-        DuplicateAddress = 36,
-        AUXSet = 37,
-        AuxCleared = 38,
-        TechnicalAlarm = 44,
-        PowerSupplyFault = 45,
-        LoopBoosterFault = 48,
-        ThermalAlarm = 50,
-        SystemReset = 129,
-        TerminateTest = 130,
-        SilenceSounder = 131,
-        MuteBuzzer = 132,
-        StartZoneTest = 135,
-        EnableZone = 136,
-        DisableZone = 137,
-        Evacuate = 138,
-        SysClockAdjust = 139,
-        EditChangesConfirmed = 140,
-        SuspectedLoopBreak = 143,
-        PowerRestart = 146,
-        CommsFail = 147,
-        LossOfLoop = 148,
-        LossPartLoop = 149,
-        EndBFaultLoop = 150,
-        NetworkGenerlaReset = 153,
-        NetworkSilenceSounders = 154,
-        NetworkGeneralMuteSounder = 155,
-        NetworkDisabled = 156,
-        ReSoundSounder = 157,
-        SounderDisabled = 159,
-        RemoteFireOutputDisabled = 160,
-        MuteInternalBuzzer = 161,
-        ControlOutputsDisabled = 162,
-        OverRideSounder = 163,
-        RemoteFireOutputActivated = 165,
-        ControlOutputsEnabled = 166,
-        InvestigateDelayExtended = 167,
-        RemoteFireOutputEnabled = 168,
-        SounderEnabled = 169,
-        SounderImmediateMode = 170,
-        SounderDelayMode = 171,
-        SystemDayMode = 172,
-        SystemNightMode = 173,
-        RemoteFireOutPutTest = 176,
-        SounderRelayCircuitDisabled = 181,
-        FireRelayDisabled = 182,
-        FaultRelayDisabled = 183,
-        SounderRelayCircuitEnabled = 184,
-        FireRelayEnabled = 185,
-        FaultRelyEnabled = 186,
-        NetworkZoneInTestMode = 191,
-        NetworkZoneInEnabled = 192,
-        NetworkZoneInDisabled = 193,
-        NetworkZoneInTest = 194,
-        NetworkEnableZone = 195,
-        NetworkDisableZone = 196,
-        NetworkSoundersEnabled = 197,
-        NetworkSoundersDisabled = 198,
-        NetworkZoneInFault = 199,
-        ZoneInFault = 200,
-        ID2NetworkDupNode = 203,
-        PowerFaultID2Booster = 204,
-        AccessLevel1 = 205,
-        AccessLevel2 = 206,
-        AccessLevel3 = 207,
-        AccessLevel4 = 208,
-        ControlOutputsEnabled1 = 209,
-        ControlOutputsDisabled1 = 210,
-        EntireZoneEnable = 228,
-        EnitreZoneDisable = 229,
-        NetworkEntireZoneEnable = 230,
-        NetworkEntireZoneDisable = 231,
-        LIBCardLoopCPUFault = 257,
-        LIBCardLoopCPUPwrRestart = 261,
-        LIBCardLoopShortCircuit = 265,
-        LIBCardDeviceZeroPresent = 269,
-        LIBCardMissing = 273,
-        LIBCardLoopEndDriverFault = 277,
-        LIBCardLoopSignalDegraded = 281,
-        LIBCardROMChkSumErr = 285,
-        RS232LinkFault = 288,
-        MainsPSUFault = 289,
-        PSUChargerFault = 290,
-        BatteryLowVoltage = 291,
-        BatteryFailure = 292,
-        SoftwareFailure = 302,
-        SounderCircuit1ShortFault = 306,
-        SounderCircuit2ShortFault = 307,
-        SounderCircuit1OpenFault = 308,
-        SounderCircuit2OpenFault = 309,
-        SounderCircuit1RelayFault = 310,
-        SounderCircuit2RelayFault = 311,
-        EarthFault = 312,
-        SounderCircuit3ShortFault = 313,
-        SounderCircuit4ShortFault = 314,
-        SounderCircuit3OpenFault = 315,
-        SounderCircuit4OpenFault = 316,
-        SounderCircuit3RelayFault = 317,
-        SounderCircuit4RelayFault = 318,
-        PanelKeyStuck = 319,
-        AuxOutput1Fault = 324,
-        AuxOutput2Fault = 325,
-        NetworkZoneAssignIncorrect = 347,
-        NetworkRefAssingIncorrect = 348,
-        ID2NetworkZoneDup = 350,
-        ID2NetworkStartUpFaultNetCardMissing = 355,
-        ID2NetworkStartUpFaultNoACK = 356,
-        ID2NetworkStartUpFaultNoReply = 358,
-        ID2NetworkStartUpFaultJOINFail = 360,
-        ID2NetworkRunTimeFault = 361,
-        ID2ChannelLink1Fault = 362,
-        ID2ChannelLink2Fault = 363,
-        ID2FlashChecksumErr = 364,
-        ID2NetworkOverLoadTimeOut = 365,
-        SignalledFaultatPanelInput1 = 395,
-        SignalledFaultatPanelInput2 = 396,
-        ExternalPSUFault = 332
-    }
-    public enum enmNotAlarmType
-    {
-        NOTFire = 0,
-        NOTNonFireAlarm = 1,
-        NOTPreAlarm = 2,
-        NOTIsolate = 4,
-        NOTTestModeFire = 6,
-        NOTFault = 8,
-        NOTOutputActivate = 9,
-        NOTDeviceTestMode = 10,
-        NOTDisableZone = 11,
-        NOTStatusEvent = 15,
-    }
-    public enum EnmDeviceType
-    {
-        DeviceNotDefined,
-        HeatThermal,
-        Ionisation,
-        Optical,
-        Reserved1,
-        CallPointManual,
-        GeneralControlOutput,
-        GeneralMonitoredInput,
-        SprinklerSystemMonitor,
-        VIEWSensor,
-        ConventionalZoneMonitorCDI,
-        SounderOutput,
-        AUXILIARYModule,
-        ConventionalZoneMonitorZMXM512,
-        AdvancedMULTISensor,
-        Reserved2,
-        Reserved3,
-        GASSensorInterface,
-        LoopBoosterModule,
-        SMART3Sensor,
-        SMART4Sensor,
-        Unknown
-    }
 
     internal class PanelNotifier : AbstractPanel
     {
@@ -217,7 +44,6 @@ namespace Drax360Service.Panels
 
         public override void Parse(byte[] buffer)
         {
-            //Thread.Sleep(1000); // Allow time for full message to arrive
             base.Parse(buffer);
             int foundat = -1;
             int bufferlength = this.buffer.Count;
@@ -249,8 +75,6 @@ namespace Drax360Service.Panels
                 {
                     SendChar(ch);
                 }
-
-                //serialstringsend(stracknowledge);
                 Console.WriteLine(stracknowledge.Replace("\r", "") + " Sent to Panel");
             }
 
@@ -269,7 +93,7 @@ namespace Drax360Service.Panels
                 decimal zone = 0;
                 try
                 {
-                    Convert.ToDecimal(Encoding.UTF8.GetString(ourmessage, 18 - 1, 5));
+                    zone = Convert.ToDecimal(Encoding.UTF8.GetString(ourmessage, 18 - 1, 5));
                 }
                 catch { }
                 string sensor = Encoding.UTF8.GetString(ourmessage, 23 - 1, 1);
@@ -281,11 +105,13 @@ namespace Drax360Service.Panels
                     address = Convert.ToInt32(straddress, 16);
                 }
                 catch { }
+                giAddressNumber = address;
+                bool on = true;
 
-                string sDevicetype = "";
+                int iDevicetype = 0;
                 try
                 {
-                    sDevicetype = Encoding.UTF8.GetString(ourmessage, 26 - 1, 2);
+                    iDevicetype = Convert.ToInt32(Encoding.UTF8.GetString(ourmessage, 26 - 1, 2));
                 }
                 catch { };
 
@@ -307,7 +133,7 @@ namespace Drax360Service.Panels
                 gsDeviceText = "";
                 if (!gbSectoring)
                 {
-                    GetDeviceTypeText(sDevicetype);
+                    GetDeviceTypeText(iDevicetype);
                 }
 
                 string sChecksum = "";
@@ -325,8 +151,6 @@ namespace Drax360Service.Panels
                     sChecksum += Encoding.UTF8.GetString(new byte[] { ourmessage[ourmessage.Length - 1] });
                 }
                 bValidChecksum = CheckSumValidation(sChecksum, ourmessage);
-
-                giAddressNumber = address;
 
                 switch ((enmNotEventType)eventcode)
                 {
@@ -398,9 +222,14 @@ namespace Drax360Service.Panels
 
                     case enmNotEventType.Deviceenabled:
                         Console.WriteLine("Device " + address + " Enabled");
+                        gAlarmType = enmNotAlarmType.NOTIsolate.ToString();
+                        gsTextField = "Device " + address + " Enabled";
+                        on = false;
                         break;
 
                     case enmNotEventType.Devicedisabled:
+                        gAlarmType = enmNotAlarmType.NOTIsolate.ToString();
+                        gsTextField = "Device " + address + " Disabled";
                         Console.WriteLine("Device " + address + " Disabled");
                         break;
 
@@ -473,11 +302,14 @@ namespace Drax360Service.Panels
 
                     case enmNotEventType.EnableZone:
                         gAlarmType = enmNotAlarmType.NOTDisableZone.ToString();
+                        gsTextField = "Zone " + zone + " Enabled";
+                        on = false;
                         Console.WriteLine("Zone " + zone + " Enabled");
                         break;
 
                     case enmNotEventType.DisableZone:
                         gAlarmType = enmNotAlarmType.NOTDisableZone.ToString();
+                        gsTextField = "Zone " + zone + " Disabled";
                         Console.WriteLine("Zone " + zone + " Disabled");
                         break;
 
@@ -799,6 +631,13 @@ namespace Drax360Service.Panels
 
                     case enmNotEventType.AccessLevel2:  // 206
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 77;
+                        gsTextField = "Access Level 2";
+                        Console.WriteLine(gsTextField);
+                        break;
+
+                    case enmNotEventType.AccessLevel3:  // 207
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 78;
                         gsTextField = "Access Level 3";
                         Console.WriteLine(gsTextField);
@@ -829,6 +668,7 @@ namespace Drax360Service.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 97;
                         gsTextField = "Entire Zone Enable";
+                        on = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -856,7 +696,7 @@ namespace Drax360Service.Panels
 
                 if (gbSectoring == false)
                 {
-                    GetDeviceTypeText(sDevicetype);
+                    GetDeviceTypeText(iDevicetype);
                 }
                 int p1 = 0;
                 int p2 = 0;
@@ -891,7 +731,7 @@ namespace Drax360Service.Panels
                 {
                     zonetext = "Zone " + zone;
                 }
-                evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+                evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, on);
                 send_response_amx_and_serial(evnum, gsTextField, gsDeviceText, zonetext);
             }
         }
@@ -916,7 +756,7 @@ namespace Drax360Service.Panels
 
         }
 
-        public void GetDeviceTypeText(string psDeviceType)
+        public void GetDeviceTypeText(int piDeviceType)
         {
             // Author J.M Macpherson
             // Date 03/01/2006
@@ -926,96 +766,91 @@ namespace Drax360Service.Panels
 
             try
             {
-                switch (psDeviceType)
+                switch (piDeviceType)
                 {
-                    case "00":
+                    case 0:
                         gDeviceType = EnmDeviceType.DeviceNotDefined;
                         gsDeviceText = "Device Not Defined";
                         break;
-                    case "01":
+                    case 1:
                         gDeviceType = EnmDeviceType.HeatThermal;
                         gsDeviceText = "Heat Thermal";
                         break;
-                    case "02":
+                    case 2:
                         gDeviceType = EnmDeviceType.Ionisation;
                         gsDeviceText = "Ionisation";
                         break;
-                    case "03":
+                    case 3:
                         gDeviceType = EnmDeviceType.Optical;
                         gsDeviceText = "Optical";
                         break;
-                    case "04":
+                    case 4:
                         gDeviceType = EnmDeviceType.Reserved1;
                         gsDeviceText = "4 Reserved";
                         break;
-                    case "05":
+                    case 5:
                         gDeviceType = EnmDeviceType.CallPointManual;
                         gsDeviceText = "Call Point Manual";
                         break;
-                    case "06":
+                    case 6:
                         gDeviceType = EnmDeviceType.GeneralControlOutput;
                         gsDeviceText = "General Control Output";
                         break;
-                    case "07":
+                    case 7:
                         gDeviceType = EnmDeviceType.GeneralMonitoredInput;
                         gsDeviceText = "General Monitored Input";
                         break;
-                    case "08":
+                    case 8:
                         gDeviceType = EnmDeviceType.SprinklerSystemMonitor;
                         gsDeviceText = "Sprinkler System Monitor";
                         break;
-                    case "09":
+                    case 9:
                         gDeviceType = EnmDeviceType.VIEWSensor;
                         gsDeviceText = "View Sensor";
                         break;
-                    case "10":
+                    case 10:
                         gDeviceType = EnmDeviceType.ConventionalZoneMonitorCDI;
                         gsDeviceText = "Conventional Zone Monitor CDI";
                         break;
-                    case "11":
+                    case 11:
                         gDeviceType = EnmDeviceType.SounderOutput;
                         gsDeviceText = "Sounder Output";
                         break;
-                    case "12":
+                    case 12:
                         gDeviceType = EnmDeviceType.AUXILIARYModule;
                         gsDeviceText = "Auxiliary Module";
                         break;
-                    case "13":
+                    case 13:
                         gDeviceType = EnmDeviceType.ConventionalZoneMonitorZMXM512;
                         gsDeviceText = "Conventional Zone Monitor ZMX/M512";
                         break;
-                    case "14":
+                    case 14:
                         gDeviceType = EnmDeviceType.AdvancedMULTISensor;
                         gsDeviceText = "Advanced Multi Sensor";
                         break;
-                    case "15":
+                    case 15:
                         gDeviceType = EnmDeviceType.Reserved2;
                         gsDeviceText = "15 Reserved";
                         break;
-                    case "16":
+                    case 16:
                         gDeviceType = EnmDeviceType.Reserved3;
                         gsDeviceText = "16 Reserved";
                         break;
-                    case "17":
+                    case 17:
                         gDeviceType = EnmDeviceType.GASSensorInterface;
                         gsDeviceText = "Gas Sensor Interface";
                         break;
-                    case "18":
+                    case 18:
                         gDeviceType = EnmDeviceType.LoopBoosterModule;
                         gsDeviceText = "Loop Booster Module";
                         break;
-                    case "19":
+                    case 19:
                         gDeviceType = EnmDeviceType.SMART3Sensor;
                         gsDeviceText = "SMART 3 Sensor";
                         break;
-                    case "20":
+                    case 20:
                         gDeviceType = EnmDeviceType.SMART4Sensor;
                         gsDeviceText = "SMART 4 Sensor";
-                        break;
-                    case "":
-                    case null:
-                        gDeviceType = EnmDeviceType.DeviceNotDefined;
-                        gsDeviceText = "";
                         break;
                     default:
                         gDeviceType = EnmDeviceType.Unknown;
