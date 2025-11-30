@@ -51,7 +51,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AesDecryption.cs" />
     <Compile Include="EventLogger.cs" />
+    <Compile Include="Panels\PanelEmail.cs" />
     <Compile Include="Panels\PanelNotifier.cs" />
     <Compile Include="Panels\PanelTaktis.cs" />
     <Compile Include="Panels\CONVERTED TaktisMock.cs" />
@@ -86,6 +88,9 @@
   <ItemGroup>
     <None Include="App.config" />
     <None Include="ini\AdvMan.ini">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="ini\EmailMan.ini">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="ini\GenMan.ini">

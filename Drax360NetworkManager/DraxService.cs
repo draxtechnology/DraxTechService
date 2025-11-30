@@ -200,7 +200,17 @@ namespace Drax360Service
 
             // used to just load our settings from the ini file
             AbstractPanel apbase = getpanel();
-            
+            if (panel=="EMAIL")
+            {
+                string identifier = "EMAIL";
+                AbstractPanel ap = getpanel(identifier);
+                ap.StartUp(fakemode);
+                ap.OutsideEvents += Sp_Fire;
+                abstractpanels.Add(ap);
+                StartDeviceWatcher();
+                return;
+
+            }
 
             for (int i = 1; i < 7; i++)
             {
@@ -280,6 +290,15 @@ namespace Drax360Service
             AbstractPanel ret = null;
             switch (panel)
             {
+
+                case "ADVANCED":
+                    ret = new PanelAdvanced(this.configurationbasefolder, identifier);
+                    break;
+
+                case "EMAIL":
+                    ret = new PanelEmail(this.configurationbasefolder, identifier);
+                    break;
+
                 case "GENT":
                     ret = new PanelGent(this.configurationbasefolder,identifier);
                     break;
@@ -287,11 +306,7 @@ namespace Drax360Service
                 case "MORLEYMAX":
                     ret = new PanelMorleyMax(this.configurationbasefolder, identifier);
                     break;
-
-                case "ADVANCED":
-                    ret = new PanelAdvanced(this.configurationbasefolder, identifier);
-                    break;
-
+            
                 case "NOTIFIER":
                     ret = new PanelNotifier(this.configurationbasefolder, identifier);
                     break;
@@ -737,12 +752,16 @@ namespace Drax360Service
 
             AbstractPanel apbase = getpanel();
             switch (panel)
+
             {
-                case "GENT":
-                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DataLogging"));
-                    break;
                 case "ADVANCED":
                     this.DebugLog = apbase.GetSetting<bool>(ksettingmainsection, "DesignTime");
+                    break;
+                case "EMAIL":
+                    this.DebugLog = apbase.GetSetting<bool>(ksettingmainsection, "Debug");
+                    break;
+                case "GENT":
+                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DataLogging"));
                     break;
                 default:
                     this.DebugLog = true;
@@ -754,7 +773,7 @@ namespace Drax360Service
 
             startpipeserver();
 
-            if (panel != "Taktis")
+            if (panel != "TAKTIS"   && panel != "EMAIL")
             {
                 pad();
                 dumpavailableserialports();

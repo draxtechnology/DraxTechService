@@ -656,7 +656,7 @@ namespace Drax360Service.Panels
         {
             send_message(ActionType.kENABLEZONE, NwmData.IsolationToAmx, passedvalues);
         }
-        public virtual void send_message(ActionType action, NwmData type, string passedvalues)
+        private void send_message(ActionType action, NwmData type, string passedvalues)
         {
             string[] parts = passedvalues.Split(',');
 

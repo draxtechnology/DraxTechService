@@ -89,15 +89,21 @@ namespace Drax360Service
                 }
 
                 string[] linesplit = line.Split(ksettingvaluedelim);
-                if (linesplit.Length != 2)
+                if (linesplit.Length < 2)
                 {
                     continue;
                 }
 
                 string key = makekey(section, linesplit[0]);
 
-                string value = linesplit[1].Trim();
-                if (String.IsNullOrEmpty(value)) { continue; }
+                string value = linesplit[1];
+
+                // edge case if value ends with an =
+                for (int i = 2; i < linesplit.Length; i++)
+                {
+                    value += "=";
+                }
+
                 if (settings.ContainsKey(key))
                 {
                     continue;
