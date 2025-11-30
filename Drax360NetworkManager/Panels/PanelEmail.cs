@@ -125,6 +125,7 @@ namespace Drax360Service.Panels
                 try
                 {
                     smtp.Send(message);
+                    base.NotifyClient("Send Email "+message.Subject+" "+message.To, false);
                 }
                 catch (Exception ex)
                 {  
