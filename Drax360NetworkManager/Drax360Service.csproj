@@ -54,6 +54,8 @@
     <Compile Include="AesDecryption.cs" />
     <Compile Include="EventLogger.cs" />
     <Compile Include="Panels\PanelEmail.cs" />
+    <Compile Include="Panels\PanelRSM.cs" />
+    <Compile Include="Panels\Pearl.cs" />
     <Compile Include="Panels\PanelNotifier.cs" />
     <Compile Include="Panels\PanelTaktis.cs" />
     <Compile Include="Panels\CONVERTED TaktisMock.cs" />
@@ -90,7 +92,7 @@
     <None Include="ini\AdvMan.ini">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="ini\EmailMan.ini">
+    <None Include="ini\EMLMan.ini">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="ini\GenMan.ini">
@@ -100,6 +102,8 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="ini\NOTMan.ini" />
+    <None Include="ini\PRLMan.ini" />
+    <None Include="ini\RSMMan.ini" />
     <None Include="ini\Takman.ini">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
