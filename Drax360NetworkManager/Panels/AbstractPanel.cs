@@ -15,6 +15,8 @@ namespace Drax360Service.Panels
         protected const byte kHeartbeatInitialDelaySeconds = 60;
         protected const byte kHeartbeatDelaySeconds = 60;
         protected const string ksettingsetupsection = "SETUP";
+        protected const string ksettingsyncrosection = "SYNCRO";
+        protected const string ksettingsignifiresection = "SIGNIFIRE";
         protected const string ksettingpanelsection = "PANEL";
         protected const string ksettingmainsection = "MAIN";
         private const string kinifolder = "";

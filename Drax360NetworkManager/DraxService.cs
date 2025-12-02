@@ -786,7 +786,11 @@ namespace Drax360Service
                 case "MORLEYMAX":
                     ret = new PanelMorleyMax(this.configurationbasefolder, identifier);
                     break;
-            
+
+                case "MORLEYZX":
+                    ret = new PanelMorleyZX(this.configurationbasefolder, identifier);
+                    break;
+
                 case "NOTIFIER":
                     ret = new PanelNotifier(this.configurationbasefolder, identifier);
                     break;
@@ -801,6 +805,10 @@ namespace Drax360Service
 
                 case "TAKTIS":
                     ret = new PanelTaktis(this.configurationbasefolder, identifier);
+                    break;
+
+                case "SYNCRO":
+                    ret = new PanelSyncro(this.configurationbasefolder, identifier);
                     break;
 
                 default:
@@ -1250,6 +1258,12 @@ namespace Drax360Service
                 case "GENT":
                     this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DataLogging"));
                     break;
+                case "MORLEYMAX":
+                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DataLoggingSet"));
+                    break;
+                case "MORLEYZX":
+                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DebugLog"));
+                    break;
                 case "NOTIFIER":
                     this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DesignTime"));
                     break;
@@ -1261,6 +1275,9 @@ namespace Drax360Service
                     break;
                 case "TAKTIS":
                     this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DataLogging"));
+                    break;
+                case "SYNCRO":
+                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "CreateLog"));
                     break;
                 default:
                     this.DebugLog = true;

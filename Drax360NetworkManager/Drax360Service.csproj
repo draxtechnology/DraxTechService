@@ -54,6 +54,8 @@
     <Compile Include="AesDecryption.cs" />
     <Compile Include="EventLogger.cs" />
     <Compile Include="Panels\PanelEmail.cs" />
+    <Compile Include="Panels\PanelMorleyZX.cs" />
+    <Compile Include="Panels\PanelSyncro.cs" />
     <Compile Include="Panels\PanelRSM.cs" />
     <Compile Include="Panels\Pearl.cs" />
     <Compile Include="Panels\PanelNotifier.cs" />
@@ -98,9 +100,11 @@
     <None Include="ini\GenMan.ini">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="ini\KsfMan.ini" />
     <None Include="ini\MAXMan.ini">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="ini\MorleyMan.ini" />
     <None Include="ini\NOTMan.ini" />
     <None Include="ini\PRLMan.ini" />
     <None Include="ini\RSMMan.ini" />
