@@ -3,6 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.IO.Ports;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Runtime.ConstrainedExecution;
 using System.Runtime.InteropServices;
 
 namespace Drax360Service.Panels
@@ -10,11 +13,20 @@ namespace Drax360Service.Panels
     internal class PanelSyncro : AbstractPanel
     {
         #region constants
-        const byte kzerobyte = 0x00;
-        const byte kackbyte = 0x06;
+
+        const int MAXINPUTSTRINGS = 6;
         const byte kheartbeatdelayseconds = 60;
-        const int kchunksize = 59;
+        const int KSFUseLoop = 1;   // TODO: Make configurable
         #endregion
+
+        public string[] Ip = new string[MAXINPUTSTRINGS];
+        public int giZoneNumber = 0;
+        public string gsTextField = "";
+        public string gsDeviceText = "";
+        public string gsZoneText = "";
+        public int giAddressNumber = 0;
+        public int giLoopNumber = 0;
+        public bool LocalInputUnit = false; // TODO
 
         public override string FakeString
         {
@@ -26,8 +38,6 @@ namespace Drax360Service.Panels
                 return msg;
             }
         }
-
-
 
         public PanelSyncro(string baselogfolder, string identifier) : base(baselogfolder, identifier, "KsfMan", "KSF")
         {
@@ -41,16 +51,267 @@ namespace Drax360Service.Panels
         public override void Parse(byte[] buffer)
         {
 
+            base.Parse(buffer);
+            int bufferlength = buffer.Length;
+            int index = 0;
+
+            for (int i = 0; i < bufferlength; i++)
+            {
+                char ch = (char)buffer[i];
+                int asc = buffer[i].ToString()[0];  // ASCII code of first digit of the byte
+                byte raw = buffer[i];
+
+                if (raw == 5 || raw == 13)  // Panel Heartbeat & carriage return do nothing
+                {
+                }
+                else
+                {
+                    if (raw == 10)   // End of line
+                    {
+                        base.NotifyClient($"{ch} - {asc} - {raw}");
+
+                        index++;
+                        if (index >= MAXINPUTSTRINGS)
+                        {
+                            processmessage();
+                            for (int n = 0; n < MAXINPUTSTRINGS; n++)
+                            {
+                                Ip[n] = ""; // Ensure all lines clear
+                            }
+                            index = 0;
+                        }
+
+                        Ip[index] += ch;
+                    }
+                    else
+                    {
+                        base.NotifyClient($"{ch} - {asc} - {raw}");
+
+                        Ip[index] += ch;
+                    }
+                }
+            }
         }
-
-        private bool processmessage(byte[] chunk)
+        private bool processmessage()
         {
-            string hex = BitConverter.ToString(chunk);
-            this.NotifyClient("Received: " + hex, false);
+            int NumLines = 0;
+            string sMessage = "";
+            int giNodeNumber = 0;
+            string sNodeDesc = "";
+            bool on = true;
+
+            for (int n = 0; n < MAXINPUTSTRINGS; n++)
+            {
+                Ip[n] = Ip[n]?.Trim() ?? ""; // Trim and handle nulls
+
+                if (Ip[n].Length != 0)
+                {
+                    // Fix for tech alarm (case-insensitive)
+                    Ip[n] = System.Text.RegularExpressions.Regex.Replace(Ip[n], "TECH ALARM", "TECH-ALARM", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                    Ip[n] = System.Text.RegularExpressions.Regex.Replace(Ip[n], "ACK. ALARM", "ACK.ALARM", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+                    NumLines = n + 1;
+                }
+
+                sMessage += "|" + Ip[n];
+                base.NotifyClient("Line " + (n + 1) + " : " + Ip[n]);
+            }
+
+            if (Ip[NumLines - 1].Contains("CLEARED"))
+            {
+                base.NotifyClient("Set as OFF");
+                on = false;
+            }
+            else
+            {
+                base.NotifyClient("Set as ON");
+            }
+
+            if (NumLines < 2)
+            {
+                // Abort if there were not enough lines 
+                return false;
+            }
+
+            // Extract the node number for lines 2 to 4
+
+            // Default
+            int tNode = 1;
+            for (int i = 2; i <= 4; i++)
+            {
+                string line = Ip[i] ?? "";
+
+                int n = line.IndexOf("NODE=", StringComparison.OrdinalIgnoreCase);
+                if (n >= 0)
+                {
+                    // Get substring after NODE=
+                    string after = line.Substring(n + 5);
+
+                    string numPart = after.Replace(" ", "X");
+
+                    tNode = int.Parse(new string(numPart.TakeWhile(char.IsDigit).ToArray()));
+
+                    giNodeNumber = tNode;
+
+                    int start = n + 5 + tNode.ToString().Length;
+                    sNodeDesc = line.Substring(start);
+
+                    break;
+                }
+
+                // --- ND= ---
+                n = line.IndexOf("ND=", StringComparison.OrdinalIgnoreCase);
+                if (n >= 0)
+                {
+                    string after = line.Substring(n + 3);
+                    string numPart = after.Replace(" ", "X");
+
+                    tNode = int.Parse(new string(numPart.TakeWhile(char.IsDigit).ToArray()));
+
+                    giNodeNumber = tNode;
+
+                    int start = n + 3 + tNode.ToString().Length;
+                    sNodeDesc = line.Substring(start);
+
+                    break;
+                }
+            }
 
 
+            GetSyncroZone();
+
+            // The Event Message could be in line 1 or line 2, so check both
+            for (int n = 0; n < 2; n++)
+            {
+                switch (Ip[n].ToUpper())
+                {
+                    case "EVACUATE":
+                    case "EVACUATE BUTTON":
+                        gsTextField = "Evacuate";
+                        giAddressNumber = 104;
+                        break;
+                    case "INPUT ACTIVATED":
+                        gsTextField = "Panel Reset";
+                        giAddressNumber = 105;
+                        break;
+                    case "LOOP OPEN CIRCUIT":
+                        gsTextField = "Loop Open Circuit";
+                        giAddressNumber = 115 + giLoopNumber;
+                        break;
+                }
+            }
+
+
+            base.NotifyClient("Send to AMX: Node = " + giNodeNumber + " Loop = " + giLoopNumber + " Address = " + giAddressNumber);
+
+            int evnum = CSAMXSingleton.CS.MakeInputNumber(giNodeNumber, giLoopNumber, giAddressNumber, 15, on);
+            send_response_amx_and_serial(evnum, gsTextField, gsDeviceText, gsZoneText);
             return true;
         }
+
+        private int GetSyncroZone()
+        {
+            int x, n;
+            int result = 255; // Default VB6 behaviour
+
+            try
+            {
+                if (LocalInputUnit)
+                {
+                    if (KSFUseLoop == 0)
+                        result = 255;
+                    else
+                        result = 5;
+
+                    giZoneNumber = result;
+                }
+                else
+                {
+                    result = 255;   // Default
+
+                    for (x = 2; x <= 6; x++)
+                    {
+                        string line = Ip[x] ?? "";
+
+                        // When KSFUseLoop != 0 this actually returns LOOP number
+                        if (KSFUseLoop == 0)
+                        {
+                            // Look for "ZONE "
+                            n = line.IndexOf("ZONE ", StringComparison.OrdinalIgnoreCase);
+
+                            // J.M 16/04/2010  
+                            if (n < 0)
+                                n = line.IndexOf("ZONE", StringComparison.OrdinalIgnoreCase);
+
+                            if (n >= 0)
+                            {
+                                result = Convert.ToInt32(line.Substring(n + 5));
+                                giZoneNumber = result;
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            // KSFUseLoop != 0 → look for LOOP=
+                            n = line.IndexOf("LOOP=", StringComparison.OrdinalIgnoreCase);
+                            if (n >= 0)
+                            {
+                                string numPart = line.Substring(n + 5).Split(' ')[0];
+                                int loopValue = Convert.ToInt32(numPart);
+                                giLoopNumber = loopValue;
+
+                                // JM 21/01/26 override to zone number 255
+                                result = 255;
+                                break;
+                            }
+
+                            // JM 28/08/24 - Elite RS: LP=
+                            n = line.IndexOf("LP=", StringComparison.OrdinalIgnoreCase);
+                            if (n >= 0)
+                            {
+                                int loopValue = Convert.ToInt32(line.Substring(n + 3));
+                                giLoopNumber = loopValue;
+                                break;
+                            }
+
+                            // Check first line for LP=
+                            if (Ip[1] != null &&
+                                Ip[1].IndexOf("LP=", StringComparison.OrdinalIgnoreCase) >= 0)
+                            {
+                                n = Ip[1].IndexOf("LP=", StringComparison.OrdinalIgnoreCase);
+                                int loopValue = Convert.ToInt32(Ip[1].Substring(n + 3));
+                                giLoopNumber = loopValue;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // SECOND PASS — try ZONE if still 255  
+                if (result == 255)
+                {
+                    for (x = 2; x <= 6; x++)
+                    {
+                        string line = Ip[x] ?? "";
+
+                        n = line.IndexOf("ZONE", StringComparison.OrdinalIgnoreCase);
+                        if (n >= 0)
+                        {
+                            result = Convert.ToInt32(line.Substring(n + 5));
+                            giZoneNumber = result;
+                            break;
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // VB6: On Error Resume Next → swallow errors
+            }
+
+            return result;
+        }
+
 
         private void send_response_amx_and_serial(int evnum, string message1, string message2, string message3 = "")
         {
@@ -62,10 +323,10 @@ namespace Drax360Service.Panels
             CSAMXSingleton.CS.SendAlarmToAMX(evnum, message1, message2, message3);
             CSAMXSingleton.CS.FlushMessages();
 
-            serialsend(new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte });
-            byte[] bytesToLog = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
-            string hex = BitConverter.ToString(bytesToLog); // "00-06-00-06"
-            this.NotifyClient("ACK Sent: " + hex, false);
+            //    serialsend(new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte });
+            //    byte[] bytesToLog = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
+            //    string hex = BitConverter.ToString(bytesToLog); // "00-06-00-06"
+            //    this.NotifyClient("ACK Sent: " + hex, false);
         }
 
         private void CalculateCheckSum(string[] paryMessage, out int piMSB, out int piLSB)
@@ -231,21 +492,9 @@ namespace Drax360Service.Panels
             SendEvent("Gent", type, inputtype, text, on, node, loop, device);
         }
 
-
         public override void SerialPort_Datareceived(object sender, SerialDataReceivedEventArgs e)
         {
-            const int kchunksize = 59;  // packet size
-            const int maxWaitMs = 500;  // how long to wait for remaining bytes
-            const int pollDelayMs = 10; // how often to check
-
-            lastDataReceived = DateTime.Now;
-            int waited = 0;
-
-            while (serialport.BytesToRead < kchunksize && waited < maxWaitMs)
-            {
-                System.Threading.Thread.Sleep(pollDelayMs);
-                waited += pollDelayMs;
-            }
+            System.Threading.Thread.Sleep(500);
 
             int bytestoread = serialport.BytesToRead;
             if (bytestoread == 0) return;
@@ -256,7 +505,5 @@ namespace Drax360Service.Panels
 
             Parse(readbytes);
         }
-
     }
-
 }
