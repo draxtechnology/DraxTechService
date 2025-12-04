@@ -213,7 +213,7 @@ namespace Drax360Service.Panels
 
             Byte[] evacnew = definecontrol(evac);
 
-            // Byte[] evactest = new Byte[] { kAdvancedStart, 128, 0, 0, 4, 61, 7, 1, 0, 0, 0, 0, 240, 225, 100, kAdvanedEnd };  VB6 Example Send String
+            // Byte[] evactest = new Byte[] { kAdvancedStart, 128, 0, 0, 4, 61, 7, 1, 0, 0, 0, 0, 240, 225, 100, kAdvanedEnd };
 
             serialsend(evacnew);
 

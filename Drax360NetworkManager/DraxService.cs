@@ -33,7 +33,9 @@ namespace Drax360Service
         kDISABLEMODULE,
         kENABLEMODULE,
         kDISABLEZONE,
-        kENABLEZONE
+        kENABLEZONE,
+        KAnalogueData,
+        KHandShake
     }
     public enum NwmData
     {

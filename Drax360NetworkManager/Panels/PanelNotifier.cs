@@ -692,6 +692,9 @@ namespace Drax360Service.Panels
                         gsTextField = "Network Entire Zone Enable";
                         Console.WriteLine(gsTextField);
                         break;
+                    default:
+                        base.NotifyClient("Unkown Event " + ((enmNotEventType)eventcode));
+                        break;
                 }
 
                 if (gbSectoring == false)
