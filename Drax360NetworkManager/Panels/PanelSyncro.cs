@@ -5,9 +5,11 @@ using System.IO.Ports;
 using System.Linq;
 using System.Management;
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using System.Runtime.ConstrainedExecution;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using static Drax360Service.Panels.PanelTaktis;
@@ -20,7 +22,7 @@ namespace Drax360Service.Panels
 
         const int MAXINPUTSTRINGS = 5;
         const byte kheartbeatdelayseconds = 60;
-            
+
         #endregion
 
         public string[] Ip = new string[MAXINPUTSTRINGS];
@@ -34,7 +36,7 @@ namespace Drax360Service.Panels
         public int KSFUseLoop = 0;
         public int index = 0;
         private int miMsgID = 0;
-
+        private List<string> garyzoneDisableList = new List<string>();
         public override string FakeString
         {
             get
@@ -250,7 +252,8 @@ namespace Drax360Service.Panels
 
             // Default
             int tNode = 1;
-            for (int i = 0; i <= 4; i++)
+            int i = 0;
+            for (i = 0; i <= 4; i++)
             {
                 string line = Ip[i] ?? "";
 
@@ -293,10 +296,48 @@ namespace Drax360Service.Panels
             GetSyncroZone();
             giDeviceAddress = GetSyncroDevice();
 
-            string gsTextField = "";
+            string gsTextField = Ip[0];
             string gAlarmType = "";
+            gsZoneText = "";
             int tIpType = 0;
             bool bColInputFix = false;
+
+            // If the node ID was in the third, then there was a location text in the first
+            // Also add the devtype text with a ' | ' (ascii 124) separator
+            if (LocalInputUnit)
+            {
+                if (!string.IsNullOrEmpty(Ip[0]))
+                {
+                    gsZoneText = Ip[0] + "|LOCAL I/O UNIT";
+                }
+                else
+                {
+                    gsZoneText = "LOCAL I/O UNIT";
+                }
+            }
+            else
+            {
+                if (i == 3)
+                {
+                    gsTextField = Ip[0];
+                    string devType = GetSyncroDevType();
+                    if (!string.IsNullOrEmpty(devType))
+                    {
+                        gsTextField += "|" + devType;
+                    }
+                }
+                else if (i == 2)
+                {
+
+                    // There is no location text
+                    string devType = GetSyncroDevType();
+                    if (!string.IsNullOrEmpty(devType))
+                    {
+                        gsZoneText = devType;
+                    }
+                }
+            }
+
 
             if (LocalInputUnit)
             {
@@ -498,6 +539,28 @@ namespace Drax360Service.Panels
                         }
                         break;
 
+                    case "DISABLED ZONE":
+                        GetSyncroZone();
+                        if (giDeviceAddress == 255 || giZoneNumber > 0)
+                        {
+                            if (on)
+                            {
+                                AddToZoneDisableList(tNode + this.Offset, giZoneNumber, ref giDeviceAddress, ref giLoopNumber);
+                            }
+                            else
+                            {
+                                RemoveFromZoneDisableList(tNode + this.Offset, giZoneNumber, ref giDeviceAddress, ref giLoopNumber);
+                            }
+
+
+                            gsTextField = "Disable Zone " + giZoneNumber; 
+
+
+                            tIpType = 13;
+                        }
+                        break;
+
+
                     case "INTERNAL FAULT":
                         gsTextField = "Internal Fault";
                         if (sNodeDesc.IndexOf("FIRECELL", StringComparison.OrdinalIgnoreCase) >= 0)
@@ -536,6 +599,10 @@ namespace Drax360Service.Panels
                 Console.WriteLine($"Unexpected error: {ex.Message}");
             }
 
+            if (giDeviceAddress == 255)   // TODO
+            {
+                giDeviceAddress = 1; // default
+            }
             base.NotifyClient("Send to AMX: Node = " + giNodeNumber + " Loop = " + giLoopNumber + " Address = " + giDeviceAddress);
 
             evnum = CSAMXSingleton.CS.MakeInputNumber(giNodeNumber, giLoopNumber, giDeviceAddress, p1, on);
@@ -546,7 +613,7 @@ namespace Drax360Service.Panels
         private int GetSyncroZone()
         {
             int x, n;
-            int result = 255; 
+            int result = 255;
 
             try
             {
@@ -563,7 +630,7 @@ namespace Drax360Service.Panels
                 {
                     result = 255;   // Default
 
-                    for (x = 2; x <= 6; x++)
+                    for (x = 2; x < Ip.Length; x++)
                     {
                         string line = Ip[x] ?? "";
 
@@ -624,7 +691,7 @@ namespace Drax360Service.Panels
                 // SECOND PASS — try ZONE if still 255  
                 if (result == 255)
                 {
-                    for (x = 2; x <= 6; x++)
+                    for (x = 1; x <= 6; x++)
                     {
                         string line = Ip[x] ?? "";
 
@@ -639,7 +706,7 @@ namespace Drax360Service.Panels
                 }
             }
             catch
-            {}
+            { }
 
             return result;
         }
@@ -647,7 +714,7 @@ namespace Drax360Service.Panels
         private int GetSyncroDevice()
         {
             int x, n;
-            int result = 255; 
+            int result = 255;
             giDeviceAddress = result;
 
             try
@@ -660,7 +727,7 @@ namespace Drax360Service.Panels
                     n = line.IndexOf("ADR=", StringComparison.OrdinalIgnoreCase);
                     if (n >= 0)
                     {
-                        result = Convert.ToInt32(line.Substring(n + 4,3));
+                        result = Convert.ToInt32(line.Substring(n + 4, 3));
                         giDeviceAddress = result;
                         break;
                     }
@@ -680,7 +747,7 @@ namespace Drax360Service.Panels
                 }
             }
             catch
-            {}
+            { }
 
             return result;
         }
@@ -692,7 +759,7 @@ namespace Drax360Service.Panels
 
             try
             {
- 
+
                 for (int x = 2; x <= 6; x++)
                 {
                     string line = Ip[x] ?? "";
@@ -706,11 +773,82 @@ namespace Drax360Service.Panels
                 }
             }
             catch
-            {}
+            { }
 
             return result;
         }
 
+        public void AddToZoneDisableList(int piNode, int piZone, ref int piDeviceAddress, ref int piLoop)
+        {
+            bool inputNumberFound = false;
+            int listCount = garyzoneDisableList.Count;
+
+            // Set loop number (0-based)
+            piLoop = (listCount / 255);
+            string sPanelZone = piNode.ToString("00") + piZone.ToString("000") + piLoop.ToString("000");
+
+            // Check if already in list
+            for (int i = 0; i < listCount; i++)
+            {
+                if (garyzoneDisableList[i] == sPanelZone)
+                {
+                    inputNumberFound = true;
+                    break;
+                }
+            }
+
+            if (!inputNumberFound)
+            {
+                garyzoneDisableList.Add(sPanelZone);
+                this.NotifyClient($"Add to Zone Disable array: Count {listCount}, InputNumber: {sPanelZone}");
+                piDeviceAddress = listCount + 1;
+            }
+            else
+            {
+                // Already added
+                piDeviceAddress = -1;
+            }
+
+            this.NotifyClient($"Zone Disable Array: {sPanelZone}");
+            this.NotifyClient($"Add to Zone Disable List Count: {garyzoneDisableList.Count}");
+        }
+
+        public void RemoveFromZoneDisableList(int piNode, int piZone, ref int piDeviceAddress, ref int piLoop)
+        {
+            bool inputNumberFound = false;
+            int listCount = garyzoneDisableList.Count;
+
+            // Set loop number (0-based)
+            piLoop = (listCount / 255);
+            string sPanelZone = piNode.ToString("00") + piZone.ToString("000") + piLoop.ToString("000");
+
+            // Search and remove
+            for (int i = 0; i < listCount; i++)
+            {
+                if (garyzoneDisableList[i] == sPanelZone)
+                {
+                    inputNumberFound = true;
+                    garyzoneDisableList[i] = ""; // mark as cleared
+                    piDeviceAddress = i + 1;
+                    this.NotifyClient($"Zone Disable Found in list - Index/Device Address = {piDeviceAddress}");
+                    break;
+                }
+            }
+
+            // Clean up empty entries
+            garyzoneDisableList.RemoveAll(s => string.IsNullOrEmpty(s));
+
+            if (garyzoneDisableList.Count == 0)
+            {
+                this.NotifyClient("- Zone Disable List empty");
+            }
+        }
+
+        private void LogMyStuff(string message)
+        {
+            Console.WriteLine(message);
+            // Could replace with a more advanced logging system
+        }
 
         private void send_response_amx_and_serial(int evnum, string message1, string message2, string message3 = "")
         {
@@ -752,7 +890,7 @@ namespace Drax360Service.Panels
         {
             base.heartbeat_timer_callback(sender);
 
- //           send_message(ActionType.KHandShake, NwmData.AlarmToAmx, "0,0,0,0");
+            //           send_message(ActionType.KHandShake, NwmData.AlarmToAmx, "0,0,0,0");
         }
 
         public override void StartUp(int fakemode)
@@ -930,7 +1068,7 @@ namespace Drax360Service.Panels
                 gbaryDataToTX[5] = device.ToString();
                 gbaryDataToTX[6] = "0";
                 gbaryDataToTX[7] = "0";
-                gbaryDataToTX[8] = (loop-1).ToString();
+                gbaryDataToTX[8] = (loop - 1).ToString();
 
                 string sChecksum = makechecksum(gbaryDataToTX);
                 gbaryDataToTX[9] = sChecksum;
@@ -947,7 +1085,7 @@ namespace Drax360Service.Panels
                 gbaryDataToTX[5] = device.ToString();
                 gbaryDataToTX[6] = "0";
                 gbaryDataToTX[7] = "0";
-                gbaryDataToTX[8] = (loop-1).ToString();
+                gbaryDataToTX[8] = (loop - 1).ToString();
 
                 string sChecksum = makechecksum(gbaryDataToTX);
                 gbaryDataToTX[9] = sChecksum;
@@ -1000,9 +1138,9 @@ namespace Drax360Service.Panels
 
             serialsendstring(gbaryDataToTX);
 
-          //  node = node + this.Offset;
-          //  SendEvent("Syncro", type, inputtype, text, on, node, loop, device);
-            }
+            //  node = node + this.Offset;
+            //  SendEvent("Syncro", type, inputtype, text, on, node, loop, device);
+        }
 
         public int GetNextMsgID()
         {
@@ -1027,63 +1165,60 @@ namespace Drax360Service.Panels
 
         //    Parse(readbytes);
         //}
-
-        private readonly List<byte> _serialBuffer = new List<byte>();
-        private readonly byte[] _messageTerminator = new byte[] { 0x0D, 0x0A }; // \r\n
+        private readonly List<byte> _buffer = new List<byte>();
+        private readonly byte[] _terminator = { 0x0D, 0x0A, 0x0D, 0x0A }; // \r\n\r\n
 
         public override void SerialPort_Datareceived(object sender, SerialDataReceivedEventArgs e)
         {
             int bytesToRead = serialport.BytesToRead;
-            if (bytesToRead == 0) return;
+            if (bytesToRead <= 0) return;
 
-            byte[] buffer = new byte[bytesToRead];
-            int read = serialport.Read(buffer, 0, bytesToRead);
-            if (read == 0) return;
+            byte[] incoming = new byte[bytesToRead];
+            int read = serialport.Read(incoming, 0, bytesToRead);
+            if (read <= 0) return;
 
-            lock (_serialBuffer)
+            lock (_buffer)
             {
-                _serialBuffer.AddRange(buffer);
-
-                while (true)
-                {
-                    int endIndex = FindTerminator(_serialBuffer, _messageTerminator);
-                    if (endIndex == -1) break; // no full message yet
-
-                    // Extract the complete message including the terminator
-                    byte[] completeMsg = _serialBuffer.Take(endIndex + _messageTerminator.Length).ToArray();
-
-                    // Remove it from buffer
-                    _serialBuffer.RemoveRange(0, endIndex + _messageTerminator.Length);
-
-                    // Parse the complete message
-                    Parse(completeMsg);
-                }
+                _buffer.AddRange(incoming);
+                ExtractMessages();
             }
         }
 
-        /// <summary>
-        /// Finds the first occurrence of the terminator in the buffer.
-        /// Returns the index of the first terminator byte, or -1 if not found.
-        /// </summary>
-        private int FindTerminator(List<byte> buffer, byte[] terminator)
+        private void ExtractMessages()
         {
-            for (int i = 0; i <= buffer.Count - terminator.Length; i++)
+            while (true)
+            {
+                int pos = FindPattern(_buffer, _terminator);
+                if (pos == -1) return;  // no complete message yet
+
+                int end = pos + _terminator.Length;
+                byte[] message = _buffer.Take(end).ToArray();
+
+                _buffer.RemoveRange(0, end);
+
+                // Send message to your existing parser
+                Parse(message);
+            }
+        }
+
+        private int FindPattern(List<byte> buffer, byte[] pattern)
+        {
+            for (int i = 0; i <= buffer.Count - pattern.Length; i++)
             {
                 bool match = true;
-                for (int j = 0; j < terminator.Length; j++)
+                for (int j = 0; j < pattern.Length; j++)
                 {
-                    if (buffer[i + j] != terminator[j])
+                    if (buffer[i + j] != pattern[j])
                     {
                         match = false;
                         break;
                     }
                 }
-
                 if (match) return i;
             }
-
             return -1;
         }
+
 
     }
 }
