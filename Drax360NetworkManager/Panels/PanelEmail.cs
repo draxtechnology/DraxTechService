@@ -14,34 +14,33 @@ namespace Drax360Service.Panels
         #endregion
 
         #region private variables
-        private string from;
-        string server;
-        int port;
-        string username;
-        string password;
-        bool smtpauth;
-        bool enablessl;
+        public string from;
+        public string server;
+        public int port;
+        public string username;
+        public string password;
+        public int smtpauth;
+        public bool enablessl;
         #endregion
 
-        public PanelEmail(string baselogfolder, string identifier) : base(baselogfolder, identifier, "EmailMan", "EML")
+        public PanelEmail(string baselogfolder, string identifier) : base(baselogfolder, identifier, "EMLMan", "EML")
         {
             if (!String.IsNullOrEmpty(identifier))
             {
                 from = base.GetSetting<string>(kemailkey, "From");
-                string server = base.GetSetting<string>(kemailkey, "SMTPServer");
-                int port = base.GetSetting<int>(kemailkey, "SMTPPort"); ;
-                string username = base.GetSetting<string>(kemailkey, "LoginName");
-                string password = base.GetSetting<string>(kemailkey, "Password");
-                if (password.EndsWith("="))
-                {
-                    
-                    // temporarily disabled.
-                   // password = AesDecryptor.DecryptString(password,"");
-                    
-                }
-                bool smtpauth = base.GetSetting<bool>(kemailkey, "SMTPAuthorisation");
+                server = base.GetSetting<string>(kemailkey, "SMTPServer");
+                port = base.GetSetting<int>(kemailkey, "SMTPPort"); ;
+                username = base.GetSetting<string>(kemailkey, "LoginName");
+                password = base.GetSetting<string>(kemailkey, "Password");
+                //if (password.EndsWith("="))
+                //{
+                //    password = AesDecryptor.DecryptString(password, "");
+                //}
+                smtpauth = base.GetSetting<int>(kemailkey, "SMTPAuthorisation");
 
-                bool enablessl = true;
+                enablessl = true;
+
+                TestMessage("mike.holmes@draxtechnology.com");
             }
         }
 
@@ -99,7 +98,7 @@ namespace Drax360Service.Panels
 
         public override void StartUp(int fakemode)
         {
-            
+
         }
         public void TestMessage(string to)
         {
@@ -111,13 +110,12 @@ namespace Drax360Service.Panels
 
         private void send_message(MailMessage message)
         {
-            
 
             // assuming SMTP for now, as most modern
-           
+
             using (SmtpClient smtp = new SmtpClient(server, port))
             {
-                if (!String.IsNullOrEmpty(username) || !String.IsNullOrEmpty(password) || !smtpauth)
+                if (!String.IsNullOrEmpty(username) || !String.IsNullOrEmpty(password) || smtpauth == 1)
                 {
                     smtp.Credentials = new System.Net.NetworkCredential(username, password);
                 }
@@ -126,12 +124,13 @@ namespace Drax360Service.Panels
                 try
                 {
                     smtp.Send(message);
-                    base.NotifyClient("Send Email "+message.Subject+" "+message.To, false);
+                    base.NotifyClient("Send Email " + message.Subject + " " + message.To, false);
                 }
                 catch (Exception ex)
-                {  
+                {
                     NotifyClient($"Error in send_message: {ex.Message}");
-                
+
+                }
             }
         }
     }

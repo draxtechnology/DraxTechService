@@ -15,6 +15,8 @@ namespace Drax360Service.Panels
         protected const byte kHeartbeatInitialDelaySeconds = 60;
         protected const byte kHeartbeatDelaySeconds = 60;
         protected const string ksettingsetupsection = "SETUP";
+        protected const string ksettingsyncrosection = "SYNCRO";
+        protected const string ksettingsignifiresection = "SIGNIFIRE";
         protected const string ksettingpanelsection = "PANEL";
         protected const string ksettingmainsection = "MAIN";
         private const string kinifolder = "";
@@ -159,6 +161,28 @@ namespace Drax360Service.Panels
                 Console.WriteLine("Sent: " + numeric); 
             }
         }
+
+
+        protected void serialsendstring(string[] values)
+        {
+            if (serialport?.IsOpen == true)
+            {
+                byte[] toSend = values
+                    .Where(v => !string.IsNullOrEmpty(v))
+                    .Select(v => (byte)Convert.ToInt32(v))
+                    .ToArray();
+
+                serialport.Write(toSend, 0, toSend.Length);
+
+                string hex = BitConverter.ToString(toSend);
+                this.NotifyClient("Sent (Hex): " + hex, false);
+
+                string numeric = string.Join(" ", toSend.Select(b => b.ToString()));
+                this.NotifyClient("Sent (Numeric): " + numeric, false);
+            }
+        }
+
+
         protected void SendChar(char ch)
         {
             if (serialport?.IsOpen != true)
@@ -171,8 +195,6 @@ namespace Drax360Service.Panels
             serialport.Write(b, 0, b.Length);
 
             this.NotifyClient("Sent Char: " + ch + " (" + ((int)ch) + ")", false);
-            
-            //Console.WriteLine("Sent Char: " + ch + " (" + ((int)ch) + ")");
         }
 
         protected void serialsend(string toSend)

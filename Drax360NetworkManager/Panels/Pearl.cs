@@ -12,7 +12,7 @@ using System.Xml.Schema;
 namespace Drax360Service.Panels
 {
 
-    internal class PanelNotifier : AbstractPanel
+    internal class PanelPearl : AbstractPanel
     {
         public string gsDeviceText = "";
         public EnmDeviceType gDeviceType;
@@ -23,7 +23,7 @@ namespace Drax360Service.Panels
         {
             get =>
 
-                /* Notifier
+                /* Pearl
             >IS0001C000000000000BE7\r
             >IE0220611450330000000BDD\r
             >IE0220611450330000000BDD\r
@@ -34,7 +34,7 @@ namespace Drax360Service.Panels
                 ">IE0220611450330000000BDD\r";
         }
 
-        public PanelNotifier(string baselogfolder, string identifier) : base(baselogfolder, identifier, "NOTMan", "NOT")
+        public PanelPearl(string baselogfolder, string identifier) : base(baselogfolder, identifier, "PRLMan", "PRL")
         {
             if (!String.IsNullOrEmpty(identifier))
             {
@@ -152,548 +152,545 @@ namespace Drax360Service.Panels
                 }
                 bValidChecksum = CheckSumValidation(sChecksum, ourmessage);
 
-                switch ((enmNotEventType)eventcode)
+                switch ((enmPRLEventType)eventcode)
                 {
-                    case enmNotEventType.Fire:
+                    case enmPRLEventType.Fire:
                         gsTextField = "Fire";
                         Console.WriteLine(gsTextField);
-                        gAlarmType = enmNotAlarmType.NOTFire.ToString();
+                        gAlarmType = enmPRLAlarmType.NOTFire.ToString();
                         break;
 
-                    case enmNotEventType.TestFire:
+                    case enmPRLEventType.TestFire:
                         gsTextField = "Test Fire";
                         Console.WriteLine(gsTextField);
-                        gAlarmType = enmNotAlarmType.NOTFire.ToString();
+                        gAlarmType = enmPRLAlarmType.NOTFire.ToString();
                         break;
 
-                    case enmNotEventType.FireDisabled:
+                    case enmPRLEventType.FireDisabled:
                         gsTextField = "Fire Disabled";
                         Console.WriteLine(gsTextField);
-                        gAlarmType = enmNotAlarmType.NOTTestModeFire.ToString();
+                        gAlarmType = enmPRLAlarmType.NOTTestModeFire.ToString();
                         break;
 
-                    case enmNotEventType.NoReplyMissing:
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                    case enmPRLEventType.NoReplyMissing:
+                        gAlarmType = enmPRLAlarmType.NOTFault.ToString();
                         gsTextField = "Device Missing";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.TypeMisMatch:
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                    case enmPRLEventType.TypeMisMatch:
+                        gAlarmType = enmPRLAlarmType.NOTFault.ToString();
                         gsTextField = "Type Mismatch";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.PreAlarm:
-                        gAlarmType = enmNotAlarmType.NOTPreAlarm.ToString();
+                    case enmPRLEventType.PreAlarm:
+                        gAlarmType = enmPRLAlarmType.NOTPreAlarm.ToString();
                         gsTextField = "Pre Alarm";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.RemovedDisabled:
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                    case enmPRLEventType.RemovedDisabled:
+                        gAlarmType = enmPRLAlarmType.NOTFault.ToString();
                         gsTextField = "Removed Under Disablement";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.FireCleared:
-                        gAlarmType = enmNotAlarmType.NOTFire.ToString();
+                    case enmPRLEventType.FireCleared:
+                        gAlarmType = enmPRLAlarmType.NOTFire.ToString();
                         gsTextField = "Fire Cleared";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.FaultCleared:
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                    case enmPRLEventType.FaultCleared:
+                        gAlarmType = enmPRLAlarmType.NOTFault.ToString();
                         gsTextField = "Fault Cleared";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.MissingCleared:
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                    case enmPRLEventType.MissingCleared:
+                        gAlarmType = enmPRLAlarmType.NOTFault.ToString();
                         gsTextField = "Missing Cleared";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.SensorModuleFault:
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                    case enmPRLEventType.SensorModuleFault:
+                        gAlarmType = enmPRLAlarmType.NOTFault.ToString();
                         gsTextField = "Sensor Fault";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.Deviceenabled:
+                    case enmPRLEventType.Deviceenabled:
                         Console.WriteLine("Device " + address + " Enabled");
-                        gAlarmType = enmNotAlarmType.NOTIsolate.ToString();
+                        gAlarmType = enmPRLAlarmType.NOTIsolate.ToString();
                         gsTextField = "Device " + address + " Enabled";
                         on = false;
                         break;
 
-                    case enmNotEventType.Devicedisabled:
-                        gAlarmType = enmNotAlarmType.NOTIsolate.ToString();
+                    case enmPRLEventType.Devicedisabled:
+                        gAlarmType = enmPRLAlarmType.NOTIsolate.ToString();
                         gsTextField = "Device " + address + " Disabled";
                         Console.WriteLine("Device " + address + " Disabled");
                         break;
 
-                    case enmNotEventType.SystemReset:
+                    case enmPRLEventType.SystemReset:
                         gsTextField = "Panel Reset";
                         giAddressNumber = 9;
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.ModuleLoadShortCircuit:
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                    case enmPRLEventType.ModuleLoadShortCircuit:
+                        gAlarmType = enmPRLAlarmType.NOTFault.ToString();
                         gsTextField = "Module Load Short Circuit";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.OutputModuleTestDeActivation:
-                        gAlarmType = enmNotAlarmType.NOTOutputActivate.ToString();
+                    case enmPRLEventType.OutputModuleTestDeActivation:
+                        gAlarmType = enmPRLAlarmType.NOTOutputActivate.ToString();
                         gsTextField = "Module Activation";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.OutputModuleTestActivation:
-                        gAlarmType = enmNotAlarmType.NOTOutputActivate.ToString();
+                    case enmPRLEventType.OutputModuleTestActivation:
+                        gAlarmType = enmPRLAlarmType.NOTOutputActivate.ToString();
                         gsTextField = "Module DeActivation";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.DuplicateAddress:
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                    case enmPRLEventType.DuplicateAddress:
+                        gAlarmType = enmPRLAlarmType.NOTFault.ToString();
                         gsTextField = "Duplicate Address";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.AUXSet:
-                        gAlarmType = enmNotAlarmType.NOTNonFireAlarm.ToString();
+                    case enmPRLEventType.AUXSet:
+                        gAlarmType = enmPRLAlarmType.NOTNonFireAlarm.ToString();
                         gsTextField = "AUX Set";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.AuxCleared:
-                        gAlarmType = enmNotAlarmType.NOTNonFireAlarm.ToString();
+                    case enmPRLEventType.AuxCleared:
+                        gAlarmType = enmPRLAlarmType.NOTNonFireAlarm.ToString();
                         gsTextField = "Aux Cleared";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.TechnicalAlarm:
-                        gAlarmType = enmNotAlarmType.NOTNonFireAlarm.ToString();
+                    case enmPRLEventType.TechnicalAlarm:
+                        gAlarmType = enmPRLAlarmType.NOTNonFireAlarm.ToString();
                         gsTextField = "Technical Alarm";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.PowerSupplyFault:
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                    case enmPRLEventType.PowerSupplyFault:
+                        gAlarmType = enmPRLAlarmType.NOTFault.ToString();
                         gsTextField = "Power Supply Fault";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.LoopBoosterFault:
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                    case enmPRLEventType.LoopBoosterFault:
+                        gAlarmType = enmPRLAlarmType.NOTFault.ToString();
                         gsTextField = "Loop Booster Fault";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.ThermalAlarm:
-                        gAlarmType = enmNotAlarmType.NOTNonFireAlarm.ToString();
+                    case enmPRLEventType.ThermalAlarm:
+                        gAlarmType = enmPRLAlarmType.NOTNonFireAlarm.ToString();
                         giAddressNumber = 0;
                         gsTextField = "Thermal Alarm";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.EnableZone:
-                        gAlarmType = enmNotAlarmType.NOTDisableZone.ToString();
+                    case enmPRLEventType.EnableZone:
+                        gAlarmType = enmPRLAlarmType.NOTDisableZone.ToString();
                         gsTextField = "Zone " + zone + " Enabled";
                         on = false;
                         Console.WriteLine("Zone " + zone + " Enabled");
                         break;
 
-                    case enmNotEventType.DisableZone:
-                        gAlarmType = enmNotAlarmType.NOTDisableZone.ToString();
+                    case enmPRLEventType.DisableZone:
+                        gAlarmType = enmPRLAlarmType.NOTDisableZone.ToString();
                         gsTextField = "Zone " + zone + " Disabled";
                         Console.WriteLine("Zone " + zone + " Disabled");
                         break;
 
-                    case enmNotEventType.LIBCardLoopCPUFault:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.LIBCardLoopCPUFault:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 41;
                         gsTextField = "LIB Card Loop CPU Fault";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.LIBCardLoopCPUPwrRestart:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.LIBCardLoopCPUPwrRestart:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 42;
                         gsTextField = "LIB Card Loop CPU Power Restart";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.LIBCardLoopShortCircuit:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.LIBCardLoopShortCircuit:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 34;
                         gsTextField = "LIB Card Loop Short Circuit";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.LIBCardDeviceZeroPresent:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.LIBCardDeviceZeroPresent:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 44;
                         gsTextField = "LIB Card Device Zero Present";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.LIBCardMissing:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.LIBCardMissing:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 45;
                         gsTextField = "LIB Card Missing";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.LIBCardLoopEndDriverFault:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.LIBCardLoopEndDriverFault:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 46;
                         gsTextField = "LIB Card Loop End Driver Fault";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.LIBCardLoopSignalDegraded:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.LIBCardLoopSignalDegraded:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 47;
                         gsTextField = "LIB Card Loop Signal Degraded";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.LIBCardROMChkSumErr:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.LIBCardROMChkSumErr:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 48;
                         gsTextField = "LIB Card ROM Checksum Error";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.RS232LinkFault:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.RS232LinkFault:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 49;
                         gsTextField = "RS232 Link Fault";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.PSUChargerFault:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.PSUChargerFault:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 50;
                         gsTextField = "PSU Charger Fault";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.BatteryLowVoltage:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.BatteryLowVoltage:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 51;
                         gsTextField = "Battery Low Voltage";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.BatteryFailure:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.BatteryFailure:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 52;
                         gsTextField = "Battery Failure";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.SoftwareFailure:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.SoftwareFailure:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 36;
                         gsTextField = "Software Failure";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.PanelKeyStuck:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.PanelKeyStuck:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 40;
                         gsTextField = "Panel Key Stuck";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.AuxOutput1Fault:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.AuxOutput1Fault:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 37;
                         gsTextField = "Aux Output 1 Fault";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.AuxOutput2Fault:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.AuxOutput2Fault:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 38;
                         gsTextField = "Aux Output 2 Fault";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.NetworkZoneAssignIncorrect:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.NetworkZoneAssignIncorrect:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 53;
                         gsTextField = "Network Zone Assign Incorrect";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.NetworkRefAssingIncorrect:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.NetworkRefAssingIncorrect:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 54;
                         gsTextField = "Network Ref Assign Incorrect";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.ID2NetworkZoneDup:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.ID2NetworkZoneDup:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 55;
                         gsTextField = "ID2 Net Zone Duplication";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.ID2NetworkStartUpFaultNetCardMissing:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.ID2NetworkStartUpFaultNetCardMissing:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 56;
                         gsTextField = "ID2 Net Startup Fault NetCard Missing";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.ID2NetworkStartUpFaultNoACK:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.ID2NetworkStartUpFaultNoACK:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 57;
                         gsTextField = "ID2 Net Startup Fault No Ack";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.ID2NetworkStartUpFaultNoReply:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.ID2NetworkStartUpFaultNoReply:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 58;
                         gsTextField = "ID2 Net Startup Fault No Reply";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.ID2NetworkStartUpFaultJOINFail:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.ID2NetworkStartUpFaultJOINFail:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 59;
                         gsTextField = "ID2 Net Startup Fault Join Fail";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.ID2NetworkRunTimeFault:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.ID2NetworkRunTimeFault:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 60;
                         gsTextField = "ID2 Net Run Time Fault";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.ID2ChannelLink1Fault:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.ID2ChannelLink1Fault:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 61;
                         gsTextField = "ID2 Net Channel 1 Link Fault";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.ID2ChannelLink2Fault:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.ID2ChannelLink2Fault:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 62;
                         gsTextField = "ID2 Net Channel 2 Link Fault";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.ID2FlashChecksumErr:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.ID2FlashChecksumErr:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 63;
                         gsTextField = "ID2 Net Flash checksum Error";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.ID2NetworkOverLoadTimeOut:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.ID2NetworkOverLoadTimeOut:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 64;
                         gsTextField = "ID2 Net OverLoad Timeout";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.OverRideSounder:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.OverRideSounder:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 65;
                         gsTextField = "Over-Ride Sounder/Investigation delay";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.InvestigateDelayExtended:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.InvestigateDelayExtended:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 66;
                         gsTextField = "Investigation delay extended";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.RemoteFireOutPutTest:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.RemoteFireOutPutTest:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 67;
                         gsTextField = "Remote Fire Output Test";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.SignalledFaultatPanelInput1:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.SignalledFaultatPanelInput1:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 99;
                         gsTextField = "Signalled Fault at Panel Input 1";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.SignalledFaultatPanelInput2:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.SignalledFaultatPanelInput2:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 100;
                         gsTextField = "Signalled Fault at Panel Input 2";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.ExternalPSUFault:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.ExternalPSUFault:
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 102;
                         gsTextField = "External PSU Fault";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.TerminateTest:  // 130
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.TerminateTest:  // 130
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 96;
                         gsTextField = "End Zone " + zone + " Test";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.SilenceSounder:  // 131
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.SilenceSounder:  // 131
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 10;
                         gsTextField = "Alarms Silenced";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.MuteBuzzer:  // 132
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.MuteBuzzer:  // 132
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 18;
                         gsTextField = "Internal Buzzer Muted";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.StartZoneTest:  // 135
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.StartZoneTest:  // 135
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 96;
                         gsTextField = "Start Zone " + zone + " Test";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.Evacuate:  // 138
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.Evacuate:  // 138
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 1;
                         gsTextField = "Evacuate";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.SysClockAdjust:  // 139
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.SysClockAdjust:  // 139
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 30;
                         gsTextField = "System Clock Adjust";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.EditChangesConfirmed:  // 140
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.EditChangesConfirmed:  // 140
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 31;
                         gsTextField = "Edited Changes Confirmed";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.CommsFail:  // 147
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.CommsFail:  // 147
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 32;
                         gsTextField = "Comms Fail";
                         Console.WriteLine(gsTextField);
                         break;
 
 
-                    case enmNotEventType.ID2NetworkDupNode:  // 203
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.ID2NetworkDupNode:  // 203
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 33;
                         gsTextField = "ID2 Net Duplicate Node";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.PowerFaultID2Booster:  // 204
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.PowerFaultID2Booster:  // 204
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 35;
                         gsTextField = "Power Fault ID2 Booster";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.AccessLevel1:  // 205
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.AccessLevel1:  // 205
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 76;
                         gsTextField = "Access Level 1";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.AccessLevel2:  // 206
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.AccessLevel2:  // 206
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 77;
                         gsTextField = "Access Level 2";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.AccessLevel3:  // 207
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.AccessLevel3:  // 207
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 78;
                         gsTextField = "Access Level 3";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.AccessLevel4:  // 208
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.AccessLevel4:  // 208
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 79;
                         gsTextField = "Access Level 4";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.ControlOutputsEnabled1:  // 209
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.ControlOutputsEnabled1:  // 209
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 101;
                         gsTextField = "Control Outputs Enabled";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.ControlOutputsDisabled1:  // 210
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.ControlOutputsDisabled1:  // 210
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 101;
                         gsTextField = "Control Outputs Disabled";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.EntireZoneEnable:  // 228
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.EntireZoneEnable:  // 228
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 97;
                         gsTextField = "Entire Zone Enable";
                         on = false;
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.EnitreZoneDisable:  // 229
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.EnitreZoneDisable:  // 229
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 97;
                         gsTextField = "Entire Zone Disable";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.NetworkEntireZoneEnable:  // 230
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.NetworkEntireZoneEnable:  // 230
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 93;
                         gsTextField = "Network Entire Zone Enable";
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.NetworkEntireZoneDisable:  // 231
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                    case enmPRLEventType.NetworkEntireZoneDisable:  // 231
+                        gAlarmType = enmPRLAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 93;
                         gsTextField = "Network Entire Zone Enable";
                         Console.WriteLine(gsTextField);
-                        break;
-                    default:
-                        base.NotifyClient("Unkown Event " + ((enmNotEventType)eventcode));
                         break;
                 }
 
@@ -709,7 +706,7 @@ namespace Drax360Service.Panels
 
                 try
                 {
-                    enmNotAlarmType enumValue = (enmNotAlarmType)Enum.Parse(typeof(enmNotAlarmType), gAlarmType);
+                    enmPRLAlarmType enumValue = (enmPRLAlarmType)Enum.Parse(typeof(enmPRLAlarmType), gAlarmType);
                     p1 = (int)(enumValue);
                 }
                 catch (Exception ex)
@@ -789,7 +786,7 @@ namespace Drax360Service.Panels
                         break;
                     case 4:
                         gDeviceType = EnmDeviceType.Reserved1;
-                        gsDeviceText = "4 Reserved";
+                        gsDeviceText = "Reserved";
                         break;
                     case 5:
                         gDeviceType = EnmDeviceType.CallPointManual;
@@ -833,11 +830,11 @@ namespace Drax360Service.Panels
                         break;
                     case 15:
                         gDeviceType = EnmDeviceType.Reserved2;
-                        gsDeviceText = "15 Reserved";
+                        gsDeviceText = "Reserved";
                         break;
                     case 16:
                         gDeviceType = EnmDeviceType.Reserved3;
-                        gsDeviceText = "16 Reserved";
+                        gsDeviceText = "Reserved";
                         break;
                     case 17:
                         gDeviceType = EnmDeviceType.GASSensorInterface;
@@ -854,6 +851,10 @@ namespace Drax360Service.Panels
                     case 20:
                         gDeviceType = EnmDeviceType.SMART4Sensor;
                         gsDeviceText = "SMART 4 Sensor";
+                        break;
+                    case 26:
+                        gDeviceType = EnmDeviceType.UnmonitoredRelayOutput;
+                        gsDeviceText = "Unmonitored Relay Output";
                         break;
                     default:
                         gDeviceType = EnmDeviceType.Unknown;
@@ -908,7 +909,6 @@ namespace Drax360Service.Panels
 
             if (fakemode > 0)
             {
-
                 return;
             }
 
@@ -951,8 +951,6 @@ namespace Drax360Service.Panels
 
             {
                 base.NotifyClient("Failed To Open " + serialport.PortName, false);
-
-
             }
 
             if (serialport.IsOpen)

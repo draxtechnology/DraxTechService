@@ -33,7 +33,9 @@ namespace Drax360Service
         kDISABLEMODULE,
         kENABLEMODULE,
         kDISABLEZONE,
-        kENABLEZONE
+        kENABLEZONE,
+        KAnalogueData,
+        KHandShake
     }
     public enum NwmData
     {
@@ -342,7 +344,155 @@ namespace Drax360Service
         SignalledFaultatPanelInput2 = 396,
         ExternalPSUFault = 332
     }
+    public enum enmPRLEventType
+    {
+        Fire = 1,
+        FireDisabled = 2,
+        TestFire = 3,
+        NoReplyMissing = 5,
+        TypeMisMatch = 6,
+        SensorModuleFault = 8,
+        PreAlarm = 10,
+        RemovedDisabled = 13,
+        FireCleared = 19,
+        FaultCleared = 20,
+        MissingCleared = 21,
+        Deviceenabled = 23,
+        Devicedisabled = 24,
+        ModuleLoadShortCircuit = 33,
+        OutputModuleTestActivation = 34,
+        OutputModuleTestDeActivation = 35,
+        DuplicateAddress = 36,
+        AUXSet = 37,
+        AuxCleared = 38,
+        TechnicalAlarm = 44,
+        PowerSupplyFault = 45,
+        LoopBoosterFault = 48,
+        ThermalAlarm = 50,
+        SystemReset = 129,
+        TerminateTest = 130,
+        SilenceSounder = 131,
+        MuteBuzzer = 132,
+        StartZoneTest = 135,
+        EnableZone = 136,
+        DisableZone = 137,
+        Evacuate = 138,
+        SysClockAdjust = 139,
+        EditChangesConfirmed = 140,
+        SuspectedLoopBreak = 143,
+        PowerRestart = 146,
+        CommsFail = 147,
+        LossOfLoop = 148,
+        LossPartLoop = 149,
+        EndBFaultLoop = 150,
+        NetworkGenerlaReset = 153,
+        NetworkSilenceSounders = 154,
+        NetworkGeneralMuteSounder = 155,
+        NetworkDisabled = 156,
+        ReSoundSounder = 157,
+        SounderDisabled = 159,
+        RemoteFireOutputDisabled = 160,
+        MuteInternalBuzzer = 161,
+        ControlOutputsDisabled = 162,
+        OverRideSounder = 163,
+        RemoteFireOutputActivated = 165,
+        ControlOutputsEnabled = 166,
+        InvestigateDelayExtended = 167,
+        RemoteFireOutputEnabled = 168,
+        SounderEnabled = 169,
+        SounderImmediateMode = 170,
+        SounderDelayMode = 171,
+        SystemDayMode = 172,
+        SystemNightMode = 173,
+        RemoteFireOutPutTest = 176,
+        SounderRelayCircuitDisabled = 181,
+        FireRelayDisabled = 182,
+        FaultRelayDisabled = 183,
+        SounderRelayCircuitEnabled = 184,
+        FireRelayEnabled = 185,
+        FaultRelyEnabled = 186,
+        NetworkZoneInTestMode = 191,
+        NetworkZoneInEnabled = 192,
+        NetworkZoneInDisabled = 193,
+        NetworkZoneInTest = 194,
+        NetworkEnableZone = 195,
+        NetworkDisableZone = 196,
+        NetworkSoundersEnabled = 197,
+        NetworkSoundersDisabled = 198,
+        NetworkZoneInFault = 199,
+        ZoneInFault = 200,
+        ID2NetworkDupNode = 203,
+        PowerFaultID2Booster = 204,
+        AccessLevel1 = 205,
+        AccessLevel2 = 206,
+        AccessLevel3 = 207,
+        AccessLevel4 = 208,
+        ControlOutputsEnabled1 = 209,
+        ControlOutputsDisabled1 = 210,
+        EntireZoneEnable = 228,
+        EnitreZoneDisable = 229,
+        NetworkEntireZoneEnable = 230,
+        NetworkEntireZoneDisable = 231,
+        LIBCardLoopCPUFault = 257,
+        LIBCardLoopCPUPwrRestart = 261,
+        LIBCardLoopShortCircuit = 265,
+        LIBCardDeviceZeroPresent = 269,
+        LIBCardMissing = 273,
+        LIBCardLoopEndDriverFault = 277,
+        LIBCardLoopSignalDegraded = 281,
+        LIBCardROMChkSumErr = 285,
+        RS232LinkFault = 288,
+        MainsPSUFault = 289,
+        PSUChargerFault = 290,
+        BatteryLowVoltage = 291,
+        BatteryFailure = 292,
+        SoftwareFailure = 302,
+        SounderCircuit1ShortFault = 306,
+        SounderCircuit2ShortFault = 307,
+        SounderCircuit1OpenFault = 308,
+        SounderCircuit2OpenFault = 309,
+        SounderCircuit1RelayFault = 310,
+        SounderCircuit2RelayFault = 311,
+        EarthFault = 312,
+        SounderCircuit3ShortFault = 313,
+        SounderCircuit4ShortFault = 314,
+        SounderCircuit3OpenFault = 315,
+        SounderCircuit4OpenFault = 316,
+        SounderCircuit3RelayFault = 317,
+        SounderCircuit4RelayFault = 318,
+        PanelKeyStuck = 319,
+        AuxOutput1Fault = 324,
+        AuxOutput2Fault = 325,
+        NetworkZoneAssignIncorrect = 347,
+        NetworkRefAssingIncorrect = 348,
+        ID2NetworkZoneDup = 350,
+        ID2NetworkStartUpFaultNetCardMissing = 355,
+        ID2NetworkStartUpFaultNoACK = 356,
+        ID2NetworkStartUpFaultNoReply = 358,
+        ID2NetworkStartUpFaultJOINFail = 360,
+        ID2NetworkRunTimeFault = 361,
+        ID2ChannelLink1Fault = 362,
+        ID2ChannelLink2Fault = 363,
+        ID2FlashChecksumErr = 364,
+        ID2NetworkOverLoadTimeOut = 365,
+        SignalledFaultatPanelInput1 = 395,
+        SignalledFaultatPanelInput2 = 396,
+        ExternalPSUFault = 332
+    }
     public enum enmNotAlarmType
+    {
+        NOTFire = 0,
+        NOTNonFireAlarm = 1,
+        NOTPreAlarm = 2,
+        NOTIsolate = 4,
+        NOTTestModeFire = 6,
+        NOTFault = 8,
+        NOTOutputActivate = 9,
+        NOTDeviceTestMode = 10,
+        NOTDisableZone = 11,
+        NOTStatusEvent = 15,
+    }
+    public enum enmPRLAlarmType
     {
         NOTFire = 0,
         NOTNonFireAlarm = 1,
@@ -378,6 +528,8 @@ namespace Drax360Service
         LoopBoosterModule,
         SMART3Sensor,
         SMART4Sensor,
+        UnmonitoredRelayOutput,
+        ViewReferenceSensor,
         Unknown
     }
 
@@ -636,13 +788,29 @@ namespace Drax360Service
                 case "MORLEYMAX":
                     ret = new PanelMorleyMax(this.configurationbasefolder, identifier);
                     break;
-            
+
+                case "MORLEYZX":
+                    ret = new PanelMorleyZX(this.configurationbasefolder, identifier);
+                    break;
+
                 case "NOTIFIER":
                     ret = new PanelNotifier(this.configurationbasefolder, identifier);
                     break;
 
+                case "PEARL":
+                    ret = new PanelPearl(this.configurationbasefolder, identifier);
+                    break;
+
+                case "RSM":
+                    ret = new PanelRSM(this.configurationbasefolder, identifier);
+                    break;
+
                 case "TAKTIS":
                     ret = new PanelTaktis(this.configurationbasefolder, identifier);
+                    break;
+
+                case "SYNCRO":
+                    ret = new PanelSyncro(this.configurationbasefolder, identifier);
                     break;
 
                 default:
@@ -664,7 +832,6 @@ namespace Drax360Service
                 // ln(err, EventLogEntryType.Error);
                 throw new Exception(err);
             }
-
         }
         private async void startpipesend()
         {
@@ -1093,6 +1260,27 @@ namespace Drax360Service
                 case "GENT":
                     this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DataLogging"));
                     break;
+                case "MORLEYMAX":
+                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DataLoggingSet"));
+                    break;
+                case "MORLEYZX":
+                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DebugLog"));
+                    break;
+                case "NOTIFIER":
+                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DesignTime"));
+                    break;
+                case "PEARL":
+                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DesignTime"));
+                    break;
+                case "RSM":
+                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "Debug"));
+                    break;
+                case "TAKTIS":
+                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DataLogging"));
+                    break;
+                case "SYNCRO":
+                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "CreateLog"));
+                    break;
                 default:
                     this.DebugLog = true;
                     break;
@@ -1103,7 +1291,7 @@ namespace Drax360Service
 
             startpipeserver();
 
-            if (panel != "TAKTIS"   && panel != "EMAIL")
+            if (panel != "TAKTIS" && panel != "EMAIL" && panel != "RSM")
             {
                 pad();
                 dumpavailableserialports();

@@ -1104,7 +1104,7 @@ namespace Drax360Service.Panels
 
             for (int n = 0; n < myString.Length; n++)
             {
-                int i = (int)myString[n]; // Equivalent to Asc(Mid$(MyString, n, 1)) in VB6
+                int i = (int)myString[n];
                 i = i ^ (checksum / 256);
                 int j = i / 16;
                 i = i ^ j;
