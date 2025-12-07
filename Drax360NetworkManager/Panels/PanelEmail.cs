@@ -35,7 +35,8 @@ namespace Drax360Service.Panels
                 if (password.EndsWith("="))
                 {
                     
-                    password = AesDecryptor.DecryptString(password,"");
+                    // temporarily disabled.
+                   // password = AesDecryptor.DecryptString(password,"");
                     
                 }
                 bool smtpauth = base.GetSetting<bool>(kemailkey, "SMTPAuthorisation");
