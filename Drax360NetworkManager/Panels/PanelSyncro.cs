@@ -11,6 +11,8 @@ using System.Runtime.ConstrainedExecution;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Timers;
 using System.Xml.Linq;
 using static Drax360Service.Panels.PanelTaktis;
 
@@ -21,7 +23,7 @@ namespace Drax360Service.Panels
         #region constants
 
         const int MAXINPUTSTRINGS = 5;
-        const byte kheartbeatdelayseconds = 60;
+        const byte kheartbeatdelayseconds = 1;
 
         #endregion
 
@@ -37,6 +39,7 @@ namespace Drax360Service.Panels
         public int index = 0;
         private int miMsgID = 0;
         private List<string> garyzoneDisableList = new List<string>();
+
         public override string FakeString
         {
             get
@@ -70,38 +73,45 @@ namespace Drax360Service.Panels
                 int asc = buffer[i].ToString()[0];  // ASCII code of first digit of the byte
                 byte raw = buffer[i];
 
-                if (ch == 5 || ch == 13)  // Panel Heartbeat do nothing
+                if (ch == 5)  // Panel Heartbeat do nothing
                 {
                 }
                 else
                 {
-                    if (ch == 10)   // End of line
+                    if (ch == 13)
                     {
                         base.NotifyClient($"{ch} - {asc} - {raw}");
-
-                        if (foundcharacter || index > 2)  // ignore blank lines at start
-                        {
-                            index++;
-                        }
-                        if (index >= MAXINPUTSTRINGS)
-                        {
-                            processmessage();
-                            for (int n = 0; n < MAXINPUTSTRINGS; n++)
-                            {
-                                Ip[n] = ""; // Ensure all lines clear
-                            }
-                            index = 0;
-                            foundcharacter = false;
-                        }
-
-                        // Ip[index] += ch;
                     }
                     else
                     {
-                        base.NotifyClient($"{ch} - {asc} - {raw}");
+                        if (ch == 10)   // End of line
+                        {
+                            base.NotifyClient($"{ch} - {asc} - {raw}");
 
-                        Ip[index] += ch;
-                        foundcharacter = true;
+                            if (foundcharacter || index > 2)  // ignore blank lines at start
+                            {
+                                index++;
+                            }
+                            if (index >= MAXINPUTSTRINGS || (index == 4 && Ip[0]?.ToUpper() == "DISABLED ZONE"))
+                            {
+                                processmessage();
+                                for (int n = 0; n < MAXINPUTSTRINGS; n++)
+                                {
+                                    Ip[n] = ""; // Ensure all lines clear
+                                }
+                                index = 0;
+                                foundcharacter = false;
+                            }
+
+                            // Ip[index] += ch;
+                        }
+                        else
+                        {
+                            base.NotifyClient($"{ch} - {asc} - {raw}");
+
+                            Ip[index] += ch;
+                            foundcharacter = true;
+                        }
                     }
                 }
             }
@@ -110,6 +120,8 @@ namespace Drax360Service.Panels
         {
             int NumLines = 0;
             string sMessage = "";
+            string gsZoneText = "";
+            gsDeviceText = "";
             int giNodeNumber = 1;
             string sNodeDesc = "";
             bool on = true;
@@ -338,7 +350,6 @@ namespace Drax360Service.Panels
                 }
             }
 
-
             if (LocalInputUnit)
             {
                 tIpType = 7;        // Tech Alarm
@@ -481,6 +492,145 @@ namespace Drax360Service.Panels
             {
                 switch (Ip[n].ToUpper())
                 {
+                    case "ACCESS LEVEL 1":
+                        tIpType = 15;
+                        gsTextField = "Access Level 1";
+                        giLoopNumber = 0;
+                        giDeviceAddress = 1;
+                        break;
+                    case "ACCESS LEVEL 2":
+                        tIpType = 15;
+                        gsTextField = "Access Level 2";
+                        giLoopNumber = 0;
+                        giDeviceAddress = 2;
+                        break;
+                    case "ACCESS LEVEL 3":
+                        tIpType = 15;
+                        gsTextField = "Access Level 3";
+                        giLoopNumber = 0;
+                        giDeviceAddress = 3;
+                        break;
+                    case "ACKNOWLEDGE":
+                        tIpType = 15;
+                        gsTextField = "Acknowledge";
+                        giLoopNumber = 0;
+                        giDeviceAddress = 95;
+                        break;
+                    case "ALL SOUNDERS DISABLED":
+                        tIpType = 15;
+                        gsTextField = "All Sounders Disabled";
+                        giLoopNumber = 0;
+                        giDeviceAddress = 4;
+                        break;
+                    case "ATTENTION":
+                        tIpType = 15;
+                        gsTextField = "Attemtion";
+                        giLoopNumber = 0;
+                        giDeviceAddress = 5;
+                        break;
+                    case "AUTOLEARN":
+                        tIpType = 15;
+                        gsTextField = "Autolearn";
+                        giLoopNumber = 0;
+                        giDeviceAddress = 6;
+                        break;
+                    case "AUX 24V FUSE FAULT":
+                        tIpType = 15;
+                        gsTextField = "Aux 24V Fuse Fault";
+                        giLoopNumber = 0;
+                        giDeviceAddress = 7;
+                        break;
+                    case "BAD DATA FAULT":
+                        tIpType = 15;
+                        gsTextField = "Bad Data Fault";
+                        giLoopNumber = 0;
+                        if (sNodeDesc == null || sNodeDesc.IndexOf("FIRECELL", StringComparison.OrdinalIgnoreCase) < 0)
+                        {
+                            giDeviceAddress = 8;
+                        }
+                        break;
+                    case "BATTERY DISCONNECTED":
+                        tIpType = 15;
+                        gsTextField = "Battery Disconnected";
+                        giLoopNumber = 0;
+                        giDeviceAddress = 9;
+                        break;
+                    case "BATTERY VOLTAGE TOO HIGH":
+                        tIpType = 15;
+                        gsTextField = "Battery Voltage Too High";
+                        giLoopNumber = 0;
+                        giDeviceAddress = 10;
+                        break;
+                    case "CALIBRATION ERROR":
+                        tIpType = 15;
+                        gsTextField = "Calibration Error";
+                        giLoopNumber = 0;
+                        giDeviceAddress = 11;
+                        break;
+                    case "CALIBRATION FAILED FAULT":
+                        tIpType = 15;
+                        gsTextField = "Calibration Failed Fault";
+                        giLoopNumber = 0;
+                        giDeviceAddress = 12;
+                        break;
+                    case "CAUSE & EFFECT ACTIVE":
+                        tIpType = 15;
+                        gsTextField = "Cause & Effect Active";
+                        giLoopNumber = 0;
+                        giDeviceAddress = 13;
+                        break;
+                    case "CE DISABLEMENT":
+                        tIpType = 15;
+                        gsTextField = "CE Disablement";
+                        giLoopNumber = 0;
+                        giDeviceAddress = 14;
+                        break;
+                    case "DAY/NIGHT DISABLEMENT":
+                        tIpType = 15;
+                        gsTextField = "Day/Night Disablement";
+                        giLoopNumber = 0;
+                        giDeviceAddress = 15;
+                        break;
+                    case "DETECTOR REMOVED":
+                        tIpType = 15;
+                        gsTextField = "Detector Removed";
+                        break;
+                    case "DEVICE INITIALISING":
+                    case "INITIALIZING DEVICE":
+                        tIpType = 15;
+                        gsTextField = "Device Initialising";
+                        giDeviceAddress = 16;
+                        break;
+                    case "DISABLED DEVICE":
+                        break;
+                    case "DISABLED LOOP":
+                        tIpType = 15;
+                        gsTextField = "Device Loop";
+                        break;
+                    case "DISABLEMENT":
+                        tIpType = 15;
+                        gsTextField = "Disabled";
+                        if (tEvType == "TROUBLE")
+                        {
+                            gsTextField = "Disabled Trouble";
+                            giDeviceAddress = 109;
+                        }
+                        break;
+                    case "AUDIBLE OUTS DISABLED":
+                        tIpType = 15;
+                        gsTextField = "Audible Outs Disabled Node " + giNodeNumber;
+                        giDeviceAddress = 119;
+                        break;
+                    case "DISABLED PANEL INPUT":
+                        tIpType = 15;
+                        gsTextField = "Disabled Panel Input";
+                        giDeviceAddress = 17;
+                        break;
+                    case "DISABLED PANEL OUTPUT":
+                        tIpType = 15;
+                        gsTextField = "Disabled Panel Output";
+                        giDeviceAddress = 18;
+                        break;
                     case "EVACUATE":
                     case "EVACUATE BUTTON":
                     case "EVACUATE EVACUATE":
@@ -537,6 +687,18 @@ namespace Drax360Service.Panels
                                     break;
                             }
                         }
+                        else if (tEvType == "FIRE" || tEvType == "ALERT" || tEvType == "FAULT" || tEvType == "PRE-ALARM")
+                        {
+                            if (tIpType == 0 || tIpType == 2 || tIpType == 8)
+                            {
+                                gsZoneText += " ZONE " + giZoneNumber + "-Input Activated " + tEvType;
+                                gsDeviceText = sNodeDesc.Trim();
+                            }
+                            else
+                            {
+                                gsTextField = Ip[2];
+                            }
+                        }
                         break;
 
                     case "DISABLED ZONE":
@@ -551,34 +713,96 @@ namespace Drax360Service.Panels
                             {
                                 RemoveFromZoneDisableList(tNode + this.Offset, giZoneNumber, ref giDeviceAddress, ref giLoopNumber);
                             }
-
-
-                            gsTextField = "Disable Zone " + giZoneNumber; 
-
+                            gsTextField = "Disable Zone " + giZoneNumber;
 
                             tIpType = 13;
                         }
                         break;
 
+                    case "DISCONNECTED FAULT":
 
+                        gsDeviceText = "Disconnected Fault";
+                        tIpType = 8;
+                        break;
+
+                    case "DISCONNECTED TROUBLE":
+
+                        gsDeviceText = "Disconnected Trouble";
+                        tIpType = 8;
+                        break;
+
+                    case "DOUBLE ADDRESS":
+
+                        gsDeviceText = "Disconnected Trouble";
+                        tIpType = 15;
+                        break;
+
+                    case "E2 DIS":
+
+                        gsDeviceText = "E2 Dis";
+                        tIpType = 21;
+                        break;
+                    case "E3 DIS":
+
+                        gsDeviceText = "E3 Dis";
+                        tIpType = 22;
+                        break;
+                    case "E3 FAULT":
+
+                        gsDeviceText = "E3 Fault";
+                        tIpType = 23;
+                        break;
+                    case "E4 FAULT":
+
+                        gsDeviceText = "E4 Fault";
+                        tIpType = 24;
+                        break;
+                    case "E5 FAULT":
+
+                        gsDeviceText = "E5 Fault";
+                        tIpType = 25;
+                        break;
+                    case "E6 FAULT":
+
+                        gsDeviceText = "E6 Fault";
+                        tIpType = 26;
+                        break;
+
+                    case "E7 FAULT":
+
+                        gsDeviceText = "E7 Fault";
+                        tIpType = 27;
+                        break;
+                    case "EARTH FAULT":
+
+                        gsDeviceText = "Earth Fault";
+                        tIpType = 28;
+                        break;
                     case "INTERNAL FAULT":
-                        gsTextField = "Internal Fault";
+                        gsDeviceText = "Internal Fault";
                         if (sNodeDesc.IndexOf("FIRECELL", StringComparison.OrdinalIgnoreCase) >= 0)
                         {
                             // found
                         }
-
                         break;
 
                     case "INPUT SHORT CIRCUIT":
-                        gsTextField = "Input Short Circuit";
+                        gsDeviceText = "Input Short Circuit";
                         break;
 
                     case "HEAD MISSING (HEAD REMOVED FROM BASE)":
-                        gsTextField = "Head Missing";
+                        gsDeviceText = "Head Missing";
                         break;
 
-                    case "DISABLED DEVICE":
+                    case "INPUT OPEN CIRCUIT":
+                        gsDeviceText = "Input Open Circuit";
+                        tIpType = 15;
+                        break;
+
+
+                    case "INPUT CLEARED":
+                        gsDeviceText = "Input Open Circuit";
+                        tIpType = 15;
                         break;
 
 
@@ -603,10 +827,10 @@ namespace Drax360Service.Panels
             {
                 giDeviceAddress = 1; // default
             }
-            base.NotifyClient("Send to AMX: Node = " + giNodeNumber + " Loop = " + giLoopNumber + " Address = " + giDeviceAddress);
+            base.NotifyClient("Send to AMX: Node = " + (giNodeNumber+this.Offset) + " Loop = " + giLoopNumber + " Address = " + giDeviceAddress);
 
             evnum = CSAMXSingleton.CS.MakeInputNumber(giNodeNumber, giLoopNumber, giDeviceAddress, p1, on);
-            send_response_amx_and_serial(evnum, gsTextField, gsDeviceText, gsZoneText);
+            send_response_amx_and_serial(evnum, gsTextField, gsZoneText, gsDeviceText );
             return true;
         }
 
@@ -688,7 +912,7 @@ namespace Drax360Service.Panels
                     }
                 }
 
-                // SECOND PASS — try ZONE if still 255  
+                // SECOND PASS — try ZONE with no space if still 255  
                 if (result == 255)
                 {
                     for (x = 1; x <= 6; x++)
@@ -815,7 +1039,6 @@ namespace Drax360Service.Panels
 
         public void RemoveFromZoneDisableList(int piNode, int piZone, ref int piDeviceAddress, ref int piLoop)
         {
-            bool inputNumberFound = false;
             int listCount = garyzoneDisableList.Count;
 
             // Set loop number (0-based)
@@ -827,7 +1050,6 @@ namespace Drax360Service.Panels
             {
                 if (garyzoneDisableList[i] == sPanelZone)
                 {
-                    inputNumberFound = true;
                     garyzoneDisableList[i] = ""; // mark as cleared
                     piDeviceAddress = i + 1;
                     this.NotifyClient($"Zone Disable Found in list - Index/Device Address = {piDeviceAddress}");
@@ -842,12 +1064,6 @@ namespace Drax360Service.Panels
             {
                 this.NotifyClient("- Zone Disable List empty");
             }
-        }
-
-        private void LogMyStuff(string message)
-        {
-            Console.WriteLine(message);
-            // Could replace with a more advanced logging system
         }
 
         private void send_response_amx_and_serial(int evnum, string message1, string message2, string message3 = "")
@@ -888,10 +1104,11 @@ namespace Drax360Service.Panels
 
         protected override void heartbeat_timer_callback(object sender)
         {
-            base.heartbeat_timer_callback(sender);
+            base.heartbeat_timer_callback(sender); 
+            
+            // send_message(ActionType.KHandShake, NwmData.AlarmToAmx, "0,0,0,0");
+          }
 
-            //           send_message(ActionType.KHandShake, NwmData.AlarmToAmx, "0,0,0,0");
-        }
 
         public override void StartUp(int fakemode)
         {
@@ -1152,24 +1369,12 @@ namespace Drax360Service.Panels
             return miMsgID;
         }
 
-        //public override void SerialPort_Datareceivedold(object sender, SerialDataReceivedEventArgs e)
-        //{
-        //    System.Threading.Thread.Sleep(500);
-
-        //    int bytestoread = serialport.BytesToRead;
-        //    if (bytestoread == 0) return;
-
-        //    byte[] readbytes = new byte[bytestoread];
-        //    int numberread = serialport.Read(readbytes, 0, bytestoread);
-        //    if (numberread == 0) return;
-
-        //    Parse(readbytes);
-        //}
         private readonly List<byte> _buffer = new List<byte>();
         private readonly byte[] _terminator = { 0x0D, 0x0A, 0x0D, 0x0A }; // \r\n\r\n
 
         public override void SerialPort_Datareceived(object sender, SerialDataReceivedEventArgs e)
         {
+            Thread.Sleep(500); // wait for more data
             int bytesToRead = serialport.BytesToRead;
             if (bytesToRead <= 0) return;
 
@@ -1195,8 +1400,6 @@ namespace Drax360Service.Panels
                 byte[] message = _buffer.Take(end).ToArray();
 
                 _buffer.RemoveRange(0, end);
-
-                // Send message to your existing parser
                 Parse(message);
             }
         }
@@ -1218,7 +1421,5 @@ namespace Drax360Service.Panels
             }
             return -1;
         }
-
-
     }
 }
