@@ -392,6 +392,10 @@ namespace Drax360Service.Panels
             node = node + this.Offset;
             SendEvent("Advanced", NwmData.IsolationToAmx, inputtype, text, on, node, loop, device);
         }
+        public override void Analogue(string passedvalues)
+        {
+            Console.WriteLine("GOT Analogue");
+        }
         #endregion
 
         #region private methods

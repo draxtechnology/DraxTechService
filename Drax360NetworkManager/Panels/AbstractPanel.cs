@@ -77,6 +77,7 @@ namespace Drax360Service.Panels
         public abstract void EnableDevice(string passedValues);
         public abstract void DisableZone(string passedValues);
         public abstract void EnableZone(string passedValues);
+        public abstract void Analogue(string passedValues);
 
         public void NotifyClient(string message, bool notifyui = false)
         {
@@ -173,13 +174,28 @@ namespace Drax360Service.Panels
                     .ToArray();
 
                 serialport.Write(toSend, 0, toSend.Length);
-
-                string hex = BitConverter.ToString(toSend);
-                this.NotifyClient("Sent (Hex): " + hex, false);
-
-                string numeric = string.Join(" ", toSend.Select(b => b.ToString()));
-                this.NotifyClient("Sent (Numeric): " + numeric, false);
+                this.NotifyClient("Sent: " + string.Join(", ", values), false);
             }
+        }
+
+        protected void serialsendstring_analogue(string[] values)
+        {
+            if (serialport?.IsOpen != true) return;
+
+            foreach (var v in values)
+            {
+                if (!string.IsNullOrEmpty(v))
+                {
+                    byte b = unchecked((byte)Convert.ToInt32(v));
+                    serialport.Write(new byte[] { b }, 0, 1);
+
+                    // small delay to mimic VB6 MSComm hardware pacing
+                    Thread.Sleep(20); // increase if needed (10–20ms sometimes)
+                }
+            }
+            Thread.Sleep(1000);
+
+            this.NotifyClient("Sent analogue: " + string.Join(", ", values), false);
         }
 
 

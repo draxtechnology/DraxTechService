@@ -95,6 +95,10 @@ namespace Drax360Service.Panels
         {
             throw new NotImplementedException();
         }
+        public override void Analogue(string passedvalues)
+        {
+            throw new NotImplementedException();
+        }
 
         public override void StartUp(int fakemode)
         {

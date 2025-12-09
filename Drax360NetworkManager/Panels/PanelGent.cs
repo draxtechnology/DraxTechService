@@ -35,8 +35,6 @@ namespace Drax360Service.Panels
               //   "\0\0\0\0X\u0002@\0\0\0\0\u0002/\v\u0017\u0006\u0019\0\0\0\0\0\u0003\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\u0001\u000f";
         }
 
-       
-
         public PanelGent(string baselogfolder, string identifier) : base(baselogfolder,identifier, "GenMan","GEN")
         {
             if (!String.IsNullOrEmpty(identifier))
@@ -655,6 +653,10 @@ namespace Drax360Service.Panels
         public override void EnableZone(string passedvalues)
         {
             send_message(ActionType.kENABLEZONE, NwmData.IsolationToAmx, passedvalues);
+        }
+        public override void Analogue(string passedvalues)
+        {
+            throw new NotImplementedException();
         }
         private void send_message(ActionType action, NwmData type, string passedvalues)
         {

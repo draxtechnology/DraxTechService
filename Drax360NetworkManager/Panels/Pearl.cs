@@ -1000,7 +1000,10 @@ namespace Drax360Service.Panels
         {
             send_message(ActionType.kENABLEZONE, passedvalues);
         }
-
+        public override void Analogue(string passedvalues)
+        {
+            throw new NotImplementedException();
+        }
         public virtual void send_message(ActionType action, string passedvalues)
         {
             string[] parts = passedvalues.Split(',');

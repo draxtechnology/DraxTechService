@@ -538,6 +538,10 @@ namespace Drax360Service.Panels
         {
             throw new NotImplementedException();
         }
+        public override void Analogue(string passedvalues)
+        {
+            throw new NotImplementedException();
+        }
         protected override void heartbeat_timer_callback(object sender)
         {
             base.heartbeat_timer_callback(sender);

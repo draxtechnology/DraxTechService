@@ -34,7 +34,7 @@ namespace Drax360Service
         kENABLEMODULE,
         kDISABLEZONE,
         kENABLEZONE,
-        KAnalogueData,
+        KANALOGUEDATA,
         KHandShake
     }
     public enum NwmData
@@ -1025,6 +1025,18 @@ namespace Drax360Service
                         foreach (var panel in abstractpanels)
                         {
                             panel.EnableZone(passedvalues);
+                        }
+                    }
+
+                    break;
+
+                case "ANALOGUE":
+
+                    if (passedvalues.Length > 0)
+                    {
+                        foreach (var panel in abstractpanels)
+                        {
+                            panel.Analogue(passedvalues);
                         }
                     }
 

@@ -9,6 +9,7 @@ using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using System.Runtime.ConstrainedExecution;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -28,6 +29,8 @@ namespace Drax360Service.Panels
         #endregion
 
         public string[] Ip = new string[MAXINPUTSTRINGS];
+        public string[] UserMessages = new string[16];
+        public int[] UserTypes = new int[16];
         public int giZoneNumber = 0;
         public string gsTextField = "";
         public string gsDeviceText = "";
@@ -259,7 +262,6 @@ namespace Drax360Service.Panels
                 }
             }
 
-
             // Extract the node number for lines 2 to 4
 
             // Default
@@ -480,7 +482,7 @@ namespace Drax360Service.Panels
                             }
                             else
                             {
-                                // tIpType = CheckUserMessages(tEvType);  TODO
+                                tIpType = CheckUserMessages(tEvType);
                             }
                         }
                         break;
@@ -720,64 +722,60 @@ namespace Drax360Service.Panels
                         break;
 
                     case "DISCONNECTED FAULT":
-
                         gsDeviceText = "Disconnected Fault";
                         tIpType = 8;
                         break;
 
                     case "DISCONNECTED TROUBLE":
-
                         gsDeviceText = "Disconnected Trouble";
                         tIpType = 8;
                         break;
 
                     case "DOUBLE ADDRESS":
-
                         gsDeviceText = "Disconnected Trouble";
                         tIpType = 15;
                         break;
 
                     case "E2 DIS":
-
                         gsDeviceText = "E2 Dis";
                         tIpType = 21;
                         break;
-                    case "E3 DIS":
 
+                    case "E3 DIS":
                         gsDeviceText = "E3 Dis";
                         tIpType = 22;
                         break;
-                    case "E3 FAULT":
 
+                    case "E3 FAULT":
                         gsDeviceText = "E3 Fault";
                         tIpType = 23;
                         break;
-                    case "E4 FAULT":
 
+                    case "E4 FAULT":
                         gsDeviceText = "E4 Fault";
                         tIpType = 24;
                         break;
-                    case "E5 FAULT":
 
+                    case "E5 FAULT":
                         gsDeviceText = "E5 Fault";
                         tIpType = 25;
                         break;
-                    case "E6 FAULT":
 
+                    case "E6 FAULT":
                         gsDeviceText = "E6 Fault";
                         tIpType = 26;
                         break;
 
                     case "E7 FAULT":
-
                         gsDeviceText = "E7 Fault";
                         tIpType = 27;
                         break;
-                    case "EARTH FAULT":
 
+                    case "EARTH FAULT":
                         gsDeviceText = "Earth Fault";
                         tIpType = 28;
                         break;
+
                     case "INTERNAL FAULT":
                         gsDeviceText = "Internal Fault";
                         if (sNodeDesc.IndexOf("FIRECELL", StringComparison.OrdinalIgnoreCase) >= 0)
@@ -799,12 +797,10 @@ namespace Drax360Service.Panels
                         tIpType = 15;
                         break;
 
-
                     case "INPUT CLEARED":
                         gsDeviceText = "Input Open Circuit";
                         tIpType = 15;
                         break;
-
 
                 }
             }
@@ -820,17 +816,17 @@ namespace Drax360Service.Panels
             catch (Exception ex)
             {
                 this.NotifyClient("gAlarmType " + gAlarmType + " " + ex.Message, false);
-                Console.WriteLine($"Unexpected error: {ex.Message}");
             }
 
             if (giDeviceAddress == 255)   // TODO
             {
                 giDeviceAddress = 1; // default
+                this.NotifyClient("Device 255 so now " + giDeviceAddress, false);
             }
-            base.NotifyClient("Send to AMX: Node = " + (giNodeNumber+this.Offset) + " Loop = " + giLoopNumber + " Address = " + giDeviceAddress);
+            base.NotifyClient("Send to AMX: Node = " + (giNodeNumber + this.Offset) + " Loop = " + giLoopNumber + " Address = " + giDeviceAddress);
 
             evnum = CSAMXSingleton.CS.MakeInputNumber(giNodeNumber, giLoopNumber, giDeviceAddress, p1, on);
-            send_response_amx_and_serial(evnum, gsTextField, gsZoneText, gsDeviceText );
+            send_response_amx_and_serial(evnum, gsTextField, gsZoneText, gsDeviceText);
             return true;
         }
 
@@ -1101,14 +1097,12 @@ namespace Drax360Service.Panels
             }
         }
 
-
         protected override void heartbeat_timer_callback(object sender)
         {
-            base.heartbeat_timer_callback(sender); 
-            
-            // send_message(ActionType.KHandShake, NwmData.AlarmToAmx, "0,0,0,0");
-          }
+            base.heartbeat_timer_callback(sender);
 
+            // send_message(ActionType.KHandShake, NwmData.AlarmToAmx, "0,0,0,0");
+        }
 
         public override void StartUp(int fakemode)
         {
@@ -1116,6 +1110,22 @@ namespace Drax360Service.Panels
             string settingparity = base.GetSetting<string>(ksettingsyncrosection, "Parity");
             int settingdatabits = base.GetSetting<int>(ksettingsyncrosection, "DataBits");
             int settingstopbits = base.GetSetting<int>(ksettingsyncrosection, "StopBits");
+
+            // Load the User Message List
+            for (int n = 0; n < 16; n++)
+            {
+                int idx = n + 1;
+
+                UserMessages[n] = base.GetSetting<string>(ksettingsetupsection, $"UserText{idx}");
+
+                string typeString = base.GetSetting<string>(ksettingsetupsection, $"UserType{idx}");
+                UserTypes[n] = int.TryParse(typeString, out int value) ? value : 0;
+
+                if (UserTypes[n] < 0 || UserTypes[n] > 16)
+                {
+                    UserTypes[n] = 0;
+                }
+            }
 
             if (fakemode > 0)
             {
@@ -1207,11 +1217,15 @@ namespace Drax360Service.Panels
         {
             send_message(ActionType.kENABLEZONE, NwmData.IsolationToAmx, passedvalues);
         }
+        public override void Analogue(string passedvalues)
+        {
+            send_message(ActionType.KANALOGUEDATA, NwmData.IsolationToAmx, passedvalues);
+        }
         private void send_message(ActionType action, NwmData type, string passedvalues)
         {
             string[] parts = passedvalues.Split(',');
 
-            int node = 1, loop = 0, zone = 0, device = 0, giDomainNumber = 0, inputtype = 0;
+            int node = 1, loop = 0, zone = 0, device = 0, inputtype = 0;
 
             if (parts.Length > 0) int.TryParse(parts[0], out node);
             if (parts.Length > 1) int.TryParse(parts[1], out loop);
@@ -1230,8 +1244,8 @@ namespace Drax360Service.Panels
             int sDayWeek = ((int)now.DayOfWeek + 6) % 7 + 1;// Sunday = 1, Monday = 2, etc.
             bool on = true;
 
-            string text = action.ToString();
-
+            //string text = action.ToString();
+            string text = "";
 
             string[] gbaryDataToTX = new string[6];
             if (action == ActionType.kRESET)
@@ -1243,9 +1257,9 @@ namespace Drax360Service.Panels
                 gbaryDataToTX[3] = "77";
                 gbaryDataToTX[4] = "0";
 
-
                 string sChecksum = makechecksum(gbaryDataToTX);
                 gbaryDataToTX[5] = sChecksum;
+                inputtype = 15;
             }
 
             if (action == ActionType.kEVACTUATE)
@@ -1259,6 +1273,7 @@ namespace Drax360Service.Panels
 
                 string sChecksum = makechecksum(gbaryDataToTX);
                 gbaryDataToTX[5] = sChecksum;
+                inputtype = 15;
             }
 
             if (action == ActionType.KHandShake)
@@ -1289,6 +1304,7 @@ namespace Drax360Service.Panels
 
                 string sChecksum = makechecksum(gbaryDataToTX);
                 gbaryDataToTX[9] = sChecksum;
+                inputtype = 4;
             }
 
             if (action == ActionType.kENABLEDEVICE)
@@ -1306,6 +1322,8 @@ namespace Drax360Service.Panels
 
                 string sChecksum = makechecksum(gbaryDataToTX);
                 gbaryDataToTX[9] = sChecksum;
+                inputtype = 4;
+                on = false;
             }
 
             if (action == ActionType.kDISABLEZONE)
@@ -1321,6 +1339,7 @@ namespace Drax360Service.Panels
 
                 string sChecksum = makechecksum(gbaryDataToTX);
                 gbaryDataToTX[7] = sChecksum;
+                inputtype = 8;
             }
 
             if (action == ActionType.kENABLEZONE)
@@ -1336,9 +1355,11 @@ namespace Drax360Service.Panels
 
                 string sChecksum = makechecksum(gbaryDataToTX);
                 gbaryDataToTX[7] = sChecksum;
+                inputtype = 8;
+                on = false;
             }
 
-            if (action == ActionType.KAnalogueData)
+            if (action == ActionType.KANALOGUEDATA)
             {
                 gbaryDataToTX = new string[8];
                 gbaryDataToTX[0] = "219";
@@ -1346,17 +1367,22 @@ namespace Drax360Service.Panels
                 gbaryDataToTX[2] = node.ToString();
                 gbaryDataToTX[3] = "68";
                 gbaryDataToTX[4] = "2";
-                gbaryDataToTX[5] = loop.ToString();
+                gbaryDataToTX[5] = (loop - 1).ToString();
                 gbaryDataToTX[6] = device.ToString();
 
                 string sChecksum = makechecksum(gbaryDataToTX);
                 gbaryDataToTX[7] = sChecksum;
+
+                base.NotifyClient("Send Analogue to Syncro Node " + node + " Loop " + (loop - 1) + " Device " + device, false);
             }
 
             serialsendstring(gbaryDataToTX);
 
-            //  node = node + this.Offset;
-            //  SendEvent("Syncro", type, inputtype, text, on, node, loop, device);
+            if (action != ActionType.KANALOGUEDATA)
+            {
+                node = node + this.Offset;
+                SendEvent("Syncro", type, inputtype, text, on, node, loop, device);
+            }
         }
 
         public int GetNextMsgID()
@@ -1367,6 +1393,23 @@ namespace Drax360Service.Panels
                 miMsgID = 1;
 
             return miMsgID;
+        }
+
+        public int CheckUserMessages(string evtString)
+        {
+            for (int n = 0; n < 16; n++)
+            {
+                if (!string.IsNullOrEmpty(UserMessages[n]))
+                {
+                    if (UserMessages[n] == evtString)
+                    {
+                        return UserTypes[n];
+                    }
+                }
+            }
+
+            // Default
+            return -1;
         }
 
         private readonly List<byte> _buffer = new List<byte>();
@@ -1394,7 +1437,31 @@ namespace Drax360Service.Panels
             while (true)
             {
                 int pos = FindPattern(_buffer, _terminator);
-                if (pos == -1) return;  // no complete message yet
+                if (pos == -1)
+                {
+                    // Now deal with specific message types
+                    if (_buffer[3].ToString() == "68")
+                    {
+                        int DeviceAnalogueValue = _buffer[7];
+                        base.NotifyClient("Analogue Node Received: " + _buffer[2], false);
+                        base.NotifyClient("Analogue Address Received: " + _buffer[6], false);
+                        base.NotifyClient("Analogue Value Received: " + DeviceAnalogueValue, false);
+                    }
+                    else
+                    {
+                        if (_buffer[4].ToString() == "68")
+                        {
+                            int DeviceAnalogueValue = _buffer[8];
+                            base.NotifyClient("Analogue Node Received: " + _buffer[3], false);
+                            base.NotifyClient("Analogue Address Received: " + _buffer[7], false);
+                            base.NotifyClient("Analogue Value Received: " + DeviceAnalogueValue, false);
+                        }
+                        else
+                        {
+                            return;  // no complete message yet
+                        }
+                    }
+                }
 
                 int end = pos + _terminator.Length;
                 byte[] message = _buffer.Take(end).ToArray();
