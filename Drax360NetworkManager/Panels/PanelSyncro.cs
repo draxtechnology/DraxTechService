@@ -32,6 +32,7 @@ namespace Drax360Service.Panels
         public string[] UserMessages = new string[16];
         public int[] UserTypes = new int[16];
         public int giZoneNumber = 0;
+        public int giDeviceSubAddress = 0;
         public string gsTextField = "";
         public string gsDeviceText = "";
         public string gsZoneText = "";
@@ -308,6 +309,7 @@ namespace Drax360Service.Panels
             }
 
             GetSyncroZone();
+            giDeviceSubAddress = GetSyncroDeviceSubAddress();
             giDeviceAddress = GetSyncroDevice();
 
             string gsTextField = Ip[0];
@@ -661,16 +663,171 @@ namespace Drax360Service.Panels
                         gsTextField = "Panel ACK";
                         giDeviceAddress = 108;
                         break;
-                    case "PNL ACK.ALARM":
-                    case "PANEL ACK.ALARM":
-                        tIpType = 15;
-                        gsTextField = "Silence Alarm";
-                        giDeviceAddress = 113;
-                        break;
                     case "LOOP OPEN CIRCUIT":
                         tIpType = 15;
                         gsTextField = "Loop Open Circuit";
                         giDeviceAddress = 115 + giLoopNumber;
+                        break;
+                    case "LOOP SHORT CIRCUIT":
+                        tIpType = 15;
+                        gsTextField = "Loop Short Circuit";
+                        giDeviceAddress = 120 + giLoopNumber;
+                        break;
+                    case "LOOP WIRING FAULT. PRESS ? FOR DETAILS":
+                        tIpType = 15;
+                        gsTextField = "Wiring Fault";
+                        giDeviceAddress = 125 + giLoopNumber;
+                        break;
+                    case "LOW BATTERY VOLTAGE":
+                        tIpType = 15;
+                        gsTextField = "Low Battery Voltage";
+                        giDeviceAddress = 35;
+                        break;
+                    case "BACK UP BATTERY LOW":
+                        tIpType = 15;
+                        gsTextField = "Back Up Battery Low";
+                        break;
+                    case "MAINS FAILED":
+                        tIpType = 15;
+                        gsTextField = "Mains Failed";
+                        giDeviceAddress = 36;
+                        break;
+                    case "MAINTENANCE FAULT":
+                        tIpType = 15;
+                        gsTextField = "Maintenance Fault";
+                        break;
+                    case "MONITORED OUTPUT FAULT":
+                        tIpType = 15;
+                        gsTextField = "Monitored Output Fault";
+                        giDeviceAddress = 38;
+                        break;
+                    case "MONITORED OUTPUT TROUBLE":
+                        tIpType = 15;
+                        gsTextField = "Monitored Output Trouble";
+                        giDeviceAddress = 38;
+                        break;
+                    case "NEGATIVE EARTH FAULT":
+                        tIpType = 15;
+                        gsTextField = "Negative Earth Fault";
+                        giDeviceAddress = 39;
+                        break;
+                    case "NEW CONFIG DOWNLOADED FROM PC":
+                        tIpType = 15;
+                        gsTextField = "New Config Downloaded From PC";
+                        giDeviceAddress = 40;
+                        break;
+                    case "OPTICAL & HEAT ELEMENT FAULTY":
+                        tIpType = 15;
+                        gsTextField = "Opt+Heat Element Faulty";
+                        giDeviceAddress = 42;
+                        break;
+                    case "OUTPUT 1 OPEN CIRCUIT":
+                        tIpType = 15;
+                        gsTextField = "Output 1 Open Circuit";
+                        giDeviceAddress = 44;
+                        break;
+                    case "OUTPUT 1 SHORT CIRCUIT":
+                        tIpType = 15;
+                        gsTextField = "Output 1 Short Circuit";
+                        giDeviceAddress = 45;
+                        break;
+                    case "OUTPUT 2 OPEN CIRCUIT":
+                        tIpType = 15;
+                        gsTextField = "Output 2 Open Circuit";
+                        giDeviceAddress = 46;
+                        break;
+                    case "OUTPUT 2 SHORT CIRCUIT":
+                        tIpType = 15;
+                        gsTextField = "Output 2 Short Circuit";
+                        giDeviceAddress = 47;
+                        break;
+                    case "AC POWER FAILURE":
+                        tIpType = 15;
+                        gsTextField = "AC Power Failure";
+                        giDeviceAddress = 48;
+                        break;
+                    case "POWER FAILURE":
+                        tIpType = 15;
+                        gsTextField = "Power Failure";
+                        giDeviceAddress = 48;
+                        break;
+                    case "PRE ALARM":
+                        gsTextField = "Pre Alarm";
+                        break;
+                    case "PROCESSOR WATCH DOG OPERATED":
+                        tIpType = 15;
+                        gsTextField = "Processor Watch Dog Operated";
+                        giDeviceAddress = 49;
+                        break;
+                    case "RAM CHECKSUM FAULT":
+                        tIpType = 15;
+                        gsTextField = "Ram Checksum Fault";
+                        giDeviceAddress = 50;
+                        break;
+                    case "REMOTE FAULT":
+                        tIpType = 15;
+                        gsTextField = "Remote Fault";
+                        giDeviceAddress = 51;
+                        break;
+                    case "I/O MODULE NOT FITTED":
+                        tIpType = 15;
+                        gsTextField = "I/O Module not fitted";
+                        giDeviceAddress = 37;
+                        break;
+                    case "ROM CHECKSUM FAULT":
+                        tIpType = 15;
+                        gsTextField = "Rom Checksum Fault";
+                        giDeviceAddress = 52;
+                        break;
+                    case "SLAVE LINE 1 FAULT":
+                        tIpType = 15;
+                        gsTextField = "Slave Line 1 Fault";
+                        giDeviceAddress = 53;
+                        break;
+                    case "SLAVE LINE 2 FAULT":
+                        tIpType = 15;
+                        gsTextField = "Slave Line 2 Fault";
+                        giDeviceAddress = 54;
+                        break;
+                    case "SLAVE LINE OPEN CIRCUIT":
+                        tIpType = 15;
+                        gsTextField = "Slave Line Open Circuit";
+                        //giDeviceAddress = 55;
+                        break;
+                    case "SLAVE LINE SHORT CIRCUIT":
+                        tIpType = 15;
+                        gsTextField = "Slave Line Short Circuit";
+                        giDeviceAddress = 56;
+                        break;
+                    case "SYSTEM INITIALISING":
+                        tIpType = 15;
+                        gsTextField = "System Initialising";
+                        giDeviceAddress = 106;
+                        break;
+                    case "TEST MODE":
+                        tIpType = 15;
+                        gsTextField = "Test Mode";
+                        giDeviceAddress = 102;
+                        break;
+                    case "UNEXPECTED DEVICE":
+                        tIpType = 15;
+                        gsTextField = "Unexpected Device";
+                        giDeviceAddress = 57;
+                        break;
+                    case "WRITE ENABLE SWITCH ON":
+                        tIpType = 15;
+                        gsTextField = "Write Enable Switch On";
+                        giDeviceAddress = 59;
+                        break;
+                    case "WRONG DEVICE TYPE":
+                        tIpType = 15;
+                        gsTextField = "Wrong Device Type";
+                        giDeviceAddress = 60;
+                        break;
+                    case "NETWORK NODE MISSING":
+                        tIpType = 15;
+                        gsTextField = "Network Node " + tNode + " Missing";
+                        giDeviceAddress = 61;
                         break;
                     case "INPUT ACTIVATED":
                         if (tIpType == 15)
@@ -687,20 +844,329 @@ namespace Drax360Service.Panels
                                     gsTextField = "Panel Reset";
                                     giDeviceAddress = 105;
                                     break;
+                                case "PANEL RESOUND":
+                                    gsTextField = "Panel Resound";
+                                    giDeviceAddress = 107;
+                                    break;
+                                case "PANEL ACK":
+                                    gsTextField = "Panel ACK";
+                                    giDeviceAddress = 108;
+                                    break;
+                                case "PNL ACK.ALARM":
+                                case "PANEL ACK.ALARM":
+                                    tIpType = 15;
+                                    gsTextField = "Silence Alarm";
+                                    giDeviceAddress = 113;
+                                    break;
+                                case "INPUT/OUTPUT":
+                                case "CHQ-PCM":
+                                    if (Ip[4].ToUpper().Contains("EVACUATE") || Ip[4].ToUpper().Contains("ALERT"))
+                                    {
+                                        if (giZoneNumber == 255)
+                                        {
+                                            giZoneNumber = 0;
+                                        }
+                                        switch (giDeviceSubAddress)
+                                        {
+                                            case 0:
+                                                tIpType = 0;
+                                                gsTextField = "Evacuate Zone " + giZoneNumber;
+                                                break;
+                                            case 1:
+                                                tIpType = 3;
+                                                gsTextField = "Evacuate Zone " + giZoneNumber;
+                                                break;
+                                            case 2:
+                                                tIpType = 5;
+                                                gsTextField = "Evacuate Zone " + giZoneNumber;
+                                                break;
+                                            case 3:
+                                                tIpType = 11;
+                                                gsTextField = "Evacuate Zone " + giZoneNumber;
+                                                break;
+                                            case 4:
+                                                tIpType = 12;
+                                                gsTextField = "Evacuate Zone " + giZoneNumber;
+                                                break;
+                                        }
+                                    }
+                                    break;
+                                case "INPUT UNIT":
+                                    if (Ip[3].ToUpper().Contains("EVACUATE"))
+                                    {
+                                        if (giDeviceSubAddress > 0)
+                                        {
+                                            tIpType = 3;
+                                            gsTextField = "Evacuate Zone " + giZoneNumber;
+                                        }
+                                    }
+                                    break;
+                                case "SERIAL INPUT":
+                                    if (Ip[3].ToUpper().Contains("EVACUATE"))
+                                    {
+                                        if (giDeviceSubAddress > 0)
+                                        {
+                                            tIpType = 15;
+                                            gsTextField = "Evacuate";
+                                            giDeviceAddress = 104;
+                                        }
+                                    }
+                                    if (Ip[3].ToUpper().Contains("ALERT"))
+                                    {
+                                        if (giDeviceSubAddress > 0)
+                                        {
+                                            tIpType = 15;
+                                            gsTextField = "Alert";
+                                            giDeviceAddress = 107;
+                                        }
+                                    }
+                                    break;
+                                default:
+                                    if (Ip[n + 2].ToUpper().Contains("PROG."))
+                                    {
+                                        tIpType = 15;
+                                        gsTextField = "Prog";
+                                        giDeviceAddress = 90;
+                                    }
+                                    if (Ip[3].ToUpper().Contains("EVACUATE"))
+                                    {
+                                        if (giDeviceSubAddress > 0)
+                                        {
+                                            tIpType = 15;
+                                            gsTextField = "Evacuate Button";
+                                            giDeviceAddress = 104;
+                                        }
+                                    }
+                                    if (Ip[3].ToUpper().Contains("ALERT"))
+                                    {
+                                        if (giDeviceSubAddress > 0)
+                                        {
+                                            tIpType = 15;
+                                            gsTextField = "Alert";
+                                            giDeviceAddress = 107;
+                                        }
+                                    }
+                                    if (Ip[3].ToUpper().Contains("ACK. ALARM") || Ip[3].ToUpper().Contains("ACK.ALARM"))
+                                    {
+                                        if (giDeviceSubAddress > 0)
+                                        {
+                                            tIpType = 15;
+                                            gsTextField = "Silence";
+                                            giDeviceAddress = 108;
+                                        }
+                                    }
+                                    break;
                             }
                         }
-                        else if (tEvType == "FIRE" || tEvType == "ALERT" || tEvType == "FAULT" || tEvType == "PRE-ALARM")
+                        else
                         {
-                            if (tIpType == 0 || tIpType == 2 || tIpType == 8)
+                            if (tIpType == 6)
                             {
-                                gsZoneText += " ZONE " + giZoneNumber + "-Input Activated " + tEvType;
-                                gsDeviceText = sNodeDesc.Trim();
+                                if (Ip[0].ToUpper().Contains("FAULT"))
+                                {
+                                    if (GetSyncroDeviceSubAddress() > 0)
+                                    {
+                                        gsTextField += "SA " + GetSyncroDeviceSubAddress();
+                                    }
+                                }
+                                else
+                                {
+                                    if (tEvType == "SUPERVISORY")
+                                    {
+                                        if (GetSyncroDeviceSubAddress() > 0)
+                                        {
+                                            gsTextField += "SA " + GetSyncroDeviceSubAddress();
+                                        }
+                                        switch (giDeviceSubAddress)
+                                        {
+                                            case 0:
+                                                tIpType = 0;
+                                                gsTextField = "Supervisory Zone " + giZoneNumber;
+                                                break;
+                                            case 1:
+                                                tIpType = 3;
+                                                gsTextField = "Supervisory Zone " + giZoneNumber;
+                                                break;
+                                            case 2:
+                                                tIpType = 5;
+                                                gsTextField = "Supervisory Zone " + giZoneNumber;
+                                                break;
+                                            case 3:
+                                                tIpType = 11;
+                                                gsTextField = "Supervisory Zone " + giZoneNumber;
+                                                break;
+                                            case 4:
+                                                tIpType = 12;
+                                                gsTextField = "Supervisory Zone " + giZoneNumber;
+                                                break;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        if (GetSyncroDeviceSubAddress() > 0)
+                                        {
+                                            gsTextField += "SA " + GetSyncroDeviceSubAddress();
+                                        }
+                                        switch (giDeviceSubAddress)
+                                        {
+                                            case 0:
+                                                tIpType = 0;
+                                                gsTextField = "Tech Alarm";
+                                                break;
+                                            case 1:
+                                                tIpType = 3;
+                                                gsTextField = "Tech Alarm";
+                                                break;
+                                            case 2:
+                                                tIpType = 5;
+                                                gsTextField = "Tech Alarm";
+                                                break;
+                                            case 3:
+                                                tIpType = 11;
+                                                gsTextField = "Tech Alarm";
+                                                break;
+                                            case 4:
+                                                tIpType = 12;
+                                                gsTextField = "Tech Alarm";
+                                                break;
+                                        }
+                                    }
+                                }
                             }
                             else
                             {
-                                gsTextField = Ip[2];
+                                if (tEvType == "SECURITY")
+                                {
+                                    if (tIpType == 0)
+                                    {
+                                        if (GetSyncroDeviceSubAddress() > 0)
+                                        {
+                                            gsTextField += "SA " + GetSyncroDeviceSubAddress();
+                                        }
+                                        switch (giDeviceSubAddress)
+                                        {
+                                            case 0:
+                                                tIpType = 0;
+                                                gsTextField = "Security";
+                                                break;
+                                            case 1:
+                                                tIpType = 3;
+                                                gsTextField = "Security";
+                                                break;
+                                            case 2:
+                                                tIpType = 5;
+                                                gsTextField = "Security";
+                                                break;
+                                            case 3:
+                                                tIpType = 11;
+                                                gsTextField = "Security";
+                                                break;
+                                            case 4:
+                                                tIpType = 12;
+                                                gsTextField = "Security";
+                                                break;
+                                        }
+                                    }
+                                }
+                                else if (tEvType == "AUXILIARY")
+                                {
+                                    if (tIpType == 0)
+                                    {
+                                        if (GetSyncroDeviceSubAddress() > 0)
+                                        {
+                                            gsTextField += "SA " + GetSyncroDeviceSubAddress();
+                                        }
+                                        switch (giDeviceSubAddress)
+                                        {
+                                            case 0:
+                                                tIpType = 0;
+                                                gsTextField = "Auxiliary Zone " + giZoneNumber;
+                                                break;
+                                            case 1:
+                                                tIpType = 3;
+                                                gsTextField = "Auxiliary Zone " + giZoneNumber;
+                                                break;
+                                            case 2:
+                                                tIpType = 5;
+                                                gsTextField = "Auxiliary Zone " + giZoneNumber;
+                                                break;
+                                            case 3:
+                                                tIpType = 11;
+                                                gsTextField = "Auxiliary Zone " + giZoneNumber;
+                                                break;
+                                            case 4:
+                                                tIpType = 12;
+                                                gsTextField = "Auxiliary Zone " + giZoneNumber;
+                                                break;
+                                        }
+                                    }
+                                }
+                                else if (tEvType == "FIRE" || tEvType == "ALERT" || tEvType == "FAULT" || tEvType == "PRE-ALARM")
+                                {
+                                    string sSubText;
+
+                                    if (tIpType == 0)
+                                    {
+                                        sSubText = "Fire";
+                                    }
+                                    else if (tIpType == 2)
+                                    {
+                                        sSubText = "Pre-Alarm";
+                                    }
+                                    else if (tIpType == 8)
+                                    {
+                                        sSubText = "Fault";
+                                    }
+                                    else
+                                    {
+                                        sSubText = Ip[2];
+                                    }
+
+                                    switch (giDeviceSubAddress)
+                                    {
+                                        case 1:
+                                            tIpType = 3;
+                                            gsTextField = "SA 1 " + Ip[1];
+                                            break;
+                                        case 2:
+                                            tIpType = 5;
+                                            gsTextField = "SA 2 " + Ip[1];
+                                            break;
+                                        case 3:
+                                            tIpType = 11;
+                                            gsTextField = "SA 4 " + Ip[1];
+                                            break;
+                                        case 4:
+                                            tIpType = 12;
+                                            gsTextField = "SA 4 " + Ip[1];
+                                            break;
+                                        default:   // Standard Fire no Sub Address
+                                            tIpType = 0;
+                                            gsTextField = Ip[3] + "- " + Ip[2] + " " + Ip[4];
+                                            break;
+                                    }
+
+                                    if (tIpType == 0 || tIpType == 2 || tIpType == 8)
+                                    {
+                                        gsZoneText += " ZONE " + giZoneNumber + "-Input Activated " + tEvType;
+                                        gsDeviceText = sNodeDesc.Trim();
+                                    }
+                                }
+                                else if (tEvType == "SUPER")
+                                {
+                                    tIpType = 15;
+                                    gsTextField = "Supervisory";
+                                    giDeviceAddress = 109;
+                                }
+                                else if (tEvType == "CARBON MONOXIDE")
+                                {
+                                }
+                                else if (tEvType == "AUXILIARY")
+                                {
+                                }
                             }
                         }
+                        
                         break;
 
                     case "DISABLED ZONE":
@@ -738,42 +1204,42 @@ namespace Drax360Service.Panels
 
                     case "E2 DIS":
                         gsDeviceText = "E2 Dis";
-                        tIpType = 21;
+                        giDeviceAddress = 21;
                         break;
 
                     case "E3 DIS":
                         gsDeviceText = "E3 Dis";
-                        tIpType = 22;
+                        giDeviceAddress = 22;
                         break;
 
                     case "E3 FAULT":
                         gsDeviceText = "E3 Fault";
-                        tIpType = 23;
+                        giDeviceAddress = 23;
                         break;
 
                     case "E4 FAULT":
                         gsDeviceText = "E4 Fault";
-                        tIpType = 24;
+                        giDeviceAddress = 24;
                         break;
 
                     case "E5 FAULT":
                         gsDeviceText = "E5 Fault";
-                        tIpType = 25;
+                        giDeviceAddress = 25;
                         break;
 
                     case "E6 FAULT":
                         gsDeviceText = "E6 Fault";
-                        tIpType = 26;
+                        giDeviceAddress = 26;
                         break;
 
                     case "E7 FAULT":
                         gsDeviceText = "E7 Fault";
-                        tIpType = 27;
+                        giDeviceAddress = 27;
                         break;
 
                     case "EARTH FAULT":
                         gsDeviceText = "Earth Fault";
-                        tIpType = 28;
+                        giDeviceAddress = 28;
                         break;
 
                     case "INTERNAL FAULT":
@@ -798,13 +1264,65 @@ namespace Drax360Service.Panels
                         break;
 
                     case "INPUT CLEARED":
-                        gsDeviceText = "Input Open Circuit";
+                        gsDeviceText = "Input Cleared";
                         tIpType = 15;
                         break;
 
+                    default:
+                        if (n == 1)
+                        {
+                            if (Ip[1].ToUpper().Contains("ELITE RS PANEL"))
+                            {
+                                if (tEvType == "SILENCE ALARM")
+                                {
+                                    tIpType = 15;
+                                    gsTextField = "Silence Alarm";
+                                    giDeviceAddress = 103;
+                                }
+                            }
+                            else
+                            {
+                                if (Ip[1].ToUpper().Contains("GENERAL"))
+                                {
+                                    if (tEvType == "FIRE")
+                                    {
+                                        switch (giDeviceSubAddress)
+                                        {
+                                            case 0:
+                                                tIpType = 0;
+                                                gsTextField = "Fire " + giZoneNumber;
+                                                break;
+                                            case 1:
+                                                tIpType = 3;
+                                                gsTextField = "Fire " + giZoneNumber;
+                                                break;
+                                            case 2:
+                                                tIpType = 5;
+                                                gsTextField = "Fire " + giZoneNumber;
+                                                break;
+                                            case 3:
+                                                tIpType = 11;
+                                                gsTextField = "Fire " + giZoneNumber;
+                                                break;
+                                            case 4:
+                                                tIpType = 12;
+                                                gsTextField = "Fire " + giZoneNumber;
+                                                break;
+                                        }
+                                    }
+                                    tIpType = 15;
+                                    gsTextField = "Silence Alarm";
+                                    giDeviceAddress = 103;
+                                }
+                                else
+                                {
+                                    this.NotifyClient("Unknown Event " + sMessage + " - " + Ip[0].ToUpper() + " " + Ip[1].ToUpper());
+                                }
+                            }
+                        }
+                        break;
                 }
             }
-
             int p1 = 0;
             int evnum = 0;
 
@@ -997,6 +1515,44 @@ namespace Drax360Service.Panels
 
             return result;
         }
+
+        public int GetSyncroDeviceSubAddress()
+        {
+            try
+            {
+                for (int i = 1; i <= 6; i++)
+                {
+                    string line = Ip[i];
+
+                    if (string.IsNullOrEmpty(line))
+                        continue;
+
+                    if (line.IndexOf("ADR=", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        string tString = line.Length >= 11 ? line.Substring(0, 11) : line;
+
+                        // find the dot
+                        int dotIndex = tString.IndexOf('.');
+
+                        if (dotIndex >= 0 && dotIndex < tString.Length - 1)
+                        {
+                            // everything after the dot
+                            string numberPart = tString.Substring(dotIndex + 1);
+
+                            if (int.TryParse(numberPart, out int subAddress))
+                                return subAddress;
+                        }
+
+                        return 0;   // default if no dot or not numeric
+                    }
+                }
+            }
+            catch
+            {}
+
+            return 0;   // default
+        }
+
 
         public void AddToZoneDisableList(int piNode, int piZone, ref int piDeviceAddress, ref int piLoop)
         {
@@ -1440,7 +1996,7 @@ namespace Drax360Service.Panels
                 if (pos == -1)
                 {
                     // Now deal with specific message types
-                    if (_buffer[3].ToString() == "68")
+                    if (_buffer.Count >= 4 && _buffer[3].ToString() == "68")
                     {
                         int DeviceAnalogueValue = _buffer[7];
                         base.NotifyClient("Analogue Node Received: " + _buffer[2], false);
@@ -1449,7 +2005,7 @@ namespace Drax360Service.Panels
                     }
                     else
                     {
-                        if (_buffer[4].ToString() == "68")
+                        if (_buffer.Count >= 5 && _buffer[4].ToString() == "68")
                         {
                             int DeviceAnalogueValue = _buffer[8];
                             base.NotifyClient("Analogue Node Received: " + _buffer[3], false);
