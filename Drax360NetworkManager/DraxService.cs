@@ -492,7 +492,7 @@ namespace Drax360Service
         NOTDisableZone = 11,
         NOTStatusEvent = 15,
     }
-    public enum enmPRLAlarmType
+    public enum enmNotPRLAlarmType
     {
         NOTFire = 0,
         NOTNonFireAlarm = 1,
@@ -504,6 +504,19 @@ namespace Drax360Service
         NOTDeviceTestMode = 10,
         NOTDisableZone = 11,
         NOTStatusEvent = 15,
+    }
+    public enum enmPRLAlarmType
+    {
+        Fire = 0,
+        NonFireAlarm = 1,
+        PreAlarm = 2,
+        Isolate = 4,
+        TestModeFire = 6,
+        Fault = 8,
+        OutputActivate = 9,
+        DeviceTestMode = 10,
+        DisableZone = 11,
+        StatusEvent = 15,
     }
     public enum EnmDeviceType
     {

@@ -41,6 +41,7 @@ namespace Drax360Service.Panels
         public bool LocalInputUnit = false;
         public int KSFUseLoop = 0;
         public int index = 0;
+        public int giAnalogRequestLoop = 0;
         private int miMsgID = 0;
         private List<string> garyzoneDisableList = new List<string>();
 
@@ -830,7 +831,7 @@ namespace Drax360Service.Panels
                         giDeviceAddress = 61;
                         break;
                     case "INPUT ACTIVATED":
-                        if (tIpType == 15)
+                        if (tIpType == (int)enmPRLAlarmType.StatusEvent)
                         {
                             switch (GetSyncroDevType().ToUpper())
                             {
@@ -960,7 +961,7 @@ namespace Drax360Service.Panels
                         }
                         else
                         {
-                            if (tIpType == 6)
+                            if (tIpType == (int)enmPRLAlarmType.TestModeFire)
                             {
                                 if (Ip[0].ToUpper().Contains("FAULT"))
                                 {
@@ -1037,7 +1038,7 @@ namespace Drax360Service.Panels
                             {
                                 if (tEvType == "SECURITY")
                                 {
-                                    if (tIpType == 0)
+                                    if (tIpType == (int)enmPRLAlarmType.Fire)
                                     {
                                         if (GetSyncroDeviceSubAddress() > 0)
                                         {
@@ -1070,7 +1071,7 @@ namespace Drax360Service.Panels
                                 }
                                 else if (tEvType == "AUXILIARY")
                                 {
-                                    if (tIpType == 0)
+                                    if (tIpType == (int)enmPRLAlarmType.Fire)
                                     {
                                         if (GetSyncroDeviceSubAddress() > 0)
                                         {
@@ -1105,15 +1106,15 @@ namespace Drax360Service.Panels
                                 {
                                     string sSubText;
 
-                                    if (tIpType == 0)
+                                    if (tIpType == (int)enmPRLAlarmType.Fire)
                                     {
                                         sSubText = "Fire";
                                     }
-                                    else if (tIpType == 2)
+                                    else if (tIpType == (int)enmPRLAlarmType.PreAlarm)
                                     {
                                         sSubText = "Pre-Alarm";
                                     }
-                                    else if (tIpType == 8)
+                                    else if (tIpType == (int)enmPRLAlarmType.Fault)
                                     {
                                         sSubText = "Fault";
                                     }
@@ -1146,7 +1147,7 @@ namespace Drax360Service.Panels
                                             break;
                                     }
 
-                                    if (tIpType == 0 || tIpType == 2 || tIpType == 8)
+                                    if (tIpType == (int)enmPRLAlarmType.Fire || tIpType == (int)enmPRLAlarmType.PreAlarm || tIpType == (int)enmPRLAlarmType.Fault)
                                     {
                                         gsZoneText += " ZONE " + giZoneNumber + "-Input Activated " + tEvType;
                                         gsDeviceText = sNodeDesc.Trim();
@@ -1154,7 +1155,7 @@ namespace Drax360Service.Panels
                                 }
                                 else if (tEvType == "SUPER")
                                 {
-                                    tIpType = 15;
+                                    tIpType = (int)enmPRLAlarmType.StatusEvent;
                                     gsTextField = "Supervisory";
                                     giDeviceAddress = 109;
                                 }
@@ -1344,6 +1345,10 @@ namespace Drax360Service.Panels
             base.NotifyClient("Send to AMX: Node = " + (giNodeNumber + this.Offset) + " Loop = " + giLoopNumber + " Address = " + giDeviceAddress);
 
             evnum = CSAMXSingleton.CS.MakeInputNumber(giNodeNumber, giLoopNumber, giDeviceAddress, p1, on);
+            if (tIpType == (int)enmPRLAlarmType.Isolate)  // If Disable Device neeed to also send another event to AMX to increase the Isolation count
+            {
+                send_response_amx_and_serial_disable(evnum, gsTextField, gsZoneText, gsDeviceText);
+            }
             send_response_amx_and_serial(evnum, gsTextField, gsZoneText, gsDeviceText);
             return true;
         }
@@ -1628,7 +1633,16 @@ namespace Drax360Service.Panels
             CSAMXSingleton.CS.SendAlarmToAMX(evnum, message1, message2, message3);
             CSAMXSingleton.CS.FlushMessages();
         }
+        private void send_response_amx_and_serial_disable(int evnum, string message1, string message2, string message3 = "")
+        {
+            string friendlymessage = message2 + (message3.Length > 0 ? (" " + message3) : "");
 
+            // Signal the event back to the main service, so that it can be logged
+            this.NotifyClient(friendlymessage, false);
+
+            CSAMXSingleton.CS.SendAlarmToAMX_disable(evnum, message1, message2, message3);
+            CSAMXSingleton.CS.FlushMessages();
+        }
         private string makechecksum(string[] paryMessage)
         {
             int checksum = 0;
@@ -1926,6 +1940,8 @@ namespace Drax360Service.Panels
                 gbaryDataToTX[5] = (loop - 1).ToString();
                 gbaryDataToTX[6] = device.ToString();
 
+                giAnalogRequestLoop = (loop - 1);
+
                 string sChecksum = makechecksum(gbaryDataToTX);
                 gbaryDataToTX[7] = sChecksum;
 
@@ -1999,18 +2015,24 @@ namespace Drax360Service.Panels
                     if (_buffer.Count >= 4 && _buffer[3].ToString() == "68")
                     {
                         int DeviceAnalogueValue = _buffer[7];
-                        base.NotifyClient("Analogue Node Received: " + _buffer[2], false);
+                        int deviceNode = _buffer[2];
+                        int DeviceLoop = giAnalogRequestLoop + 1;
+                        base.NotifyClient("Analogue Node Received: " + deviceNode, false);
                         base.NotifyClient("Analogue Address Received: " + _buffer[6], false);
                         base.NotifyClient("Analogue Value Received: " + DeviceAnalogueValue, false);
+                        string sLavFileName = GetAnalogStoreName(deviceNode, DeviceLoop);
                     }
                     else
                     {
                         if (_buffer.Count >= 5 && _buffer[4].ToString() == "68")
                         {
                             int DeviceAnalogueValue = _buffer[8];
+                            int deviceNode = _buffer[2];
+                            int DeviceLoop = giAnalogRequestLoop + 1;
                             base.NotifyClient("Analogue Node Received: " + _buffer[3], false);
                             base.NotifyClient("Analogue Address Received: " + _buffer[7], false);
                             base.NotifyClient("Analogue Value Received: " + DeviceAnalogueValue, false);
+                            string sLavFileName = GetAnalogStoreName(deviceNode, DeviceLoop);
                         }
                         else
                         {
@@ -2044,5 +2066,11 @@ namespace Drax360Service.Panels
             }
             return -1;
         }
+
+        public string GetAnalogStoreName(int iNode, int iLoop)
+        {
+            return $@"\History\Analog\{iNode:000#}{iLoop:00#}.LAV";
+        }
+
     }
 }

@@ -254,6 +254,10 @@ unsigned char *TxFile;
         {
             sendalarmorreset(eventnumber, dtext, dtext2, dtext3, true);
         }
+        public void SendAlarmToAMX_disable(int eventnumber, string dtext = "", string dtext2 = "", string dtext3 = "")
+        {
+            sendalarmorreset_disable(eventnumber, dtext, dtext2, dtext3, true);
+        }
 
         public void SendResetToAMX(int eventnumber, string dtext = "", string dtext2 = "", string dtext3 = "")
         {
@@ -350,6 +354,19 @@ unsigned char *TxFile;
         {
             NVM ournvm = new NVM();
             ournvm.OurType = 1;
+            ournvm.OurEvent = eventnumber;
+            ournvm.On = on ? 65535 : 0;
+            ournvm.Text = dtext;
+            ournvm.Text2 = dtext2;
+            ournvm.Text3 = dtext3;
+
+            nvms.Add(ournvm);
+        }
+
+        public void sendalarmorreset_disable(int eventnumber, string dtext, string dtext2, string dtext3, bool on)
+        {
+            NVM ournvm = new NVM();
+            ournvm.OurType = 2;
             ournvm.OurEvent = eventnumber;
             ournvm.On = on ? 65535 : 0;
             ournvm.Text = dtext;

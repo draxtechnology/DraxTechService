@@ -189,7 +189,6 @@ namespace Drax360Service.Panels
                     byte b = unchecked((byte)Convert.ToInt32(v));
                     serialport.Write(new byte[] { b }, 0, 1);
 
-                    // small delay to mimic VB6 MSComm hardware pacing
                     Thread.Sleep(20); // increase if needed (10–20ms sometimes)
                 }
             }
