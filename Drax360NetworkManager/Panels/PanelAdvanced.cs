@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Ports;
 using System.Linq;
+using System.Runtime.Remoting.Messaging;
 using System.Text;
 using System.Threading;
 
@@ -299,17 +300,19 @@ namespace Drax360Service.Panels
             if (parts.Length > 2) int.TryParse(parts[2], out zone);
             if (parts.Length > 3) int.TryParse(parts[3], out device);
 
-            Byte[] disiceabledev = new Byte[] { 70, 0, 0x85, 1, (byte)node, (byte)device, 0, 1 };
+            Byte[] devicedisable = new Byte[] { 70, 0, 0x85, 1, (byte)node, (byte)device, 0, 1 };
 
-            Byte[] disiceabledevnew = definecontrol(disiceabledev);
+            Byte[] devicedisablenew = definecontrol(devicedisable);
 
-            serialsend(disiceabledevnew);
+            serialsend(devicedisablenew);
 
             int inputtype = 4;
             string text = "";
             bool on = true;
 
             node = node + this.Offset;
+            evnum = CSAMXSingleton.CS.MakeInputNumber(node, loop, device, inputtype);
+            send_response_amx_disable(evnum, "", message2, text);
             SendEvent("Advanced", NwmData.IsolationToAmx, inputtype, text, on, node, loop, device);
 
         }
@@ -335,6 +338,8 @@ namespace Drax360Service.Panels
             bool on = false;
 
             node = node + this.Offset;
+            evnum = CSAMXSingleton.CS.MakeInputNumber(node, loop, device, inputtype, on);
+            send_response_amx_disable(evnum, "", message2, text);
             SendEvent("Advanced", NwmData.IsolationToAmx, inputtype, text, on, node, loop, device);
         }
 
@@ -906,7 +911,16 @@ namespace Drax360Service.Panels
             CSAMXSingleton.CS.SendAlarmToAMX(evnum, message1, message2, message3);
             CSAMXSingleton.CS.FlushMessages();
         }
+        private void send_response_amx_disable(int evnum, string message1, string message2, string message3 = "")
+        {
+            string friendlymessage = message2 + (message3.Length > 0 ? (" " + message3) : "");
 
+            // Signal the event back to the main service, so that it can be logged
+            this.NotifyClient(friendlymessage, false);
+
+            CSAMXSingleton.CS.SendAlarmToAMX_disable(evnum, message1, message2, message3);
+            CSAMXSingleton.CS.FlushMessages();
+        }
         // Advanced chunker to handle length-prefixed chunks with end byte
         private List<byte[]> advancedchunker(int lengthofchar, byte[] data, byte end, out int removelength)
         {

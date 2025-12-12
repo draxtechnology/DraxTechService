@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO.Ports;
 using System.Linq;
+using System.Runtime.Remoting.Contexts;
 using System.Security.Policy;
 using System.ServiceProcess;
 using System.Text;
@@ -708,6 +709,10 @@ namespace Drax360Service.Panels
                 p4 = Convert.ToInt32(giAddressNumber);
 
                 evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1,on);
+                if (p1 == (int)enmPRLAlarmType.Isolate)  // If Disable Device neeed to also send another event to AMX to increase the Isolation count
+                {
+                    send_response_amx_disable(evnum, gsTextField, gsDeviceText, gsZoneText);
+                }
                 send_response_amx_and_serial(evnum, gsTextField, gsDeviceText, gsZoneText);
             }
         }
@@ -730,7 +735,16 @@ namespace Drax360Service.Panels
 
             Console.WriteLine(stracknowledge.Replace("\r", "") + " Sent to Panel");
         }
+        private void send_response_amx_disable(int evnum, string message1, string message2, string message3 = "")
+        {
+            string friendlymessage = message2 + (message3.Length > 0 ? (" " + message3) : "");
 
+            // Signal the event back to the main service, so that it can be logged
+            this.NotifyClient(friendlymessage, false);
+
+            CSAMXSingleton.CS.SendAlarmToAMX_disable(evnum, message1, message2, message3);
+            CSAMXSingleton.CS.FlushMessages();
+        }
         public void GetDeviceTypeText(int piDeviceType)
         {
             gsDeviceText = "";

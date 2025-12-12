@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO.Ports;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace Drax360Service.Panels
 {
@@ -228,6 +229,7 @@ namespace Drax360Service.Panels
             int p4 = AddressNumber;
             string message2 = "";
             string message3 = "";
+            bool on = true;
 
             int evnum = 0;
 
@@ -292,18 +294,22 @@ namespace Drax360Service.Panels
                             {
                                 message2 = "Zone Enable";
                                 p1 = 15;
+                                on = false;
                             }
                             else
                             {
                                 message2 = "Device Enable";
                                 p1 = 4;
+                                on = false;
+                                
                             }
                             p2 = sPanelNumber;
                             p3 = sLoopNumber; p4 = 53;
 
                             p2 = p2 + this.Offset;
 
-                            evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, false);
+                            evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, on);
+                            send_response_amx_disable(evnum, "", message2, message3);
                             send_response_amx_and_serial(evnum, "", message2);
                             break;
 
@@ -437,7 +443,12 @@ namespace Drax360Service.Panels
                     {
                         message2 = "Device Disablement";
                         p1 = 4;
+                        p2 = sPanelNumber;
+                        p3 = sLoopNumber;
                         p4 = AddressNumber;
+                        p2 = p2 + this.Offset;
+                        evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+                        send_response_amx_disable(evnum, "", message2, message3);
                     }
 
                     p2 = sPanelNumber;
@@ -504,6 +515,16 @@ namespace Drax360Service.Panels
             byte[] bytesToLog = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
             string hex = BitConverter.ToString(bytesToLog); // "00-06-00-06"
             this.NotifyClient("ACK Sent: " + hex, false);
+        }
+        private void send_response_amx_disable(int evnum, string message1, string message2, string message3 = "")
+        {
+            string friendlymessage = message2 + (message3.Length > 0 ? (" " + message3) : "");
+
+            // Signal the event back to the main service, so that it can be logged
+            this.NotifyClient(friendlymessage, false);
+
+            CSAMXSingleton.CS.SendAlarmToAMX_disable(evnum, message1, message2, message3);
+            CSAMXSingleton.CS.FlushMessages();
         }
         private bool gentchecksumvalidation(int piMSB, int piLSB, byte[] paryMessage, out int oiMSB, out int oiLSB)
         {
