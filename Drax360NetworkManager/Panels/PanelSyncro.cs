@@ -350,7 +350,13 @@ namespace Drax360Service.Panels
                     string devType = GetSyncroDevType();
                     if (!string.IsNullOrEmpty(devType))
                     {
+                        gsDeviceText = sNodeDesc.Trim();
                         gsZoneText = devType;
+                        if (gsZoneText.Length > 0)
+                        {
+                            gsZoneText += " ZONE " + GetSyncroZone();
+
+                        }
                     }
                 }
             }
@@ -1127,19 +1133,19 @@ namespace Drax360Service.Panels
                                     {
                                         case 1:
                                             tIpType = 3;
-                                            gsTextField = "SA 1 " + Ip[1];
+                                            gsTextField = "SA 1 " + Ip[1] + " " + sSubText;
                                             break;
                                         case 2:
                                             tIpType = 5;
-                                            gsTextField = "SA 2 " + Ip[1];
+                                            gsTextField = "SA 2 " + Ip[1] + " " + sSubText;
                                             break;
                                         case 3:
                                             tIpType = 11;
-                                            gsTextField = "SA 4 " + Ip[1];
+                                            gsTextField = "SA 4 " + Ip[1] + " " + sSubText;
                                             break;
                                         case 4:
                                             tIpType = 12;
-                                            gsTextField = "SA 4 " + Ip[1];
+                                            gsTextField = "SA 4 " + Ip[1] + " " + sSubText;
                                             break;
                                         default:   // Standard Fire no Sub Address
                                             tIpType = 0;
@@ -1336,15 +1342,18 @@ namespace Drax360Service.Panels
             {
                 this.NotifyClient("gAlarmType " + gAlarmType + " " + ex.Message, false);
             }
+            evnum = CSAMXSingleton.CS.MakeInputNumber(giNodeNumber, giLoopNumber, giDeviceAddress, p1, on);
 
-            if (giDeviceAddress == 255)   // TODO
+            if (giDeviceAddress == 255)
             {
-                giDeviceAddress = 1; // default
+                giDeviceAddress = GetInputNumber(evnum);
+                giNodeNumber = GetBoardAddress(evnum);
+                giLoopNumber = GetLoopNumber(evnum);
+                evnum = CSAMXSingleton.CS.MakeInputNumber(giNodeNumber, giLoopNumber, giDeviceAddress, p1, on);
                 this.NotifyClient("Device 255 so now " + giDeviceAddress, false);
             }
             base.NotifyClient("Send to AMX: Node = " + (giNodeNumber + this.Offset) + " Loop = " + giLoopNumber + " Address = " + giDeviceAddress);
 
-            evnum = CSAMXSingleton.CS.MakeInputNumber(giNodeNumber, giLoopNumber, giDeviceAddress, p1, on);
             if (tIpType == (int)enmPRLAlarmType.Isolate)  // If Disable Device neeed to also send another event to AMX to increase the Isolation count
             {
                 send_response_amx_disable(evnum, gsTextField, gsZoneText, gsDeviceText);
@@ -2072,5 +2081,18 @@ namespace Drax360Service.Panels
             return $@"\History\Analog\{iNode:000#}{iLoop:00#}.LAV";
         }
 
+        private short GetBoardAddress(long ip) 
+        { 
+            return (short)((ip & 0x07ff0000) / 0x10000); 
+        }
+        private short GetInputNumber(long ip)
+        {
+            return (short)(ip & 0x000000FF);
+        }
+
+        private short GetLoopNumber(long ip)
+        {
+            return (short)((ip & 0x0000ff00) / 0x00000100);
+        }
     }
 }
