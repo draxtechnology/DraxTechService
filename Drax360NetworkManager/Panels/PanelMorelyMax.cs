@@ -908,8 +908,6 @@ namespace Drax360Service.Panels
 
             {
                 base.NotifyClient("Failed To Open " + serialport.PortName, false);
-
-
             }
 
             if (serialport.IsOpen)
@@ -917,12 +915,7 @@ namespace Drax360Service.Panels
                 serialport.DiscardInBuffer();
                 serialport.DiscardOutBuffer();
             }
-        }
-
-        
-
-
-        
+        } 
 
         public override void Evacuate(string passedvalues)
         {

@@ -4,23 +4,29 @@ using System.Collections.Generic;
 using System.IO.Ports;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading;
 
 namespace Drax360Service.Panels
 {
     internal class PanelMorleyZX : AbstractPanel
     {
         #region constants
-        const byte kzerobyte = 0x00;
+
         const byte kackbyte = 0x06;
         const byte kheartbeatdelayseconds = 60;
-        const int kchunksize = 59;
+        const int MORLEY_HEADER_RESPONSE = 250;
+        const int MORLEY_MSG_END = 253;
+        const int MORLEY_HEADER_TWOWAY = 241;
+        const int MORLEY_HEADER_BROADCAST  = 252;
+        const int MORLEY_MSG_IDENT_INDX  = 3;
+
         #endregion
 
         public override string FakeString
         {
             get
             {
-                // two messages are sent, so we return the same message twice
                 string msg = "";
 
                 return msg;
@@ -29,7 +35,7 @@ namespace Drax360Service.Panels
 
 
 
-        public PanelMorleyZX(string baselogfolder, string identifier) : base(baselogfolder, identifier, "KsfMan", "KSF")
+        public PanelMorleyZX(string baselogfolder, string identifier) : base(baselogfolder, identifier, "MorleyMan", "Morley")
         {
             if (!String.IsNullOrEmpty(identifier))
             {
@@ -40,7 +46,12 @@ namespace Drax360Service.Panels
 
         public override void Parse(byte[] buffer)
         {
+            base.Parse(buffer);
+            int bufferlength = this.buffer.Count;
 
+            byte[] ourmessage = this.buffer.ToArray();
+            string strmsg = Encoding.UTF8.GetString(ourmessage, 0, ourmessage.Length);
+            this.NotifyClient(strmsg.Replace("\r", "") + " Received from Panel");
         }
 
         private bool processmessage(byte[] chunk)
@@ -62,10 +73,10 @@ namespace Drax360Service.Panels
             CSAMXSingleton.CS.SendAlarmToAMX(evnum, message1, message2, message3);
             CSAMXSingleton.CS.FlushMessages();
 
-            serialsend(new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte });
-            byte[] bytesToLog = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
-            string hex = BitConverter.ToString(bytesToLog); // "00-06-00-06"
-            this.NotifyClient("ACK Sent: " + hex, false);
+            //serialsend(new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte });
+            //byte[] bytesToLog = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
+            //string hex = BitConverter.ToString(bytesToLog); // "00-06-00-06"
+            //this.NotifyClient("ACK Sent: " + hex, false);
         }
 
         private void CalculateCheckSum(string[] paryMessage, out int piMSB, out int piLSB)
@@ -132,20 +143,23 @@ namespace Drax360Service.Panels
             serialport.StopBits = (StopBits)settingstopbits;
             serialport.Handshake = Handshake.None;
             serialport.DataReceived += SerialPort_Datareceived;
+            serialport.PinChanged += SerialPort_PinChanged;
             if (serialport.IsOpen)
             {
                 serialport.Close();
             }
+            Console.WriteLine("Attempting Open " + serialport.PortName);
             base.NotifyClient("Attempting Open " + serialport.PortName, false);
             serialport.Encoding = System.Text.Encoding.ASCII;
-            serialport.DtrEnable = true;
+            serialport.DtrEnable = false;
+            serialport.RtsEnable = false;
 
             serialport.ReadBufferSize = 8000;
             serialport.WriteBufferSize = 200;
 
             serialport.ReadTimeout = 500;
             serialport.ParityReplace = (byte)0;
-            serialport.ReceivedBytesThreshold = 8;
+            serialport.ReceivedBytesThreshold = 1;
             try
             {
                 serialport.Open();
@@ -159,6 +173,16 @@ namespace Drax360Service.Panels
             {
                 serialport.DiscardInBuffer();
                 serialport.DiscardOutBuffer();
+            }
+
+            while (serialport.IsOpen)
+            {
+                if (serialport.BytesToRead > 0)
+                {
+                    int b = serialport.ReadByte();
+                    Console.WriteLine("Received: " + b);
+                }
+                Thread.Sleep(10);
             }
         }
         public override void Evacuate(string passedvalues)
@@ -232,9 +256,8 @@ namespace Drax360Service.Panels
 
             node = node + this.Offset;
             string text = "";
-            SendEvent("Gent", type, inputtype, text, on, node, loop, device);
+            SendEvent("Morley", type, inputtype, text, on, node, loop, device);
         }
-
 
         public override void SerialPort_Datareceived(object sender, SerialDataReceivedEventArgs e)
         {
@@ -260,7 +283,30 @@ namespace Drax360Service.Panels
 
             Parse(readbytes);
         }
+        private void SerialPort_PinChanged(object sender, SerialPinChangedEventArgs e)
+        {
+            switch (e.EventType)
+            {
+                case SerialPinChange.CtsChanged:
+                    Console.WriteLine("CTS changed");
+                    break;
 
+                case SerialPinChange.DsrChanged:
+                    Console.WriteLine("DSR changed");
+                    break;
+
+                case SerialPinChange.CDChanged:
+                    Console.WriteLine("DCD changed");
+                    break;
+
+                case SerialPinChange.Ring:
+                    Console.WriteLine("RING detected");
+                    break;
+
+                case SerialPinChange.Break:
+                    Console.WriteLine("BREAK detected");
+                    break;
+            }
+        }
     }
-
 }
