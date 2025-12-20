@@ -134,7 +134,15 @@ namespace Drax360Service.Panels
 
         public Boolean SerialPortIsOpen()
         {
-            return serialport.IsOpen;
+            try
+            {
+                return serialport.IsOpen;
+            }
+            catch( Exception e)
+
+            // TODO make this more robust
+            { return false; 
+            }
         }
 
         public T GetSetting<T>(string section, string name)

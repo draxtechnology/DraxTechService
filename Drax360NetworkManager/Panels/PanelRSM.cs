@@ -1,9 +1,11 @@
 ﻿
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.IO.Ports;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace Drax360Service.Panels
 {
@@ -26,7 +28,6 @@ namespace Drax360Service.Panels
                 return msg;
             }
         }
-
        
 
         public PanelRSM(string baselogfolder, string identifier) : base(baselogfolder,identifier, "RSMMan","RSM")
@@ -38,11 +39,185 @@ namespace Drax360Service.Panels
             }
         }
 
-        public override void Parse(byte[] buffer)
+        public byte[] Parse(byte[] buffer)
         {
- 
+
+            // just for cosmetics - display the raw hex data
+            string hexData = BitConverter.ToString(buffer).Replace("-", " ");
+            Console.WriteLine(hexData);
+
+            string decodedData = decodedata(buffer);
+            Console.WriteLine(decodedData);
+            // Send ACK response
+            string ackResponse = generateackresponse(decodedData);
+            if (!string.IsNullOrEmpty(ackResponse))
+            {
+                byte[] ackBytes = scrambleandencodemessage(ackResponse);
+                return ackBytes;
+            }
+            else
+            {
+                // No ACK generated
+                return new byte[0];
+
+            }
         }
-        
+
+
+        private byte[] scrambleandencodemessage(string message)
+        {
+            // Replace semicolons back from our display format
+            message = message.Replace(";", new string((char)0x3B, 1));
+
+            // Calculate checksum
+            int checksum = 0;
+            foreach (char c in message)
+            {
+                checksum += (int)c;
+            }
+            checksum = (checksum % 200) + 33;
+
+            // Scramble the message (reverse of descramble)
+            // First reverse the string
+            char[] chars = message.ToCharArray();
+            Array.Reverse(chars);
+            string reversed = new string(chars);
+
+            // Then apply the scramble formula
+            List<byte> scrambled = new List<byte>();
+            for (int n = 1; n <= reversed.Length; n++)
+            {
+                int charValue = (int)reversed[n - 1];
+                int encoded = charValue + 3 + (n % 9) + ((n % 5) * 7);
+
+                // Handle wrap-around
+                while (encoded > 255)
+                    encoded -= 256;
+
+                scrambled.Add((byte)encoded);
+            }
+
+            // Add STX header, scrambled data, checksum, and ETX
+            List<byte> fullMessage = new List<byte>();
+            fullMessage.Add(0x02); // STX
+            fullMessage.AddRange(scrambled);
+            fullMessage.Add((byte)checksum);
+            fullMessage.Add(0x03); // ETX
+
+            return fullMessage.ToArray();
+        }
+
+
+        private string decodedata(byte[] data)
+        {
+            if (data.Length < 3)
+                return Encoding.ASCII.GetString(data);
+
+            // VB6 strips STX (0x02) and ETX before descrambling
+            // Find and remove STX (0x02) and ETX (0x03) bytes
+            List<byte> cleanedData = new List<byte>();
+            for (int i = 0; i < data.Length; i++)
+            {
+                if (data[i] != 0x02 && data[i] != 0x03)
+                {
+                    cleanedData.Add(data[i]);
+                }
+            }
+
+            if (cleanedData.Count < 2)
+                return "";
+
+            // Now the data is just the scrambled content + checksum (last byte)
+            int dataLength = cleanedData.Count - 1; // Exclude checksum
+            int checksumByte = cleanedData[cleanedData.Count - 1];
+
+            // Descramble the string
+            StringBuilder descrambled = new StringBuilder();
+            for (int n = 1; n <= dataLength; n++)
+            {
+                int byteValue = cleanedData[n - 1]; // C# is 0-based, VB6 loop is 1-based
+                int decoded = byteValue - 3 - (n % 9) - ((n % 5) * 7);
+
+                // Handle wrap-around for negative values (VB6 byte range is 0-255)
+                while (decoded < 0)
+                    decoded += 256;
+                while (decoded > 255)
+                    decoded -= 256;
+
+                descrambled.Append((char)decoded);
+            }
+
+            // Reverse the string
+            char[] chars = descrambled.ToString().ToCharArray();
+            Array.Reverse(chars);
+            string reversed = new string(chars);
+
+            // Calculate and confirm checksum
+            int calculatedChecksum = 0;
+            for (int n = 0; n < reversed.Length; n++)
+            {
+                calculatedChecksum += (int)reversed[n];
+            }
+            calculatedChecksum = (calculatedChecksum % 200) + 33;
+
+            // Replace semicolons with Ç to match VB6 output
+            string result = reversed.Replace(";", "Ç");
+
+            // Checksum validation (optional display)
+            if (calculatedChecksum != checksumByte)
+            {
+                result += $" [CHECKSUM ERROR: Expected {checksumByte}, Got {calculatedChecksum}]";
+            }
+
+            return result;
+        }
+
+        private string generateackresponse(string decodedMessage)
+        {
+            // Parse the decoded message to extract: MessageType, ModuleNumber, MessageID
+            // Format: EVTÇ3159Ç1ÇB19810252D...
+            // or: POLÇxxxx...
+
+            // Remove checksum error text if present
+            if (decodedMessage.Contains("[CHECKSUM ERROR"))
+            {
+                decodedMessage = decodedMessage.Substring(0, decodedMessage.IndexOf("[CHECKSUM ERROR")).Trim();
+            }
+
+            string[] parts = decodedMessage.Split('Ç');
+
+            if (parts.Length < 3)
+                return ""; // Not enough parts to generate ACK
+
+            string messageType = parts[0];
+            string messageID = parts[1];
+            string moduleNumber = parts[2];
+
+            // Generate ACK based on message type
+            switch (messageType)
+            {
+                case "EVT":
+                case "ZTX":
+                case "ANA":
+                case "SPX":
+                    // ACK format: ACKÇModuleNumberÇMessageID
+                    return $"ACK\u00C7{moduleNumber}\u00C7{messageID}";
+
+                case "POL":
+                    // PAK format: PAKÇModuleNumberÇMessageIDÇLicenseStatus
+                    // For now, return license status 0 (valid)
+                    return $"PAK\u00C7{moduleNumber}\u00C7{messageID}\u00C70";
+
+                default:
+                    // For unknown messages, send generic ACK
+                    //return $"ACK;{moduleNumber};{messageID}";
+                    return $"ACK\u00C7{moduleNumber}\u00C7{messageID}";
+            }
+        }
+
+
+
+
         private bool processmessage(byte[] chunk)
         {
             string hex = BitConverter.ToString(chunk);

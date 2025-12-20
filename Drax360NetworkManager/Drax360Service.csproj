@@ -115,6 +115,7 @@
   <ItemGroup>
     <EmbeddedResource Include="DraxService.resx">
       <DependentUpon>DraxService.cs</DependentUpon>
+      <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="ProjectInstaller.resx">
       <DependentUpon>ProjectInstaller.cs</DependentUpon>

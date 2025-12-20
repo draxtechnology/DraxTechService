@@ -9,6 +9,7 @@ using System.IO.Pipes;
 using System.IO.Ports;
 using System.Linq;
 using System.Management;
+using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
 using System.ServiceProcess;
@@ -19,6 +20,7 @@ using System.Threading.Tasks;
 
 namespace Drax360Service
 {
+    #region enums
     public enum ActionType
     {
         kEVACTUATE,
@@ -545,6 +547,7 @@ namespace Drax360Service
         ViewReferenceSensor,
         Unknown
     }
+    #endregion
 
     public partial class DraxService : ServiceBase
     {
@@ -566,6 +569,14 @@ namespace Drax360Service
         #endregion
 
         #region private variables
+
+        // RSM Start
+        private TcpListener rsmtcpListener;
+        private CancellationTokenSource rsmcancellationTokenSource;
+        private bool rsmisListening = false;
+        // RSM End
+
+
         private int _port = 3090;
         private string _address = "localhost";
         private TcpClient _tcpClient;
@@ -697,6 +708,50 @@ namespace Drax360Service
                 return;
 
             }
+
+
+            if (panel == "RSM")
+            {
+
+                // we will read this from config later
+                string identifier = "192.168.3.199";
+                AbstractPanel ap = getpanel(identifier);
+                ap.StartUp(fakemode);
+                ap.OutsideEvents += Sp_Fire;
+                abstractpanels.Add(ap);
+
+                identifier = "192.168.3.1";
+                ap = getpanel(identifier);
+                ap.StartUp(fakemode);
+                ap.OutsideEvents += Sp_Fire;
+                abstractpanels.Add(ap);
+
+
+                try
+                {
+                    rsmtcpListener = new TcpListener(IPAddress.Any, 1471);
+                    rsmtcpListener.Start();
+
+                    rsmcancellationTokenSource = new CancellationTokenSource();
+                    rsmisListening = true;
+
+
+                    Task.Run(() => rsmListenForConnections(rsmcancellationTokenSource.Token));
+                }
+                catch (Exception ex)
+                {
+                    //MessageBox.Show($"Error starting listener: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    rsmStopListener();
+                }
+
+
+
+
+                StartDeviceWatcher();
+                return;
+
+            }
+
 
             for (int i = 1; i < 7; i++)
             {
@@ -1356,6 +1411,10 @@ namespace Drax360Service
         {
             indent = 0;
             ln("Stopping Service");
+            if (panel == "RSM")
+            {
+                rsmStopListener();
+            }
             stoppipeserver();
             // close fake timers
             if (this.fakemode > 0)
@@ -1430,6 +1489,95 @@ namespace Drax360Service
                 }
             }
         }
+
+
+        private async void rsmListenForConnections(CancellationToken token)
+        {
+            while (rsmisListening && !token.IsCancellationRequested)
+            {
+                try
+                {
+                    TcpClient client = await rsmtcpListener.AcceptTcpClientAsync();
+                    _ = Task.Run(() => rsmHandleClient(client, token), token);
+                }
+                catch (ObjectDisposedException)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    if (rsmisListening)
+                    {
+                        //AppendData($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Error accepting connection: {ex.Message}\n");
+                    }
+                }
+            }
+        }
+
+        private async void rsmHandleClient(TcpClient client, CancellationToken token)
+        {
+            string clientIP = ((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString();
+            bool found = false;
+            PanelRSM rsmPanel = null;
+            foreach (AbstractPanel ap in abstractpanels)
+            {
+                if (ap.Identifier == clientIP)
+                {
+                    found = true;
+                    rsmPanel = ap as PanelRSM;
+                    break;
+                }
+            }
+            if (!found)
+            {
+                client.Close();
+                return;
+            }
+
+            try
+            {
+                using (NetworkStream stream = client.GetStream())
+                {
+                    byte[] buffer = new byte[4096];
+                    int bytesRead;
+
+                    while (!token.IsCancellationRequested && (bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, token)) > 0)
+                    {
+                      
+                        
+                        // Create a copy of the received data
+                        byte[] receivedData = new byte[bytesRead];
+                        Array.Copy(buffer, receivedData, bytesRead);
+                        byte[] ack = rsmPanel.Parse(receivedData);
+                        if (ack != null && ack.Length > 0)
+                        {
+                            await stream.WriteAsync(ack, 0, ack.Length, token);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Only log errors that aren't the expected "connection closed by remote host"
+                if (!token.IsCancellationRequested && !ex.Message.Contains("forcibly closed"))
+                {
+                    //AppendData($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Error handling client: {ex.Message}\n");
+                }
+            }
+            finally
+            {
+                client.Close();
+                //AppendData($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Client disconnected from {clientIP}\n");
+            }
+        }
+
+        private void rsmStopListener()
+        {
+            rsmisListening = false;
+            rsmcancellationTokenSource?.Cancel();
+            rsmtcpListener?.Stop();
+        }
+
         #endregion
 
         #region protected methods
