@@ -564,6 +564,9 @@ namespace Drax360Service
         const string ksettingpanelsection = "PANEL";
         const string ksettingmainsection = "MAIN";
 
+        // RSM Constants Start
+        const int krsmport = 1471;
+
         protected SerialPort serialport { get; set; }
 
         #endregion
@@ -729,7 +732,7 @@ namespace Drax360Service
 
                 try
                 {
-                    rsmtcpListener = new TcpListener(IPAddress.Any, 1471);
+                    rsmtcpListener = new TcpListener(IPAddress.Any, krsmport);
                     rsmtcpListener.Start();
 
                     rsmcancellationTokenSource = new CancellationTokenSource();

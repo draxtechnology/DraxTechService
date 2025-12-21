@@ -172,7 +172,11 @@ namespace Drax360Service.Panels
             return result;
         }
 
-        private string generateackresponse(string decodedMessage)
+
+        // Mike suggest we might want to return these values too
+        //private string generateackresponse(string decodedMessage, out string messageType, out string messageID, out string moduleNumber)
+
+        private string generateackresponse(string decodedMessage )
         {
             // Parse the decoded message to extract: MessageType, ModuleNumber, MessageID
             // Format: EVTÇ3159Ç1ÇB19810252D...
