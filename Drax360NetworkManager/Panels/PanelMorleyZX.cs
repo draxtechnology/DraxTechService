@@ -15,6 +15,12 @@ namespace Drax360Service.Panels
         private const byte MORLEY_HEADER_BROADCAST = 252;
         private const byte MORLEY_SPECIAL_BYTE = 240;
         private const byte QUICK_STATUS_COMMAND = 16;
+        private const byte QUICK_STATUS_RESPONSE = 17;
+        private const byte DETAILED_ALARM_COMMAND = 20;
+        private const byte DETAILED_ALARM_RESPONSE = 21;  // 0x15 - Fixed from 19!
+        private const int MORLEY_MSG_IDENT_INDX = 3;
+        private const int EVENT_LOG_RESPONSE = 57;
+        private const int ASK_DEVICE_STATE_RESPONSE = 63;
 
         private SerialPort serialport;
         private const byte MASTER_PANEL_ID = 1;
@@ -23,6 +29,9 @@ namespace Drax360Service.Panels
         private List<byte> receiveBuffer = new List<byte>();
         private System.Timers.Timer pollTimer;
         private bool isPollingEnabled = true;
+        private bool waitingForDetailedResponse = false;
+
+        public string alarmText = "";
 
         public override string FakeString
         {
@@ -46,6 +55,7 @@ namespace Drax360Service.Panels
                 heartbeat_timer = new Timer(heartbeat_timer_callback, this.Identifier, 1000, kHeartbeatDelaySeconds * 1000);
             }
         }
+
         public override void StartUp(int fakemode)
         {
             int settingbaudrate = 9600;
@@ -134,7 +144,7 @@ namespace Drax360Service.Panels
 
         private void PollTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
-            if (isPollingEnabled && serialport != null && serialport.IsOpen)
+            if (isPollingEnabled && serialport != null && serialport.IsOpen && !waitingForDetailedResponse)
             {
                 MorleyQuickPanelStatus(MASTER_PANEL_ID);
             }
@@ -154,6 +164,15 @@ namespace Drax360Service.Panels
             command[3] = 0;
             command[4] = 0;
             command[5] = 0;
+
+            DoTwoWayCommand(panelID, command);
+        }
+
+        public void MorleyDetailedAlarmInfo(byte panelID, byte alarmNumber)
+        {
+            byte[] command = new byte[2];
+            command[0] = DETAILED_ALARM_COMMAND;  // Detailed Alarm Info Request (18)
+            command[1] = alarmNumber;
 
             DoTwoWayCommand(panelID, command);
         }
@@ -303,17 +322,17 @@ namespace Drax360Service.Panels
         {
             string msgInfo = "Complete message received (" + message.Length + " bytes): " +
                            BitConverter.ToString(message);
-            Console.WriteLine(msgInfo);
+            //Console.WriteLine(msgInfo);
             base.NotifyClient(msgInfo, false);
 
             // Decode special bytes if present
             byte[] decoded = DecodeSpecialBytes(message);
             string decodedInfo = "Decoded message: " + BitConverter.ToString(decoded);
-            Console.WriteLine(decodedInfo);
+            //Console.WriteLine(decodedInfo);
 
             // Show ASCII representation
             string asciiInfo = "ASCII: " + GetAsciiRepresentation(decoded);
-            Console.WriteLine(asciiInfo);
+            //Console.WriteLine(asciiInfo);
             base.NotifyClient(asciiInfo, false);
 
             // Parse the message structure
@@ -345,81 +364,117 @@ namespace Drax360Service.Panels
             {
                 Console.WriteLine("=== Message Parse ===");
                 Console.WriteLine($"Header: {decoded[0]} (0x{decoded[0]:X2})");
-                Console.WriteLine($"Source Panel: {decoded[1]}");
-                Console.WriteLine($"Dest Panel: {decoded[2]}");
+                Console.WriteLine($"Source: {decoded[1]}");
+                Console.WriteLine($"Panel ID (Dest): {decoded[2]}");  // This is the actual Panel ID
                 Console.WriteLine($"Command/Response: {decoded[3]} (0x{decoded[3]:X2})");
 
-                if (decoded.Length > 4)
+                // Parse based on response identifier (index 3)
+                switch (decoded[MORLEY_MSG_IDENT_INDX])
                 {
-                    Console.WriteLine($"Data bytes: {BitConverter.ToString(decoded, 4, decoded.Length - 5)}");
+                    case QUICK_STATUS_RESPONSE:  // 17 (0x11)
+                        ParseQuickStatusResponse(decoded);
+                        break;
 
-                    // For Quick Status Response (0x11 is response to 0x10 quick status)
-                    if (decoded[3] == 0x11 && decoded.Length >= 6)
-                    {
-                        Console.WriteLine($"Panel Status Byte: {decoded[4]} (0x{decoded[4]:X2})");
-                        Console.WriteLine($"Panel Type: {decoded[5]} (0x{decoded[5]:X2})");
+                    case DETAILED_ALARM_RESPONSE:  // 19 (0x13)
+                        ParseDetailedAlarmResponse(decoded);
+                        break;
 
-                        int p1 = 0;
-                        int p2 = decoded[1]; // Source Panel ID
-                        int p3 = decoded[2];
-                        int p4 = decoded[3];
-                        int evnum = 0;
-                        string message2 = "";
+                    case ASK_DEVICE_STATE_RESPONSE:
+                        //ParseDeviceStatusResponse(bytResponse);
+                        break;
 
-                        // Decode status bits
-                        byte statusByte = decoded[4];
-                        Console.WriteLine("Status Flags:");
-                        if ((statusByte & 0x01) != 0)
-                        {
-                            p1 = 15;
-                            Console.WriteLine("  - Alarm Active");
-                            message2 = "Alarm Active";
-                        }
-                        if ((statusByte & 0x02) != 0)
-                        {
-                            p1 = 4;
-                            Console.WriteLine("  - Fault Active");
-                            message2 = "Fault";
-                        }
-                        if ((statusByte & 0x04) != 0)
-                        {
-                            p1 = 8;
-                            Console.WriteLine("  - Disabled");
-                            message2 = "Disabled";
-                        }
-                        if ((statusByte & 0x08) != 0)
-                        {
-                            Console.WriteLine("  - Test Mode");
-                            p1 = 15;
-                            message2 = "Test Mode";
-                        }
-                        if ((statusByte & 0x10) != 0)
-                        {
-                            p1 = 15;
-                            Console.WriteLine("  - Silenced");
-                            message2 = "Silenced";
-                        }
-
-                        evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-                        send_response_amx(evnum, "", message2);
-                    }
+                    default:
+                        Console.WriteLine($"Unrecognised Response Identifier: {decoded[MORLEY_MSG_IDENT_INDX]}");
+                        break;
                 }
 
-                // Checksum validation
-                int checksumIndex = decoded.Length - 3;
-                if (checksumIndex > 0)
-                {
-                    Console.WriteLine($"Checksum High: {decoded[checksumIndex]} (0x{decoded[checksumIndex]:X2})");
-                    Console.WriteLine($"Checksum Low: {decoded[checksumIndex + 1]} (0x{decoded[checksumIndex + 1]:X2})");
-                }
-
-                Console.WriteLine($"End Marker: {decoded[decoded.Length - 1]} (0x{decoded[decoded.Length - 1]:X2})");
                 Console.WriteLine("====================");
 
             }
             catch (Exception ex)
             {
                 Console.WriteLine("Error parsing message: " + ex.Message);
+            }
+        }
+
+        private void ParseQuickStatusResponse(byte[] response)
+        {
+            Console.WriteLine("--- Quick Status Response ---");
+
+            byte panelID = response[2];
+            int eventCount = response[4];      // Number of alarms/faults
+            int priority = response[5];         // Priority level
+
+            Console.WriteLine($"Panel ID: {panelID}");
+            Console.WriteLine($"Event Count: {eventCount}");
+            Console.WriteLine($"Priority: {priority}");
+
+            int p1 = 15;
+            int p2 = response[2]; // Source Panel ID
+            int p3 = response[7]; // Loop number
+            int p4 = response[9]; // Device Address
+            int evnum = 0;
+            string message2 = "";
+
+            // Decode status bits from position 4
+            byte statusByte = response[4];
+            Console.WriteLine("Status Flags:");
+            if ((statusByte & 0x01) != 0)
+            {
+                p1 = 15;
+                Console.WriteLine("  - Alarm Active");
+                message2 = "Alarm Active";
+            }
+            if ((statusByte & 0x02) != 0)
+            {
+                p1 = 4;
+                Console.WriteLine("  - Fault Active");
+                message2 = "Fault";
+            }
+            if ((statusByte & 0x04) != 0)
+            {
+                p1 = 8;
+                Console.WriteLine("  - Disabled");
+                message2 = "Disabled";
+            }
+            if ((statusByte & 0x08) != 0)
+            {
+                Console.WriteLine("  - Test Mode");
+                p1 = 15;
+                message2 = "Test Mode";
+            }
+            if ((statusByte & 0x10) != 0)
+            {
+                p1 = 15;
+                Console.WriteLine("  - Silenced");
+                message2 = "Silenced";
+            }
+
+            if (alarmText != null)
+            {
+                message2 = alarmText;
+            }
+
+            evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+            send_response_amx(evnum, "", message2);
+
+            base.NotifyClient($"Quick Status: {eventCount} events, Priority {priority}", false);
+
+            // If there are alarms, request detailed info for each
+            if (eventCount > 0 && priority > 0)
+            {
+                Console.WriteLine($"Requesting detailed info for {eventCount} alarm(s)...");
+                waitingForDetailedResponse = true;  // Stop polling until we get responses
+
+                for (byte alarmNum = 1; alarmNum <= eventCount; alarmNum++)
+                {
+                    MorleyDetailedAlarmInfo(panelID, alarmNum);
+                    Thread.Sleep(200); // Longer delay between requests
+                }
+            }
+            else
+            {
+                waitingForDetailedResponse = false;  // No alarms, resume polling
             }
         }
 
@@ -432,6 +487,81 @@ namespace Drax360Service.Panels
 
             CSAMXSingleton.CS.SendAlarmToAMX(evnum, message1, message2, message3);
             CSAMXSingleton.CS.FlushMessages();
+        }
+
+        private void ParseDetailedAlarmResponse(byte[] response)
+        {
+            if (response.Length < 56) return;
+
+            Console.WriteLine("--- Detailed Alarm Response ---");
+
+            byte panelID = response[2];                 // Use index 2 like VB6
+            byte loop = response[7];                    // Loop number (0 if panel event)
+            byte zoneNumber = response[8];              // Zone number
+            byte deviceAddress = response[9];           // Device address (0 if panel event)
+            byte analogueValue = response[10];          // Analogue value
+            byte detectorType = response[11];           // Detector type
+            byte eventType = response[52];              // Event nature code
+            byte originatingPanelID = response[53];     // Panel ID where event originated
+            byte subAddress = response[55];             // Sub address
+
+            // Extract alarm text (bytes 12-51, 40 characters)
+            alarmText = "";
+            for (int i = 12; i <= 51; i++)
+            {
+                if (response[i] != 0)
+                    alarmText += (char)response[i];
+            }
+            alarmText = alarmText.Trim();
+
+            Console.WriteLine($"Panel ID: {panelID}");
+            Console.WriteLine($"Loop: {loop}");
+            Console.WriteLine($"Zone: {zoneNumber}");
+            Console.WriteLine($"Device Address: {deviceAddress}");
+            Console.WriteLine($"Analogue Value: {analogueValue}");
+            Console.WriteLine($"Detector Type: {detectorType}");
+            Console.WriteLine($"Event Type: {eventType} ({GetEventTypeName(eventType)})");
+            Console.WriteLine($"Originating Panel: {originatingPanelID}");
+            Console.WriteLine($"Sub Address: {subAddress}");
+            Console.WriteLine($"Alarm Text: '{alarmText}'");
+
+            // The VB6 format: Panel-Loop-Device/EventType
+            string eventKey = $"{panelID}-{loop}-{deviceAddress}/{eventType}";
+            Console.WriteLine($"Event Key (VB6 format): {eventKey}");
+
+            string notifyMsg = $"ALARM [{eventKey}]: Zone {zoneNumber}, " +
+                             $"Type: {GetEventTypeName(eventType)}, Text: {alarmText}";
+            base.NotifyClient(notifyMsg, false);
+
+            // Log fire alarms specially
+            if ((EnmMorleyEventNature)eventType == EnmMorleyEventNature.Fire_Alarm_Signal) // Fire_Alarm_Signal
+            {
+                Console.WriteLine("********** FIRE ALARM **********");
+                base.NotifyClient("********** FIRE ALARM **********", false);
+            }
+            else if ((EnmMorleyEventNature)eventType == EnmMorleyEventNature.Panel_Reset) // Panel_Reset
+            {
+                Console.WriteLine("********** PANEL RESET **********");
+                base.NotifyClient("********** PANEL RESET **********", false);
+            }
+
+            // Resume polling after receiving detailed response
+            waitingForDetailedResponse = false;
+        }
+
+        private string GetEventTypeName(byte eventType)
+        {
+            switch (eventType)
+            {
+                case 0: return "Panel Reset";
+                case 1: return "Fire Alarm Signal";
+                case 2: return "Fault";
+                case 4: return "Supervisory";
+                case 8: return "Test";
+                case 16: return "Zone Disabled";
+                case 32: return "Sounder Problem";
+                default: return $"Unknown ({eventType})";
+            }
         }
 
         private byte[] DecodeSpecialBytes(byte[] message)

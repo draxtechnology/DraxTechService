@@ -547,6 +547,30 @@ namespace Drax360Service
         ViewReferenceSensor,
         Unknown
     }
+    public enum EnmMorleyEventNature
+    {
+        Pre_Alarm_Signal = 4,
+        Fire_Alarm_Signal = 5,
+        Panel_Reset = 8,
+        Evacuation_Alarm = 9,
+        Detector_Contaminated = 13,
+        No_Reply_From_Detector = 15,
+        External_Link_Master_Failed = 18,
+        Detector_Data_Corrupted = 19,
+        Problem_With_Loop_Wiring = 21,
+        Problem_With_Sounder_Circuit = 22,
+        Problem_With_PSU = 23,
+        Earth_fault = 25,
+        Zone_Totally_Disabled = 27,
+        No_Reply_From_Slave = 28,
+        Bad_Reply_From_Slave = 29,
+        Walk_Test = 33,
+        Zone_Partially_Disabled = 34,
+        Detector_Disabled = 35,
+        Relay_Outputs_Disabled = 36,
+        Sounder_Outputs_Disabled = 37
+    }
+
     #endregion
 
     public partial class DraxService : ServiceBase
