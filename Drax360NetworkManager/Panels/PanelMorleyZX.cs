@@ -17,7 +17,7 @@ namespace Drax360Service.Panels
         private const byte QUICK_STATUS_COMMAND = 16;
         private const byte QUICK_STATUS_RESPONSE = 17;
         private const byte DETAILED_ALARM_COMMAND = 20;
-        private const byte DETAILED_ALARM_RESPONSE = 21;  // 0x15 - Fixed from 19!
+        private const byte DETAILED_ALARM_RESPONSE = 21;
         private const int MORLEY_MSG_IDENT_INDX = 3;
         private const int EVENT_LOG_RESPONSE = 57;
         private const int ASK_DEVICE_STATE_RESPONSE = 63;
@@ -30,6 +30,7 @@ namespace Drax360Service.Panels
         private System.Timers.Timer pollTimer;
         private bool isPollingEnabled = true;
         private bool waitingForDetailedResponse = false;
+        private byte previousPanelStatusBitset = 0;
 
         public string alarmText = "";
 
@@ -380,7 +381,7 @@ namespace Drax360Service.Panels
                         break;
 
                     case ASK_DEVICE_STATE_RESPONSE:
-                        //ParseDeviceStatusResponse(bytResponse);
+                        ParseDeviceStatusResponse(decoded);
                         break;
 
                     default:
@@ -397,6 +398,162 @@ namespace Drax360Service.Panels
             }
         }
 
+        private void ParseDeviceStatusResponse(byte[] response)
+        {
+            if (response.Length < 5) return;
+
+            try
+            {
+                Console.WriteLine("--- Device Status Response ---");
+
+                byte panelID = response[2];
+                byte newStates = response[4];  // Panel status bitset
+
+                Console.WriteLine($"Panel ID: {panelID}");
+                Console.WriteLine($"Status Bitset: {newStates} (0x{newStates:X2}, Binary: {Convert.ToString(newStates, 2).PadLeft(8, '0')})");
+
+                // Check if status has changed
+                if (newStates != previousPanelStatusBitset)
+                {
+                    byte diffs = (byte)(newStates ^ previousPanelStatusBitset);
+                    Console.WriteLine($">>> STATUS CHANGED! Diff: {diffs} (0x{diffs:X2})");
+                    Console.WriteLine($"Previous: {previousPanelStatusBitset} (0x{previousPanelStatusBitset:X2})");
+                    Console.WriteLine($"New:      {newStates} (0x{newStates:X2})");
+
+                    // Check each bit for changes
+                    byte bit = 1;
+                    for (int n = 0; n < 8; n++)
+                    {
+                        if ((diffs & bit) != 0)
+                        {
+                            bool isOn = (newStates & bit) != 0;
+                            int tInputNumber = 0;
+                            string tInputText = "";
+
+                            // Get input number and text based on bit position (matching VB6)
+                            switch (n)
+                            {
+                                case 0:
+                                    tInputNumber = 1;
+                                    tInputText = "Buzzer Muted";
+                                    break;
+                                case 1:
+                                    tInputNumber = 2;
+                                    tInputText = "Alarms Silenced";
+                                    break;
+                                case 2:
+                                    tInputNumber = 3;
+                                    tInputText = "General Disablement";
+                                    break;
+                                case 3:
+                                    tInputNumber = 4;
+                                    tInputText = "Panel in Fire";
+                                    break;
+                                case 4:
+                                    tInputNumber = 5;
+                                    tInputText = "Panel in Fault";
+                                    break;
+                                case 5:
+                                    tInputNumber = 6;
+                                    tInputText = "Panel in Pre-alarm";
+                                    break;
+                                case 6:
+                                    tInputNumber = 7;
+                                    tInputText = "Panel in Test Mode";
+                                    break;
+                                case 7:
+                                    tInputNumber = 8;
+                                    tInputText = "Panel in Delay Mode Period";
+                                    break;
+                                default:
+                                    tInputNumber = 255;
+                                    tInputText = "???";
+                                    break;
+                            }
+
+                            string onOff = isOn ? "ON" : "OFF";
+                            Console.WriteLine($"  Input #{tInputNumber}: {tInputText} = {onOff}");
+
+                            int evnum = CSAMXSingleton.CS.MakeInputNumber(panelID, 0, tInputNumber, 15);
+                            send_response_amx(evnum, "", tInputText);
+
+                            // TODO: Implement WriteStatusToTransferFile equivalent
+                            // WriteStatusToTransferFile(panelID, tInputNumber, 15, isOn, tInputText);
+
+                            string notifyMsg = $"Panel {panelID} Input {tInputNumber}: {tInputText} = {onOff}";
+                            base.NotifyClient(notifyMsg, false);
+
+                            // Special notifications for critical states
+                            if (n == 3 && isOn) // Panel in Fire
+                            {
+                                base.NotifyClient("********** PANEL IN FIRE STATE **********", false);
+                            }
+                            else if (n == 4 && isOn) // Panel in Fault
+                            {
+                                base.NotifyClient("********** PANEL IN FAULT STATE **********", false);
+                            }
+                            else if (n == 6 && isOn) // Test Mode
+                            {
+                                base.NotifyClient(">>> Panel entered TEST MODE", false);
+                            }
+                        }
+
+                        bit = (byte)((bit << 1) & 0xFF);  // Shift left, mask to byte
+                    }
+
+                    previousPanelStatusBitset = newStates;
+                }
+                else
+                {
+                    Console.WriteLine("No status change from previous poll");
+                }
+
+                // Always display current status bits
+                Console.WriteLine("Current Panel Status:");
+                DisplayPanelStatusBits(newStates);
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in ParseDeviceStatusResponse: {ex.Message}");
+            }
+        }
+
+
+        private string GetPanelStatusText(int bitPosition)
+        {
+            switch (bitPosition)
+            {
+                case 0: return "Buzzer Muted";
+                case 1: return "Alarms Silenced";
+                case 2: return "General Disablement";
+                case 3: return "Panel in Fire";
+                case 4: return "Panel in Fault";
+                case 5: return "Panel in Pre-alarm";
+                case 6: return "Panel in Test Mode";
+                case 7: return "Panel in Delay Mode Period";
+                default: return "Unknown";
+            }
+        }
+
+        private void DisplayPanelStatusBits(byte statusBitset)
+        {
+            bool anySet = false;
+            for (int n = 0; n < 8; n++)
+            {
+                byte bit = (byte)(1 << n);
+                bool isSet = (statusBitset & bit) != 0;
+                if (isSet)
+                {
+                    Console.WriteLine($"  ✓ Bit {n}: {GetPanelStatusText(n)}");
+                    anySet = true;
+                }
+            }
+            if (!anySet)
+            {
+                Console.WriteLine("  (All status bits clear - panel normal)");
+            }
+        }
         private void ParseQuickStatusResponse(byte[] response)
         {
             Console.WriteLine("--- Quick Status Response ---");
