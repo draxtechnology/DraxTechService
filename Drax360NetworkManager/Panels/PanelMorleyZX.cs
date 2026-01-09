@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO.Ports;
+using System.Runtime.Remoting;
 using System.Runtime.Remoting.Messaging;
 using System.Threading;
 
@@ -32,6 +33,64 @@ namespace Drax360Service.Panels
         private bool waitingForDetailedResponse = false;
         private byte previousPanelStatusBitset = 0;
 
+        private enum MorleyEventPriority
+        {
+            InTestMode = 1,
+            MinorFault = 10,
+            DeviceDisabled = 20,
+            SeriousFault = 30,
+            Security = 46,
+            PreAlarm = 56,
+            DayModeAlarm = 58,
+            UnlocatedFire = 62,
+            FireAlert = 64,
+            FrontPanelEvacuate = 66,
+            BombAlert = 68,
+            FullFire = 70
+        }
+
+
+        public enum MorleyEventNature
+        {
+            PreAlarmSignal = 4,
+            FireAlarmSignal = 5,
+            PanelReset = 8,
+            EvacuationAlarm = 9,
+            DetectorContaminated = 13,
+            NoReplyFromDetector = 15,
+            ExternalLinkMasterFailed = 18,
+            DetectorDataCorrupted = 19,
+            ProblemWithLoopWiring = 21,
+            ProblemWithSounderCircuit = 22,
+            ProblemWithPSU = 23,
+            EarthFault = 25,
+            ZoneTotallyDisabled = 27,
+            NoReplyFromSlave = 28,
+            BadReplyFromSlave = 29,
+            WalkTest = 33,
+            ZonePartiallyDisabled = 34,
+            DetectorDisabled = 35,
+            RelayOutputsDisabled = 36,
+            SounderOutputsDisabled = 37
+        }
+
+        public enum MorleyDetectorType
+        {
+            ApolloShopUnit = 1,
+            SounderDevice = 2,
+            IOUnit = 3,
+            IonisationDetector = 4,
+            ZoneMonitor = 5,
+            OpticalDetector = 6,
+            HeatDetector = 7,
+            CallPoint = 8,
+            RelayDetector = 9,
+            AnyNonSpecificSensor = 10,
+            Mefs8WayInput = 11,
+            MiniRepeater = 12,
+            TestBox = 13,
+            NoDetector = 14
+        }
         public string alarmText = "";
 
         public override string FakeString
@@ -340,6 +399,88 @@ namespace Drax360Service.Panels
             ParseMorleyMessage(decoded);
         }
 
+
+        private void SendDeviceStatusToAMX1(MorleyEventPriority eventPriority, MorleyEventNature eventNature, MorleyDetectorType detectorType, ref int p1)
+        {
+ 
+            int amx1StatusIPNumber = 0;     // Used for Panel events only
+
+            bool isFireDetector = (detectorType == MorleyDetectorType.CallPoint) ||
+                                 (detectorType == MorleyDetectorType.HeatDetector) ||
+                                 (detectorType == MorleyDetectorType.IonisationDetector) ||
+                                 (detectorType == MorleyDetectorType.OpticalDetector) ||
+                                 (detectorType == MorleyDetectorType.TestBox);
+
+            // First try Event Nature
+            switch (eventNature)
+            {
+                case MorleyEventNature.PreAlarmSignal:
+                    p1 = 2;
+                    break;
+
+                case MorleyEventNature.DetectorDisabled:
+                    p1 = 4;
+                    break;
+
+                case MorleyEventNature.DetectorContaminated:
+                    p1 = 10;
+                    break;
+
+                case MorleyEventNature.ZonePartiallyDisabled:
+                case MorleyEventNature.ZoneTotallyDisabled:
+                    p1 = 15;
+                    detectorType = MorleyDetectorType.NoDetector;
+                    break;
+
+                case MorleyEventNature.ProblemWithSounderCircuit:
+                    p1 = 15;
+                    detectorType = MorleyDetectorType.NoDetector;
+                    break;
+
+                default:
+                    // Get it from Event Priority
+                    switch (eventPriority)
+                    {
+                        case MorleyEventPriority.FullFire:
+                        case MorleyEventPriority.FireAlert:
+                        case MorleyEventPriority.UnlocatedFire:
+                            // Based on Device Type
+                            if (isFireDetector)
+                                p1 = 0;
+                            else
+                                p1 = 3;
+                            break;
+
+                        case MorleyEventPriority.BombAlert:
+                        case MorleyEventPriority.Security:
+                            p1 = 1;
+                            break;
+
+                        case MorleyEventPriority.DeviceDisabled:
+                            p1 = 4;
+                            break;
+
+                        case MorleyEventPriority.PreAlarm:
+                            p1 = 2;
+                            break;
+
+                        case MorleyEventPriority.SeriousFault:
+                        case MorleyEventPriority.MinorFault:
+                            p1 = 8;
+                            break;
+
+                        default:
+                            // Check for PassAll flag (assuming g_bytNWMPassAll equivalent)
+                            if (eventPriority != MorleyEventPriority.DayModeAlarm)
+                            {
+                                p1 = 4;
+                            }
+                            break;
+                    }
+                    break;
+            }
+        }
+
         private string GetAsciiRepresentation(byte[] data)
         {
             System.Text.StringBuilder sb = new System.Text.StringBuilder();
@@ -474,11 +615,10 @@ namespace Drax360Service.Panels
                             string onOff = isOn ? "ON" : "OFF";
                             Console.WriteLine($"  Input #{tInputNumber}: {tInputText} = {onOff}");
 
+//                            SendDeviceStatusToAMX1((MorleyEventPriority)response[5], (MorleyEventNature)response[56], (MorleyDetectorType)response[11]);
+
                             int evnum = CSAMXSingleton.CS.MakeInputNumber(panelID, 0, tInputNumber, 15);
                             send_response_amx(evnum, "", tInputText);
-
-                            // TODO: Implement WriteStatusToTransferFile equivalent
-                            // WriteStatusToTransferFile(panelID, tInputNumber, 15, isOn, tInputText);
 
                             string notifyMsg = $"Panel {panelID} Input {tInputNumber}: {tInputText} = {onOff}";
                             base.NotifyClient(notifyMsg, false);
@@ -566,54 +706,7 @@ namespace Drax360Service.Panels
             Console.WriteLine($"Event Count: {eventCount}");
             Console.WriteLine($"Priority: {priority}");
 
-            int p1 = 15;
-            int p2 = response[2]; // Source Panel ID
-            int p3 = response[7]; // Loop number
-            int p4 = response[9]; // Device Address
-            int evnum = 0;
-            string message2 = "";
-
-            // Decode status bits from position 4
-            byte statusByte = response[4];
-            Console.WriteLine("Status Flags:");
-            if ((statusByte & 0x01) != 0)
-            {
-                p1 = 15;
-                Console.WriteLine("  - Alarm Active");
-                message2 = "Alarm Active";
-            }
-            if ((statusByte & 0x02) != 0)
-            {
-                p1 = 4;
-                Console.WriteLine("  - Fault Active");
-                message2 = "Fault";
-            }
-            if ((statusByte & 0x04) != 0)
-            {
-                p1 = 8;
-                Console.WriteLine("  - Disabled");
-                message2 = "Disabled";
-            }
-            if ((statusByte & 0x08) != 0)
-            {
-                Console.WriteLine("  - Test Mode");
-                p1 = 15;
-                message2 = "Test Mode";
-            }
-            if ((statusByte & 0x10) != 0)
-            {
-                p1 = 15;
-                Console.WriteLine("  - Silenced");
-                message2 = "Silenced";
-            }
-
-            if (alarmText != null)
-            {
-                message2 = alarmText;
-            }
-
-            evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-            send_response_amx(evnum, "", message2);
+ 
 
             base.NotifyClient($"Quick Status: {eventCount} events, Priority {priority}", false);
 
@@ -633,6 +726,17 @@ namespace Drax360Service.Panels
             {
                 waitingForDetailedResponse = false;  // No alarms, resume polling
             }
+
+            int p1 = 15;
+            int p2 = response[2]; // Source Panel ID
+            int p3 = response[7]; // Loop number
+            int p4 = response[9]; // Device Address
+            int evnum = 0;
+            string message2 = "";
+
+            evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+            send_response_amx(evnum, "", message2);
+
         }
 
         private void send_response_amx(int evnum, string message1, string message2, string message3 = "")
@@ -701,6 +805,58 @@ namespace Drax360Service.Panels
                 Console.WriteLine("********** PANEL RESET **********");
                 base.NotifyClient("********** PANEL RESET **********", false);
             }
+
+            int p1 = 15;
+            int p2 = response[2]; // Source Panel ID
+            int p3 = response[7]; // Loop number
+            int p4 = response[9]; // Device Address
+            int evnum = 0;
+            string message2 = "";
+
+            // Decode status bits from position 4
+            byte statusByte = response[4];
+            Console.WriteLine("Status Flags:");
+            if ((statusByte & 0x01) != 0)
+            {
+                p1 = 15;
+                Console.WriteLine("  - Alarm Active");
+                message2 = "Alarm Active";
+            }
+            if ((statusByte & 0x02) != 0)
+            {
+                p1 = 4;
+                Console.WriteLine("  - Fault Active");
+                message2 = "Fault";
+            }
+            if ((statusByte & 0x04) != 0)
+            {
+                p1 = 8;
+                Console.WriteLine("  - Disabled");
+                message2 = "Disabled";
+            }
+            if ((statusByte & 0x08) != 0)
+            {
+                Console.WriteLine("  - Test Mode");
+                p1 = 15;
+                message2 = "Test Mode";
+            }
+            if ((statusByte & 0x10) != 0)
+            {
+                p1 = 15;
+                Console.WriteLine("  - Silenced");
+                message2 = "Silenced";
+            }
+
+            if (alarmText != null)
+            {
+               message2 = alarmText;
+            }
+
+            alarmText = GetMorleyDeviceType((MorleyDetectorType)response[11]);
+            SendDeviceStatusToAMX1((MorleyEventPriority)response[5], (MorleyEventNature)response[56], (MorleyDetectorType)response[11], ref p1);
+
+            evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+            send_response_amx(evnum, alarmText, message2);
 
             // Resume polling after receiving detailed response
             waitingForDetailedResponse = false;
@@ -789,6 +945,44 @@ namespace Drax360Service.Panels
 
         public virtual void send_message(ActionType action, string passedvalues)
         {
+        }
+
+        public static string GetMorleyDeviceType(MorleyDetectorType detectorType)
+        {
+            switch (detectorType)
+            {
+                case MorleyDetectorType.TestBox:
+                    return "Test Box";
+                case MorleyDetectorType.ApolloShopUnit:
+                    return "Apollo Shop Unit";
+                case MorleyDetectorType.SounderDevice:
+                    return "Sounder";
+                case MorleyDetectorType.IOUnit:
+                    return "I/O Unit";
+                case MorleyDetectorType.IonisationDetector:
+                    return "Ionisation Detector";
+                case MorleyDetectorType.ZoneMonitor:
+                    return "Zone Monitor";
+                case MorleyDetectorType.OpticalDetector:
+                    return "Optical Detector";
+                case MorleyDetectorType.HeatDetector:
+                    return "Heat Detector";
+                case MorleyDetectorType.CallPoint:
+                    return "Call Point";
+                case MorleyDetectorType.RelayDetector:
+                    return "Relay";
+                case MorleyDetectorType.AnyNonSpecificSensor:
+                    return "Non-Specific Sensor";
+                case MorleyDetectorType.Mefs8WayInput:
+                    return "Mefs 8-Way Input";
+                case MorleyDetectorType.MiniRepeater:
+                    return "Mini Repeater";
+                case MorleyDetectorType.NoDetector:
+                    return "No Detector";
+                default:
+                    Console.WriteLine("Unknown Morley Device Type: " + (int)detectorType);
+                    return "Unknown Device";
+            }
         }
     }
 }
