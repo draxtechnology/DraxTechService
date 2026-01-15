@@ -4,6 +4,7 @@ using System.IO.Ports;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Messaging;
 using System.Threading;
+using static Drax360Service.Panels.PanelTaktis;
 
 namespace Drax360Service.Panels
 {
@@ -21,6 +22,7 @@ namespace Drax360Service.Panels
         private const byte DETAILED_ALARM_RESPONSE = 21;
         private const int MORLEY_MSG_IDENT_INDX = 3;
         private const int EVENT_LOG_RESPONSE = 57;
+        private const int ASK_DEVICE_STATE_COMMAND = 62;   // TODO
         private const int ASK_DEVICE_STATE_RESPONSE = 63;
 
         private SerialPort serialport;
@@ -49,6 +51,13 @@ namespace Drax360Service.Panels
             FullFire = 70
         }
 
+        public enum enmMorleyDeviceDetailCode : byte
+        {
+            Device_Status = 0,
+            Device_Type = 1,
+            Device_Analogue_Raw = 2,
+            Device_Analogue_Conditioned = 3
+        }
 
         public enum MorleyEventNature
         {
@@ -227,6 +236,29 @@ namespace Drax360Service.Panels
 
             DoTwoWayCommand(panelID, command);
         }
+
+        public void MorleyGetDeviceStatus(byte panelId, byte loop, byte deviceAddress)
+        {
+            byte[] command;
+            enmMorleyDeviceDetailCode deviceDetailCode;
+
+            deviceDetailCode = enmMorleyDeviceDetailCode.Device_Status; // Get Device Status only
+
+            command = new byte[5];
+
+            command[0] = ASK_DEVICE_STATE_COMMAND; // Ask Device Status identifier
+            command[1] = loop;
+            command[2] = deviceAddress;
+            command[3] = 1;
+            command[4] = (byte)deviceDetailCode;
+
+            System.Diagnostics.Debug.WriteLine("tx: ASK_DEVICE_STATE_COMMAND");
+
+            DoTwoWayCommand(panelId, command);
+
+            // No need to erase in C# – garbage collector handles it
+        }
+
 
         public void MorleyDetailedAlarmInfo(byte panelID, byte alarmNumber)
         {
@@ -517,11 +549,11 @@ namespace Drax360Service.Panels
                         ParseQuickStatusResponse(decoded);
                         break;
 
-                    case DETAILED_ALARM_RESPONSE:  // 19 (0x13)
+                    case DETAILED_ALARM_RESPONSE:  // 21 (0x15)
                         ParseDetailedAlarmResponse(decoded);
                         break;
 
-                    case ASK_DEVICE_STATE_RESPONSE:
+                    case ASK_DEVICE_STATE_RESPONSE:  // 63 (0x3F)
                         ParseDeviceStatusResponse(decoded);
                         break;
 
@@ -560,7 +592,8 @@ namespace Drax360Service.Panels
                     Console.WriteLine($">>> STATUS CHANGED! Diff: {diffs} (0x{diffs:X2})");
                     Console.WriteLine($"Previous: {previousPanelStatusBitset} (0x{previousPanelStatusBitset:X2})");
                     Console.WriteLine($"New:      {newStates} (0x{newStates:X2})");
-
+                    int tInputNumber = 0;
+                    string tInputText = "";
                     // Check each bit for changes
                     byte bit = 1;
                     for (int n = 0; n < 8; n++)
@@ -568,8 +601,7 @@ namespace Drax360Service.Panels
                         if ((diffs & bit) != 0)
                         {
                             bool isOn = (newStates & bit) != 0;
-                            int tInputNumber = 0;
-                            string tInputText = "";
+
 
                             // Get input number and text based on bit position (matching VB6)
                             switch (n)
@@ -706,7 +738,7 @@ namespace Drax360Service.Panels
             Console.WriteLine($"Event Count: {eventCount}");
             Console.WriteLine($"Priority: {priority}");
 
- 
+
 
             base.NotifyClient($"Quick Status: {eventCount} events, Priority {priority}", false);
 
@@ -731,12 +763,8 @@ namespace Drax360Service.Panels
             int p2 = response[2]; // Source Panel ID
             int p3 = response[7]; // Loop number
             int p4 = response[9]; // Device Address
-            int evnum = 0;
-            string message2 = "";
 
-            evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-            send_response_amx(evnum, "", message2);
-
+            MorleyGetDeviceStatus((byte)p2, (byte)p3, (byte)p4);
         }
 
         private void send_response_amx(int evnum, string message1, string message2, string message3 = "")
@@ -746,7 +774,7 @@ namespace Drax360Service.Panels
             // Signal the event back to the main service, so that it can be logged
             this.NotifyClient(friendlymessage, false);
 
-            CSAMXSingleton.CS.SendAlarmToAMX(evnum, message1, message2, message3);
+            CSAMXSingleton.CS.SendAlarmToAMX(evnum, message2, message1, message3);
             CSAMXSingleton.CS.FlushMessages();
         }
 
@@ -797,7 +825,7 @@ namespace Drax360Service.Panels
             // Log fire alarms specially
             if ((EnmMorleyEventNature)eventType == EnmMorleyEventNature.Fire_Alarm_Signal) // Fire_Alarm_Signal
             {
-                Console.WriteLine("********** FIRE ALARM **********");
+                    Console.WriteLine("********** FIRE ALARM **********");
                 base.NotifyClient("********** FIRE ALARM **********", false);
             }
             else if ((EnmMorleyEventNature)eventType == EnmMorleyEventNature.Panel_Reset) // Panel_Reset
@@ -855,8 +883,11 @@ namespace Drax360Service.Panels
             alarmText = GetMorleyDeviceType((MorleyDetectorType)response[11]);
             SendDeviceStatusToAMX1((MorleyEventPriority)response[5], (MorleyEventNature)response[56], (MorleyDetectorType)response[11], ref p1);
 
-            evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-            send_response_amx(evnum, alarmText, message2);
+            if (p4 > 0)
+            {
+                evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+                send_response_amx(evnum, alarmText, message2);
+            }
 
             // Resume polling after receiving detailed response
             waitingForDetailedResponse = false;
