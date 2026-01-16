@@ -34,6 +34,7 @@ namespace Drax360Service.Panels
         private bool isPollingEnabled = true;
         private bool waitingForDetailedResponse = false;
         private byte previousPanelStatusBitset = 0;
+        List<int> garyZoneArray = new List<int>();
 
         private enum MorleyEventPriority
         {
@@ -550,7 +551,7 @@ namespace Drax360Service.Panels
                         break;
 
                     case DETAILED_ALARM_RESPONSE:  // 21 (0x15)
-                        ParseDetailedAlarmResponse(decoded);
+                        ParseDetailedAlarmResponse(decoded,false);
                         break;
 
                     case ASK_DEVICE_STATE_RESPONSE:  // 63 (0x3F)
@@ -649,7 +650,7 @@ namespace Drax360Service.Panels
 
 //                            SendDeviceStatusToAMX1((MorleyEventPriority)response[5], (MorleyEventNature)response[56], (MorleyDetectorType)response[11]);
 
-                            int evnum = CSAMXSingleton.CS.MakeInputNumber(panelID, 0, tInputNumber, 15);
+                            int evnum = CSAMXSingleton.CS.MakeInputNumber(panelID, 0, tInputNumber, 15, isOn); 
                             send_response_amx(evnum, "", tInputText);
 
                             string notifyMsg = $"Panel {panelID} Input {tInputNumber}: {tInputText} = {onOff}";
@@ -778,7 +779,7 @@ namespace Drax360Service.Panels
             CSAMXSingleton.CS.FlushMessages();
         }
 
-        private void ParseDetailedAlarmResponse(byte[] response)
+        private void ParseDetailedAlarmResponse(byte[] response, bool blnFromTestForm)
         {
             if (response.Length < 56) return;
 
@@ -793,6 +794,21 @@ namespace Drax360Service.Panels
             byte eventType = response[52];              // Event nature code
             byte originatingPanelID = response[53];     // Panel ID where event originated
             byte subAddress = response[55];             // Sub address
+
+
+ 
+
+            MorleyEventNature? morleyEvent = null;  // Nullable enum
+            if (Enum.IsDefined(typeof(MorleyEventNature), (int)eventType))
+            {
+                 morleyEvent = (MorleyEventNature)eventType;
+        
+            }
+            else
+            {
+                // Unknown / unsupported event from panel
+                return; // or log / handle gracefully
+            }
 
             // Extract alarm text (bytes 12-51, 40 characters)
             alarmText = "";
@@ -838,43 +854,72 @@ namespace Drax360Service.Panels
             int p2 = response[2]; // Source Panel ID
             int p3 = response[7]; // Loop number
             int p4 = response[9]; // Device Address
+            bool on = true;
             int evnum = 0;
             string message2 = "";
 
-            // Decode status bits from position 4
-            byte statusByte = response[4];
-            Console.WriteLine("Status Flags:");
-            if ((statusByte & 0x01) != 0)
+            if (originatingPanelID > 0)
             {
-                p1 = 15;
-                Console.WriteLine("  - Alarm Active");
-                message2 = "Alarm Active";
-            }
-            if ((statusByte & 0x02) != 0)
-            {
-                p1 = 4;
-                Console.WriteLine("  - Fault Active");
-                message2 = "Fault";
-            }
-            if ((statusByte & 0x04) != 0)
-            {
-                p1 = 8;
-                Console.WriteLine("  - Disabled");
-                message2 = "Disabled";
-            }
-            if ((statusByte & 0x08) != 0)
-            {
-                Console.WriteLine("  - Test Mode");
-                p1 = 15;
-                message2 = "Test Mode";
-            }
-            if ((statusByte & 0x10) != 0)
-            {
-                p1 = 15;
-                Console.WriteLine("  - Silenced");
-                message2 = "Silenced";
+                // if from Panel - Add to AlarmQ
+                // if from TestBox - use m_objTestAlarms
+                if (blnFromTestForm)
+                {
+     //               if (m_objTestAlarms == null)
+     //               {
+     //                   m_objTestAlarms = new MorleyDeviceAlarm();
+     //               }
+
+     //               objDeviceAlarm = m_objTestAlarms;
+     //               objDeviceAlarm.Initialise(
+     //                   bytOrginatingPanelID,
+     //                   bytLoop,
+     //                   bytDeviceAddress,
+     //                   (byte)enmEventType
+     //               );
+     //               objDeviceAlarm.FromTestBox = true;
+                }
+                else
+                {
+
+                    // James 28/07/2006
+                    if (morleyEvent == MorleyEventNature.ZoneTotallyDisabled || morleyEvent == MorleyEventNature.ZonePartiallyDisabled)
+                    {
+                        p4 = (byte)(response[8] + 30);
+
+                        // **James 060214
+                        AddToZoneArray(p4);
+                        // *****
+                    }
+                    else if (morleyEvent == MorleyEventNature.ProblemWithSounderCircuit)
+                    {
+
+                        if (alarmText.ToLower().Contains("sounder a") || alarmText.Contains("soundera"))
+                            p4 = 1;
+                        else if (alarmText.ToLower().Contains("sounder b") || alarmText.Contains("sounderb"))
+                            p4 = 2;
+                        else if (alarmText.ToLower().Contains("sounder c") || alarmText.Contains("sounderc"))
+                            p4 = 3;
+                        else if (alarmText.ToLower().Contains("sounder d") || alarmText.Contains("sounderd"))
+                            p4 = 4;
+                        else
+                            p4 = 0;
+
+                        p4 = (byte)(p4 + 20);
+                    }
+
+                }
             }
 
+            // Decode status bits from position 4
+            byte statusByte = response[4];
+            if ((statusByte & 0x01) == 0)
+            {
+                on = false; // Cleared
+            }
+            else
+            {
+                on = true; // Active
+            }
             if (alarmText != null)
             {
                message2 = alarmText;
@@ -885,7 +930,7 @@ namespace Drax360Service.Panels
 
             if (p4 > 0)
             {
-                evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+                evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, on);
                 send_response_amx(evnum, alarmText, message2);
             }
 
@@ -976,6 +1021,26 @@ namespace Drax360Service.Panels
 
         public virtual void send_message(ActionType action, string passedvalues)
         {
+        }
+
+        private void AddToZoneArray(int deviceAddress)
+        {
+            try
+            {
+                // Check if the deviceAddress already exists
+                if (!garyZoneArray.Contains(deviceAddress))
+                {
+                    garyZoneArray.Add(deviceAddress);
+
+                    base.NotifyClient($"Zone Array add to array : Count {garyZoneArray.Count}  Device Address : {deviceAddress}");
+                }
+            }
+            catch (Exception ex)
+            {
+                // In VB6, Err.Number = 9 was handled (index out of bounds)
+                // In C#, List.Add never fails for this, but we catch any unexpected exceptions
+                base.NotifyClient($"Error - {ex.HResult} ({ex.Message}) in procedure AddToZoneArray");
+            }
         }
 
         public static string GetMorleyDeviceType(MorleyDetectorType detectorType)
