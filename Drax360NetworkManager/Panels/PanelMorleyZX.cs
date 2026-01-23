@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO.Ports;
+using System.Management;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Messaging;
+using System.Security.Policy;
 using System.Threading;
 using static Drax360Service.Panels.PanelTaktis;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace Drax360Service.Panels
 {
@@ -25,7 +28,6 @@ namespace Drax360Service.Panels
         private const int ASK_DEVICE_STATE_COMMAND = 62;   // TODO
         private const int ASK_DEVICE_STATE_RESPONSE = 63;
 
-        private SerialPort serialport;
         private const byte MASTER_PANEL_ID = 1;
         private const byte SOURCE_ID = 3; // PC/Host ID
 
@@ -34,6 +36,7 @@ namespace Drax360Service.Panels
         private bool isPollingEnabled = true;
         private bool waitingForDetailedResponse = false;
         private byte previousPanelStatusBitset = 0;
+        private bool g_booIsolationEcho = true;
         List<int> garyZoneArray = new List<int>();
 
         private enum MorleyEventPriority
@@ -214,6 +217,10 @@ namespace Drax360Service.Panels
 
         private void PollTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
+            if (waitingForDetailedResponse)
+            {
+                string mike = "x";
+            }
             if (isPollingEnabled && serialport != null && serialport.IsOpen && !waitingForDetailedResponse)
             {
                 MorleyQuickPanelStatus(MASTER_PANEL_ID);
@@ -435,7 +442,7 @@ namespace Drax360Service.Panels
 
         private void SendDeviceStatusToAMX1(MorleyEventPriority eventPriority, MorleyEventNature eventNature, MorleyDetectorType detectorType, ref int p1)
         {
- 
+
             int amx1StatusIPNumber = 0;     // Used for Panel events only
 
             bool isFireDetector = (detectorType == MorleyDetectorType.CallPoint) ||
@@ -551,7 +558,7 @@ namespace Drax360Service.Panels
                         break;
 
                     case DETAILED_ALARM_RESPONSE:  // 21 (0x15)
-                        ParseDetailedAlarmResponse(decoded,false);
+                        ParseDetailedAlarmResponse(decoded, false);
                         break;
 
                     case ASK_DEVICE_STATE_RESPONSE:  // 63 (0x3F)
@@ -648,9 +655,9 @@ namespace Drax360Service.Panels
                             string onOff = isOn ? "ON" : "OFF";
                             Console.WriteLine($"  Input #{tInputNumber}: {tInputText} = {onOff}");
 
-//                            SendDeviceStatusToAMX1((MorleyEventPriority)response[5], (MorleyEventNature)response[56], (MorleyDetectorType)response[11]);
+                            //                            SendDeviceStatusToAMX1((MorleyEventPriority)response[5], (MorleyEventNature)response[56], (MorleyDetectorType)response[11]);
 
-                            int evnum = CSAMXSingleton.CS.MakeInputNumber(panelID, 0, tInputNumber, 15, isOn); 
+                            int evnum = CSAMXSingleton.CS.MakeInputNumber(panelID, 0, tInputNumber, 15, isOn);
                             send_response_amx(evnum, "", tInputText);
 
                             string notifyMsg = $"Panel {panelID} Input {tInputNumber}: {tInputText} = {onOff}";
@@ -754,6 +761,7 @@ namespace Drax360Service.Panels
                     MorleyDetailedAlarmInfo(panelID, alarmNum);
                     Thread.Sleep(200); // Longer delay between requests
                 }
+                waitingForDetailedResponse = false;  // No alarms, resume polling
             }
             else
             {
@@ -796,13 +804,13 @@ namespace Drax360Service.Panels
             byte subAddress = response[55];             // Sub address
 
 
- 
+
 
             MorleyEventNature? morleyEvent = null;  // Nullable enum
             if (Enum.IsDefined(typeof(MorleyEventNature), (int)eventType))
             {
-                 morleyEvent = (MorleyEventNature)eventType;
-        
+                morleyEvent = (MorleyEventNature)eventType;
+
             }
             else
             {
@@ -841,7 +849,7 @@ namespace Drax360Service.Panels
             // Log fire alarms specially
             if ((EnmMorleyEventNature)eventType == EnmMorleyEventNature.Fire_Alarm_Signal) // Fire_Alarm_Signal
             {
-                    Console.WriteLine("********** FIRE ALARM **********");
+                Console.WriteLine("********** FIRE ALARM **********");
                 base.NotifyClient("********** FIRE ALARM **********", false);
             }
             else if ((EnmMorleyEventNature)eventType == EnmMorleyEventNature.Panel_Reset) // Panel_Reset
@@ -864,19 +872,19 @@ namespace Drax360Service.Panels
                 // if from TestBox - use m_objTestAlarms
                 if (blnFromTestForm)
                 {
-     //               if (m_objTestAlarms == null)
-     //               {
-     //                   m_objTestAlarms = new MorleyDeviceAlarm();
-     //               }
+                    //               if (m_objTestAlarms == null)
+                    //               {
+                    //                   m_objTestAlarms = new MorleyDeviceAlarm();
+                    //               }
 
-     //               objDeviceAlarm = m_objTestAlarms;
-     //               objDeviceAlarm.Initialise(
-     //                   bytOrginatingPanelID,
-     //                   bytLoop,
-     //                   bytDeviceAddress,
-     //                   (byte)enmEventType
-     //               );
-     //               objDeviceAlarm.FromTestBox = true;
+                    //               objDeviceAlarm = m_objTestAlarms;
+                    //               objDeviceAlarm.Initialise(
+                    //                   bytOrginatingPanelID,
+                    //                   bytLoop,
+                    //                   bytDeviceAddress,
+                    //                   (byte)enmEventType
+                    //               );
+                    //               objDeviceAlarm.FromTestBox = true;
                 }
                 else
                 {
@@ -922,11 +930,11 @@ namespace Drax360Service.Panels
             }
             if (alarmText != null)
             {
-               message2 = alarmText;
+                message2 = alarmText;
             }
 
             alarmText = GetMorleyDeviceType((MorleyDetectorType)response[11]);
-            SendDeviceStatusToAMX1((MorleyEventPriority)response[5], (MorleyEventNature)response[56], (MorleyDetectorType)response[11], ref p1);
+            //            SendDeviceStatusToAMX1((MorleyEventPriority)response[5], (MorleyEventNature)response[56], (MorleyDetectorType)response[11], ref p1);
 
             if (p4 > 0)
             {
@@ -1021,6 +1029,64 @@ namespace Drax360Service.Panels
 
         public virtual void send_message(ActionType action, string passedvalues)
         {
+            string[] parts = passedvalues.Split(',');
+
+            int node = 1, loop = 0, zone = 0, device = 0, giDomainNumber = 0, inputtype = 0;
+
+            if (parts.Length > 0) int.TryParse(parts[0], out node);
+            if (parts.Length > 1) int.TryParse(parts[1], out loop);
+            if (parts.Length > 2) int.TryParse(parts[2], out zone);
+            if (parts.Length > 3) int.TryParse(parts[3], out device);
+
+            DateTime now = DateTime.Now;
+
+            int sHour = now.Hour;
+            int sMinute = now.Minute;
+            int sSecond = now.Second;
+
+            int sYear = int.Parse(now.ToString("yy"));   // Two-digit year
+            int sMonth = int.Parse(now.ToString("MM"));  // Two-digit month
+            int sDay = int.Parse(now.ToString("dd"));    // Two-digit day
+            int sDayWeek = ((int)now.DayOfWeek + 6) % 7 + 1;// Sunday = 1, Monday = 2, etc.
+            bool on = true;
+
+            string text = action.ToString();
+
+            switch (action)
+            {
+                case ActionType.kEVACTUATE:
+                    //MorleyEvacuateDetailed((byte)node);
+                    MorleyEvacuate((byte)node);
+                    break;
+
+                case ActionType.kRESET:
+                    MorleyReset((byte)node);
+                    break;
+
+                case ActionType.kSILENCE:
+                    MorleyReset((byte)node);
+                    break;
+
+                case ActionType.kMUTEBUZZERS:
+                    MorleyMute((byte)node);
+                    break;
+
+                case ActionType.kDISABLEDEVICE:
+                    MorleyIsolateDevice((byte)node, (byte)loop, (byte)device, true);
+                    break;
+
+                case ActionType.kENABLEDEVICE:
+                    MorleyIsolateDevice((byte)node, (byte)loop, (byte)device, false);
+                    break;
+
+                case ActionType.kDISABLEZONE:
+                    MorleyIsolateDevice((byte)node, (byte)loop, (byte)device, true);
+                    break;
+
+                case ActionType.kENABLEZONE:
+                    MorleyIsolateDevice((byte)node, (byte)loop, (byte)device, false);
+                    break;
+            }
         }
 
         private void AddToZoneArray(int deviceAddress)
@@ -1078,6 +1144,296 @@ namespace Drax360Service.Panels
                 default:
                     Console.WriteLine("Unknown Morley Device Type: " + (int)detectorType);
                     return "Unknown Device";
+            }
+        }
+
+        public void MorleyIsolateDevice(byte bytPanelID, byte bytLoopID, byte bytDeviceID, bool blnIsolate)
+        {
+            byte[] bytCommand;
+            byte bytIsolate;
+
+            if (blnIsolate)
+            {
+                bytIsolate = 100;
+            }
+            else
+            {
+                bytIsolate = 101;
+            }
+
+            // C# arrays are zero-based, so create array of size 8 (indices 12-19 in VB6)
+            bytCommand = new byte[20]; // Create array large enough to use indices 12-19
+
+            bytCommand[12] = bytIsolate;     // Isolate/De-Isolate
+            bytCommand[13] = 4;              // Include Call points
+            bytCommand[14] = 0;              // From Zone
+            bytCommand[15] = 0;              // To Zone
+            bytCommand[16] = bytPanelID;     // Panel
+            bytCommand[17] = bytLoopID;      // Loop
+            bytCommand[18] = bytDeviceID;    // Device
+            bytCommand[19] = 0;              // Applies to Loop or Device
+
+            DoDetailedBroadCommand(ref bytCommand);
+
+            bytCommand = null; // Equivalent to Erase in VB6
+
+            // Now do the echo back
+            if (g_booIsolationEcho)
+            {
+                EchoMorleyIsolation(bytPanelID, bytLoopID, bytDeviceID, blnIsolate);
+            }
+        }
+
+        public void MorleyIsolateZone(byte bytPanelID,byte bytZoneID,bool blnIsolate)
+        {
+            byte[] bytCommand;
+            byte bytIsolate;
+
+            if (blnIsolate)
+            {
+                bytIsolate = 100;    // Asc("d")
+            }
+            else
+            {
+                bytIsolate = 101;    // Asc("e")
+            }
+
+            // C# arrays are zero-based, so create array large enough to use indices 12-19
+            bytCommand = new byte[20];
+
+            bytCommand[12] = bytIsolate;     // Isolate/De-Isolate
+            bytCommand[13] = 4;              // Include Call points
+            bytCommand[14] = bytZoneID;      // From Zone
+            bytCommand[15] = bytZoneID;      // To Zone
+            bytCommand[16] = bytPanelID;     // Panel
+            bytCommand[17] = 0;              // Loop
+            bytCommand[18] = 0;              // Device
+            bytCommand[19] = 1;              // Applies to Zone
+
+            DoDetailedBroadCommand(ref bytCommand);
+
+            bytCommand = null; // Equivalent to Erase
+        }
+
+        public void MorleyIsolateSounderRelay(byte bytPanelID,                                      string strSounderRelay,                                      bool blnIsolate)
+        {
+            byte[] bytCommand;
+            byte bytIsolate;
+
+            if (blnIsolate)
+            {
+                bytIsolate = 100;    // Asc("d")
+            }
+            else
+            {
+                bytIsolate = 101;    // Asc("e")
+            }
+
+            // C# arrays are zero-based, so create array large enough to use indices 12-19
+            bytCommand = new byte[20];
+
+            bytCommand[12] = bytIsolate;     // Isolate/De-Isolate
+            bytCommand[13] = 0;              //
+            bytCommand[14] = 0;              // From Zone
+            bytCommand[15] = 0;              // To Zone
+            bytCommand[16] = bytPanelID;     // Panel
+
+            base.NotifyClient("Isolate panel ID: " + bytPanelID.ToString());   // !!!!!!!!!!!
+
+            bytCommand[17] = 0;              // Loop
+            bytCommand[18] = 0;              // Device
+
+            if (strSounderRelay.ToUpper() == "RELAY")
+            {
+                bytCommand[19] = 3;          // Applies to Relays
+            }
+            else
+            {
+                bytCommand[19] = 2;          // Applies to Sounders
+            }
+
+            DoDetailedBroadCommand(ref bytCommand);
+
+            bytCommand = null; // Equivalent to Erase
+        }
+
+        public void MorleyMute(byte bytPanelID)
+        {
+            DoSimpleBroadCommand(2, bytPanelID);
+        }
+        public void MorleyEvacuate(byte bytPanelID)
+        {
+            DoSimpleBroadCommand(3, bytPanelID);
+        }
+        public void MorleySilenceAlarms(byte bytPanelID)
+        {
+            DoSimpleBroadCommand(5, bytPanelID);
+        }
+        public void MorleyReset(byte bytPanelID)
+        {
+            DoSimpleBroadCommand(6, bytPanelID);
+        }
+        public void MorleyResoundAlarms(byte bytPanelID)
+        {
+            DoSimpleBroadCommand(9, bytPanelID);
+        }
+        public void MorleyEvacuateDetailed(byte bytPanelID)
+        {
+            byte[] bytCommand;
+
+            // C# arrays are zero-based, so create array large enough to use indices 12-19
+            bytCommand = new byte[20];
+
+            bytCommand[12] = (byte)'c';      // Create
+            bytCommand[13] = 0;              // not used
+            bytCommand[14] = 3;              // 3 = evacuate
+            bytCommand[15] = 0;              // used for class change
+            bytCommand[16] = bytPanelID;     // Panel
+            bytCommand[17] = 0;              // Loop
+            bytCommand[18] = 0;              // Device
+            bytCommand[19] = 6;              // Applies to controls
+
+            DoDetailedBroadCommand(ref bytCommand);
+
+            bytCommand = null; // Equivalent to Erase
+        }
+        private void DoSimpleBroadCommand(byte bytCommandCode,                                  byte bytPanelID)
+        {
+            byte[] bytMsg;
+
+            bytMsg = new byte[7]; // 0 to 6
+
+            // Build Message
+            bytMsg[0] = MORLEY_HEADER_BROADCAST;  // Message Header
+            bytMsg[1] = bytPanelID;               // Destination ID
+            bytMsg[2] = 0;                        // Sender ID
+            bytMsg[3] = bytCommandCode;           // Command
+            bytMsg[4] = 0;                        // Checksum - High byte
+            bytMsg[5] = 0;                        // Checksum - Low byte
+            bytMsg[6] = MORLEY_MSG_END;           // End of Message
+
+            // Calculate Checksum
+            CalcMorleyCheckSum(bytMsg, out bytMsg[4], out bytMsg[5]);
+
+            // Check and convert special bytes
+            ConvertToSpecialBytes(bytMsg);
+
+            // Send Twice - Panel will not return any indication the message is successful
+            //AddToCommandQ(bytMsg, Broadcast_Command, High_Priorty);
+
+            serialsend(bytMsg);
+
+            bytMsg = null; // Equivalent to Erase
+        }
+        private void DoDetailedBroadCommand(ref byte[] bytCommandCode)
+        {
+            byte[] bytMsg;
+
+            bytMsg = new byte[23]; // 0 to 22
+
+            // Build Message
+            bytMsg[0] = MORLEY_HEADER_BROADCAST;  // Message Header
+            bytMsg[1] = 0;                        // Destination ID
+            bytMsg[2] = 0;                        // Sender ID
+            bytMsg[3] = 7;                        // Command
+
+            // 16 bytes of Data bytes 4 to 19
+            bytMsg[4] = 0;                        // Reserved
+            bytMsg[5] = 0;                        // Reserved
+            bytMsg[6] = 0;                        // Reserved
+            bytMsg[7] = 0;                        // Reserved
+            bytMsg[8] = 0;                        // Reserved
+            bytMsg[9] = 0;                        // Reserved
+            bytMsg[10] = 0;                       // Reserved
+            bytMsg[11] = 0;                       // Reserved
+
+            bytMsg[12] = bytCommandCode[12];      // Mode
+            bytMsg[13] = bytCommandCode[13];      // Method
+            bytMsg[14] = bytCommandCode[14];      // from Zone
+            bytMsg[15] = bytCommandCode[15];      // To Zone
+            bytMsg[16] = bytCommandCode[16];      // Panel ID
+            bytMsg[17] = bytCommandCode[17];      // Data
+            bytMsg[18] = bytCommandCode[18];      // Data
+            bytMsg[19] = bytCommandCode[19];      // Applies to
+
+            bytMsg[20] = 0;                       // Checksum - High byte
+            bytMsg[21] = 0;                       // Checksum - Low byte
+            bytMsg[22] = MORLEY_MSG_END;          // End of Message
+
+            // MsgBox bytMsg(12)
+            // Calculate Checksum
+            CalcMorleyCheckSum(bytMsg, out bytMsg[20], out bytMsg[21]);
+
+            // Check and convert special bytes
+            ConvertToSpecialBytes(bytMsg);
+
+            // string tStr = "";
+            // for (int n = 0; n <= 22; n++)
+            // {
+            //     tStr = tStr + (char)bytMsg[n];
+            // }
+            // DebugPrintString(tStr, false);
+            // DebugPrintString(tStr, true);
+
+            // Send Twice - Panel will not return any indication the message is successful
+            //AddToCommandQ(bytMsg, Broadcast_Command, High_Priorty);
+
+            serialsend(bytMsg);
+
+            bytMsg = null; // Equivalent to Erase
+        }
+
+        public void EchoMorleyIsolation(byte bytPanelID, byte bytLoopID, byte bytDeviceID, bool blnIsolate)
+        {
+            int NumIsols;
+
+            try
+            {
+                NumIsols = 0;   // Count how many there are
+
+                if (bytPanelID != 0)
+                {
+                    // Fake an "input" from the remote
+                    //evNum = MakeInputNumber((int)bytPanelID, (int)bytLoopID, (int)bytDeviceID, 4);
+
+                    int evnum = CSAMXSingleton.CS.MakeInputNumber(bytPanelID, bytLoopID, bytDeviceID, 15, blnIsolate);
+                    //                    if (blnIsolate)
+                    //                    {
+                    //                        evNum = evNum + 0x80000000;
+                    //                    }
+                    send_response_amx(evnum, "", "");
+
+                    if (blnIsolate == true)
+                    {
+                        // If intAmxInputType == 15 || intAmxInputType == 8
+                        //   AddToEventQueue(evNum);
+                        // End If
+                    }
+                    else
+                    {
+                        //   RemoveFromEventQueue(evNum);
+                    }
+
+                    // Signal alarm
+                    //WriteNWMData(tStr, 1, evNum, DLL.Dat[0], ps, "", "", blnIsolate ? 1 : 0);
+                    NumIsols = NumIsols + 1;
+
+                    // Now send a fake isolation signal to log and isolation list
+
+                    evnum = CSAMXSingleton.CS.MakeInputNumber(bytPanelID, bytLoopID, bytDeviceID, 4);
+                    send_response_amx(evnum, "", "");
+                    // Signal isolation
+                    //WriteNWMData(tStr, 2, evNum, DLL.Dat[0], ps, "", "", blnIsolate ? 1 : 0);
+                }
+
+                if (NumIsols > 0)
+                {
+                    // Only queue data when some isols were found
+                    //FlushAMX1Messages();
+                }
+            }
+            catch (Exception ex)
+            {
             }
         }
     }

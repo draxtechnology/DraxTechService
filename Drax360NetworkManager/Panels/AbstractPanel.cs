@@ -136,6 +136,7 @@ namespace Drax360Service.Panels
         {
             try
             {
+                if (serialport == null) return false;  // MH Added 23/01/2026
                 return serialport.IsOpen;
             }
             catch( Exception e)
