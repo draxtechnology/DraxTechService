@@ -984,7 +984,7 @@ namespace Drax360Service.Panels
 
         public override void Evacuate(string passedvalues)
         {
-            Console.WriteLine("GOT EVACUATE PLEASE SEND TO SERIAL PORT TO RAISE ALARM");
+            send_message(ActionType.kEVACTUATE, passedvalues);
         }
         public override void Alert(string passedvalues)
         {
@@ -1055,8 +1055,8 @@ namespace Drax360Service.Panels
             switch (action)
             {
                 case ActionType.kEVACTUATE:
-                    //MorleyEvacuateDetailed((byte)node);
-                    MorleyEvacuate((byte)node);
+                    MorleyEvacuateDetailed((byte)node);
+                    //MorleyEvacuate((byte)node);
                     break;
 
                 case ActionType.kRESET:
@@ -1284,7 +1284,9 @@ namespace Drax360Service.Panels
             // C# arrays are zero-based, so create array large enough to use indices 12-19
             bytCommand = new byte[20];
 
-            bytCommand[12] = (byte)'c';      // Create
+            // bytCommand[12] = (byte)'c';      // Create
+            // bytCommand[12] = 99;      // Create
+            bytCommand[12] = (byte)Convert.ToChar("c");  // More explicit conversion
             bytCommand[13] = 0;              // not used
             bytCommand[14] = 3;              // 3 = evacuate
             bytCommand[15] = 0;              // used for class change
@@ -1297,7 +1299,7 @@ namespace Drax360Service.Panels
 
             bytCommand = null; // Equivalent to Erase
         }
-        private void DoSimpleBroadCommand(byte bytCommandCode,                                  byte bytPanelID)
+        private void DoSimpleBroadCommand(byte bytCommandCode, byte bytPanelID)
         {
             byte[] bytMsg;
 
