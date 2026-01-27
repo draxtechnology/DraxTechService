@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.SymbolStore;
 using System.IO.Ports;
+using System.Linq;
 using System.Management;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Messaging;
 using System.Security.Policy;
 using System.Threading;
+using System.Timers;
 using static Drax360Service.Panels.PanelTaktis;
 using static System.Net.Mime.MediaTypeNames;
 
@@ -27,6 +30,11 @@ namespace Drax360Service.Panels
         private const int EVENT_LOG_RESPONSE = 57;
         private const int ASK_DEVICE_STATE_COMMAND = 62;   // TODO
         private const int ASK_DEVICE_STATE_RESPONSE = 63;
+        private const int MAX_CONSECUTIVE_FAILURES = 10000;
+        // Response timeout
+        private const int RESPONSE_TIMEOUT = 20; // mSec = 2 Sec
+        private const int RESPONSE_TIMEOUT_EXTENDED = 30; // mSec = 9.5 Sec
+        private const int RESPONSE_TIMEOUT_SUPER_EXTENDED = 32; 
 
         private const byte MASTER_PANEL_ID = 1;
         private const byte SOURCE_ID = 3; // PC/Host ID
@@ -38,6 +46,12 @@ namespace Drax360Service.Panels
         private byte previousPanelStatusBitset = 0;
         private bool g_booIsolationEcho = true;
         List<int> garyZoneArray = new List<int>();
+        private int consecutiveFailures = 0;
+        private DateTime lastSuccessfulResponse = DateTime.MinValue;
+        private int g_intResponseTimeout = RESPONSE_TIMEOUT;
+        private int g_intAmx1Offset = 0;
+        private int g_bytMasterPanelID = 0;
+        private bool connectionLostNotified = false;
 
         private enum MorleyEventPriority
         {
@@ -110,27 +124,34 @@ namespace Drax360Service.Panels
         {
             get =>
 
-                /* MorleyMax
-            >IS0001C000000000000BE7\r
-            >IE0220611450330000000BDD\r
-            >IE0220611450330000000BDD\r
-            >IE0220611450330000000BDD\r
-            >IE0220611450330000000BDD\r
-            >IE0102411527000100001S01030000000000"OFFICE P1?DEV ROOM ZONE 1"1A7\r*/
+                //* MorleyZX
 
-                ">IE0220611450330000000BDD\r";
-
+                "FA-03-01-3F-01-00-00-00-00-00-00-44-FD";
         }
-        public PanelMorleyZX(string baselogfolder, string identifier) : base(baselogfolder, identifier, "MaxMan", "MAX")
+        public PanelMorleyZX(string baselogfolder, string identifier) : base(baselogfolder, identifier, "MorleyMan", "MORLEY")
         {
             if (!String.IsNullOrEmpty(identifier))
             {
-                heartbeat_timer = new Timer(heartbeat_timer_callback, this.Identifier, 1000, kHeartbeatDelaySeconds * 1000);
+                heartbeat_timer = new System.Threading.Timer(heartbeat_timer_callback, this.Identifier, 1000, kHeartbeatDelaySeconds * 1000);
             }
         }
 
         public override void StartUp(int fakemode)
         {
+            g_intResponseTimeout = RESPONSE_TIMEOUT;
+
+            g_bytMasterPanelID = base.GetSetting<int>(ksettingsetupsection, "MasterPanelID");
+            g_intAmx1Offset = base.GetSetting<int>(ksettingsetupsection, "AMX1Offset");
+
+            if (base.GetSetting<int>(ksettingsetupsection, "ExtendedResponseTimeout") > 0)
+            {
+                g_intResponseTimeout = RESPONSE_TIMEOUT_EXTENDED;
+            }
+            if (base.GetSetting<int>(ksettingsetupsection, "SuperResponseTimeout") > 0)
+            {
+                g_intResponseTimeout = RESPONSE_TIMEOUT_SUPER_EXTENDED;
+            }
+
             int settingbaudrate = 9600;
             string settingparity = "None";
             int settingdatabits = 8;
@@ -156,8 +177,6 @@ namespace Drax360Service.Panels
             serialport.DataBits = settingdatabits;
             serialport.StopBits = (StopBits)settingstopbits;
             serialport.Handshake = Handshake.None;
-
-            // Match VB6 settings exactly
             serialport.Encoding = System.Text.Encoding.GetEncoding(28591); // ISO-8859-1 for binary
             serialport.DtrEnable = false;
             serialport.RtsEnable = false;
@@ -168,15 +187,14 @@ namespace Drax360Service.Panels
             serialport.ReceivedBytesThreshold = 1; // Match VB6 RThreshold = 1
 
             // Set up event handler BEFORE opening
+            serialport.ErrorReceived += SerialPort_ErrorReceived;
             serialport.DataReceived += SerialPort_DataReceived;
-            serialport.PinChanged += SerialPort_PinChanged;
 
             if (serialport.IsOpen)
             {
                 serialport.Close();
             }
 
-            Console.WriteLine("Attempting Open " + serialport.PortName);
             base.NotifyClient("Attempting Open " + serialport.PortName, false);
 
             try
@@ -187,7 +205,6 @@ namespace Drax360Service.Panels
                 serialport.DiscardInBuffer();
                 serialport.DiscardOutBuffer();
 
-                Console.WriteLine("Successfully opened " + serialport.PortName);
                 base.NotifyClient("Successfully opened " + serialport.PortName, false);
 
                 // Give the port a moment to stabilize
@@ -198,10 +215,10 @@ namespace Drax360Service.Panels
 
                 // Start continuous polling timer (VB6 uses 3000ms interval)
                 StartPollingTimer();
+                lastSuccessfulResponse = System.DateTime.Now;
             }
             catch (Exception e)
             {
-                Console.WriteLine("Failed To Open " + serialport.PortName + " " + e.ToString());
                 base.NotifyClient("Failed To Open " + serialport.PortName + " " + e.ToString(), false);
             }
         }
@@ -215,24 +232,75 @@ namespace Drax360Service.Panels
             Console.WriteLine("Polling timer started (3 second interval)");
         }
 
-        private void PollTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        private void PollTimer_Elapsed(object sender, ElapsedEventArgs e)
         {
-            if (waitingForDetailedResponse)
+            // First, check if port is still physically present
+            if (!IsPortStillAvailable())
             {
-                string mike = "x";
+                int evnum = CSAMXSingleton.CS.MakeInputNumber(g_bytMasterPanelID, 0, 9, 15, true);
+                send_response_amx(evnum, "", "Master Panel Offline or Not Responding");
+                connectionLostNotified = true;
             }
-            if (isPollingEnabled && serialport != null && serialport.IsOpen && !waitingForDetailedResponse)
+
+            // Check if port is still open
+            if (serialport?.IsOpen != true)
             {
-                MorleyQuickPanelStatus(MASTER_PANEL_ID);
+                int evnum = CSAMXSingleton.CS.MakeInputNumber(g_bytMasterPanelID, 0, 9, 15, true);
+                send_response_amx(evnum, "", "Master Panel Offline or Not Responding");
+                connectionLostNotified = true;
+            }
+
+            // Try to send poll command
+            bool sendSuccess = MorleyQuickPanelStatus(MASTER_PANEL_ID);
+
+            if (!sendSuccess)
+            {
+                consecutiveFailures++;
+                if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES)
+                {
+                    int evnum = CSAMXSingleton.CS.MakeInputNumber(g_bytMasterPanelID, 0, 9, 15, true);
+                    send_response_amx(evnum, "", "Master Panel Offline or Not Responding");
+                    connectionLostNotified = true;
+                }
+            }
+
+            // Check response timeout
+            if (lastSuccessfulResponse != DateTime.MinValue && (DateTime.Now - lastSuccessfulResponse).TotalSeconds > g_intResponseTimeout)
+            {
+                int evnum = CSAMXSingleton.CS.MakeInputNumber(g_bytMasterPanelID, 0, 9, 15, true);
+                send_response_amx(evnum, "", "Master Panel Offline or Not Responding");
+                connectionLostNotified = true;
             }
         }
 
-        private void SerialPort_PinChanged(object sender, SerialPinChangedEventArgs e)
+        private bool IsPortStillAvailable()
         {
-            // Handle pin changes if needed
+            // Check if the COM port still exists in the system
+            string[] availablePorts = SerialPort.GetPortNames();
+            return availablePorts.Contains(serialport.PortName);
+        }
+        private void SerialPort_ErrorReceived(object sender, SerialErrorReceivedEventArgs e)
+        {
+            base.NotifyClient($"Serial port error detected: {e.EventType}");
+
+            switch (e.EventType)
+            {
+                case SerialError.Frame:
+                case SerialError.Overrun:
+                case SerialError.RXOver:
+                case SerialError.RXParity:
+                case SerialError.TXFull:
+                    // These might indicate cable disconnect or hardware issues
+                    //HandleSerialPortFailure("Hardware error detected");
+                    base.NotifyClient($"Master Panel Offline or Not Responding: {serialport.CtsHolding}");
+                    int evnum = CSAMXSingleton.CS.MakeInputNumber(g_bytMasterPanelID, 0, 9, 15, true);
+                    send_response_amx(evnum, "", "Master Panel Offline or Not Responding");
+                    connectionLostNotified = true;
+                    break;
+            }
         }
 
-        public void MorleyQuickPanelStatus(byte panelID)
+        public bool MorleyQuickPanelStatus(byte panelID)
         {
             byte[] command = new byte[6];
             command[0] = QUICK_STATUS_COMMAND;  // Quick Status Request (16)
@@ -242,10 +310,11 @@ namespace Drax360Service.Panels
             command[4] = 0;
             command[5] = 0;
 
-            DoTwoWayCommand(panelID, command);
+            bool success = DoTwoWayCommand(panelID, command);
+            return success;
         }
 
-        public void MorleyGetDeviceStatus(byte panelId, byte loop, byte deviceAddress)
+        public bool MorleyGetDeviceStatus(byte panelId, byte loop, byte deviceAddress)
         {
             byte[] command;
             enmMorleyDeviceDetailCode deviceDetailCode;
@@ -262,33 +331,32 @@ namespace Drax360Service.Panels
 
             System.Diagnostics.Debug.WriteLine("tx: ASK_DEVICE_STATE_COMMAND");
 
-            DoTwoWayCommand(panelId, command);
-
-            // No need to erase in C# – garbage collector handles it
+            bool success = DoTwoWayCommand(panelId, command);
+            return success;
         }
 
 
-        public void MorleyDetailedAlarmInfo(byte panelID, byte alarmNumber)
+        public void MorleyDetailedAlarmInfo(byte panelId, byte alarmNumber)
         {
             byte[] command = new byte[2];
             command[0] = DETAILED_ALARM_COMMAND;  // Detailed Alarm Info Request (18)
             command[1] = alarmNumber;
 
-            DoTwoWayCommand(panelID, command);
+            DoTwoWayCommand(panelId, command);
         }
 
-        private void DoTwoWayCommand(byte panelID, byte[] commandCode)
+        private bool DoTwoWayCommand(byte panelId, byte[] commandCode)
         {
             try
             {
                 int commandLen = commandCode.Length;
 
-                // Build message: Header + PanelID + SourceID + Command + ChecksumHigh + ChecksumLow + End
+                // Build message: Header + PanelId + SourceID + Command + ChecksumHigh + ChecksumLow + End
                 byte[] message = new byte[commandLen + 6];
 
                 // Build Message Header
                 message[0] = MORLEY_HEADER_TWOWAY;  // Message Header (241)
-                message[1] = panelID;                // Panel ID
+                message[1] = panelId;                // Panel ID
                 message[2] = SOURCE_ID;              // Sender ID (3)
 
                 // Copy Command bytes to the Message bytes
@@ -310,15 +378,21 @@ namespace Drax360Service.Panels
                 byte[] finalMessage = ConvertToSpecialBytes(message);
 
                 // Send to Panel
-                serialport.Write(finalMessage, 0, finalMessage.Length);
+                if (serialport.IsOpen)
+                {
+                    serialport.Write(finalMessage, 0, finalMessage.Length);
 
-                Console.WriteLine("Sent command: " + BitConverter.ToString(finalMessage));
-                base.NotifyClient("Sent command: " + BitConverter.ToString(finalMessage), false);
+                    Console.WriteLine("Sent command: " + BitConverter.ToString(finalMessage));
+                    base.NotifyClient("Sent command: " + BitConverter.ToString(finalMessage), false);
+                    return true;
+                }
+                return false;
             }
             catch (Exception ex)
             {
                 Console.WriteLine("Error in DoTwoWayCommand: " + ex.Message);
                 base.NotifyClient("Error in DoTwoWayCommand: " + ex.Message, false);
+                return false;
             }
         }
 
@@ -435,10 +509,24 @@ namespace Drax360Service.Panels
             //Console.WriteLine(asciiInfo);
             base.NotifyClient(asciiInfo, false);
 
+            // ONLY set this AFTER confirming the message is valid
+            OnValidResponseReceived();
+
             // Parse the message structure
             ParseMorleyMessage(decoded);
         }
-
+        private void OnValidResponseReceived()
+        {
+            lastSuccessfulResponse = DateTime.Now;
+            consecutiveFailures = 0;
+            if (connectionLostNotified)
+            {
+                int evnum = CSAMXSingleton.CS.MakeInputNumber(g_bytMasterPanelID, 0, 9, 15, false);   // clear the event from AMX
+                send_response_amx(evnum, "", "Master Panel Offline or Not Responding");
+                connectionLostNotified = false;
+            }
+            base.NotifyClient($"Valid response at {DateTime.Now:HH:mm:ss.fff}");
+        }
 
         private void SendDeviceStatusToAMX1(MorleyEventPriority eventPriority, MorleyEventNature eventNature, MorleyDetectorType detectorType, ref int p1)
         {
@@ -988,11 +1076,11 @@ namespace Drax360Service.Panels
         }
         public override void Alert(string passedvalues)
         {
-            Console.WriteLine("GOT ALERT PLEASE SEND TO SERIAL PORT TO RAISE ALARM");
+            send_message(ActionType.kALERT, passedvalues);
         }
         public override void EvacuateNetwork(string passedvalues)
         {
-            Console.WriteLine("GOT EVACUATE NETWORK PLEASE SEND TO SERIAL PORT TO RAISE ALARM");
+            send_message(ActionType.kEVACTUATE, passedvalues);
         }
         public override void Silence(string passedvalues)
         {
@@ -1080,11 +1168,11 @@ namespace Drax360Service.Panels
                     break;
 
                 case ActionType.kDISABLEZONE:
-                    MorleyIsolateDevice((byte)node, (byte)loop, (byte)device, true);
+                    MorleyIsolateZone((byte)node, (byte)loop, true);
                     break;
 
                 case ActionType.kENABLEZONE:
-                    MorleyIsolateDevice((byte)node, (byte)loop, (byte)device, false);
+                    MorleyIsolateZone((byte)node, (byte)loop, false);
                     break;
             }
         }
@@ -1173,14 +1261,16 @@ namespace Drax360Service.Panels
             bytCommand[18] = bytDeviceID;    // Device
             bytCommand[19] = 0;              // Applies to Loop or Device
 
-            DoDetailedBroadCommand(ref bytCommand);
-
-            bytCommand = null; // Equivalent to Erase in VB6
-
-            // Now do the echo back
-            if (g_booIsolationEcho)
+            bool success = DoDetailedBroadCommand(ref bytCommand);
+            if (success)
             {
-                EchoMorleyIsolation(bytPanelID, bytLoopID, bytDeviceID, blnIsolate);
+                bytCommand = null; // Equivalent to Erase in VB6
+
+                // Now do the echo back
+                if (g_booIsolationEcho)
+                {
+                    EchoMorleyIsolation(bytPanelID, bytLoopID, bytDeviceID, blnIsolate);
+                }
             }
         }
 
@@ -1283,9 +1373,6 @@ namespace Drax360Service.Panels
 
             // C# arrays are zero-based, so create array large enough to use indices 12-19
             bytCommand = new byte[20];
-
-            // bytCommand[12] = (byte)'c';      // Create
-            // bytCommand[12] = 99;      // Create
             bytCommand[12] = (byte)Convert.ToChar("c");  // More explicit conversion
             bytCommand[13] = 0;              // not used
             bytCommand[14] = 3;              // 3 = evacuate
@@ -1299,7 +1386,7 @@ namespace Drax360Service.Panels
 
             bytCommand = null; // Equivalent to Erase
         }
-        private void DoSimpleBroadCommand(byte bytCommandCode, byte bytPanelID)
+        private bool DoSimpleBroadCommand(byte bytCommandCode, byte bytPanelID)
         {
             byte[] bytMsg;
 
@@ -1323,11 +1410,11 @@ namespace Drax360Service.Panels
             // Send Twice - Panel will not return any indication the message is successful
             //AddToCommandQ(bytMsg, Broadcast_Command, High_Priorty);
 
-            serialsend(bytMsg);
-
+            bool success = serialsend(bytMsg);
             bytMsg = null; // Equivalent to Erase
+            return success;
         }
-        private void DoDetailedBroadCommand(ref byte[] bytCommandCode)
+        private bool DoDetailedBroadCommand(ref byte[] bytCommandCode)
         {
             byte[] bytMsg;
 
@@ -1380,9 +1467,9 @@ namespace Drax360Service.Panels
             // Send Twice - Panel will not return any indication the message is successful
             //AddToCommandQ(bytMsg, Broadcast_Command, High_Priorty);
 
-            serialsend(bytMsg);
-
+            bool success = serialsend(bytMsg);
             bytMsg = null; // Equivalent to Erase
+            return success;
         }
 
         public void EchoMorleyIsolation(byte bytPanelID, byte bytLoopID, byte bytDeviceID, bool blnIsolate)

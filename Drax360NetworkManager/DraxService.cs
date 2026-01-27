@@ -815,8 +815,10 @@ namespace Drax360Service
                 { }
 
                 abstractpanels.Add(ap);
+                break;
             }
             StartDeviceWatcher();
+            
         }
 
         private void Sp_Fire(object sender, EventArgs e)

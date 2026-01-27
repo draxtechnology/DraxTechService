@@ -134,16 +134,8 @@ namespace Drax360Service.Panels
 
         public Boolean SerialPortIsOpen()
         {
-            try
-            {
-                if (serialport == null) return false;  // MH Added 23/01/2026
-                return serialport.IsOpen;
-            }
-            catch( Exception e)
-
-            // TODO make this more robust
-            { return false; 
-            }
+            if (serialport == null) return false;
+            return serialport.IsOpen;
         }
 
         public T GetSetting<T>(string section, string name)
@@ -159,7 +151,7 @@ namespace Drax360Service.Panels
             Console.WriteLine("Sent Heartbeat");
         }
 
-        protected void serialsend(byte[] toSend)
+        protected bool serialsend(byte[] toSend)
         {
             if (serialport?.IsOpen == true)
             {
@@ -168,12 +160,14 @@ namespace Drax360Service.Panels
                 this.NotifyClient("Sent (Hex): " + hex, false);
                 string numeric = string.Join(" ", toSend.Select(b => b.ToString()));
                 this.NotifyClient("Sent (Numeric): " + numeric, false);
-                Console.WriteLine("Sent: " + numeric); 
+                Console.WriteLine("Sent: " + numeric);
+                return true;
             }
+            return false;
         }
 
 
-        protected void serialsendstring(string[] values)
+        protected bool serialsendstring(string[] values)
         {
             if (serialport?.IsOpen == true)
             {
@@ -184,26 +178,31 @@ namespace Drax360Service.Panels
 
                 serialport.Write(toSend, 0, toSend.Length);
                 this.NotifyClient("Sent: " + string.Join(", ", values), false);
+                return true;
             }
+            return false;
         }
 
-        protected void serialsendstring_analogue(string[] values)
+        protected bool serialsendstring_analogue(string[] values)
         {
-            if (serialport?.IsOpen != true) return;
-
-            foreach (var v in values)
+            if (serialport?.IsOpen == true)
             {
-                if (!string.IsNullOrEmpty(v))
+                foreach (var v in values)
                 {
-                    byte b = unchecked((byte)Convert.ToInt32(v));
-                    serialport.Write(new byte[] { b }, 0, 1);
+                    if (!string.IsNullOrEmpty(v))
+                    {
+                        byte b = unchecked((byte)Convert.ToInt32(v));
+                        serialport.Write(new byte[] { b }, 0, 1);
 
-                    Thread.Sleep(20); // increase if needed (10–20ms sometimes)
+                        Thread.Sleep(20); // increase if needed (10–20ms sometimes)
+                    }
                 }
-            }
-            Thread.Sleep(1000);
+                Thread.Sleep(1000);
 
-            this.NotifyClient("Sent analogue: " + string.Join(", ", values), false);
+                this.NotifyClient("Sent analogue: " + string.Join(", ", values), false);
+                return true;
+            }
+            return false;
         }
 
 
