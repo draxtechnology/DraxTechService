@@ -9,7 +9,8 @@ using System.Text;
 using System.Threading;
 
 namespace Drax360Service.Panels
-{    internal abstract class AbstractPanel
+{
+    internal abstract class AbstractPanel
     {
         #region Constants
         protected const byte kHeartbeatInitialDelaySeconds = 60;
@@ -20,7 +21,11 @@ namespace Drax360Service.Panels
         protected const string ksettingpanelsection = "PANEL";
         protected const string ksettingmainsection = "MAIN";
         private const string kinifolder = "";
-        
+
+        private Queue<byte[]> commandQueue = new Queue<byte[]>();
+        private object queueLock = new object();
+        private const int MAX_QUEUE_SIZE = 100; // Prevent unlimited growth
+
         #endregion
 
         #region private fields
@@ -50,7 +55,7 @@ namespace Drax360Service.Panels
         #endregion
 
         #region Constructors
-        public AbstractPanel(string basesettingsfolder, string identifier, string inifile,string extension)
+        public AbstractPanel(string basesettingsfolder, string identifier, string inifile, string extension)
         {
             Identifier = identifier;
             string inifolder = Path.Combine(basesettingsfolder, kinifolder);
@@ -88,7 +93,7 @@ namespace Drax360Service.Panels
         {
             EventHandler handler = Fire;
 
-            if (handler != null) handler(this, new CustomEventArgs(text,true));
+            if (handler != null) handler(this, new CustomEventArgs(text, true));
 
             if (type == NwmData.AlarmToAmx || type == NwmData.ResetToNwm || type == NwmData.IsolationToAmx)
             {
@@ -108,7 +113,7 @@ namespace Drax360Service.Panels
                     serialport.Close();
                 }
                 catch
-                {}
+                { }
                 serialport.Dispose();
                 serialport = null;
             }
@@ -128,7 +133,7 @@ namespace Drax360Service.Panels
             byte[] readbytes = new byte[bytestoread];
             int numberread = serialport.Read(readbytes, 0, bytestoread);
             if (numberread == 0) return;
-           
+
             Parse(readbytes);
         }
 
@@ -151,7 +156,7 @@ namespace Drax360Service.Panels
             Console.WriteLine("Sent Heartbeat");
         }
 
-        protected bool serialsend(byte[] toSend)
+        protected bool serialsendOLD(byte[] toSend)
         {
             if (serialport?.IsOpen == true)
             {
@@ -160,12 +165,107 @@ namespace Drax360Service.Panels
                 this.NotifyClient("Sent (Hex): " + hex, false);
                 string numeric = string.Join(" ", toSend.Select(b => b.ToString()));
                 this.NotifyClient("Sent (Numeric): " + numeric, false);
-                Console.WriteLine("Sent: " + numeric);
                 return true;
             }
             return false;
         }
 
+        protected bool serialsend(byte[] toSend)
+        {
+            if (serialport?.IsOpen == true)
+            {
+                try
+                {
+                    serialport.Write(toSend, 0, toSend.Length);
+                    string hex = BitConverter.ToString(toSend);
+                    this.NotifyClient("Sent (Hex): " + hex, false);
+                    string numeric = string.Join(" ", toSend.Select(b => b.ToString()));
+                    this.NotifyClient("Sent (Numeric): " + numeric, false);
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    this.NotifyClient($"Send failed: {ex.Message}");
+                    // Send failed, queue it
+                    QueueCommand(toSend);
+                    //HandleSerialPortFailure($"Send error: {ex.Message}");
+                    return false;
+                }
+            }
+            else
+            {
+                // Port not open, queue the command
+                QueueCommand(toSend);
+                Console.WriteLine("Port not open, command queued");
+                return false;
+            }
+        }
+
+        private void QueueCommand(byte[] command)
+        {
+            lock (queueLock)
+            {
+                if (commandQueue.Count >= MAX_QUEUE_SIZE)
+                {
+                    this.NotifyClient("Command queue full, dropping oldest command", false);
+                    commandQueue.Dequeue(); // Remove oldest
+                }
+
+                commandQueue.Enqueue(command);
+                this.NotifyClient($"Command queued (queue size: {commandQueue.Count})", false);
+            }
+        }
+
+        protected void ProcessQueuedCommands()
+        {
+            lock (queueLock)
+            {
+                if (commandQueue.Count == 0)
+                {
+                    Console.WriteLine("No queued commands to process");
+                    return;
+                }
+
+                this.NotifyClient($"Processing {commandQueue.Count} queued commands", false);
+
+                int successCount = 0;
+                int failCount = 0;
+
+                while (commandQueue.Count > 0)
+                {
+                    byte[] command = commandQueue.Peek(); // Look at first item without removing
+
+                    if (serialport?.IsOpen == true)
+                    {
+                        try
+                        {
+                            serialport.Write(command, 0, command.Length);
+                            string hex = BitConverter.ToString(command);
+                            Console.WriteLine($"Queued command sent (Hex): {hex}");
+
+                            commandQueue.Dequeue(); // Remove from queue after successful send
+                            successCount++;
+
+                            // Small delay between queued commands to avoid overwhelming the device
+                            Thread.Sleep(50);
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Failed to send queued command: {ex.Message}");
+                            failCount++;
+                            break; // Stop processing if send fails
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("Port closed while processing queue");
+                        break; // Port closed, stop processing
+                    }
+                }
+
+                this.NotifyClient($"Sent {successCount} queued commands ({commandQueue.Count} remaining)", false);
+            }
+        }
 
         protected bool serialsendstring(string[] values)
         {
@@ -227,7 +327,7 @@ namespace Drax360Service.Panels
         #endregion
 
         #region Private Methods
-       
+
         private void amxsend(NwmData type, string text, int inputtype, bool on, int node = 0, int loop = 0, int device = 0)
         {
             //int amxoffset = 0; // 0 amxlight
@@ -241,7 +341,7 @@ namespace Drax360Service.Panels
         private void amxalarm(string text, int inputtype, bool on, int node = 0, int loop = 0, int device = 0)
         {
             //int amxoffset = 0; // 0 amxlight
-            
+
             int evnum = CSAMXSingleton.CS.MakeInputNumber(node, loop, device, inputtype, on);
 
             CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", "", text);

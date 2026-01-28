@@ -8,6 +8,7 @@ using System.Runtime.Remoting;
 using System.Runtime.Remoting.Messaging;
 using System.Security.Policy;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Timers;
 using static Drax360Service.Panels.PanelTaktis;
 using static System.Net.Mime.MediaTypeNames;
@@ -496,17 +497,14 @@ namespace Drax360Service.Panels
         {
             string msgInfo = "Complete message received (" + message.Length + " bytes): " +
                            BitConverter.ToString(message);
-            //Console.WriteLine(msgInfo);
             base.NotifyClient(msgInfo, false);
 
             // Decode special bytes if present
             byte[] decoded = DecodeSpecialBytes(message);
             string decodedInfo = "Decoded message: " + BitConverter.ToString(decoded);
-            //Console.WriteLine(decodedInfo);
 
             // Show ASCII representation
             string asciiInfo = "ASCII: " + GetAsciiRepresentation(decoded);
-            //Console.WriteLine(asciiInfo);
             base.NotifyClient(asciiInfo, false);
 
             // ONLY set this AFTER confirming the message is valid
@@ -524,9 +522,11 @@ namespace Drax360Service.Panels
                 int evnum = CSAMXSingleton.CS.MakeInputNumber(g_bytMasterPanelID, 0, 9, 15, false);   // clear the event from AMX
                 send_response_amx(evnum, "", "Master Panel Offline or Not Responding");
                 connectionLostNotified = false;
+                base.ProcessQueuedCommands();
             }
             base.NotifyClient($"Valid response at {DateTime.Now:HH:mm:ss.fff}");
         }
+
 
         private void SendDeviceStatusToAMX1(MorleyEventPriority eventPriority, MorleyEventNature eventNature, MorleyDetectorType detectorType, ref int p1)
         {
