@@ -3,8 +3,11 @@ using System;
 using System.Collections.Generic;
 using System.IO.Ports;
 using System.Linq;
+using System.Reflection.Emit;
 using System.Runtime.InteropServices;
+using System.Runtime.Remoting.Messaging;
 using System.Text;
+using System.Timers;
 
 namespace Drax360Service.Panels
 {
@@ -14,8 +17,18 @@ namespace Drax360Service.Panels
         const byte kzerobyte = 0x00;
         const byte kackbyte = 0x06;
         const byte kheartbeatdelayseconds = 60;
-        const int kchunksize = 59; 
+        const int kchunksize = 59;
+        // Response timeout
+        private const int RESPONSE_TIMEOUT = 90; // mSec = 2 Sec
+        private const int RESPONSE_TIMEOUT_EXTENDED = 30; // mSec = 9.5 Sec
+        private const int RESPONSE_TIMEOUT_SUPER_EXTENDED = 32;
         #endregion
+
+        private bool connectionLostNotified = false;
+        private DateTime lastSuccessfulResponse = DateTime.MinValue;
+        private System.Timers.Timer pollTimer;
+        private int consecutiveFailures = 0;
+        private int g_intResponseTimeout = RESPONSE_TIMEOUT;
 
         public override string FakeString
         {
@@ -24,16 +37,8 @@ namespace Drax360Service.Panels
                 // two messages are sent, so we return the same message twice
                 string msg = "";
                 msg+="\0\0\0\0X\u0002@\0\0\0\0\u0002/\v\u0017\u0006\u0019\0\0\0\0\0\u0003\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\u0001\u000f";
-                //msg+= "\0\0\0\0X\u0002@\0\0\0\0\u0002/\v\u0017\u0006\u0019\0\0\0\0\0\u0003\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\u0001\u000f";
-
-                // added this extra part to the message to make it longer
-                //msg += "12345";
                 return msg;
             }
-
-            //get =>
-
-              //   "\0\0\0\0X\u0002@\0\0\0\0\u0002/\v\u0017\u0006\u0019\0\0\0\0\0\u0003\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\u0001\u000f";
         }
 
         public PanelGent(string baselogfolder, string identifier) : base(baselogfolder,identifier, "GenMan","GEN")
@@ -289,9 +294,29 @@ namespace Drax360Service.Panels
                             send_response_amx_and_serial(evnum, "", message2);
                             break;
 
-                        case 3:
+                        case 3:   // Disable Cleared
                             if (sLoopNumber == 0)
                             {
+                                switch (sLoopNumber)
+                                {
+                                    case 0: p4 = 53; break;
+                                    case 1: p4 = 37; break;
+                                    case 2: p4 = 38; break;
+                                    case 3: p4 = 39; break;
+                                    case 4: p4 = 40; break;
+                                    case 5: p4 = 41; break;
+                                    case 6: p4 = 42; break;
+                                    case 7: p4 = 43; break;
+                                    case 8: p4 = 44; break;
+                                    case 9: p4 = 45; break;
+                                    case 10: p4 = 46; break;
+                                    case 11: p4 = 47; break;
+                                    case 12: p4 = 48; break;
+                                    case 13: p4 = 49; break;
+                                    case 14: p4 = 50; break;
+                                    case 15: p4 = 51; break;
+                                    case 16: p4 = 52; break;
+                                }
                                 message2 = "Zone Enable";
                                 p1 = 15;
                                 on = false;
@@ -309,7 +334,6 @@ namespace Drax360Service.Panels
                             p2 = p2 + this.Offset;
 
                             evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, on);
-                            send_response_amx_disable(evnum, "", message2, message3);
                             send_response_amx_and_serial(evnum, "", message2);
                             break;
 
@@ -402,7 +426,7 @@ namespace Drax360Service.Panels
                     break;
 
                 case 5:
-                    message2 = "Fault"; // Out Station Loop Fault
+                    message2 = "OutStation - Channel " + sChannelNumber; // Out Station Loop Fault
                     p1 = 8; p2 = sPanelNumber;
                     p3 = sLoopNumber; p4 = AddressNumber;
 
@@ -447,17 +471,16 @@ namespace Drax360Service.Panels
                         p3 = sLoopNumber;
                         p4 = AddressNumber;
                         p2 = p2 + this.Offset;
+
+
+                        p2 = sPanelNumber;
+                        p3 = sLoopNumber;
+
+                        p2 = p2 + this.Offset;
+
                         evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-                        send_response_amx_disable(evnum, "", message2, message3);
+                        send_response_amx_and_serial(evnum, "", message2, message3);
                     }
-
-                    p2 = sPanelNumber;
-                    p3 = sLoopNumber;
-
-                    p2 = p2 + this.Offset;
-
-                    evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-                    send_response_amx_and_serial(evnum, "", message2, message3);
                     break;
 
                 case 9:
@@ -508,13 +531,15 @@ namespace Drax360Service.Panels
             // Signal the event back to the main service, so that it can be logged
             this.NotifyClient(friendlymessage, false);
 
-            CSAMXSingleton.CS.SendAlarmToAMX(evnum, message1, message2, message3);
-            CSAMXSingleton.CS.FlushMessages();
+            if (serialsend(new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte }))
+            {
+                byte[] bytesToLog = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
+                string hex = BitConverter.ToString(bytesToLog); // "00-06-00-06"
+                this.NotifyClient("ACK Sent: " + hex, false);
 
-            serialsend(new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte });
-            byte[] bytesToLog = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
-            string hex = BitConverter.ToString(bytesToLog); // "00-06-00-06"
-            this.NotifyClient("ACK Sent: " + hex, false);
+                CSAMXSingleton.CS.SendAlarmToAMX(evnum, message1, message2, message3);
+                CSAMXSingleton.CS.FlushMessages();
+            }   
         }
         private void send_response_amx_disable(int evnum, string message1, string message2, string message3 = "")
         {
@@ -574,11 +599,24 @@ namespace Drax360Service.Panels
         protected override void heartbeat_timer_callback(object sender)
         {
             base.heartbeat_timer_callback(sender);
-            serialsend(new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte });
+            if (serialsend(new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte }))
+            {
+                if (connectionLostNotified)
+                {
+                    int evnum = CSAMXSingleton.CS.MakeInputNumber(1 + Offset, 0, 0, 0, false);   // clear the event from AMX
+                    CSAMXSingleton.CS.SendAlarmToAMX(evnum, "Master Panel Offline or Not Responding", "", "");
+                    CSAMXSingleton.CS.FlushMessages();
+                    connectionLostNotified = false;
+                    base.ProcessQueuedCommands();
+                }
+                lastSuccessfulResponse = DateTime.Now;
+                consecutiveFailures = 0;
+            }
         }
 
         public override void StartUp(int fakemode)
-        {     
+        {
+            g_intResponseTimeout = RESPONSE_TIMEOUT;
             int setttingbaudrate = base.GetSetting<int>(ksettingsetupsection, "BaudRate");
             string settingparity = base.GetSetting<string>(ksettingsetupsection, "Parity");
             int settingdatabits = base.GetSetting<int>(ksettingsetupsection, "DataBits");
@@ -635,6 +673,54 @@ namespace Drax360Service.Panels
                 serialport.DiscardInBuffer();
                 serialport.DiscardOutBuffer();
             }
+
+            // Start continuous polling timer (VB6 uses 3000ms interval)
+            StartPollingTimer();
+            lastSuccessfulResponse = System.DateTime.Now;
+        }
+
+        private void StartPollingTimer()
+        {
+            pollTimer = new System.Timers.Timer(3000); // Poll every 3 seconds like VB6
+            pollTimer.Elapsed += PollTimer_Elapsed;
+            pollTimer.AutoReset = true;
+            pollTimer.Start();
+        }
+
+        private void PollTimer_Elapsed(object sender, ElapsedEventArgs e)
+        {
+            // First, check if port is still physically present
+            if (!IsPortStillAvailable())
+            {
+                int evnum = CSAMXSingleton.CS.MakeInputNumber(1 + Offset, 0, 0, 0, true);
+                CSAMXSingleton.CS.SendAlarmToAMX(evnum, "Master Panel Offline or Not Responding", "", "");
+                CSAMXSingleton.CS.FlushMessages();
+                connectionLostNotified = true;
+            }
+
+            // Check if port is still open
+            if (serialport?.IsOpen != true)
+            {
+                int evnum = CSAMXSingleton.CS.MakeInputNumber(1 + Offset, 0, 0, 0, true);
+                CSAMXSingleton.CS.SendAlarmToAMX(evnum, "Master Panel Offline or Not Responding", "", "");
+                CSAMXSingleton.CS.FlushMessages();
+                connectionLostNotified = true;
+            }
+
+            // Check response timeout
+            if (lastSuccessfulResponse != DateTime.MinValue && (DateTime.Now - lastSuccessfulResponse).TotalSeconds > g_intResponseTimeout)
+            {
+                int evnum = CSAMXSingleton.CS.MakeInputNumber(1 + Offset, 0, 0, 0, true);
+                CSAMXSingleton.CS.SendAlarmToAMX(evnum, "Master Panel Offline or Not Responding", "", "");
+                CSAMXSingleton.CS.FlushMessages();
+                connectionLostNotified = true;
+            }
+        }
+        private bool IsPortStillAvailable()
+        {
+            // Check if the COM port still exists in the system
+            string[] availablePorts = SerialPort.GetPortNames();
+            return availablePorts.Contains(serialport.PortName);
         }
         public override void Evacuate(string passedvalues)
         {
@@ -927,10 +1013,19 @@ namespace Drax360Service.Panels
             gbaryDataToTX[57] = (byte)iMSB;
             gbaryDataToTX[58] = (byte)iLSB;
 
-            serialsend(gbaryDataToTX);
+            if (serialsend(gbaryDataToTX))
+            {
 
-            node = node + this.Offset;
-            SendEvent("Gent", type, inputtype, text, on, node, loop, device);
+                node += this.Offset;
+                SendEvent("Gent", type, inputtype, text, on, node, loop, device);
+
+                int evnum = CSAMXSingleton.CS.MakeInputNumber(node, loop, device, inputtype, on);
+
+                if (action == ActionType.kDISABLEZONE || action == ActionType.kENABLEZONE || action == ActionType.kDISABLEDEVICE || action == ActionType.kENABLEDEVICE)
+                {
+                    //send_response_amx_disable(evnum, "", text, "");  // TODO VB6 does not do
+                }
+            }
         }
 
 

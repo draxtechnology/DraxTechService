@@ -24,7 +24,6 @@ namespace Drax360Service.Panels
 
         private Queue<byte[]> commandQueue = new Queue<byte[]>();
         private object queueLock = new object();
-        private const int MAX_QUEUE_SIZE = 100; // Prevent unlimited growth
 
         #endregion
 
@@ -156,47 +155,21 @@ namespace Drax360Service.Panels
             Console.WriteLine("Sent Heartbeat");
         }
 
-        protected bool serialsendOLD(byte[] toSend)
-        {
-            if (serialport?.IsOpen == true)
-            {
-                serialport.Write(toSend, 0, toSend.Length);
-                string hex = BitConverter.ToString(toSend);
-                this.NotifyClient("Sent (Hex): " + hex, false);
-                string numeric = string.Join(" ", toSend.Select(b => b.ToString()));
-                this.NotifyClient("Sent (Numeric): " + numeric, false);
-                return true;
-            }
-            return false;
-        }
-
         protected bool serialsend(byte[] toSend)
         {
+            // Always add to queue first
+            QueueCommand(toSend);
+            this.NotifyClient("Command added to queue");
+
+            // If port is open, process the queue immediately
             if (serialport?.IsOpen == true)
             {
-                try
-                {
-                    serialport.Write(toSend, 0, toSend.Length);
-                    string hex = BitConverter.ToString(toSend);
-                    this.NotifyClient("Sent (Hex): " + hex, false);
-                    string numeric = string.Join(" ", toSend.Select(b => b.ToString()));
-                    this.NotifyClient("Sent (Numeric): " + numeric, false);
-                    return true;
-                }
-                catch (Exception ex)
-                {
-                    this.NotifyClient($"Send failed: {ex.Message}");
-                    // Send failed, queue it
-                    QueueCommand(toSend);
-                    //HandleSerialPortFailure($"Send error: {ex.Message}");
-                    return false;
-                }
+                this.ProcessQueuedCommands();
+                return true;
             }
             else
             {
-                // Port not open, queue the command
-                QueueCommand(toSend);
-                Console.WriteLine("Port not open, command queued");
+                this.NotifyClient("Port not open, command queued for later");
                 return false;
             }
         }
@@ -205,12 +178,6 @@ namespace Drax360Service.Panels
         {
             lock (queueLock)
             {
-                if (commandQueue.Count >= MAX_QUEUE_SIZE)
-                {
-                    this.NotifyClient("Command queue full, dropping oldest command", false);
-                    commandQueue.Dequeue(); // Remove oldest
-                }
-
                 commandQueue.Enqueue(command);
                 this.NotifyClient($"Command queued (queue size: {commandQueue.Count})", false);
             }

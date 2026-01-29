@@ -230,7 +230,6 @@ namespace Drax360Service.Panels
             pollTimer.Elapsed += PollTimer_Elapsed;
             pollTimer.AutoReset = true;
             pollTimer.Start();
-            Console.WriteLine("Polling timer started (3 second interval)");
         }
 
         private void PollTimer_Elapsed(object sender, ElapsedEventArgs e)
@@ -383,7 +382,6 @@ namespace Drax360Service.Panels
                 {
                     serialport.Write(finalMessage, 0, finalMessage.Length);
 
-                    Console.WriteLine("Sent command: " + BitConverter.ToString(finalMessage));
                     base.NotifyClient("Sent command: " + BitConverter.ToString(finalMessage), false);
                     return true;
                 }
@@ -391,7 +389,6 @@ namespace Drax360Service.Panels
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Error in DoTwoWayCommand: " + ex.Message);
                 base.NotifyClient("Error in DoTwoWayCommand: " + ex.Message, false);
                 return false;
             }
@@ -468,19 +465,19 @@ namespace Drax360Service.Panels
                     int b = sp.ReadByte();
                     receiveBuffer.Add((byte)b);
 
-                    Console.WriteLine($"Received byte: {b} (0x{b:X2})");
+                    base.NotifyClient($"Received byte: {b} (0x{b:X2})");
 
                     // Detect message boundaries
                     if (b == MORLEY_HEADER_RESPONSE)
                     {
-                        Console.WriteLine("*** MORLEY RESPONSE HEADER (250) ***");
-                        base.NotifyClient("*** MORLEY RESPONSE HEADER DETECTED ***", false);
+
+                        base.NotifyClient("*** MORLEY RESPONSE HEADER  (250) DETECTED ***", false);
                         receiveBuffer.Clear();
                         receiveBuffer.Add((byte)b);
                     }
                     else if (b == MORLEY_MSG_END)
                     {
-                        Console.WriteLine("*** MESSAGE END (253) ***");
+                        base.NotifyClient("*** MESSAGE END (253) ***");
                         ProcessReceivedMessage(receiveBuffer.ToArray());
                         receiveBuffer.Clear();
                     }
@@ -488,7 +485,6 @@ namespace Drax360Service.Panels
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Error in DataReceived: " + ex.Message);
                 base.NotifyClient("Error in DataReceived: " + ex.Message, false);
             }
         }
@@ -632,11 +628,11 @@ namespace Drax360Service.Panels
 
             try
             {
-                Console.WriteLine("=== Message Parse ===");
-                Console.WriteLine($"Header: {decoded[0]} (0x{decoded[0]:X2})");
-                Console.WriteLine($"Source: {decoded[1]}");
-                Console.WriteLine($"Panel ID (Dest): {decoded[2]}");  // This is the actual Panel ID
-                Console.WriteLine($"Command/Response: {decoded[3]} (0x{decoded[3]:X2})");
+                base.NotifyClient("=== Message Parse ===");
+                base.NotifyClient($"Header: {decoded[0]} (0x{decoded[0]:X2})");
+                base.NotifyClient($"Source: {decoded[1]}");
+                base.NotifyClient($"Panel ID (Dest): {decoded[2]}");  // This is the actual Panel ID
+                base.NotifyClient($"Command/Response: {decoded[3]} (0x{decoded[3]:X2})");
 
                 // Parse based on response identifier (index 3)
                 switch (decoded[MORLEY_MSG_IDENT_INDX])
@@ -654,16 +650,13 @@ namespace Drax360Service.Panels
                         break;
 
                     default:
-                        Console.WriteLine($"Unrecognised Response Identifier: {decoded[MORLEY_MSG_IDENT_INDX]}");
+                        base.NotifyClient($"Unrecognised Response Identifier: {decoded[MORLEY_MSG_IDENT_INDX]}");
                         break;
                 }
-
-                Console.WriteLine("====================");
-
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Error parsing message: " + ex.Message);
+                base.NotifyClient("Error parsing message: " + ex.Message);
             }
         }
 
@@ -673,21 +666,21 @@ namespace Drax360Service.Panels
 
             try
             {
-                Console.WriteLine("--- Device Status Response ---");
+                base.NotifyClient("--- Device Status Response ---");
 
                 byte panelID = response[2];
                 byte newStates = response[4];  // Panel status bitset
 
-                Console.WriteLine($"Panel ID: {panelID}");
-                Console.WriteLine($"Status Bitset: {newStates} (0x{newStates:X2}, Binary: {Convert.ToString(newStates, 2).PadLeft(8, '0')})");
+                base.NotifyClient($"Panel ID: {panelID}");
+                base.NotifyClient($"Status Bitset: {newStates} (0x{newStates:X2}, Binary: {Convert.ToString(newStates, 2).PadLeft(8, '0')})");
 
                 // Check if status has changed
                 if (newStates != previousPanelStatusBitset)
                 {
                     byte diffs = (byte)(newStates ^ previousPanelStatusBitset);
-                    Console.WriteLine($">>> STATUS CHANGED! Diff: {diffs} (0x{diffs:X2})");
-                    Console.WriteLine($"Previous: {previousPanelStatusBitset} (0x{previousPanelStatusBitset:X2})");
-                    Console.WriteLine($"New:      {newStates} (0x{newStates:X2})");
+                    base.NotifyClient($">>> STATUS CHANGED! Diff: {diffs} (0x{diffs:X2})");
+                    base.NotifyClient($"Previous: {previousPanelStatusBitset} (0x{previousPanelStatusBitset:X2})");
+                    base.NotifyClient($"New:      {newStates} (0x{newStates:X2})");
                     int tInputNumber = 0;
                     string tInputText = "";
                     // Check each bit for changes
@@ -741,7 +734,7 @@ namespace Drax360Service.Panels
                             }
 
                             string onOff = isOn ? "ON" : "OFF";
-                            Console.WriteLine($"  Input #{tInputNumber}: {tInputText} = {onOff}");
+                            base.NotifyClient($"  Input #{tInputNumber}: {tInputText} = {onOff}");
 
                             //                            SendDeviceStatusToAMX1((MorleyEventPriority)response[5], (MorleyEventNature)response[56], (MorleyDetectorType)response[11]);
 
@@ -773,17 +766,17 @@ namespace Drax360Service.Panels
                 }
                 else
                 {
-                    Console.WriteLine("No status change from previous poll");
+                    base.NotifyClient("No status change from previous poll");
                 }
 
                 // Always display current status bits
-                Console.WriteLine("Current Panel Status:");
+                base.NotifyClient("Current Panel Status:");
                 DisplayPanelStatusBits(newStates);
 
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error in ParseDeviceStatusResponse: {ex.Message}");
+                base.NotifyClient($"Error in ParseDeviceStatusResponse: {ex.Message}");
             }
         }
 
@@ -889,10 +882,7 @@ namespace Drax360Service.Panels
             byte detectorType = response[11];           // Detector type
             byte eventType = response[52];              // Event nature code
             byte originatingPanelID = response[53];     // Panel ID where event originated
-            byte subAddress = response[55];             // Sub address
-
-
-
+            byte subAddress = response[55];             // Sub address  
 
             MorleyEventNature? morleyEvent = null;  // Nullable enum
             if (Enum.IsDefined(typeof(MorleyEventNature), (int)eventType))
@@ -937,12 +927,10 @@ namespace Drax360Service.Panels
             // Log fire alarms specially
             if ((EnmMorleyEventNature)eventType == EnmMorleyEventNature.Fire_Alarm_Signal) // Fire_Alarm_Signal
             {
-                Console.WriteLine("********** FIRE ALARM **********");
                 base.NotifyClient("********** FIRE ALARM **********", false);
             }
             else if ((EnmMorleyEventNature)eventType == EnmMorleyEventNature.Panel_Reset) // Panel_Reset
             {
-                Console.WriteLine("********** PANEL RESET **********");
                 base.NotifyClient("********** PANEL RESET **********", false);
             }
 
@@ -1119,7 +1107,7 @@ namespace Drax360Service.Panels
         {
             string[] parts = passedvalues.Split(',');
 
-            int node = 1, loop = 0, zone = 0, device = 0, giDomainNumber = 0, inputtype = 0;
+            int node = 1, loop = 0, zone = 0, device = 0;
 
             if (parts.Length > 0) int.TryParse(parts[0], out node);
             if (parts.Length > 1) int.TryParse(parts[1], out loop);
@@ -1305,7 +1293,7 @@ namespace Drax360Service.Panels
             bytCommand = null; // Equivalent to Erase
         }
 
-        public void MorleyIsolateSounderRelay(byte bytPanelID,                                      string strSounderRelay,                                      bool blnIsolate)
+        public void MorleyIsolateSounderRelay(byte bytPanelID, string strSounderRelay, bool blnIsolate)
         {
             byte[] bytCommand;
             byte bytIsolate;
@@ -1486,10 +1474,6 @@ namespace Drax360Service.Panels
                     //evNum = MakeInputNumber((int)bytPanelID, (int)bytLoopID, (int)bytDeviceID, 4);
 
                     int evnum = CSAMXSingleton.CS.MakeInputNumber(bytPanelID, bytLoopID, bytDeviceID, 15, blnIsolate);
-                    //                    if (blnIsolate)
-                    //                    {
-                    //                        evNum = evNum + 0x80000000;
-                    //                    }
                     send_response_amx(evnum, "", "");
 
                     if (blnIsolate == true)
@@ -1513,6 +1497,9 @@ namespace Drax360Service.Panels
                     send_response_amx(evnum, "", "");
                     // Signal isolation
                     //WriteNWMData(tStr, 2, evNum, DLL.Dat[0], ps, "", "", blnIsolate ? 1 : 0);
+
+                    CSAMXSingleton.CS.SendAlarmToAMX_disable(evnum, "", "", "");
+                    CSAMXSingleton.CS.FlushMessages();
                 }
 
                 if (NumIsols > 0)

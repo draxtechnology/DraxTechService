@@ -19,16 +19,11 @@ namespace Drax360Service
 {
     public class Program
     {
-
-       
-
         /// <summary>
         /// The main entry point for the application.
         /// </summary>
         static async Task Main(string[] args)
         {
-           
-           
             // check if running as a service or console app
             if (!Elements.isService)
             {

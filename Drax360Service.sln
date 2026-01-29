@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.11.35327.3
+# Visual Studio Version 18
+VisualStudioVersion = 18.2.11415.280 d18.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Drax360Service", "Drax360NetworkManager\Drax360Service.csproj", "{040A3342-B92B-4794-B3F9-DB63B796BD30}"
 EndProject
@@ -10,6 +10,8 @@ EndProject
 Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "DraxServiceSetup", "DraxServiceSetup\DraxServiceSetup.vdproj", "{2BF99BE1-8586-9FCF-61E8-C8FB31257986}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Taktis Receive", "Taktis Receive\Taktis Receive.csproj", "{CD812DF2-7475-44D4-87C4-E3C2BBFD98ED}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DracTechService", "DracTechService\DracTechService.csproj", "{AC91F32D-D8EF-40C0-8EF9-F0C3FBBE6317}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -31,6 +33,10 @@ Global
 		{CD812DF2-7475-44D4-87C4-E3C2BBFD98ED}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CD812DF2-7475-44D4-87C4-E3C2BBFD98ED}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CD812DF2-7475-44D4-87C4-E3C2BBFD98ED}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AC91F32D-D8EF-40C0-8EF9-F0C3FBBE6317}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AC91F32D-D8EF-40C0-8EF9-F0C3FBBE6317}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AC91F32D-D8EF-40C0-8EF9-F0C3FBBE6317}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AC91F32D-D8EF-40C0-8EF9-F0C3FBBE6317}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
