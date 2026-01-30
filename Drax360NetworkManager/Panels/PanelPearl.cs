@@ -734,7 +734,7 @@ namespace DraxTechnology.Panels
                 evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, on);
                 if (p1 == (int)enmPRLAlarmType.Isolate)  // If Disable Device neeed to also send another event to AMX to increase the Isolation count
                 {
-                    send_response_amx_disable(evnum, gsTextField, gsDeviceText, zonetext);
+                    send_response_amx_disable(evnum, gsTextField, gsDeviceText, zonetext, on);
                 }
                 send_response_amx_and_serial(evnum, gsTextField, gsDeviceText, zonetext);
             }
@@ -760,14 +760,14 @@ namespace DraxTechnology.Panels
 
         }
 
-        private void send_response_amx_disable(int evnum, string message1, string message2, string message3 = "")
+        private void send_response_amx_disable(int evnum, string message1, string message2, string message3, bool on)
         {
             string friendlymessage = message2 + (message3.Length > 0 ? (" " + message3) : "");
 
             // Signal the event back to the main service, so that it can be logged
             this.NotifyClient(friendlymessage, false);
 
-            CSAMXSingleton.CS.SendAlarmToAMX_disable(evnum, message1, message2, message3);
+            CSAMXSingleton.CS.SendAlarmToAMX_disable(evnum, message1, message2, message3, on);
             CSAMXSingleton.CS.FlushMessages();
         }
 

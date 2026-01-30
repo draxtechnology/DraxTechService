@@ -312,7 +312,7 @@ namespace DraxTechnology.Panels
 
             node = node + this.Offset;
             evnum = CSAMXSingleton.CS.MakeInputNumber(node, loop, device, inputtype);
-            send_response_amx_disable(evnum, "", message2, text);
+            send_response_amx_disable(evnum, "", message2, text, on);
             SendEvent("Advanced", NwmData.IsolationToAmx, inputtype, text, on, node, loop, device);
 
         }
@@ -339,7 +339,7 @@ namespace DraxTechnology.Panels
 
             node = node + this.Offset;
             evnum = CSAMXSingleton.CS.MakeInputNumber(node, loop, device, inputtype, on);
-            send_response_amx_disable(evnum, "", message2, text);
+            send_response_amx_disable(evnum, "", message2, text, on);
             SendEvent("Advanced", NwmData.IsolationToAmx, inputtype, text, on, node, loop, device);
         }
 
@@ -911,14 +911,14 @@ namespace DraxTechnology.Panels
             CSAMXSingleton.CS.SendAlarmToAMX(evnum, message1, message2, message3);
             CSAMXSingleton.CS.FlushMessages();
         }
-        private void send_response_amx_disable(int evnum, string message1, string message2, string message3 = "")
+        private void send_response_amx_disable(int evnum, string message1, string message2, string message3, bool on)
         {
             string friendlymessage = message2 + (message3.Length > 0 ? (" " + message3) : "");
 
             // Signal the event back to the main service, so that it can be logged
             this.NotifyClient(friendlymessage, false);
 
-            CSAMXSingleton.CS.SendAlarmToAMX_disable(evnum, message1, message2, message3);
+            CSAMXSingleton.CS.SendAlarmToAMX_disable(evnum, message1, message2, message3, on);
             CSAMXSingleton.CS.FlushMessages();
         }
         // Advanced chunker to handle length-prefixed chunks with end byte

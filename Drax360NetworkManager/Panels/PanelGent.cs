@@ -541,14 +541,14 @@ namespace DraxTechnology.Panels
                 CSAMXSingleton.CS.FlushMessages();
             }   
         }
-        private void send_response_amx_disable(int evnum, string message1, string message2, string message3 = "")
+        private void send_response_amx_disable(int evnum, string message1, string message2, string message3, bool on)
         {
             string friendlymessage = message2 + (message3.Length > 0 ? (" " + message3) : "");
 
             // Signal the event back to the main service, so that it can be logged
             this.NotifyClient(friendlymessage, false);
 
-            CSAMXSingleton.CS.SendAlarmToAMX_disable(evnum, message1, message2, message3);
+            CSAMXSingleton.CS.SendAlarmToAMX_disable(evnum, message1, message2, message3, on);
             CSAMXSingleton.CS.FlushMessages();
         }
         private bool gentchecksumvalidation(int piMSB, int piLSB, byte[] paryMessage, out int oiMSB, out int oiLSB)
@@ -1021,9 +1021,10 @@ namespace DraxTechnology.Panels
 
                 int evnum = CSAMXSingleton.CS.MakeInputNumber(node, loop, device, inputtype, on);
 
-                if (action == ActionType.kDISABLEZONE || action == ActionType.kENABLEZONE || action == ActionType.kDISABLEDEVICE || action == ActionType.kENABLEDEVICE)
+                if (action == ActionType.kDISABLEDEVICE || action == ActionType.kENABLEDEVICE)
                 {
-                    //send_response_amx_disable(evnum, "", text, "");  // TODO VB6 does not do
+                    System.Threading.Thread.Sleep(200);  // VB6 delay
+                    send_response_amx_disable(evnum, "", text, "", on);  // TODO VB6 does not do
                 }
             }
         }

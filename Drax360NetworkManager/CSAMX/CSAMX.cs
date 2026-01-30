@@ -250,13 +250,13 @@ unsigned char *TxFile;
 
         */
 
-        public void SendAlarmToAMX( int eventnumber, string dtext = "", string dtext2="", string dtext3 = "")
+        public void SendAlarmToAMX(int eventnumber, string dtext = "", string dtext2 = "", string dtext3 = "")
         {
             sendalarmorreset(eventnumber, dtext, dtext2, dtext3, true);
         }
-        public void SendAlarmToAMX_disable(int eventnumber, string dtext = "", string dtext2 = "", string dtext3 = "")
+        public void SendAlarmToAMX_disable(int eventnumber, string dtext, string dtext2, string dtext3, bool on)
         {
-            sendalarmorreset_disable(eventnumber, dtext, dtext2, dtext3, true);
+            sendalarmorreset_disable(eventnumber, dtext, dtext2, dtext3, on);
         }
 
         public void SendResetToAMX(int eventnumber, string dtext = "", string dtext2 = "", string dtext3 = "")

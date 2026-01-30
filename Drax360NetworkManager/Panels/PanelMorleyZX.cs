@@ -1498,7 +1498,7 @@ namespace DraxTechnology.Panels
                     // Signal isolation
                     //WriteNWMData(tStr, 2, evNum, DLL.Dat[0], ps, "", "", blnIsolate ? 1 : 0);
 
-                    CSAMXSingleton.CS.SendAlarmToAMX_disable(evnum, "", "", "");
+                    CSAMXSingleton.CS.SendAlarmToAMX_disable(evnum, "", "", "", blnIsolate);
                     CSAMXSingleton.CS.FlushMessages();
                 }
 
