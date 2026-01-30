@@ -10,10 +10,10 @@ using System.Security.Policy;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
-using static Drax360Service.Panels.PanelTaktis;
+using static DraxTechnology.Panels.PanelTaktis;
 using static System.Net.Mime.MediaTypeNames;
 
-namespace Drax360Service.Panels
+namespace DraxTechnology.Panels
 {
     internal class PanelMorleyZX : AbstractPanel
     {

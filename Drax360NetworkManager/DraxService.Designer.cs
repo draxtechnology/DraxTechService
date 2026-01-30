@@ -1,4 +1,4 @@
-﻿namespace Drax360Service
+﻿namespace DraxTechnology
 {
     partial class DraxService
     {
@@ -31,7 +31,7 @@
             // 
             // DraxService
             // 
-            this.ServiceName = "Drax360";
+            this.ServiceName = "DraxTechnology";
 
         }
 

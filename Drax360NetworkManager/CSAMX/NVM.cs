@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 
 
-namespace Drax360Service
+namespace DraxTechnology
 {
     internal class NVM
     // NWM DATA STRUCT

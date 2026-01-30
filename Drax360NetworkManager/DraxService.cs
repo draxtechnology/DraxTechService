@@ -1,4 +1,4 @@
-﻿using Drax360Service.Panels;
+﻿using DraxTechnology.Panels;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -12,13 +12,15 @@ using System.Management;
 using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using System.ServiceProcess;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Drax360Service
+namespace DraxTechnology
 {
     #region enums
     public enum ActionType
@@ -576,10 +578,10 @@ namespace Drax360Service
     public partial class DraxService : ServiceBase
     {
         #region constants
-        const string kpipenamesend = "Drax360PipeSend";
-        const string kpipenamereturn = "Drax360PipeReturn";
+        const string kpipenamesend = "DraxTechnologyPipeSend";
+        const string kpipenamereturn = "DraxTechnologyPipeReturn";
         const char kpipedelim = '|';
-        const string kappname = "Drax360 Service";
+        const string kappname = "DraxTechnology Service";
         const int kfaketimertickseconds = 60;
         const int kfakefireinitialwakeseconds = 0;
         const string klogfilefolder = "System";
@@ -920,14 +922,20 @@ namespace Drax360Service
         {
             try
             {
-                pipeserversend = new NamedPipeServerStream(kpipenamesend, PipeDirection.InOut, 254, PipeTransmissionMode.Message);
+                PipeSecurity ps = new PipeSecurity();
+                ps.AddAccessRule(new PipeAccessRule(
+                    new SecurityIdentifier(WellKnownSidType.WorldSid, null),
+                    PipeAccessRights.ReadWrite,
+                    AccessControlType.Allow));
+
+                pipeserversend = new NamedPipeServerStream(kpipenamesend, PipeDirection.InOut, 254, PipeTransmissionMode.Message, PipeOptions.Asynchronous, 0x4000, 0x400, ps);
                 ln("Pipe Server Send is Started (" + kpipenamesend + ")");
             }
             catch (Exception ex)
             {
-                string err = "Error starting Pipe Server.  Check it is not running elsewhere as " + kpipenamesend+" "+ex.Message;
-                // ln(err, EventLogEntryType.Error);
-                throw new Exception(err);
+                // Log exception to Event Viewer
+                EventLog.WriteEntry("Service failed to start: " + ex.Message, EventLogEntryType.Error);
+                throw; // optional: Windows will still show 1064
             }
         }
         private async void startpipesend()

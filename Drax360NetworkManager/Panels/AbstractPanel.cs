@@ -8,7 +8,7 @@ using System.Security;
 using System.Text;
 using System.Threading;
 
-namespace Drax360Service.Panels
+namespace DraxTechnology.Panels
 {
     internal abstract class AbstractPanel
     {

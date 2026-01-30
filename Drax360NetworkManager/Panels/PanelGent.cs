@@ -9,7 +9,7 @@ using System.Runtime.Remoting.Messaging;
 using System.Text;
 using System.Timers;
 
-namespace Drax360Service.Panels
+namespace DraxTechnology.Panels
 {
     internal class PanelGent : AbstractPanel
     {

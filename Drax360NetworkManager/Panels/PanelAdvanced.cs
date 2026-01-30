@@ -7,7 +7,7 @@ using System.Runtime.Remoting.Messaging;
 using System.Text;
 using System.Threading;
 
-namespace Drax360Service.Panels
+namespace DraxTechnology.Panels
 {
     internal class PanelAdvanced : AbstractPanel
     {

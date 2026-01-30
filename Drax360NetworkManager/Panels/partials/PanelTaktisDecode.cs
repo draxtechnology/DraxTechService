@@ -8,7 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
-namespace Drax360Service.Panels
+namespace DraxTechnology.Panels
 {
     internal partial class PanelTaktis
     {

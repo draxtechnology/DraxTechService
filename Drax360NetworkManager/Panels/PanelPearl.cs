@@ -9,7 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Schema;
 
-namespace Drax360Service.Panels
+namespace DraxTechnology.Panels
 {
 
     internal class PanelPearl : AbstractPanel

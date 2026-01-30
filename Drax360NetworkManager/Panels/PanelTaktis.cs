@@ -17,10 +17,10 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
-using static Drax360Service.Panels.PanelTaktis;
+using static DraxTechnology.Panels.PanelTaktis;
 using System.Globalization;
 
-namespace Drax360Service.Panels
+namespace DraxTechnology.Panels
 {
 
     public enum TransmissionType

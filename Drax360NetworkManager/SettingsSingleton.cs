@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 #endregion
 
-namespace Drax360Service
+namespace DraxTechnology
 {
     public sealed class SettingsSingleton
     {

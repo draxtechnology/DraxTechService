@@ -5,7 +5,7 @@ using System.Linq;
 using System.Threading;
 
 
-namespace Drax360Service
+namespace DraxTechnology
 {
     public class CSAMX
     {

@@ -15,9 +15,9 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Timers;
 using System.Xml.Linq;
-using static Drax360Service.Panels.PanelTaktis;
+using static DraxTechnology.Panels.PanelTaktis;
 
-namespace Drax360Service.Panels
+namespace DraxTechnology.Panels
 {
     internal class PanelSyncro : AbstractPanel
     {

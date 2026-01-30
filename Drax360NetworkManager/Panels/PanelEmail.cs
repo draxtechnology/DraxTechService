@@ -4,7 +4,7 @@ using System.Net.Mail;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Drax360Service.Panels
+namespace DraxTechnology.Panels
 {
     internal class PanelEmail : AbstractPanel
     {

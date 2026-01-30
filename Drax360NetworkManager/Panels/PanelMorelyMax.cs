@@ -8,9 +8,9 @@ using System.ServiceProcess;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using static Drax360Service.Panels.PanelTaktis;
+using static DraxTechnology.Panels.PanelTaktis;
 
-namespace Drax360Service.Panels
+namespace DraxTechnology.Panels
 {
 
     internal class PanelMorleyMax : AbstractPanel

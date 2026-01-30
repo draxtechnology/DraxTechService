@@ -10,7 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
 
-namespace Drax360Service
+namespace DraxTechnology
 {
     internal class AMXTransfer
     {

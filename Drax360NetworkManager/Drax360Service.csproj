@@ -6,8 +6,8 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{040A3342-B92B-4794-B3F9-DB63B796BD30}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>Drax360Service</RootNamespace>
-    <AssemblyName>Drax360Service</AssemblyName>
+    <RootNamespace>DraxTechnology</RootNamespace>
+    <AssemblyName>DraxTechnology</AssemblyName>
     <TargetFrameworkVersion>v4.8.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -34,7 +34,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup>
-    <StartupObject>Drax360Service.Program</StartupObject>
+    <StartupObject>DraxTechnology.Program</StartupObject>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />

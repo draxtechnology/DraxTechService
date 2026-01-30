@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Drax360Service
+namespace DraxTechnology
 {
     public sealed class CSAMXSingleton
     {

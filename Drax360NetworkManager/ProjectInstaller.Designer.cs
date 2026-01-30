@@ -1,4 +1,4 @@
-﻿namespace Drax360Service
+﻿namespace DraxTechnology
 {
     partial class ProjectInstaller
     {
@@ -39,9 +39,9 @@
             // 
             // serviceInstaller1
             // 
-            this.serviceInstaller1.Description = "Network Manager for Drax360 devices";
-            this.serviceInstaller1.DisplayName = "Drax360";
-            this.serviceInstaller1.ServiceName = "Drax360";
+            this.serviceInstaller1.Description = "Network Manager for Drax Technology devices";
+            this.serviceInstaller1.DisplayName = "DraxTechnology";
+            this.serviceInstaller1.ServiceName = "DraxTechnology";
             this.serviceInstaller1.StartType = System.ServiceProcess.ServiceStartMode.Automatic;
             this.serviceInstaller1.AfterInstall += new System.Configuration.Install.InstallEventHandler(this.serviceInstaller1_AfterInstall);
             // 
