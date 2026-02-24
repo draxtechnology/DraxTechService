@@ -1,9 +1,25 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <configuration>
   <appSettings>
-    <add key="Panels" value="U2FsdGVkX19fqlbCMwn1GMilxTg=" />
+    <add key="Panels" value="Gent" />
+    <!--
+    Valid Values =
+      Advanced
+      Email
+      Gent
+      MorleyMax
+	  MorleyZX
+	  Network_Manager
+	  Notifier
+	  Pearl
+	  RSM
+	  Syncro
+      Taktis
+    -->
     <add key="Configuration" value="c:\amx1" />
+    <!-- build temp, log, ini under this foler -->
     <add key="FakeMode" value="0" />
+    <!-- 0 = off, 1 = on -->
     <add key="ClientSettingsProvider.ServiceUri" value="" />
   </appSettings>
   <startup>

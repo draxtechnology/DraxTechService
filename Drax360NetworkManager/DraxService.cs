@@ -1,4 +1,5 @@
-﻿using DraxTechnology.Panels;
+﻿using CryptoModule;
+using DraxTechnology.Panels;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -13,6 +14,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Security.AccessControl;
+using System.Security.Cryptography;
 using System.Security.Principal;
 using System.ServiceProcess;
 using System.Text;
@@ -666,19 +668,22 @@ namespace DraxTechnology
 
         private void dumpavailableserialports()
         {
-            string[] ports = SerialPort.GetPortNames();
-            if (ports.Length == 0)
+            if (panel != "NETWORK_MANAGER" & panel != "TAKTIS")
             {
-                warning("No Available Serial Ports");
-                return;
+                string[] ports = SerialPort.GetPortNames();
+                if (ports.Length == 0)
+                {
+                    warning("No Available Serial Ports");
+                    return;
+                }
+                title("Available Serial Ports");
+                indent++;
+                foreach (string port in ports)
+                {
+                    ln(port);
+                }
+                indent--;
             }
-            title("Available Serial Ports");
-            indent++;
-            foreach (string port in ports)
-            {
-                ln(port);
-            }
-            indent--;
         }
 
         private void log(string message, EventLogEntryType eventtype = EventLogEntryType.Information)
@@ -726,7 +731,7 @@ namespace DraxTechnology
 
             // used to just load our settings from the ini file
             AbstractPanel apbase = getpanel();
-            if (panel=="EMAIL")
+            if (panel == "EMAIL")
             {
                 string identifier = "EMAIL";
                 AbstractPanel ap = getpanel(identifier);
@@ -735,13 +740,11 @@ namespace DraxTechnology
                 abstractpanels.Add(ap);
                 StartDeviceWatcher();
                 return;
-
             }
 
 
             if (panel == "RSM")
             {
-
                 // we will read this from config later
                 string identifier = "192.168.3.199";
                 AbstractPanel ap = getpanel(identifier);
@@ -754,7 +757,6 @@ namespace DraxTechnology
                 ap.StartUp(fakemode);
                 ap.OutsideEvents += Sp_Fire;
                 abstractpanels.Add(ap);
-
 
                 try
                 {
@@ -772,9 +774,6 @@ namespace DraxTechnology
                     //MessageBox.Show($"Error starting listener: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     rsmStopListener();
                 }
-
-
-
 
                 StartDeviceWatcher();
                 return;
@@ -869,9 +868,16 @@ namespace DraxTechnology
         private AbstractPanel getpanel(string identifier = "")
         {
             AbstractPanel ret = null;
+            string decrypted = panel;
+            try
+            {
+                decrypted = AesDecryptor.DecryptOpenSSLCtr(panel, "1234");
+                
+            }
+            catch { }
+            panel = decrypted.ToUpper();
             switch (panel)
             {
-
                 case "ADVANCED":
                     ret = new PanelAdvanced(this.configurationbasefolder, identifier);
                     break;
@@ -910,6 +916,10 @@ namespace DraxTechnology
 
                 case "SYNCRO":
                     ret = new PanelSyncro(this.configurationbasefolder, identifier);
+                    break;
+
+                case "NETWORK_MANAGER":
+                    ret = new PanelNetworkManager(this.configurationbasefolder, identifier);
                     break;
 
                 default:
@@ -1304,7 +1314,7 @@ namespace DraxTechnology
             this.args = args;
 
             // singular for now
-            panel = ConfigurationManager.AppSettings["Panels"].Trim().ToUpper();
+            panel = ConfigurationManager.AppSettings["Panels"].Trim();
 
             // New log file path
             configurationbasefolder = ConfigurationManager.AppSettings["Configuration"].Trim();
@@ -1330,8 +1340,6 @@ namespace DraxTechnology
 
             title(shortbar + msg + shortbar);
             title(longbar);
-
-
 
 
             if (args.Length > 0)

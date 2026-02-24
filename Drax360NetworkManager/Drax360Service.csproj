@@ -55,6 +55,7 @@
     <Compile Include="AesDecryption.cs" />
     <Compile Include="EventLogger.cs" />
     <Compile Include="Panels\PanelEmail.cs" />
+    <Compile Include="Panels\PanelNetworkManager.cs" />
     <Compile Include="Panels\PanelMorleyZX.cs" />
     <Compile Include="Panels\PanelSyncro.cs" />
     <Compile Include="Panels\PanelRSM.cs" />
@@ -91,6 +92,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="App.config.txt" />
     <None Include="App.config" />
     <None Include="ini\AdvMan.ini">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
