@@ -321,7 +321,10 @@ namespace DraxTechnology.Panels
             {
                 if (!SerialPortIsOpen())
                 {
-                    serialport.Open();
+                    if (serialport != null)
+                    {
+                        serialport.Open();
+                    }
                 }
             }
             catch
