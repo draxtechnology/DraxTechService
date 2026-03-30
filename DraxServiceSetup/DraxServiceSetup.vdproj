@@ -28,13 +28,13 @@
         "Entry"
         {
         "MsmKey" = "8:_UNDEFINED"
-        "OwnerKey" = "8:_8AB58EA60775EC93EA8556277030EEC7"
+        "OwnerKey" = "8:_E79601C9865C4A76A21B088211996692"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
         {
         "MsmKey" = "8:_UNDEFINED"
-        "OwnerKey" = "8:_E79601C9865C4A76A21B088211996692"
+        "OwnerKey" = "8:_8AB58EA60775EC93EA8556277030EEC7"
         "MsmSig" = "8:_UNDEFINED"
         }
     }
@@ -45,7 +45,7 @@
         "DisplayName" = "8:Debug"
         "IsDebugOnly" = "11:TRUE"
         "IsReleaseOnly" = "11:FALSE"
-        "OutputFilename" = "8:Debug\\DraxServiceSetup.msi"
+        "OutputFilename" = "8:Debug\\DraxTechnologyServiceSetup.msi"
         "PackageFilesAs" = "3:2"
         "PackageFileSize" = "3:-2147483648"
         "CabType" = "3:1"
@@ -55,6 +55,22 @@
         "PrivateKeyFile" = "8:"
         "TimeStampServer" = "8:"
         "InstallerBootstrapper" = "3:2"
+            "BootstrapperCfg:{63ACBE69-63AA-4F98-B2B6-99F9E24495F2}"
+            {
+            "Enabled" = "11:TRUE"
+            "PromptEnabled" = "11:TRUE"
+            "PrerequisitesLocation" = "2:1"
+            "Url" = "8:"
+            "ComponentsUrl" = "8:"
+                "Items"
+                {
+                    "{EDC2488A-8267-493A-A98E-7D9C3B36CDF3}:.NETFramework,Version=v4.7.2"
+                    {
+                    "Name" = "8:Microsoft .NET Framework 4.7.2 (x86 and x64)"
+                    "ProductCode" = "8:.NETFramework,Version=v4.7.2"
+                    }
+                }
+            }
         }
         "Release"
         {
@@ -71,6 +87,14 @@
         "PrivateKeyFile" = "8:"
         "TimeStampServer" = "8:"
         "InstallerBootstrapper" = "3:2"
+            "BootstrapperCfg:{63ACBE69-63AA-4F98-B2B6-99F9E24495F2}"
+            {
+            "Enabled" = "11:TRUE"
+            "PromptEnabled" = "11:TRUE"
+            "PrerequisitesLocation" = "2:1"
+            "Url" = "8:"
+            "ComponentsUrl" = "8:"
+            }
         }
     }
     "Deployable"
@@ -195,7 +219,7 @@
         {
             "{3C67513D-01DD-4637-8A68-80971EB9504F}:_531C9398E4304904B8C78B9DC36178CC"
             {
-            "DefaultLocation" = "8:[ProgramFilesFolder][Manufacturer]\\[ProductName]"
+  	    "DefaultLocation" = "8:C:\\amx1"
             "Name" = "8:#1925"
             "AlwaysCreate" = "11:FALSE"
             "Condition" = "8:"
@@ -242,22 +266,22 @@
         "Product"
         {
         "Name" = "8:Microsoft Visual Studio"
-        "ProductName" = "8:Drax360 Service"
+        "ProductName" = "8:Drax Technology Service"
         "ProductCode" = "8:{F17A3FBD-C532-436B-8078-5D1F1CEB5EA5}"
-        "PackageCode" = "8:{C525EB26-E731-48D9-98B7-46CF657705AC}"
+        "PackageCode" = "8:{6035D776-1015-482B-A1B2-B0B163133CD2}"
         "UpgradeCode" = "8:{B5758DCA-6BC5-4E2C-BF55-7FA118631F65}"
         "AspNetVersion" = "8:4.0.30319.0"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:TRUE"
         "DetectNewerInstalledVersion" = "11:TRUE"
-        "InstallAllUsers" = "11:TRUE"
+        "InstallAllUsers" = "11:FALSE"
         "ProductVersion" = "8:1.0.0"
-        "Manufacturer" = "8:Drax360"
+        "Manufacturer" = "8:Drax Technology"
         "ARPHELPTELEPHONE" = "8:"
         "ARPHELPLINK" = "8:"
-        "Title" = "8:Drax360 Service"
+        "Title" = "8:Drax Technology Service"
         "Subject" = "8:"
-        "ARPCONTACT" = "8:Drax360"
+        "ARPCONTACT" = "8:Drax Technology"
         "Keywords" = "8:"
         "ARPCOMMENTS" = "8:Network Manager"
         "ARPURLINFOABOUT" = "8:"
@@ -793,7 +817,7 @@
             }
             "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_E79601C9865C4A76A21B088211996692"
             {
-            "SourcePath" = "8:..\\Drax360NetworkManager\\obj\\Debug\\Drax360Service.exe"
+            "SourcePath" = "8:..\\Drax360NetworkManager\\obj\\Debug\\DraxTechnology.exe"
             "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_531C9398E4304904B8C78B9DC36178CC"

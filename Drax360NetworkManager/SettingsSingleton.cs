@@ -32,7 +32,7 @@ namespace DraxTechnology
         public void SaveSettings()
         {
             // this is a test mode, so we can write to a temp file
-            bool testmode = true;
+            bool testmode = false;
 
             string settingfiletemp = Path.Combine("ini", "temp" + ".ini");
             string section = "";
@@ -163,7 +163,6 @@ namespace DraxTechnology
 
         public static SettingsSingleton Instance(string panelfilename)
         {
-
             if (instance == null)
             {
                 instance = new SettingsSingleton(panelfilename);

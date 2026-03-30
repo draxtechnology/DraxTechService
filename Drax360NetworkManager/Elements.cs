@@ -54,7 +54,7 @@ namespace DraxTechnology
             int startpos = -1;
             int endpos = -1;
             removelength = 0;
-
+ 
             for (int intcount = 0; intcount < data.Length; intcount++)
             {
                 byte workingbyte = data[intcount];
@@ -81,7 +81,6 @@ namespace DraxTechnology
 
             }
             return chunks;
-
         }
     }
 }

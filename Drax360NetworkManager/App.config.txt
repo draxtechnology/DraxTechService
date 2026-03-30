@@ -6,13 +6,13 @@
     Valid Values =
       Advanced
       Email
-      Gent
+      Gent                              U2FsdGVkX19fqlbCMwn1GMilxTg=
       MorleyMax
 	  MorleyZX
 	  Network_Manager
 	  Notifier
 	  Pearl
-	  RSM
+	  RSM                               U2FsdGVkX19c+AfelSfmTUA2zA==
 	  Syncro
       Taktis
     -->
