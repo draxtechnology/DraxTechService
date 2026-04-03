@@ -24,6 +24,7 @@ namespace DraxTechnology
         private string logfiles = "";
         private string extension = "";
         private List<NVM> nvms = new List<NVM>();
+        private readonly object _nvmsLock = new object();
         #endregion
 
         #region constructor
@@ -165,7 +166,10 @@ return r;
             ournvm.Text2 = textparameter2;
             ournvm.Text3 = textparameter3;
 
-            nvms.Add(ournvm);
+            lock (_nvmsLock)
+            {
+                nvms.Add(ournvm);
+            }
         }
 
         /*
@@ -270,16 +274,25 @@ unsigned char *TxFile;
             ournvm.OurEvent = eventnumber;
             ournvm.Text = text;
             ournvm.Spare[0] = ophandle;
-            nvms.Add(ournvm);
+            lock (_nvmsLock)
+            {
+                nvms.Add(ournvm);
+            }
         }
 
 
         public void FlushMessages()
         {
-            if (nvms.Count == 0) return;
+            List<NVM> toProcess;
+            lock (_nvmsLock)
+            {
+                if (nvms.Count == 0) return;
+                toProcess = new List<NVM>(nvms);
+                nvms.Clear();
+            }
 
             List<byte> contents = new List<byte>();
-            foreach (NVM ournvm in nvms)
+            foreach (NVM ournvm in toProcess)
             {
                 contents.AddRange(ournvm.RenderBytes());
             }
@@ -287,7 +300,6 @@ unsigned char *TxFile;
             // safety check
             if (contents.Count == 0)
             {
-                nvms.Clear();
                 return;
             }
 
@@ -298,7 +310,7 @@ unsigned char *TxFile;
             string fullfilename = Path.Combine(logfiles, filename);
 
             // Open the file in write mode, changed from append as we need to create a new file on flush
-            
+
             if (System.IO.File.Exists(fullfilename)) {
                 System.IO.File.Delete(fullfilename);  
             }
@@ -313,7 +325,6 @@ unsigned char *TxFile;
                     AMXTransfer.Instance.SendMessage($"NTX:" + fullfilename);
                 }
             }
-            nvms.Clear();
             //File.Delete(fullfilename);  // If I delete the file straight away then nothing appears on AMX
             var files = Directory.GetFiles(this.logfiles, "*." + extension);
             foreach (var file in files)
