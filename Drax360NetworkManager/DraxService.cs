@@ -19,6 +19,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace DraxTechnology
 {
@@ -727,7 +728,8 @@ namespace DraxTechnology
 
             // used to just load our settings from the ini file
             AbstractPanel apbase = getpanel();
-            if (panel=="EMAIL")
+
+            if (panel == "EMAIL")
             {
                 string identifier = "EMAIL";
                 AbstractPanel ap = getpanel(identifier);
@@ -736,9 +738,7 @@ namespace DraxTechnology
                 abstractpanels.Add(ap);
                 StartDeviceWatcher();
                 return;
-
             }
-
 
             if (panel == "RSM")
             {
@@ -775,10 +775,8 @@ namespace DraxTechnology
                     rsmStopListener();
                 }
 
-
-
-
                 StartDeviceWatcher();
+
                 return;
 
             }
@@ -821,8 +819,57 @@ namespace DraxTechnology
                 abstractpanels.Add(ap);
                 break;
             }
+
+
+            // If any old transfer files were found, put them in the transfer queue
+
+            var mytMaxNWMBuffers = 64;
+            var tempPath = @"C:\AMX1\Temp\";
+            var files = Directory.GetFiles(tempPath, "*.GEN")
+                                 .Select(Path.GetFileName)
+                                 .OrderBy(f => f)
+                                 .ToList();
+
+            if (files.Count > 0)
+            {
+                int x;
+                if (files.Count < (mytMaxNWMBuffers - 4))
+                {
+                    // Transfer all files
+                    x = 1;
+                }
+                else
+                {
+                    // Transfer just the last mytMaxNWMBuffers - 4
+                    x = files.Count - mytMaxNWMBuffers + 4;
+                }
+
+                if (x > 1)
+                {
+                    // Erase excess transfer files
+                    for (int n = 1; n <= x - 1; n++)
+                    {
+                        var filePath = Path.Combine(tempPath, files[n - 1]);
+                        try
+                        {
+                            if (File.Exists(filePath))
+                                File.Delete(filePath);
+                        }
+                        catch (Exception ex)
+                        {
+                            // Log or handle as needed
+                            Debug.WriteLine($"Could not delete file '{filePath}': {ex.Message}");
+                        }
+                    }
+                }
+                for (int n = x; n <= files.Count; n++)
+                {
+                    AMXTransfer.Instance.SendMessage("NTX:" + Path.Combine(tempPath, files[n - 1]));
+                    File.Delete(tempPath + files[n - 1]);
+                }
+            }
+
             StartDeviceWatcher();
-            
         }
 
         private void Sp_Fire(object sender, EventArgs e)
