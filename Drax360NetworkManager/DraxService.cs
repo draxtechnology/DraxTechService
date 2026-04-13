@@ -650,6 +650,7 @@ namespace DraxTechnology
             Console.WriteLine("".PadLeft(indent, '\t') + message);
             Console.ResetColor();
             log(message);
+            EventLog.WriteEntry(message, EventLogEntryType.Information);
         }
 
         private void kvp(string key, object value)
