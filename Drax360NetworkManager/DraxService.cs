@@ -743,18 +743,19 @@ namespace DraxTechnology
             {
 
                 // we will read this from config later
-                string identifier = "192.168.3.199";
+                string identifier = Guid.NewGuid().ToString();
                 AbstractPanel ap = getpanel(identifier);
                 ap.StartUp(fakemode);
                 ap.OutsideEvents += Sp_Fire;
                 abstractpanels.Add(ap);
 
-                identifier = "192.168.3.1";
+               /* identifier = "192.168.3.1";
                 ap = getpanel(identifier);
                 ap.StartUp(fakemode);
                 ap.OutsideEvents += Sp_Fire;
                 abstractpanels.Add(ap);
-
+               */
+               
 
                 try
                 {
