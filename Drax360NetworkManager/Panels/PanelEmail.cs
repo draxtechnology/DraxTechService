@@ -27,9 +27,6 @@ namespace DraxTechnology.Panels
         private readonly string baseFolder;
         private string systemName;
         private readonly List<EmailGroup> groups = new List<EmailGroup>();
-        private readonly Queue<EmailQueueItem> sendQueue = new Queue<EmailQueueItem>();
-        private readonly object queueLock = new object();
-        private Timer sendTimer;
         #endregion
 
         public PanelEmail(string baselogfolder, string identifier) : base(baselogfolder, identifier, "EMLMan", "EML")
@@ -50,7 +47,6 @@ namespace DraxTechnology.Panels
                 if (String.IsNullOrEmpty(systemName)) systemName = "Drax360";
 
                 LoadEmailGroups();
-                sendTimer = new Timer(DrainQueue, null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
             }
         }
 
@@ -94,55 +90,42 @@ namespace DraxTechnology.Panels
             string date = DateTime.Now.ToString("dd/MM/yyyy");
             string time = DateTime.Now.ToString("HH:mm:ss");
 
-            lock (queueLock)
+            foreach (var group in groups.Where(g => g.InUse && !g.ReportsOnly))
             {
-                foreach (var group in groups.Where(g => g.InUse && !g.ReportsOnly))
+                string filterString = eventTypeText;
+                if (group.LocText) filterString += " " + location;
+                if (group.NodeText) filterString += " " + nodeName;
+
+                if (!MatchesFilter(filterString, group.Filter)) continue;
+
+                string to = group.Addresses.FirstOrDefault();
+                if (String.IsNullOrEmpty(to)) continue;
+
+                string extras = String.Join(", ", group.Addresses.Skip(1));
+                string subject = $"{systemName} Event: {eventTypeText}";
+                string body = BuildBody(eventTypeText, location, nodeName, reference, time, date, classification);
+                string cc = group.Bcc ? "" : extras;
+                string bcc = group.Bcc ? extras : "";
+
+                ThreadPool.QueueUserWorkItem(_ =>
                 {
-                    string filterString = eventTypeText;
-                    if (group.LocText) filterString += " " + location;
-                    if (group.NodeText) filterString += " " + nodeName;
-
-                    if (!MatchesFilter(filterString, group.Filter)) continue;
-
-                    string to = group.Addresses.FirstOrDefault();
-                    if (String.IsNullOrEmpty(to)) continue;
-
-                    string extras = String.Join(", ", group.Addresses.Skip(1));
-                    sendQueue.Enqueue(new EmailQueueItem
+                    try
                     {
-                        To = to,
-                        Cc = group.Bcc ? "" : extras,
-                        Bcc = group.Bcc ? extras : "",
-                        Subject = $"{systemName} Event: {eventTypeText}",
-                        Body = BuildBody(eventTypeText, location, nodeName, reference, time, date, classification),
-                    });
-                }
-            }
-        }
-
-        private void DrainQueue(object state)
-        {
-            EmailQueueItem item;
-            lock (queueLock)
-            {
-                if (sendQueue.Count == 0) return;
-                item = sendQueue.Dequeue();
-            }
-            try
-            {
-                var msg = new MailMessage();
-                msg.From = new MailAddress(from);
-                msg.To.Add(item.To);
-                if (!String.IsNullOrEmpty(item.Cc)) msg.CC.Add(item.Cc);
-                if (!String.IsNullOrEmpty(item.Bcc)) msg.Bcc.Add(item.Bcc);
-                msg.Subject = item.Subject;
-                msg.Body = item.Body;
-                msg.IsBodyHtml = false;
-                send_message(msg);
-            }
-            catch (Exception ex)
-            {
-                NotifyClient($"Error building email: {ex.Message}");
+                        var msg = new MailMessage();
+                        msg.From = new MailAddress(from);
+                        msg.To.Add(to);
+                        if (!String.IsNullOrEmpty(cc)) msg.CC.Add(cc);
+                        if (!String.IsNullOrEmpty(bcc)) msg.Bcc.Add(bcc);
+                        msg.Subject = subject;
+                        msg.Body = body;
+                        msg.IsBodyHtml = false;
+                        send_message(msg);
+                    }
+                    catch (Exception ex)
+                    {
+                        NotifyClient($"Error building email: {ex.Message}");
+                    }
+                });
             }
         }
 
@@ -311,12 +294,4 @@ namespace DraxTechnology.Panels
         public List<string> Addresses { get; set; } = new List<string>();
     }
 
-    internal class EmailQueueItem
-    {
-        public string To { get; set; }
-        public string Cc { get; set; }
-        public string Bcc { get; set; }
-        public string Subject { get; set; }
-        public string Body { get; set; }
-    }
 }
