@@ -333,7 +333,8 @@ unsigned char *TxFile;
                 {
                     if (!file.Equals(fullfilename, StringComparison.OrdinalIgnoreCase))
                     {
-                        File.Delete(fullfilename);
+                        //File.Delete(fullfilename);
+                        File.Delete(file);
                     }
                 }
                 catch

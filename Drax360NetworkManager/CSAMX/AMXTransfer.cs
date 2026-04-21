@@ -119,10 +119,19 @@ namespace DraxTechnology
                     {
                         if (_stream.CanWrite)
                         {
-                            byte[] data = Encoding.UTF8.GetBytes(message);
-                            _stream.Write(data, 0, data.Length);
-                            _stream.Flush();
-                            return; // success, exit method
+                            try
+                            {
+                                byte[] data = Encoding.UTF8.GetBytes(message);
+
+                                _stream.Write(data, 0, data.Length);
+                                _stream.Flush();
+                                return; // success, exit method
+                            }
+                            catch (Exception ex)
+                            {
+                                Debug.WriteLine($"Send FAILED: {ex.Message}");
+                                // Are you swallowing this somewhere up the call stack?
+                            }
                         }
                         else
                         {

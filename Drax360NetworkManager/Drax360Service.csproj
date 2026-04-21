@@ -55,6 +55,7 @@
     <Compile Include="AesDecryption.cs" />
     <Compile Include="EventLogger.cs" />
     <Compile Include="Panels\PanelEmail.cs" />
+    <Compile Include="Panels\PanelEspa.cs" />
     <Compile Include="Panels\PanelMorleyZX.cs" />
     <Compile Include="Panels\PanelSyncro.cs" />
     <Compile Include="Panels\PanelRSM.cs" />

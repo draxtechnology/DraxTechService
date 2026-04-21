@@ -929,6 +929,10 @@ namespace DraxTechnology
                     ret = new PanelEmail(this.configurationbasefolder, identifier);
                     break;
 
+                case "ESPA":
+                    ret = new PanelEspa(this.configurationbasefolder, identifier);
+                    break;
+
                 case "GENT":
                     ret = new PanelGent(this.configurationbasefolder,identifier);
                     break;
