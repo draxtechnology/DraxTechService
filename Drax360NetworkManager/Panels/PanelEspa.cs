@@ -1,4 +1,5 @@
 ﻿
+using Microsoft.Data.Sqlite;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -129,15 +130,111 @@ namespace DraxTechnology.Panels
                     {
                         this.NotifyClient("gAlarmType " + gAlarmType + " " + ex.Message, false);
                     }
-                    giNodeNumber = 1;
-                    giLoopNumber = 1;
-                    giDeviceAddress = 1;
+                    giNodeNumber = 0;
+                    giLoopNumber = 0;
+                    giDeviceAddress = 0;
+
+                    using var connection = new SqliteConnection("Data Source=events.db");
+                    connection.Open();
+
+                    using var command = connection.CreateCommand();
+                    command.CommandText = "CREATE TABLE IF NOT EXISTS Events (Id INTEGER PRIMARY KEY AUTOINCREMENT,Node, Loop, Device, Name TEXT UNIQUE)";
+                    command.ExecuteNonQuery();
+
+
+                    // Strip last word from gsTextField to get device text
+
+                    string devicetext = gsTextField.Replace("-", "").Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? "";
+
+                    //  Search to see if the device text already exists in the database, if not insert it
+
+                    var selectCmd = connection.CreateCommand();
+                    selectCmd.CommandText = @"SELECT Id FROM Events WHERE Name = $name;";
+                    selectCmd.Parameters.AddWithValue("$name", devicetext);
+
+                    int id = 0;
+                    id = Convert.ToInt32(selectCmd.ExecuteScalar());
+
+                    if (id == 0)
+                    {
+                        int node = 1;
+                        int loop = 1;
+                        int device = 0;
+
+                        using var cmd = connection.CreateCommand();
+                        cmd.CommandText = @"SELECT node, [loop], device FROM Events ORDER BY node DESC, [loop] DESC, device DESC LIMIT 1;";
+
+                        using var reader = cmd.ExecuteReader();
+
+                        if (reader.Read())
+                        {
+                            node = reader.GetInt32(0);
+                            loop = reader.GetInt32(1);
+                            device = reader.GetInt32(2);
+                        }
+
+                        // Increment logic
+                        device++;
+
+                        if (device > 254)
+                        {
+                            device = 1;
+                            loop++;
+
+                            if (loop > 254)
+                            {
+                                loop = 1;
+                                node++;
+
+                                if (node > 254)
+                                {
+                                    throw new Exception("Maximum node/loop/device limit reached");
+                                }
+                            }
+                        }
+
+                        giNodeNumber = node;
+                        giLoopNumber = loop;
+                        giDeviceAddress = device;
+                        CreateEventId(connection, giNodeNumber.ToString(), giLoopNumber.ToString(), giDeviceAddress.ToString(), devicetext);
+                    }
+                    else
+                    {
+                        selectCmd = connection.CreateCommand();
+                        selectCmd.CommandText = @"SELECT node, [loop], device FROM Events WHERE id = $id;";
+
+                        selectCmd.Parameters.AddWithValue("$id", id);
+
+                        using var reader = selectCmd.ExecuteReader();
+
+                        if (reader.Read())
+                        {
+                            giNodeNumber = reader.GetInt32(0);
+                            giLoopNumber = reader.GetInt32(1);
+                            giDeviceAddress = reader.GetInt32(2);
+                        }
+                    }
+                    connection.Close();
+
                     evnum = CSAMXSingleton.CS.MakeInputNumber(giNodeNumber, giLoopNumber, giDeviceAddress, p1, on);
 
                     base.NotifyClient("Send to AMX: Node = " + (giNodeNumber + this.Offset) + " Loop = " + giLoopNumber + " Address = " + giDeviceAddress);
                     send_response_amx_and_serial(evnum, gsTextField, "", gsDeviceText);
+                    Thread.Sleep(1000); // wait for 1 second before processing the next line
                 }
             }
+            return true;
+        }
+        public bool CreateEventId(SqliteConnection conn, string node, string loop, string device ,string name)
+        {
+            // Try insert (ignore if exists)
+            var insertCmd = conn.CreateCommand();
+            insertCmd.CommandText = "INSERT OR IGNORE INTO Events(node, loop, device, Name) VALUES($node, $loop, $device, $name);";
+            insertCmd.Parameters.Add("$node", SqliteType.Text).Value = node;
+            insertCmd.Parameters.Add("$loop", SqliteType.Text).Value = loop;
+            insertCmd.Parameters.Add("$device", SqliteType.Text).Value = device;
+            insertCmd.Parameters.AddWithValue("$name", name);
+            insertCmd.ExecuteNonQuery();
             return true;
         }
 
