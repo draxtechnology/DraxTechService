@@ -280,7 +280,6 @@ unsigned char *TxFile;
             }
         }
 
-
         public void FlushMessages()
         {
             List<NVM> toProcess;

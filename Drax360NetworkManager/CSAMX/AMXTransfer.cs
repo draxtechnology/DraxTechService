@@ -31,6 +31,11 @@ namespace DraxTechnology
 
         private static AMXTransfer _instance;
         private static readonly object _lock = new object();
+
+        public static class GlobalData
+        {
+            public static bool oktosend = true;
+        }
         public async Task Run(string[] args)
         {
             await tcpconnect();
@@ -69,12 +74,21 @@ namespace DraxTechnology
 
                 isMessageReceive += msg =>
                 {
-                    Console.WriteLine("Received From AMX: " + msg);
                     NotifyClient("Received From AMX: " + msg);
                     if (msg.StartsWith("NWM:") || msg.StartsWith("GEN:"))
                     {
                         DraxService drax = new DraxService();
                         drax.sendreturncmd("", msg);
+                    }
+                    if (msg.StartsWith("MAK:"))
+                    {
+                        string fileaname = msg.Substring(9).Trim();
+                        fileaname = fileaname.Replace("-", "").Trim();
+                        if (System.IO.File.Exists(fileaname))
+                        {
+                            System.IO.File.Delete(fileaname);
+                        }
+                        GlobalData.oktosend = true;
                     }
                 };
                 

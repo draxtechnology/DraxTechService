@@ -18,6 +18,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Timers;
 using System.Xml.Linq;
+using static DraxTechnology.AMXTransfer;
 using static DraxTechnology.Panels.PanelTaktis;
 
 namespace DraxTechnology.Panels
@@ -50,16 +51,59 @@ namespace DraxTechnology.Panels
         {
             get
             {
-                // two messages are sent, so we return the same message twice
-                string msg = "   Pager Text    : |Fire Alarm -ZONE 1 -MAINBUILDING    A1005 -     |" + (char)13 + (char)10;
-                msg += "Pager Text    : | AutroGuard  SD |" + (char)13 + (char)10;
-                msg += "Pager Ctrl: Beeps = 5, Type = 3, Trans = 3, Pri = 1, " + (char)13 + (char)10;
-                msg += "-----------------: 2026 - 04 - 16 13:34:58.152" + (char)13 + (char)10;
-                msg += "Pager Address : 999" + (char)13 + (char)10;
-                msg += " Pager Text    : | Fire Alarm Fault -AutroGuard  CO_Sounder |" + (char)13 + (char)10;
-                msg += " Pager Text: | Missing     addon board                         |" + (char)13 + (char)10;
-                msg += " Pager Ctrl: Beeps = 2, Type = 3, Trans = 2, Pri = 3, " + (char)13 + (char)10;
-                msg += "-----------------: 2026 - 04 - 16 13:04:11.319" + (char)13 + (char)10;
+
+                string msg = "Receiving : Poll   ESPA  interface   1<ENQ>" + (char)13 + (char)10;
+                msg += "Receiving : Select pager transmitter 2<ENQ>" + (char)13 + (char)10;
+                msg += "SENDING   : <ACK>" + (char)13 + (char)10;
+                msg += "Receiving : EspaString <SOH>1<STX>1<US>999<RS>2<US>Fire Alarm  Fault -     AutroMaster Switchboard Loss of     communication <RS>3<US>2<RS>4<US>3<RS>5<US>2<RS>6<US>3<ETX>" + (char)13 + (char)10;
+                msg += "   Pager Address : 999" + (char)13 + (char)10;
+                msg += "   Pager Text    : |Fire Alarm  Fault -     AutroMaster Switchboard |" + (char)13 + (char)10;
+                msg += "   Pager Text    : |Loss of     communication                       |" + (char)13 + (char)10;
+                msg += "   Pager Ctrl    : Beeps=2, Type=3, Trans=2, Pri=3, " + (char)13 + (char)10;
+                msg += "   Checksum      : OK" + (char)13 + (char)10;
+                msg += "-----------------: 2026-04-16 12:24:23.750 " + (char)13 + (char)10;
+                msg += "SENDING   : <ACK>" + (char)13 + (char)10;
+                msg += "Receiving : <EOT>" + (char)13 + (char)10;
+                msg += "" + (char)13 + (char)10;
+                msg += "" + (char)13 + (char)10;
+                msg += "Receiving : Select pager transmitter 2<ENQ>" + (char)13 + (char)10;
+                msg += "SENDING   : <ACK>" + (char)13 + (char)10;
+                msg += "Receiving : EspaString <SOH>1<STX>1<US>999<RS>2<US>Fire Alarm -ZONE 1 -MAINBUILDING    A1003 -INPUTALARM <RS>3<US>5<RS>4<US>3<RS>5<US>3<RS>6<US>1<ETX>&" + (char)13 + (char)10;
+                msg += "   Pager Address : 999" + (char)13 + (char)10;
+                msg += "   Pager Text    : |Fire Alarm -ZONE 1 -MAINBUILDING    A1003 -INPUT|" + (char)13 + (char)10;
+                msg += "   Pager Text    : |ALARM                                           |" + (char)13 + (char)10;
+                msg += "   Pager Ctrl    : Beeps=5, Type=3, Trans=3, Pri=1, " + (char)13 + (char)10;
+                msg += "   Checksum      : OK" + (char)13 + (char)10;
+                msg += "-----------------: 2026-04-16 12:36:07.798 " + (char)13 + (char)10;
+                msg += "SENDING   : <ACK>" + (char)13 + (char)10;
+                msg += "" + (char)13 + (char)10;
+                msg += "" + (char)13 + (char)10;
+                msg += "-----------------: 2026-04-16 13:04:10.512 " + (char)13 + (char)10;
+                msg += "   Pager Address : 999" + (char)13 + (char)10;
+                msg += "   Pager Text    : |Fire Alarm  Fault -     AutroGuard  CO_Sounder  |" + (char)13 + (char)10;
+                msg += "   Pager Text    : |Missing     addon board                         |" + (char)13 + (char)10;
+                msg += "   Pager Ctrl    : Beeps=2, Type=3, Trans=2, Pri=3, " + (char)13 + (char)10;
+                msg += "-----------------: 2026-04-16 13:04:11.319 " + (char)13 + (char)10;
+                msg += "   Pager Address : 999" + (char)13 + (char)10;
+                msg += "   Pager Text    : |Fire Alarm  Fault -ZONE 1 -MAIN     BUILDING    |" + (char)13 + (char)10;
+                msg += "   Pager Text    : |Faulty      point(s) in zone                    |" + (char)13 + (char)10;
+                msg += "   Pager Ctrl    : Beeps=2, Type=3, Trans=2, Pri=3, " + (char)13 + (char)10;
+                msg += "-----------------: 2026-04-16 13:04:12.120 " + (char)13 + (char)10;
+                msg += "" + (char)13 + (char)10;
+                msg += "" + (char)13 + (char)10;
+                msg += "" + (char)13 + (char)10;
+                msg += "Receiving : <EOT>" + (char)13 + (char)10;
+                msg += "   Pager Address : 999" + (char)13 + (char)10;
+                msg += "   Pager Text    : |Fire Alarm -ZONE 1 -MAINBUILDING    A1005 -     |" + (char)13 + (char)10;
+                msg += "   Pager Text    : |AutroGuard  SD                                  |" + (char)13 + (char)10;
+                msg += "   Pager Ctrl    : Beeps=5, Type=3, Trans=3, Pri=1, " + (char)13 + (char)10;
+                msg += "-----------------: 2026-04-16 13:34:58.152 " + (char)13 + (char)10;
+                msg += "   Pager Address : 999" + (char)13 + (char)10;
+                msg += "   Pager Text    : |Fire Alarm -ZONE 1 -MAINBUILDING    A1005 -     |" + (char)13 + (char)10;
+                msg += "   Pager Text    : |AutroGuard  SD                                  |" + (char)13 + (char)10;
+                msg += "   Pager Ctrl    : Beeps=5, Type=3, Trans=3, Pri=1, " + (char)13 + (char)10;
+                msg += "-----------------: 2026-04-16 13:35:06.781 " + (char)13 + (char)10;
+
                 return msg;
             }
         }
@@ -97,130 +141,179 @@ namespace DraxTechnology.Panels
 
             string[] lines = result.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
 
-            foreach (string line in lines)
+            for (int i = 0; i < lines.Length; i++)
             {
-                string lineLower = line.ToLower();
-                if (lineLower.Contains("fire alarm fault"))
-                {
-                    tIpType = 8;
-                    gsTextField = line.Substring(lineLower.IndexOf("fire alarm fault") + 17);
-                    gsTextField = gsTextField.Replace("|", "").Trim();
-                }
-                else if (lineLower.Contains("fire pre alarm"))
-                {
-                    tIpType = 2;
-                    gsTextField = line.Substring(lineLower.IndexOf("fire pre fault") + 15);
-                    gsTextField = gsTextField.Replace("|", "").Trim();
-                }
-                else if (lineLower.Contains("fire alarm"))
-                {
-                    tIpType = 0;
-                    gsTextField = line.Substring(lineLower.IndexOf("fire alarm") + 12);
-                    gsTextField = gsTextField.Replace("|", "").Trim();
-                }
 
-                if (gsTextField.Length > 0)
+                string line = lines[i];
+                string lineLower = Regex.Replace(line.ToLower(), @"\s+", " ").Trim();
+                gsDeviceText = "";
+
+                if (lineLower.Contains("pager text"))
                 {
-                    try
+                    if (lineLower.Contains("fire alarm fault"))
                     {
-                        enmNotAlarmType enumValue = (enmNotAlarmType)Enum.Parse(typeof(enmNotAlarmType), tIpType.ToString());
-                        p1 = (int)(enumValue);
-                    }
-                    catch (Exception ex)
-                    {
-                        this.NotifyClient("gAlarmType " + gAlarmType + " " + ex.Message, false);
-                    }
-                    giNodeNumber = 0;
-                    giLoopNumber = 0;
-                    giDeviceAddress = 0;
-
-                    using var connection = new SqliteConnection("Data Source=events.db");
-                    connection.Open();
-
-                    using var command = connection.CreateCommand();
-                    command.CommandText = "CREATE TABLE IF NOT EXISTS Events (Id INTEGER PRIMARY KEY AUTOINCREMENT,Node, Loop, Device, Name TEXT UNIQUE)";
-                    command.ExecuteNonQuery();
-
-
-                    // Strip last word from gsTextField to get device text
-
-                    string devicetext = gsTextField.Replace("-", "").Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? "";
-
-                    //  Search to see if the device text already exists in the database, if not insert it
-
-                    var selectCmd = connection.CreateCommand();
-                    selectCmd.CommandText = @"SELECT Id FROM Events WHERE Name = $name;";
-                    selectCmd.Parameters.AddWithValue("$name", devicetext);
-
-                    int id = 0;
-                    id = Convert.ToInt32(selectCmd.ExecuteScalar());
-
-                    if (id == 0)
-                    {
-                        int node = 1;
-                        int loop = 1;
-                        int device = 0;
-
-                        using var cmd = connection.CreateCommand();
-                        cmd.CommandText = @"SELECT node, [loop], device FROM Events ORDER BY node DESC, [loop] DESC, device DESC LIMIT 1;";
-
-                        using var reader = cmd.ExecuteReader();
-
-                        if (reader.Read())
+                        tIpType = 8;
+                        gsTextField = line.Substring(19);   //Remove the text Pager Text
+                        gsTextField = gsTextField.Replace("-", " - ");
+                        gsTextField = Regex.Replace(gsTextField, @"\s+", " ").Trim();
+                        gsTextField = gsTextField.Replace("|", "");
+                        gsTextField = gsTextField.Substring(19).Trim();
+                        if (gsTextField.EndsWith("-"))
                         {
-                            node = reader.GetInt32(0);
-                            loop = reader.GetInt32(1);
-                            device = reader.GetInt32(2);
+                            gsTextField = gsTextField.Substring(0, gsTextField.Length - 1).Trim();
                         }
 
-                        // Increment logic
-                        device++;
-
-                        if (device > 254)
+                        string nextLine = (i + 1 < lines.Length) ? lines[i + 1] : null;
+                        if (nextLine != null)
                         {
-                            device = 1;
-                            loop++;
+                            gsDeviceText = Regex.Replace(nextLine, @"\s+", " ").Substring(14).Trim();
+                            gsDeviceText = gsDeviceText.Replace("|", "");
+                        }
+                    }
+                    else if (lineLower.Contains("fire pre alarm"))
+                    {
+                        tIpType = 2;
+                        gsTextField = line.Substring(19);
+                        gsTextField = gsTextField.Replace("-", " - ");
+                        gsTextField = Regex.Replace(gsTextField, @"\s+", " ").Trim();
+                        gsTextField = gsTextField.Replace("|", "");
+                        gsTextField = gsTextField.Substring(16).Trim();
+                        if (gsTextField.EndsWith("-"))
+                        {
+                            gsTextField = gsTextField.Substring(0, gsTextField.Length - 1).Trim();
+                        }
+                    }
+                    else if (lineLower.Contains("fire alarm"))
+                    {
+                        tIpType = 0;
+                        gsTextField = line.Substring(19);
+                        gsTextField = gsTextField.Replace("-", " - ");
+                        gsTextField = Regex.Replace(gsTextField, @"\s+", " ").Trim();
+                        gsTextField = gsTextField.Replace("|", "");
+                        gsTextField = gsTextField.Substring(12).Trim();
+                        if (gsTextField.ToLower().EndsWith("input"))
+                        {
+                            gsTextField = gsTextField.Substring(0, gsTextField.Length - 5).Trim();
+                        }
+                        if (gsTextField.EndsWith("-"))
+                        {
+                            gsTextField = gsTextField.Substring(0, gsTextField.Length - 1).Trim();
+                        }
 
-                            if (loop > 254)
+                        string nextLine = (i + 1 < lines.Length) ? lines[i + 1] : null;
+                        if (nextLine != null)
+                        {
+                            gsDeviceText = Regex.Replace(nextLine, @"\s+", " ").Substring(14).Trim();
+                            gsDeviceText = gsDeviceText.Replace("|", "");
+                        }
+                    }
+
+                    if (gsTextField.Length > 0)
+                    {
+                        try
+                        {
+                            enmNotAlarmType enumValue = (enmNotAlarmType)Enum.Parse(typeof(enmNotAlarmType), tIpType.ToString());
+                            p1 = (int)(enumValue);
+                        }
+                        catch (Exception ex)
+                        {
+                            this.NotifyClient("gAlarmType " + gAlarmType + " " + ex.Message, false);
+                        }
+                        giNodeNumber = 0;
+                        giLoopNumber = 0;
+                        giDeviceAddress = 0;
+
+                        using var connection = new SqliteConnection("Data Source=events.db");
+                        connection.Open();
+
+                        using var command = connection.CreateCommand();
+                        command.CommandText = "CREATE TABLE IF NOT EXISTS Events (Id INTEGER PRIMARY KEY AUTOINCREMENT,Node, Loop, Device, Name TEXT UNIQUE)";
+                        command.ExecuteNonQuery();
+
+
+                        // Strip last word from gsTextField to get device text
+
+                        string devicetext = gsTextField.Replace("-", "").Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? "";
+
+                        //  Search to see if the device text already exists in the database, if not insert it
+
+                        var selectCmd = connection.CreateCommand();
+                        selectCmd.CommandText = @"SELECT Id FROM Events WHERE Name = $name;";
+                        selectCmd.Parameters.AddWithValue("$name", devicetext);
+
+                        int id = 0;
+                        id = Convert.ToInt32(selectCmd.ExecuteScalar());
+
+                        if (id == 0)
+                        {
+                            int node = 1;
+                            int loop = 1;
+                            int device = 0;
+
+                            using var cmd = connection.CreateCommand();
+                            // cmd.CommandText = @"SELECT node, [loop], device FROM Events ORDER BY node DESC, [loop] DESC, device DESC LIMIT 1;";
+                            cmd.CommandText = @"SELECT node, [loop], device FROM Events ORDER BY id DESC LIMIT 1;";
+
+                            using var reader = cmd.ExecuteReader();
+
+                            if (reader.Read())
                             {
-                                loop = 1;
-                                node++;
+                                node = reader.GetInt32(0);
+                                loop = reader.GetInt32(1);
+                                device = reader.GetInt32(2);
+                            }
 
-                                if (node > 254)
+                            // Increment logic
+                            device++;
+
+                            if (device > 254)
+                            {
+                                device = 1;
+                                loop++;
+
+                                if (loop > 254)
                                 {
-                                    throw new Exception("Maximum node/loop/device limit reached");
+                                    loop = 1;
+                                    node++;
+
+                                    if (node > 254)
+                                    {
+                                        throw new Exception("Maximum node/loop/device limit reached");
+                                    }
                                 }
                             }
+
+                            giNodeNumber = node;
+                            giLoopNumber = loop;
+                            giDeviceAddress = device;
+                            CreateEventId(connection, giNodeNumber.ToString(), giLoopNumber.ToString(), giDeviceAddress.ToString(), devicetext);
                         }
-
-                        giNodeNumber = node;
-                        giLoopNumber = loop;
-                        giDeviceAddress = device;
-                        CreateEventId(connection, giNodeNumber.ToString(), giLoopNumber.ToString(), giDeviceAddress.ToString(), devicetext);
-                    }
-                    else
-                    {
-                        selectCmd = connection.CreateCommand();
-                        selectCmd.CommandText = @"SELECT node, [loop], device FROM Events WHERE id = $id;";
-
-                        selectCmd.Parameters.AddWithValue("$id", id);
-
-                        using var reader = selectCmd.ExecuteReader();
-
-                        if (reader.Read())
+                        else
                         {
-                            giNodeNumber = reader.GetInt32(0);
-                            giLoopNumber = reader.GetInt32(1);
-                            giDeviceAddress = reader.GetInt32(2);
+                            selectCmd = connection.CreateCommand();
+                            selectCmd.CommandText = @"SELECT node, [loop], device FROM Events WHERE id = $id;";
+
+                            selectCmd.Parameters.AddWithValue("$id", id);
+
+                            using var reader = selectCmd.ExecuteReader();
+
+                            if (reader.Read())
+                            {
+                                giNodeNumber = reader.GetInt32(0);
+                                giLoopNumber = reader.GetInt32(1);
+                                giDeviceAddress = reader.GetInt32(2);
+                            }
                         }
+                        connection.Close();
+
+                        evnum = CSAMXSingleton.CS.MakeInputNumber(giNodeNumber, giLoopNumber, giDeviceAddress, p1, on);
+
+                        base.NotifyClient("Send to AMX: Node = " + (giNodeNumber + this.Offset) + " Loop = " + giLoopNumber + " Address = " + giDeviceAddress);
+
+                        send_response_amx_and_serial(evnum, gsTextField, "", gsDeviceText);
+                        GlobalData.oktosend = false;
+                        Thread.Sleep(2000); // wait for 1 second before processing the next line
                     }
-                    connection.Close();
-
-                    evnum = CSAMXSingleton.CS.MakeInputNumber(giNodeNumber, giLoopNumber, giDeviceAddress, p1, on);
-
-                    base.NotifyClient("Send to AMX: Node = " + (giNodeNumber + this.Offset) + " Loop = " + giLoopNumber + " Address = " + giDeviceAddress);
-                    send_response_amx_and_serial(evnum, gsTextField, "", gsDeviceText);
-                    Thread.Sleep(1000); // wait for 1 second before processing the next line
                 }
             }
             return true;
