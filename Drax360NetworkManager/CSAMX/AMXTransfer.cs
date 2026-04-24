@@ -90,8 +90,20 @@ namespace DraxTechnology
                         }
                         GlobalData.oktosend = true;
                     }
-                };
-                
+                    if (msg.StartsWith("MTX:"))
+                    {
+                        // Manual Controls from AMX
+                        string fileaname = msg.Substring(4).Trim();
+                        fileaname = fileaname.Replace("-", "").Trim();
+
+                        if (AMXTransfer.Instance.IsConnected)
+                        {
+                            AMXTransfer.Instance.SendMessage(fileaname);
+                        }
+                    }
+                }
+                ;
+
                 await ReceiveDataAsync();
             }
             catch (Exception ex)

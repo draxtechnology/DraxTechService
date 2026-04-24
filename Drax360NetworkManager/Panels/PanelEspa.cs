@@ -312,7 +312,7 @@ namespace DraxTechnology.Panels
 
                         send_response_amx_and_serial(evnum, gsTextField, "", gsDeviceText);
                         GlobalData.oktosend = false;
-                        Thread.Sleep(2000); // wait for 1 second before processing the next line
+                        Thread.Sleep(2000); // wait for 2 seconds before processing the next line
                     }
                 }
             }

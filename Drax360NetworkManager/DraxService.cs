@@ -591,6 +591,124 @@ namespace DraxTechnology
         const string ksettingpanelsection = "PANEL";
         const string ksettingmainsection = "MAIN";
 
+        const string CURRENTNWMDATAFILE = @"c:\amx1\Temp\Current.Nwm";  //TODO not code c:\amx1
+
+        // Todo can these be an enum?
+
+        // Network Manager handle constants
+        // NB. Ensure correct handle is used throughout the NWM else odd DDE effects will be noticed
+        /*
+        public const int NwmHandleKsf = 12;   // Kentec Signifire NWM Handle
+        public const int NwmHandleZx = 196;  // Zetaplex NWM Handle
+        public const int NwmHandleMbs = 347;  // Modbus Slave NWM Handle
+        public const int NwmHandleMbm = 35;   // Modbus NWM Handle
+        public const int NwmHandleMbmv2 = 36;   // Modbus v2 NWM Handle
+        public const int NwmHandleAnz = 197;  // AMS-Net NWM Handle
+        public const int NwmHandleCctv = 149;  // CCTV NWM Handle
+        public const int NwmHandleAteis = 150;  // Ateis OEM Handle
+        public const int NwmHandleGent = 200;  // Gent NWM Handle
+        public const int NwmHandleGentPrinter = 201; // Gent Printer NWM Handle
+        public const int NwmHandleAdvanced = 242;  // Advanced Electronics
+        public const int NwmHandleGalaxy = 301;  // Ademco Galaxy Network Manager
+        public const int NwmHandleMenvier = 322;  // Menvier DF4000 Network Manager
+        public const int NwmHandleMen6000 = 323;  // Menvier DF6000 Network Manager
+        public const int NwmHandleCooper = 324;  // Cooper Network Manager
+        public const int NwmHandleEuroplex = 344;  // Europlex 3GS Network Manager
+        public const int NwmHandleStatic = 366;  // Static Systems Codemlon general alarm system
+        public const int NwmHandleStatic925 = 367;  // Static Systems 925 alarm system printer output
+        public const int NwmHandleNBT = 400;  // North BT Network Manager
+        public const int NwmHandlePaxton = 450;  // Paxton Access Control Network Manager
+        public const int NwmHandleAdventXT = 461;  // Advent XT Network Manager
+        public const int NwmHandleQuantec = 462;  // Quantec Network Manager
+        public const int NwmHandlePager = 501;  // Pager output NWM Handle
+        public const int NwmHandleEprn = 502;  // Event printer NWM Handle
+        public const int NwmHandleAngel = 503;  // Angel Interface NWM Handle
+        public const int NwmHandleSMS = 504;  // SMS NWM Handle
+        public const int NwmHandleGSM = 505;  // GSM NWM Handle
+        public const int NwmHandleDECT = 506;
+        public const int NwmHandleEmail = 507;  // Email NWM Handle
+        public const int NwmHandleZigBee = 550;  // ZigBee NWM Handle
+        public const int NwmHandleMorley = 601;  // Morley system
+        public const int NwmHandleMorleyDXc = 603;  // Morley system
+        public const int NwmHandleTCPIP = 700;  // TCP/IP Network Manager
+        public const int NwmHandleEIP = 701;  // TCP/IP V2 Network Manager
+        public const int NwmHandleRSM = 702;  // Remote Site Modules NWM
+        public const int NwmHandleHaesHS = 800;  // Haes HS Network Manager
+        public const int NwmHandleZiton = 810;  // Ziton
+        public const int NwmHandleNotifier = 900;  // Notifier ID3000 Network Manager
+        public const int NwmHandlePlan = 910;  // Plan access Network Manager
+        public const int NwmHandleProtec = 920;  // Protec Network Manager
+        public const int NwmHandleRHT = 930;  // RHT Network Manager
+        public const int NwmHandleEsser = 940;  // Esser Fire Panel
+        public const int NwmHandleKidde = 950;  // Kidde Network Manager
+        public const int NwmHandleADT = 960;  // ADT Network Manager
+        public const int NwmHandleCTec = 970;  // CTec Network Manager
+        public const int NwmHandleActionair = 980;  // Actionair
+        public const int NwmHandlePearl = 990;  // Notifier Pearl
+        public const int NwmHandleAteisVelox = 1000; // Ateis Velox Pearl
+        public const int NwmHandleEDA = 1010; // EDA Panel
+        public const int NwmHandleTAK = 1020; // Taktis Panel
+        public const int NwmHandleELO = 1030; // EloTek Panel
+        public const int NwmHandleMAX = 1040; // MAX Panel
+        public const int nwmHandleSYNCCTV = 1050; // Synetics CCTV Panel
+        */
+
+        private const int NwmMaxNodesKsf = 64;   // Kentec Signifire NWM Maximum nodes in Lite versions
+        private const int NwmMaxNodesZx = 255;  // Zetaplex NWM Maximum nodes in Lite versions
+        private const int NwmMaxNodesMbs = 1;    // Modbus Slave NWM Maximum nodes in Lite versions
+        private const int NwmMaxNodesMbm = 255;  // Modbus NWM Maximum nodes in Lite versions
+        private const int NwmMaxNodesMbmv2 = 32;
+        private const int NwmMaxNodesAnz = 255;  // AMS-Net NWM Maximum nodes in Lite versions
+        private const int NwmMaxNodesCctv = 1;    // CCTV NWM Maximum nodes in Lite versions
+        private const int NwmMaxNodesGent = 256;  // Handles domains 0 to 7
+        private const int NwmMaxNodesGentPrinter = 256;  // Handles domains 0 to 7
+        private const int NwmMaxNodesAdvanced = 599;  // Advanced Electronics NWM Maximum nodes in Lite versions
+        private const int NwmMaxNodesAteis = 599;  // Ateis
+        private const int NwmMaxNodesGalaxy = 1;
+        private const int NwmMaxNodesMenvier = 99;
+        private const int NwmMaxNodesMen6000 = 99;
+        private const int NwmMaxNodesCooper = 127;
+        private const int NwmMaxNodesEuroplex = 128;
+        private const int NwmMaxNodesStatic = 128;
+        private const int NwmMaxNodesStatic925 = 99;
+        private const int NwmMaxNodesNBT = 255;
+        private const int NwmMaxNodesPaxton = 1;
+        private const int NwmMaxNodesAdventXT = 1;
+        private const int NwmMaxNodesQuantec = 1;
+        private const int NwmMaxNodesPager = 1;
+        private const int NwmMaxNodesEprn = 1;
+        private const int NwmMaxNodesAngel = 1;
+        private const int NwmMaxNodesSMS = 1;
+        private const int NwmMaxNodesEmail = 1;
+        private const int NwmMaxNodesGSM = 255;
+        private const int NwmMaxNodesDECT = 1;
+        private const int NwmMaxNodesZigBee = 1;
+        private const int NwmMaxNodesMorley = 99;   // Morley system
+        private const int NwmMaxNodesMorleyDXc = 99;   // Morley DXc system
+        private const int NwmMaxNodesTCPIP = 255;  // TCPIP
+        private const int NwmMaxNodesEIP = 255;  // TCPIP V2
+        private const int NwmMaxNodesRSM = 255;
+        private const int NwmMaxNodesHaesHS = 64;
+        private const int NwmMaxNodesNotifier = 127;
+        private const int NwmMaxNodesPlan = 1;    // Plan access Network Manager
+        private const int NwmMaxNodesProtec = 63;
+        private const int NwmMaxNodesRHT = 1;
+        private const int NwmMaxNodesKidde = 99;
+        private const int NwmMaxNodesADT = 99;
+        private const int NwmMaxNodesCTec = 99;
+        private const int NwmMaxNodesActionair = 32;
+        private const int NwmMaxNodesPearl = 99;
+        private const int NwmMaxNodesZiton = 99;
+        private const int NwmMaxNodesEsser = 99;
+        private const int NwmMaxNodesAteisVelox = 99;
+        private const int NwmMaxNodesEDA = 99;
+        private const int NwmMaxNodesTAK = 99;
+        private const int NwmMaxNodesELO = 99;
+        private const int NwmMaxNodesMAX = 99;
+        private const int NwmMaxNodesSYNCCTV = 1;
+
+        private const int AmxLite = 0;        // 0=full AMX1, else value = Lite version  TODO
+
         // RSM Constants Start
         const int krsmport = 1471;
 
@@ -616,9 +734,9 @@ namespace DraxTechnology
         private StreamWriter _writer;
         private System.Timers.Timer _heartbeatTimer;
         private NamedPipeServerStream pipeserversend = null;
-       
+
         private string panel = "";
-        private string configurationbasefolder="";
+        private string configurationbasefolder = "";
 
         private List<AbstractPanel> abstractpanels = new List<AbstractPanel>();
 
@@ -750,13 +868,13 @@ namespace DraxTechnology
                 ap.OutsideEvents += Sp_Fire;
                 abstractpanels.Add(ap);
 
-               /* identifier = "192.168.3.1";
-                ap = getpanel(identifier);
-                ap.StartUp(fakemode);
-                ap.OutsideEvents += Sp_Fire;
-                abstractpanels.Add(ap);
-               */
-               
+                /* identifier = "192.168.3.1";
+                 ap = getpanel(identifier);
+                 ap.StartUp(fakemode);
+                 ap.OutsideEvents += Sp_Fire;
+                 abstractpanels.Add(ap);
+                */
+
 
                 try
                 {
@@ -789,7 +907,7 @@ namespace DraxTechnology
                 // now work out the settings for this panel                               
                 int port = 0;
 
-                if (apbase.Extension.ToUpper() == "MORLEY" || (apbase.Extension.ToUpper() == "MAX" & i==1))
+                if (apbase.Extension.ToUpper() == "MORLEY" || (apbase.Extension.ToUpper() == "MAX" & i == 1))
                 {
                     port = apbase.GetSetting<int>("SETUP", "CommPort");
                 }
@@ -810,7 +928,7 @@ namespace DraxTechnology
                 if (this.fakemode > 0)
                 {
                     ln("Opened Fake " + identifier + " Mode " + fakemode);
-                    
+
                     faketimers.Add(new System.Threading.Timer(fake_timer, identifier, kfakefireinitialwakeseconds * 1000, kfaketimertickseconds * 1000));
                 }
                 else
@@ -868,8 +986,120 @@ namespace DraxTechnology
                     File.Delete(tempPath + files[n - 1]);
                 }
             }
-
+            PassNWMDataToAMX1();
             StartDeviceWatcher();
+        }
+
+        private void PassNWMDataToAMX1()
+        {
+            //Writes data about the NWM to AMX1's temporary data file
+            //Uses the DDEchannel as identifier
+            //This sub is unique to each Network Manager
+
+            // Check file not already been updated
+            if (File.Exists(CURRENTNWMDATAFILE))
+            {
+                List<List<string>> groups = new List<List<string>>();
+                List<string> current = null;
+                bool exists = false;
+                foreach (var line in File.ReadAllLines(CURRENTNWMDATAFILE))
+                {
+                    if (line.Contains("Network Manager") && current == null)
+                        exists = true;
+                }
+                if (!exists)
+                {
+                    using (StreamWriter w = File.AppendText(CURRENTNWMDATAFILE))
+                    {
+                        w.WriteLine("[0]\r\nProgName=GEN Network Manager");
+                        w.WriteLine("Name=GEN\r\nVersion=1.0.0\r\nNodeName=Gent Fire Panel");     // TODO to make dynamic
+                        w.WriteLine("Offset=0\r\nFirstNode=1\r\nLastNode=" + GetNwmMaxNodes(0, "NwmHandleGent"));   // TODO to make dynamic
+                        w.WriteLine("Startup=" + DateTime.Now);
+                        w.WriteLine("1A=NWM DLL File Date\r\n1B=16/04/2010 16:29:34");   // TODO Date of the c# service file
+                        w.WriteLine("2A=Gent Panel Timeout\r\n2B=None");
+                        w.WriteLine("3A=Communications Port 1\r\n3B=COM3");
+                        w.WriteLine("4A=Communications Port 2\r\n4B=COM1");
+                        w.WriteLine("5A=Communications Port 3\r\n5B=COM1");
+                        w.WriteLine("6A=Communications Port 4\r\n6B=COM1");
+                        w.WriteLine("7A=Communications Port 5\r\n7B=COM1");
+                        w.WriteLine("8A=Communications Port 6\r\n8B=COM1");
+                        w.WriteLine("9A=Comms Port 1 Settings\r\n9B=19200,e,8,1");      //TODO read the ini file for the settings
+                        w.WriteLine("10A=Comms Port 2 Settings\r\n10B=9600,e,8,1");
+                        w.WriteLine("11A=Comms Port 3 Settings\r\n11B=9600,e,8,1");
+                        w.WriteLine("12A=Comms Port 4 Settings\r\n12B=9600,e,8,1");
+                        w.WriteLine("13A=Comms Port 5 Settings\r\n13B=9600,e,8,1");
+                        w.WriteLine("14A=Comms Port 6 Settings\r\n14B=9600,e,8,1");
+                        w.WriteLine("15A=\r\n15B=\r\n16A=\r\n16B=\r\n17A=\r\n17B=\r\n18A=\r\n18B=\r\n19A=\r\n19B=\r\n20A=\r\n20B=\r\n21A=\r\n21B=\r\n22A=\r\n22B=\r\n23A=\r\n23B=\r\n24A=\r\n24B=\r\n25A=\r\n25B=\r\n");
+                        w.Flush();
+                    }
+                }
+            }
+        }
+        public int GetNwmMaxNodes(int nwmHandle, string type)
+        {
+            switch (type)
+            {
+                case "NwmHandleAdvanced":
+                    if (AmxLite == 1)
+                        return 1;
+                    else
+                        return NwmMaxNodesAdvanced;
+
+                case "NwmHandleGalaxy": return NwmMaxNodesGalaxy;
+                case "NwmHandleMenvier": return NwmMaxNodesMenvier;
+                case "NwmHandleMen6000": return NwmMaxNodesMen6000;
+                case "NwmHandleCooper": return NwmMaxNodesCooper;
+                case "NwmHandleStatic": return NwmMaxNodesStatic;
+                case "NwmHandleStatic925": return NwmMaxNodesStatic925;
+                case "NwmHandleNBT": return NwmMaxNodesNBT;
+                case "NwmHandlePaxton": return NwmMaxNodesPaxton;
+                case "NwmHandleAdventXT": return NwmMaxNodesAdventXT;
+                case "NwmHandleQuantec": return NwmMaxNodesQuantec;
+                case "NwmHandleEuroplex": return NwmMaxNodesEuroplex;
+                case "NwmHandleCctv": return NwmMaxNodesCctv;
+                case "NwmHandleKsf": return NwmMaxNodesKsf;
+                case "NwmHandleZx": return NwmMaxNodesZx;
+                case "NwmHandleMbs": return NwmMaxNodesMbs;
+                case "NwmHandleMbm": return NwmMaxNodesMbm;
+                case "NwmHandleMbmv2": return NwmMaxNodesMbmv2;
+                case "NwmHandleAnz": return NwmMaxNodesAnz;
+                case "NwmHandlePager": return NwmMaxNodesPager;
+                case "NwmHandleEprn": return NwmMaxNodesEprn;
+                case "NwmHandleAngel": return NwmMaxNodesAngel;
+                case "NwmHandleSMS": return NwmMaxNodesSMS;
+                case "NwmHandleEmail": return NwmMaxNodesEmail;
+                case "NwmHandleGSM": return NwmMaxNodesGSM;
+                case "NwmHandleDECT": return NwmMaxNodesDECT;
+                case "NwmHandleZigBee": return NwmMaxNodesZigBee;
+                case "NwmHandleMorley": return NwmMaxNodesMorley;
+                case "NwmHandleMorleyDXc": return NwmMaxNodesMorleyDXc;
+                case "NwmHandleTCPIP": return NwmMaxNodesTCPIP;
+                case "NwmHandleEIP": return NwmMaxNodesEIP;
+                case "NwmHandleRSM": return NwmMaxNodesRSM;
+                case "NwmHandleHaesHS": return NwmMaxNodesHaesHS;
+                case "NwmHandleNotifier": return NwmMaxNodesNotifier;
+                case "NwmHandlePlan": return NwmMaxNodesPlan;
+                case "NwmHandleGent": return NwmMaxNodesGent;
+                case "NwmHandleGentPrinter": return NwmMaxNodesGentPrinter;
+                case "NwmHandleProtec": return NwmMaxNodesProtec;
+                case "NwmHandleRHT": return NwmMaxNodesRHT;
+                case "NwmHandleAteis": return NwmMaxNodesAteis;
+                case "NwmHandleKidde": return NwmMaxNodesKidde;
+                case "NwmHandleADT": return NwmMaxNodesADT;
+                case "NwmHandleCTec": return NwmMaxNodesCTec;
+                case "NwmHandleActionair": return NwmMaxNodesActionair;
+                case "NwmHandlePearl": return NwmMaxNodesPearl;
+                case "NwmHandleZiton": return NwmMaxNodesZiton;
+                case "NwmHandleEsser": return NwmMaxNodesEsser;
+                case "NwmHandleEDA": return NwmMaxNodesEDA;
+                case "NwmHandleELO": return NwmMaxNodesELO;
+                case "NwmHandleTAK": return NwmMaxNodesTAK;
+                case "NwmHandleMAX": return NwmMaxNodesMAX;
+                case "NwmHandleSYNCCTV": return NwmMaxNodesSYNCCTV;
+
+                default:
+                    return 0;
+            }
         }
 
         private void Sp_Fire(object sender, EventArgs e)
@@ -879,7 +1109,7 @@ namespace DraxTechnology
             bool notifyui = ex.NotifyUI;
             ln(msg);
             if (notifyui)
-            { 
+            {
                 sendreturncmd(msg);
             }
         }
@@ -912,7 +1142,7 @@ namespace DraxTechnology
 
             byte[] bytes = Encoding.ASCII.GetBytes(read);
 
-           
+
             ourabstractpanel.Parse(bytes);
         }
         private AbstractPanel getpanel(string identifier = "")
@@ -934,7 +1164,7 @@ namespace DraxTechnology
                     break;
 
                 case "GENT":
-                    ret = new PanelGent(this.configurationbasefolder,identifier);
+                    ret = new PanelGent(this.configurationbasefolder, identifier);
                     break;
 
                 case "MORLEYMAX":
@@ -1215,7 +1445,7 @@ namespace DraxTechnology
                         {
                             ourabstractpanel = ap;
                             lastSeen = ourabstractpanel.lastDataReceived;
-                         
+
                             break;
                         }
                     }
@@ -1474,7 +1704,7 @@ namespace DraxTechnology
 
             init_service();    // start the service
         }
-       
+
         public string sendreturncmd(string cmd, string parameters = "")
         {
             string strcmd = cmd;
@@ -1484,7 +1714,7 @@ namespace DraxTechnology
             }
 
             string result = "";
-           
+
             try
             {
                 result = Task.Run(() => sendreturnserver(strcmd)).Result;
@@ -1524,7 +1754,7 @@ namespace DraxTechnology
                 ap.Shutdown();
             }
             abstractpanels.Clear();
-           
+
             try
             {
                 _tcpClient?.Close();
@@ -1560,9 +1790,11 @@ namespace DraxTechnology
             }
             var dirInfo = new DirectoryInfo(inifolder);
             var allFiles = dirInfo.GetFiles("*." + "ini", SearchOption.TopDirectoryOnly);
-            if (allFiles.Length == 0) {
-                ln("Error No Ini Files Copied into " + inifolder,EventLogEntryType.Error);
-                return false; }
+            if (allFiles.Length == 0)
+            {
+                ln("Error No Ini Files Copied into " + inifolder, EventLogEntryType.Error);
+                return false;
+            }
 
             return true;
         }
@@ -1633,8 +1865,8 @@ namespace DraxTechnology
 
                     while (!token.IsCancellationRequested && (bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, token)) > 0)
                     {
-                      
-                        
+
+
                         // Create a copy of the received data
                         byte[] receivedData = new byte[bytesRead];
                         Array.Copy(buffer, receivedData, bytesRead);
@@ -1678,7 +1910,7 @@ namespace DraxTechnology
             {
                 Run(args);
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 EventLogger.WriteToEventLog(e.Message, EventLogEntryType.Error);
                 Console.Error.Write(e.Message);
