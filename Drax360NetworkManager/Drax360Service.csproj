@@ -80,6 +80,7 @@
   <ItemGroup>
     <Compile Include="AesDecryption.cs" />
     <Compile Include="EventLogger.cs" />
+    <Compile Include="Paths.cs" />
     <Compile Include="Panels\PanelEmail.cs" />
     <Compile Include="Panels\PanelEspa.cs" />
     <Compile Include="Panels\PanelMorleyZX.cs" />
@@ -101,6 +102,7 @@
     <Compile Include="CSAMX\AMXTransfer.cs" />
     <Compile Include="CSAMX\CSAMX.cs" />
     <Compile Include="CSAMX\CSAMXSingelton.cs" />
+    <Compile Include="CSAMX\MtnDecoder.cs" />
     <Compile Include="CSAMX\NVM.cs" />
     <Compile Include="CustomEventArgs.cs" />
     <Compile Include="DraxService.cs">

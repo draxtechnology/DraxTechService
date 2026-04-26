@@ -844,6 +844,9 @@ namespace DraxTechnology
             //sps.Clear();
             faketimers.Clear();
 
+            // Make this instance reachable from AMXTransfer's MTX: handler.
+            OnManualControlFile = this.DispatchAmxFile;
+
             // used to just load our settings from the ini file
             AbstractPanel apbase = getpanel();
 
@@ -861,8 +864,7 @@ namespace DraxTechnology
             if (panel == "RSM")
             {
 
-                // we will read this from config later
-                string identifier = Guid.NewGuid().ToString();
+                string identifier = "RSM";
                 AbstractPanel ap = getpanel(identifier);
                 ap.StartUp(fakemode);
                 ap.OutsideEvents += Sp_Fire;
@@ -1705,6 +1707,58 @@ namespace DraxTechnology
             init_service();    // start the service
         }
 
+        // Set during init_service so AMXTransfer can dispatch MTX: file contents
+        // back into the live DraxService instance (which owns abstractpanels).
+        public static Action<string> OnManualControlFile;
+
+        /// <summary>
+        /// Decode an AMX-written .MTN file (NVM struct format) and dispatch the
+        /// command to every active panel — mirrors the SILENCE/RESET/EVACUATE
+        /// pattern in handlepiperesponse but driven by the file's OurType field.
+        /// </summary>
+        public void DispatchAmxFile(string path)
+        {
+            try
+            {
+                if (!System.IO.File.Exists(path))
+                {
+                    ln("MTX dispatch: file not found " + path);
+                    return;
+                }
+
+                MtnRecord rec = MtnDecoder.ReadFile(path);
+                ln("MTX dispatch: " + rec.ToString());
+
+                string passedvalues = rec.AsPassedValues();
+
+                switch (rec.OurType)
+                {
+                    case NwmData.EvacuateToNwm:
+                        foreach (var p in abstractpanels) p.Evacuate(passedvalues);
+                        break;
+                    case NwmData.AlertToNwm:
+                        foreach (var p in abstractpanels) p.Alert(passedvalues);
+                        break;
+                    case NwmData.SilenceToNwm:
+                        foreach (var p in abstractpanels) p.Silence(passedvalues);
+                        break;
+                    case NwmData.ResetToNwm:
+                        foreach (var p in abstractpanels) p.Reset(passedvalues);
+                        break;
+                    case NwmData.BuzzerMuteToNwm:
+                        foreach (var p in abstractpanels) p.MuteBuzzers(passedvalues);
+                        break;
+                    default:
+                        ln("MTX dispatch: unhandled OurType " + (int)rec.OurType + " (" + rec.OurType + ")");
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                ln("MTX dispatch error for " + path + ": " + ex.Message);
+            }
+        }
+
         public string sendreturncmd(string cmd, string parameters = "")
         {
             string strcmd = cmd;
@@ -1839,18 +1893,8 @@ namespace DraxTechnology
         private async void rsmHandleClient(TcpClient client, CancellationToken token)
         {
             string clientIP = ((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString();
-            bool found = false;
-            PanelRSM rsmPanel = null;
-            foreach (AbstractPanel ap in abstractpanels)
-            {
-                if (ap.Identifier == clientIP)
-                {
-                    found = true;
-                    rsmPanel = ap as PanelRSM;
-                    break;
-                }
-            }
-            if (!found)
+            PanelRSM rsmPanel = abstractpanels.OfType<PanelRSM>().FirstOrDefault();
+            if (rsmPanel == null)
             {
                 client.Close();
                 return;
@@ -1870,7 +1914,7 @@ namespace DraxTechnology
                         // Create a copy of the received data
                         byte[] receivedData = new byte[bytesRead];
                         Array.Copy(buffer, receivedData, bytesRead);
-                        byte[] ack = rsmPanel.Parse(receivedData);
+                        byte[] ack = rsmPanel.Parse(receivedData, clientIP);
                         if (ack != null && ack.Length > 0)
                         {
                             await stream.WriteAsync(ack, 0, ack.Length, token);

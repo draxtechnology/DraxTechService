@@ -2,74 +2,389 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Ports;
-using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text;
+using System.Web.Script.Serialization;
 
 namespace DraxTechnology.Panels
 {
     internal class PanelRSM : AbstractPanel
     {
         #region constants
-        const byte kzerobyte = 0x00;
-        const byte kackbyte = 0x06;
         const byte kheartbeatdelayseconds = 60;
-        const int kchunksize = 59; 
+        // Wire-format field separator. VB6: 'Global Const sepCHAR = 199' — that's
+        // 'Ç' (0xC7). NOT ';'. Outgoing ACKs must use this byte or the panel rejects.
+        const char kSeparator = 'Ç';
+        #endregion
+
+        #region message field offsets (mirror VB RSMenum.mField)
+        const int F_MessageType = 0;
+        const int F_MessageID = 1;
+        const int F_ModuleNumber = 2;
+        const int F_SerialNumber = 3;
+        const int F_ModuleType = 4;
+        const int F_NodeNum = 5;
+        const int F_LoopNum = 6;
+        const int F_Address = 7;
+        const int F_SubAddress = 8;
+        const int F_OnOff = 9;
+        const int F_EventType = 10;
+        const int F_DeviceType = 11;
+        const int F_Extension = 12;
+        const int F_Text = 13;
+        const int F_Extension2 = 14;
+        #endregion
+
+        #region poll field offsets (mirror VB RSMenum.mPollField)
+        const int P_ExpiryDateDays = 5;
+        const int P_NumberOfPanels = 6;
+        const int P_Options = 7;
+        const int P_LicenseActivated = 8;
+        #endregion
+
+        #region SPX extension codes (mirror VB RSMenum.evext)
+        const int SPX_RST1TO14 = 1;
+        const int SPX_RST0TO14 = 2;
+        const int SPX_RST0TO14NOT4 = 3;
+        const int SPX_RST0TO15 = 4;
+        #endregion
+
+        #region per-module state (in-memory; no config)
+        private class ModuleState
+        {
+            public int ModuleNumber;
+            public string LastKnownIP = "";
+            public string FriendlyName = "";
+            public string ModuleType = "";
+            public string SerialNumber = "";
+            public DateTime LastRX = DateTime.MinValue;
+            public long RXmessages;
+            public readonly Dictionary<int, string> ZoneTexts = new Dictionary<int, string>();
+            public long ExpiryDateDays;
+            public int PanelsAllowed;
+            public string ModuleOptions = "";
+        }
+        private readonly Dictionary<int, ModuleState> modules = new Dictionary<int, ModuleState>();
+        private readonly object modulesLock = new object();
+
+        // Devices loaded from client's devices.json, keyed by IP address.
+        // Mirrors the PanelEmail pattern of reading client config at startup.
+        private readonly Dictionary<string, ClientDevice> devicesByIP =
+            new Dictionary<string, ClientDevice>(StringComparer.OrdinalIgnoreCase);
         #endregion
 
         public override string FakeString
         {
-            get
-            {
-                // two messages are sent, so we return the same message twice
-                string msg = "";
-
-                return msg;
-            }
+            get { return ""; }
         }
-       
 
-        public PanelRSM(string baselogfolder, string identifier) : base(baselogfolder,identifier, "RSMMan","RSM")
+        public PanelRSM(string baselogfolder, string identifier) : base(baselogfolder, identifier, "RSMMan", "RSM")
         {
             if (!String.IsNullOrEmpty(identifier))
             {
                 heartbeat_timer = new System.Threading.Timer(heartbeat_timer_callback, this.Identifier, 500, kheartbeatdelayseconds * 1000);
                 this.Offset = base.GetSetting<int>(ksettingsetupsection, "giAmx1Offset");
+                LoadDevices();
             }
         }
 
-        public byte[] Parse(byte[] buffer)
+        private void LoadDevices()
         {
+            Paths.MigrateLegacyFile("devices.json");
+            string jsonPath = Paths.GetFile("devices.json");
 
-            // just for cosmetics - display the raw hex data
-            string hexData = BitConverter.ToString(buffer).Replace("-", " ");
-            Console.WriteLine(hexData);
-
-            string decodedData = decodedata(buffer);
-            Console.WriteLine(decodedData);
-            // Send ACK response
-            string ackResponse = generateackresponse(decodedData);
-            if (!string.IsNullOrEmpty(ackResponse))
+            if (!File.Exists(jsonPath))
             {
-                byte[] ackBytes = scrambleandencodemessage(ackResponse);
-                return ackBytes;
+                base.NotifyClient($"PanelRSM: devices file not found ({jsonPath})", false);
+                return;
             }
-            else
-            {
-                // No ACK generated
-                return new byte[0];
 
+            try
+            {
+                string json = File.ReadAllText(jsonPath, Encoding.UTF8);
+                var serializer = new JavaScriptSerializer();
+                var raw = serializer.Deserialize<List<ClientDevice>>(json);
+                if (raw == null) return;
+
+                foreach (var d in raw)
+                {
+                    string ip = (d.IP ?? string.Empty).Trim();
+                    if (string.IsNullOrEmpty(ip)) continue;
+                    devicesByIP[ip] = d;
+                }
+
+                base.NotifyClient($"PanelRSM: loaded {devicesByIP.Count} device(s) from {jsonPath}", false);
+            }
+            catch (Exception ex)
+            {
+                base.NotifyClient($"PanelRSM: error loading devices — {ex.Message}", false);
             }
         }
 
+        public byte[] Parse(byte[] buffer, string clientIP)
+        {
+            string hexData = BitConverter.ToString(buffer).Replace("-", " ");
+            this.NotifyClient($"[{clientIP}] RX: {hexData}", false);
+
+            string decoded = decodedata(buffer);
+            this.NotifyClient($"[{clientIP}] DECODED: {decoded}", false);
+
+            // strip trailing checksum-error annotation if present
+            int chkIdx = decoded.IndexOf("[CHECKSUM ERROR");
+            if (chkIdx >= 0)
+            {
+                decoded = decoded.Substring(0, chkIdx).Trim();
+            }
+
+            string[] parts = decoded.Split(kSeparator);
+            if (parts.Length < 3)
+            {
+                return new byte[0];
+            }
+
+            string messageType = parts[F_MessageType];
+            int messageID = ParseInt(GetField(parts, F_MessageID));
+            int moduleNumber = ParseInt(GetField(parts, F_ModuleNumber));
+            string moduleType = GetField(parts, F_ModuleType);
+            string serialNumber = GetField(parts, F_SerialNumber);
+
+            ModuleState state = TouchModule(moduleNumber, clientIP, moduleType, serialNumber);
+
+            string ack;
+            switch (messageType)
+            {
+                case "EVT":
+                    HandleEVT(state, parts);
+                    ack = $"ACK{kSeparator}{moduleNumber}{kSeparator}{messageID}";
+                    break;
+
+                case "POL":
+                    HandlePOL(state, parts);
+                    int licenseStatus = 0; // 0 = good
+                    ack = $"PAK{kSeparator}{moduleNumber}{kSeparator}{messageID}{kSeparator}{licenseStatus}";
+                    break;
+
+                case "ZTX":
+                    HandleZTX(state, parts);
+                    ack = $"ACK{kSeparator}{moduleNumber}{kSeparator}{messageID}";
+                    break;
+
+                case "ANA":
+                    HandleANA(state, parts);
+                    ack = $"ACK{kSeparator}{moduleNumber}{kSeparator}{messageID}";
+                    break;
+
+                case "SPX":
+                    HandleSPX(state, parts);
+                    ack = $"ACK{kSeparator}{moduleNumber}{kSeparator}{messageID}";
+                    break;
+
+                case "CAK":
+                case "SAK":
+                case "GAK":
+                case "ACK":
+                case "NAK":
+                    // these are responses to commands the manager sent — nothing to ack
+                    return new byte[0];
+
+                default:
+                    this.NotifyClient($"Unknown message type '{messageType}' from module {moduleNumber}", false);
+                    ack = $"ACK{kSeparator}{moduleNumber}{kSeparator}{messageID}";
+                    break;
+            }
+
+            return scrambleandencodemessage(ack);
+        }
+
+        #region message handlers
+
+        private void HandleEVT(ModuleState state, string[] parts)
+        {
+            int loopNum = ParseInt(GetField(parts, F_LoopNum));
+            int address = ParseInt(GetField(parts, F_Address));
+            int onOff = ParseInt(GetField(parts, F_OnOff));
+            int inputType = ParseInt(GetField(parts, F_EventType));
+            string deviceText = GetField(parts, F_Text).Trim();
+            int extension = ParseInt(GetField(parts, F_Extension));
+            int extension2 = ParseInt(GetField(parts, F_Extension2));
+
+            // Zone derivation differs by module type (mirrors VB)
+            int zone;
+            if (state.ModuleType == "ZI" || state.ModuleType == "MZ")
+                zone = extension;
+            else
+                zone = extension + (256 * extension2);
+
+            // Device-type field: literal if prefixed with $, otherwise raw numeric code
+            string rawDevType = GetField(parts, F_DeviceType);
+            string sDeviceType = rawDevType.StartsWith("$") ? rawDevType.Substring(1) : rawDevType;
+
+            // Truncate device text per module type (VB rules)
+            int maxTextLen = (state.ModuleType == "AD") ? 26 : 40;
+            if (deviceText.Length > maxTextLen)
+                deviceText = deviceText.Substring(0, maxTextLen);
+
+            // Module restart status: shifts deviceText into deviceType, replaces with banner
+            if (loopNum == 0 && inputType == 15)
+            {
+                if (state.ModuleType == "AD" && address == 253)
+                {
+                    sDeviceType = deviceText;
+                    deviceText = "RSM Module Startup";
+                }
+                else if (state.ModuleType != "AD" && address == 10)
+                {
+                    sDeviceType = deviceText;
+                    deviceText = "RSM Module Startup";
+                }
+            }
+
+            // Pull cached zone text from prior ZTX (or contact-text override for status 200)
+            string zoneText = "";
+            lock (state.ZoneTexts)
+            {
+                if (state.ZoneTexts.TryGetValue(zone, out string zt)) zoneText = zt;
+            }
+            if (inputType == 15 && address == 200)
+            {
+                zoneText = "Contact Your Fire Alarm Maintainer";
+            }
+
+            bool on = onOff != 0;
+
+            int evnum = CSAMXSingleton.CS.MakeInputNumber(state.ModuleNumber + Offset, loopNum, address, inputType, on);
+            CSAMXSingleton.CS.SendAlarmToAMX(evnum, deviceText, sDeviceType, zoneText);
+            CSAMXSingleton.CS.FlushMessages();
+
+            this.NotifyClient($"EVT {Label(state)} L{loopNum} A{address} type={inputType} on={on} text='{deviceText}' devtype='{sDeviceType}' zone={zone}", false);
+        }
+
+        private void HandlePOL(ModuleState state, string[] parts)
+        {
+            state.ExpiryDateDays = ParseInt(GetField(parts, P_ExpiryDateDays));
+            state.PanelsAllowed = ParseInt(GetField(parts, P_NumberOfPanels));
+            state.ModuleOptions = GetField(parts, P_Options);
+            this.NotifyClient($"POL {Label(state)} type={state.ModuleType} expiry-days={state.ExpiryDateDays} panels={state.PanelsAllowed} options={state.ModuleOptions}", false);
+        }
+
+        private void HandleZTX(ModuleState state, string[] parts)
+        {
+            // VB: Zone = Val(Ext2) + (256 * Val(Ext))
+            int extension = ParseInt(GetField(parts, F_Extension));
+            int extension2 = ParseInt(GetField(parts, F_Extension2));
+            int zone = extension2 + (256 * extension);
+            string text = GetField(parts, F_Text);
+            lock (state.ZoneTexts)
+            {
+                state.ZoneTexts[zone] = text;
+            }
+            this.NotifyClient($"ZTX {Label(state)} zone={zone} text='{text}'", false);
+        }
+
+        private void HandleANA(ModuleState state, string[] parts)
+        {
+            int loopNum = ParseInt(GetField(parts, F_LoopNum));
+            int address = ParseInt(GetField(parts, F_Address));
+            int subAddress = ParseInt(GetField(parts, F_SubAddress));
+            string value = GetField(parts, F_Text).Trim();
+            string mode = GetField(parts, F_Extension);
+
+            string rawDevType = GetField(parts, F_DeviceType);
+            string sDeviceType = rawDevType.StartsWith("$") ? rawDevType.Substring(1) : rawDevType;
+
+            int panelAndOffset = state.ModuleNumber + Offset;
+            string msg = $"C2M:DEVANALOG|{panelAndOffset}|{loopNum}|{address}|{subAddress}|{value}|{mode}|{sDeviceType}||||";
+            AMXTransfer.Instance.SendMessage(msg);
+
+            this.NotifyClient($"ANA {Label(state)} L{loopNum} A{address} sub={subAddress} value={value} mode={mode}", false);
+        }
+
+        private void HandleSPX(ModuleState state, string[] parts)
+        {
+            int loopNum = ParseInt(GetField(parts, F_LoopNum));
+            int address = ParseInt(GetField(parts, F_Address));
+            int extension = ParseInt(GetField(parts, F_Extension));
+
+            int startInputType, endInputType;
+            bool skipFour = false;
+            switch (extension)
+            {
+                case SPX_RST1TO14: startInputType = 1; endInputType = 14; break;
+                case SPX_RST0TO14: startInputType = 0; endInputType = 14; break;
+                case SPX_RST0TO14NOT4: startInputType = 0; endInputType = 14; skipFour = true; break;
+                case SPX_RST0TO15: startInputType = 0; endInputType = 15; break;
+                default:
+                    this.NotifyClient($"SPX module={state.ModuleNumber} unrecognised extension={extension}", false);
+                    return;
+            }
+
+            int nodePlusOffset = state.ModuleNumber + Offset;
+            for (int n = startInputType; n <= endInputType; n++)
+            {
+                if (skipFour && n == 4) continue;
+                int evnum = CSAMXSingleton.CS.MakeInputNumber(nodePlusOffset, loopNum, address, n, false);
+                CSAMXSingleton.CS.SendResetToAMX(evnum, "", "", "");
+            }
+            CSAMXSingleton.CS.FlushMessages();
+
+            this.NotifyClient($"SPX {Label(state)} L{loopNum} A{address} reset {startInputType}..{endInputType}{(skipFour ? " (excl 4)" : "")}", false);
+        }
+
+        #endregion
+
+        #region helpers
+
+        private ModuleState TouchModule(int moduleNumber, string ip, string moduleType, string serialNumber)
+        {
+            string friendlyName = "";
+            if (!string.IsNullOrEmpty(ip) && devicesByIP.TryGetValue(ip, out ClientDevice known))
+            {
+                friendlyName = known.Name ?? "";
+            }
+
+            lock (modulesLock)
+            {
+                if (!modules.TryGetValue(moduleNumber, out ModuleState state))
+                {
+                    state = new ModuleState { ModuleNumber = moduleNumber };
+                    modules[moduleNumber] = state;
+                    string label = string.IsNullOrEmpty(friendlyName) ? "<unknown>" : friendlyName;
+                    this.NotifyClient($"NEW module {moduleNumber} ({moduleType}) at {ip} — {label}", false);
+                }
+                state.LastKnownIP = ip;
+                state.FriendlyName = friendlyName;
+                state.LastRX = DateTime.Now;
+                state.RXmessages++;
+                if (!string.IsNullOrEmpty(moduleType)) state.ModuleType = moduleType;
+                if (!string.IsNullOrEmpty(serialNumber)) state.SerialNumber = serialNumber;
+                return state;
+            }
+        }
+
+        private static string GetField(string[] parts, int idx)
+        {
+            return idx < parts.Length ? parts[idx] : "";
+        }
+
+        private static string Label(ModuleState s)
+        {
+            return string.IsNullOrEmpty(s.FriendlyName)
+                ? $"module={s.ModuleNumber}"
+                : $"'{s.FriendlyName}' (module={s.ModuleNumber})";
+        }
+
+        private static int ParseInt(string s)
+        {
+            int.TryParse(s == null ? "" : s.Trim(), out int v);
+            return v;
+        }
+
+        #endregion
+
+        #region wire-format encoding/decoding
 
         private byte[] scrambleandencodemessage(string message)
         {
-            // Replace semicolons back from our display format
-            message = message.Replace(";", new string((char)0x3B, 1));
-
-            // Calculate checksum
+            // Calculate checksum over message chars
             int checksum = 0;
             foreach (char c in message)
             {
@@ -77,44 +392,36 @@ namespace DraxTechnology.Panels
             }
             checksum = (checksum % 200) + 33;
 
-            // Scramble the message (reverse of descramble)
-            // First reverse the string
+            // Reverse the string then apply scramble formula
             char[] chars = message.ToCharArray();
             Array.Reverse(chars);
             string reversed = new string(chars);
 
-            // Then apply the scramble formula
             List<byte> scrambled = new List<byte>();
             for (int n = 1; n <= reversed.Length; n++)
             {
                 int charValue = (int)reversed[n - 1];
                 int encoded = charValue + 3 + (n % 9) + ((n % 5) * 7);
-
-                // Handle wrap-around
-                while (encoded > 255)
-                    encoded -= 256;
-
+                while (encoded > 255) encoded -= 256;
                 scrambled.Add((byte)encoded);
             }
 
-            // Add STX header, scrambled data, checksum, and ETX
+            // STX + scrambled + checksum + ETX
             List<byte> fullMessage = new List<byte>();
-            fullMessage.Add(0x02); // STX
+            fullMessage.Add(0x02);
             fullMessage.AddRange(scrambled);
             fullMessage.Add((byte)checksum);
-            fullMessage.Add(0x03); // ETX
+            fullMessage.Add(0x03);
 
             return fullMessage.ToArray();
         }
-
 
         private string decodedata(byte[] data)
         {
             if (data.Length < 3)
                 return Encoding.ASCII.GetString(data);
 
-            // VB6 strips STX (0x02) and ETX before descrambling
-            // Find and remove STX (0x02) and ETX (0x03) bytes
+            // Strip STX (0x02) and ETX (0x03)
             List<byte> cleanedData = new List<byte>();
             for (int i = 0; i < data.Length; i++)
             {
@@ -123,47 +430,35 @@ namespace DraxTechnology.Panels
                     cleanedData.Add(data[i]);
                 }
             }
-
             if (cleanedData.Count < 2)
                 return "";
 
-            // Now the data is just the scrambled content + checksum (last byte)
-            int dataLength = cleanedData.Count - 1; // Exclude checksum
+            int dataLength = cleanedData.Count - 1; // exclude trailing checksum
             int checksumByte = cleanedData[cleanedData.Count - 1];
 
-            // Descramble the string
+            // Descramble
             StringBuilder descrambled = new StringBuilder();
             for (int n = 1; n <= dataLength; n++)
             {
-                int byteValue = cleanedData[n - 1]; // C# is 0-based, VB6 loop is 1-based
+                int byteValue = cleanedData[n - 1];
                 int decoded = byteValue - 3 - (n % 9) - ((n % 5) * 7);
-
-                // Handle wrap-around for negative values (VB6 byte range is 0-255)
-                while (decoded < 0)
-                    decoded += 256;
-                while (decoded > 255)
-                    decoded -= 256;
-
+                while (decoded < 0) decoded += 256;
+                while (decoded > 255) decoded -= 256;
                 descrambled.Append((char)decoded);
             }
 
-            // Reverse the string
+            // Reverse
             char[] chars = descrambled.ToString().ToCharArray();
             Array.Reverse(chars);
-            string reversed = new string(chars);
+            string result = new string(chars);
 
-            // Calculate and confirm checksum
+            // Verify checksum
             int calculatedChecksum = 0;
-            for (int n = 0; n < reversed.Length; n++)
+            for (int n = 0; n < result.Length; n++)
             {
-                calculatedChecksum += (int)reversed[n];
+                calculatedChecksum += (int)result[n];
             }
             calculatedChecksum = (calculatedChecksum % 200) + 33;
-
-            // Replace semicolons with Ç to match VB6 output
-            string result = reversed.Replace(";", "Ç");
-
-            // Checksum validation (optional display)
             if (calculatedChecksum != checksumByte)
             {
                 result += $" [CHECKSUM ERROR: Expected {checksumByte}, Got {calculatedChecksum}]";
@@ -172,108 +467,9 @@ namespace DraxTechnology.Panels
             return result;
         }
 
+        #endregion
 
-        // Mike suggest we might want to return these values too
-        //private string generateackresponse(string decodedMessage, out string messageType, out string messageID, out string moduleNumber)
-
-        private string generateackresponse(string decodedMessage )
-        {
-            // Parse the decoded message to extract: MessageType, ModuleNumber, MessageID
-            // Format: EVTÇ3159Ç1ÇB19810252D...
-            // or: POLÇxxxx...
-
-            // Remove checksum error text if present
-            if (decodedMessage.Contains("[CHECKSUM ERROR"))
-            {
-                decodedMessage = decodedMessage.Substring(0, decodedMessage.IndexOf("[CHECKSUM ERROR")).Trim();
-            }
-
-            string[] parts = decodedMessage.Split('Ç');
-
-            if (parts.Length < 3)
-                return ""; // Not enough parts to generate ACK
-
-            string messageType = parts[0];
-            string messageID = parts[1];
-            string moduleNumber = parts[2];
-
-            // Generate ACK based on message type
-            switch (messageType)
-            {
-                case "EVT":
-                case "ZTX":
-                case "ANA":
-                case "SPX":
-                    // ACK format: ACKÇModuleNumberÇMessageID
-                    return $"ACK\u00C7{moduleNumber}\u00C7{messageID}";
-
-                case "POL":
-                    // PAK format: PAKÇModuleNumberÇMessageIDÇLicenseStatus
-                    // For now, return license status 0 (valid)
-                    return $"PAK\u00C7{moduleNumber}\u00C7{messageID}\u00C70";
-
-                default:
-                    // For unknown messages, send generic ACK
-                    //return $"ACK;{moduleNumber};{messageID}";
-                    return $"ACK\u00C7{moduleNumber}\u00C7{messageID}";
-            }
-        }
-
-
-
-
-        private bool processmessage(byte[] chunk)
-        {
-            string hex = BitConverter.ToString(chunk);
-            this.NotifyClient("Received: " + hex, false);
-
-  
-            return true;
-        }
-
-        private void send_response_amx_and_serial(int evnum, string message1, string message2, string message3 = "")
-        {
-            string friendlymessage = message2 + (message3.Length > 0 ? (" " + message3) : "");
-
-            // Signal the event back to the main service, so that it can be logged
-            this.NotifyClient(friendlymessage, false);
-
-            CSAMXSingleton.CS.SendAlarmToAMX(evnum, message1, message2, message3);
-            CSAMXSingleton.CS.FlushMessages();
-
-            serialsend(new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte });
-            byte[] bytesToLog = new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte };
-            string hex = BitConverter.ToString(bytesToLog); // "00-06-00-06"
-            this.NotifyClient("ACK Sent: " + hex, false);
-        }
-
-        private void CalculateCheckSum(string[] paryMessage, out int piMSB, out int piLSB)
-        {
-            piMSB = 0;
-            piLSB = 0;
-
-            try
-            {
-                int iMsgCheckSum = 0;
-
-                for (int i = 0; i < paryMessage.Length - 2; i++)
-                {
-                    if (!string.IsNullOrEmpty(paryMessage[i]) && (int)paryMessage[i][0] != 0)
-                    {
-                        iMsgCheckSum += (int)paryMessage[i][0];
-                    }
-                }
-
-                piMSB = iMsgCheckSum / 256;
-                piLSB = iMsgCheckSum % 256;
-            }
-            catch (Exception)
-            {
-                this.NotifyClient("Checksumvalidation Error:",false);
-                this.NotifyClient("piMSB: " + piMSB, false);
-                this.NotifyClient("piLSB: " + piLSB, false);
-            }
-        }
+        #region heartbeat / lifecycle
 
         protected override void heartbeat_timer_callback(object sender)
         {
@@ -281,19 +477,31 @@ namespace DraxTechnology.Panels
         }
 
         public override void StartUp(int fakemode)
-        {     
+        {
             if (fakemode > 0)
             {
                 return;
             }
         }
+
+        #endregion
+
+        // POCO matching the client's devices.json schema
+        // (Drax360Client/Panels/RSM/Device.cs — { ID: Guid, Name: string, IP: string })
+        private class ClientDevice
+        {
+            public string ID { get; set; }
+            public string Name { get; set; }
+            public string IP { get; set; }
+        }
+
+        #region commands out (placeholder — TX path not yet wired)
+
         public override void Evacuate(string passedvalues)
         {
             send_message(ActionType.kEVACTUATE, NwmData.AlarmToAmx, passedvalues);
         }
-        public override void Alert(string passedvalues)
-        {
-        }
+        public override void Alert(string passedvalues) { }
         public override void EvacuateNetwork(string passedvalues)
         {
             send_message(ActionType.kEVACTUATENETWORK, NwmData.AlarmToAmx, passedvalues);
@@ -330,32 +538,21 @@ namespace DraxTechnology.Panels
         {
             throw new NotImplementedException();
         }
+
         private void send_message(ActionType action, NwmData type, string passedvalues)
         {
             string[] parts = passedvalues.Split(',');
-
-            int node = 1, loop = 0, zone = 0, device = 0, giDomainNumber = 0, inputtype = 0;
+            int node = 1, loop = 0, zone = 0, device = 0, inputtype = 0;
 
             if (parts.Length > 0) int.TryParse(parts[0], out node);
             if (parts.Length > 1) int.TryParse(parts[1], out loop);
             if (parts.Length > 2) int.TryParse(parts[2], out zone);
             if (parts.Length > 3) int.TryParse(parts[3], out device);
 
-            DateTime now = DateTime.Now;
-
-            int sHour = now.Hour;
-            int sMinute = now.Minute;
-            int sSecond = now.Second;
-
-            int sYear = int.Parse(now.ToString("yy"));   // Two-digit year
-            int sMonth = int.Parse(now.ToString("MM"));  // Two-digit month
-            int sDay = int.Parse(now.ToString("dd"));    // Two-digit day
-            int sDayWeek = ((int)now.DayOfWeek + 6) % 7 + 1;// Sunday = 1, Monday = 2, etc.
-            bool on = true;
- 
             node = node + this.Offset;
-            string text = "";
-            SendEvent("Gent", type, inputtype, text, on, node, loop, device);
+            SendEvent("RSM", type, inputtype, "", true, node, loop, device);
         }
+
+        #endregion
     }
 }

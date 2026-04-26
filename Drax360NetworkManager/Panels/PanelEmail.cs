@@ -176,9 +176,8 @@ namespace DraxTechnology.Panels
 
         private void LoadEmailGroups()
         {
-            string jsonPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "DraxClient", "emailgroups.json");
+            Paths.MigrateLegacyFile("emailgroups.json");
+            string jsonPath = Paths.GetFile("emailgroups.json");
 
             if (!File.Exists(jsonPath))
             {

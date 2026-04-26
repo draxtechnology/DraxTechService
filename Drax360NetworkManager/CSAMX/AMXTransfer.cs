@@ -92,9 +92,14 @@ namespace DraxTechnology
                     }
                     if (msg.StartsWith("MTX:"))
                     {
-                        // Manual Controls from AMX
+                        // Manual Controls from AMX. The path points at a 224-byte
+                        // .MTN file in NVM struct format. Decode and dispatch to
+                        // the active panel(s) via DraxService; then preserve the
+                        // existing echo-back so AMX's handshake is unaffected.
                         string fileaname = msg.Substring(4).Trim();
                         fileaname = fileaname.Replace("-", "").Trim();
+
+                        DraxService.OnManualControlFile?.Invoke(fileaname);
 
                         if (AMXTransfer.Instance.IsConnected)
                         {

@@ -94,6 +94,14 @@
             "PrerequisitesLocation" = "2:1"
             "Url" = "8:"
             "ComponentsUrl" = "8:"
+                "Items"
+                {
+                    "{EDC2488A-8267-493A-A98E-7D9C3B36CDF3}:.NETFramework,Version=v4.7.2"
+                    {
+                    "Name" = "8:Microsoft .NET Framework 4.7.2 (x86 and x64)"
+                    "ProductCode" = "8:.NETFramework,Version=v4.7.2"
+                    }
+                }
             }
         }
     }
@@ -219,7 +227,7 @@
         {
             "{3C67513D-01DD-4637-8A68-80971EB9504F}:_531C9398E4304904B8C78B9DC36178CC"
             {
-  	    "DefaultLocation" = "8:C:\\amx1"
+            "DefaultLocation" = "8:C:\\amx1"
             "Name" = "8:#1925"
             "AlwaysCreate" = "11:FALSE"
             "Condition" = "8:"
@@ -247,6 +255,18 @@
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Property" = "8:DesktopFolder"
+                "Folders"
+                {
+                }
+            }
+            "{994432C3-9487-495D-8656-3E829A8DBDDE}:_E23580CB55F74EC0922C433C91759E99"
+            {
+            "DefaultLocation" = "8:[CommonAppDataFolder]\\DraxTechnology"
+            "Name" = "8:DraxTechnology"
+            "AlwaysCreate" = "11:TRUE"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Property" = "8:NEWPROPERTY1"
                 "Folders"
                 {
                 }
