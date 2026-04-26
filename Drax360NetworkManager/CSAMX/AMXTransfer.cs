@@ -82,7 +82,10 @@ namespace DraxTechnology
                     }
                     if (msg.StartsWith("MAK:"))
                     {
-                        string fileaname = msg.Substring(9).Trim();
+                        // "MAK:" is 4 chars — the previous Substring(9) lopped off
+                        // 5 extra characters of the file path so the delete silently
+                        // missed.
+                        string fileaname = msg.Substring(4).Trim();
                         fileaname = fileaname.Replace("-", "").Trim();
                         if (System.IO.File.Exists(fileaname))
                         {

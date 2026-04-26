@@ -1900,40 +1900,44 @@ namespace DraxTechnology
                 return;
             }
 
+            int registeredModule = 0;
+            NetworkStream stream = null;
             try
             {
-                using (NetworkStream stream = client.GetStream())
+                stream = client.GetStream();
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+
+                while (!token.IsCancellationRequested && (bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, token)) > 0)
                 {
-                    byte[] buffer = new byte[4096];
-                    int bytesRead;
+                    byte[] receivedData = new byte[bytesRead];
+                    Array.Copy(buffer, receivedData, bytesRead);
 
-                    while (!token.IsCancellationRequested && (bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, token)) > 0)
+                    // Parse registers the stream against the module on first valid
+                    // packet so outbound commands can find it.
+                    byte[] ack = rsmPanel.Parse(receivedData, clientIP, stream, out int parsedModule);
+                    if (parsedModule != 0) registeredModule = parsedModule;
+
+                    if (ack != null && ack.Length > 0)
                     {
-
-
-                        // Create a copy of the received data
-                        byte[] receivedData = new byte[bytesRead];
-                        Array.Copy(buffer, receivedData, bytesRead);
-                        byte[] ack = rsmPanel.Parse(receivedData, clientIP);
-                        if (ack != null && ack.Length > 0)
-                        {
-                            await stream.WriteAsync(ack, 0, ack.Length, token);
-                        }
+                        await stream.WriteAsync(ack, 0, ack.Length, token);
                     }
                 }
             }
             catch (Exception ex)
             {
-                // Only log errors that aren't the expected "connection closed by remote host"
                 if (!token.IsCancellationRequested && !ex.Message.Contains("forcibly closed"))
                 {
-                    //AppendData($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Error handling client: {ex.Message}\n");
                 }
             }
             finally
             {
+                if (registeredModule != 0 && stream != null)
+                {
+                    rsmPanel.UnregisterStream(registeredModule, stream);
+                }
+                try { stream?.Dispose(); } catch { }
                 client.Close();
-                //AppendData($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Client disconnected from {clientIP}\n");
             }
         }
 

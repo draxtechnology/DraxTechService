@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net.Sockets;
 using System.Text;
 using System.Web.Script.Serialization;
 
@@ -62,9 +63,20 @@ namespace DraxTechnology.Panels
             public long ExpiryDateDays;
             public int PanelsAllowed;
             public string ModuleOptions = "";
+
+            // Set by Parse when bytes arrive on this module's TCP connection,
+            // cleared by UnregisterStream when the connection closes. Used for
+            // outbound commands (Evacuate/Silence/Reset/etc.).
+            public NetworkStream Stream;
+            public readonly object WriteLock = new object();
         }
         private readonly Dictionary<int, ModuleState> modules = new Dictionary<int, ModuleState>();
         private readonly object modulesLock = new object();
+
+        // Outbound message ID counter. Wraps within int range; the panel only
+        // requires uniqueness within the small in-flight window.
+        private int nextMessageID = 1;
+        private readonly object messageIDLock = new object();
 
         // Devices loaded from client's devices.json, keyed by IP address.
         // Mirrors the PanelEmail pattern of reading client config at startup.
@@ -120,8 +132,10 @@ namespace DraxTechnology.Panels
             }
         }
 
-        public byte[] Parse(byte[] buffer, string clientIP)
+        public byte[] Parse(byte[] buffer, string clientIP, NetworkStream stream, out int parsedModuleNumber)
         {
+            parsedModuleNumber = 0;
+
             string hexData = BitConverter.ToString(buffer).Replace("-", " ");
             this.NotifyClient($"[{clientIP}] RX: {hexData}", false);
 
@@ -147,7 +161,8 @@ namespace DraxTechnology.Panels
             string moduleType = GetField(parts, F_ModuleType);
             string serialNumber = GetField(parts, F_SerialNumber);
 
-            ModuleState state = TouchModule(moduleNumber, clientIP, moduleType, serialNumber);
+            parsedModuleNumber = moduleNumber;
+            ModuleState state = TouchModule(moduleNumber, clientIP, moduleType, serialNumber, stream);
 
             string ack;
             switch (messageType)
@@ -214,27 +229,41 @@ namespace DraxTechnology.Panels
             else
                 zone = extension + (256 * extension2);
 
-            // Device-type field: literal if prefixed with $, otherwise raw numeric code
+            // Device-type field: literal text if prefixed with $, otherwise look up
+            // by numeric code (Ziton modules use a different table keyed on hex).
             string rawDevType = GetField(parts, F_DeviceType);
-            string sDeviceType = rawDevType.StartsWith("$") ? rawDevType.Substring(1) : rawDevType;
+            string sDeviceType;
+            if (rawDevType.StartsWith("$"))
+            {
+                sDeviceType = rawDevType.Substring(1);
+            }
+            else
+            {
+                int devTypeCode = ParseInt(rawDevType);
+                if (state.ModuleType == "ZI")
+                    sDeviceType = RsmLookups.GetZitonDeviceType(devTypeCode, inputType, extension2);
+                else
+                    sDeviceType = RsmLookups.GetDeviceType(devTypeCode, state.ModuleType);
+            }
 
             // Truncate device text per module type (VB rules)
             int maxTextLen = (state.ModuleType == "AD") ? 26 : 40;
             if (deviceText.Length > maxTextLen)
                 deviceText = deviceText.Substring(0, maxTextLen);
 
-            // Module restart status: shifts deviceText into deviceType, replaces with banner
+            // Status-15 events (LoopNum=0, InputType=15) get a fixed device-text override.
+            // Module-restart rows additionally shift the prior deviceText into sDeviceType
+            // (typically the firmware version reported on startup).
             if (loopNum == 0 && inputType == 15)
             {
-                if (state.ModuleType == "AD" && address == 253)
+                string statusText = RsmLookups.GetStatusText(state.ModuleType, address, onOff);
+                if (statusText != null)
                 {
-                    sDeviceType = deviceText;
-                    deviceText = "RSM Module Startup";
-                }
-                else if (state.ModuleType != "AD" && address == 10)
-                {
-                    sDeviceType = deviceText;
-                    deviceText = "RSM Module Startup";
+                    if (RsmLookups.IsModuleRestart(state.ModuleType, address))
+                    {
+                        sDeviceType = deviceText;
+                    }
+                    deviceText = statusText;
                 }
             }
 
@@ -250,6 +279,23 @@ namespace DraxTechnology.Panels
             }
 
             bool on = onOff != 0;
+
+            // VB NodeInUse override: events from a module whose IP isn't in the
+            // configured device list are routed to address 248 with input-type 15
+            // ("Event from a node that is not in use") so AMX can flag them.
+            // We use the in-memory devicesByIP loaded from the client's devices.json
+            // as the "in use" list — empty list means no filtering.
+            if (devicesByIP.Count > 0
+                && !string.IsNullOrEmpty(state.LastKnownIP)
+                && !devicesByIP.ContainsKey(state.LastKnownIP))
+            {
+                loopNum = 0;
+                address = 248;
+                inputType = 15;
+                deviceText = "Event from a node that is not in use";
+                sDeviceType = "";
+                zoneText = "";
+            }
 
             int evnum = CSAMXSingleton.CS.MakeInputNumber(state.ModuleNumber + Offset, loopNum, address, inputType, on);
             CSAMXSingleton.CS.SendAlarmToAMX(evnum, deviceText, sDeviceType, zoneText);
@@ -333,7 +379,7 @@ namespace DraxTechnology.Panels
 
         #region helpers
 
-        private ModuleState TouchModule(int moduleNumber, string ip, string moduleType, string serialNumber)
+        private ModuleState TouchModule(int moduleNumber, string ip, string moduleType, string serialNumber, NetworkStream stream)
         {
             string friendlyName = "";
             if (!string.IsNullOrEmpty(ip) && devicesByIP.TryGetValue(ip, out ClientDevice known))
@@ -356,7 +402,37 @@ namespace DraxTechnology.Panels
                 state.RXmessages++;
                 if (!string.IsNullOrEmpty(moduleType)) state.ModuleType = moduleType;
                 if (!string.IsNullOrEmpty(serialNumber)) state.SerialNumber = serialNumber;
+                // Outbound write target for this module's connection.
+                if (stream != null) state.Stream = stream;
                 return state;
+            }
+        }
+
+        /// <summary>
+        /// Called by rsmHandleClient when the TCP connection closes. Clears the
+        /// outbound write target if it's still pointing at this stream (a newer
+        /// connection from the same module would have already replaced it).
+        /// </summary>
+        public void UnregisterStream(int moduleNumber, NetworkStream stream)
+        {
+            lock (modulesLock)
+            {
+                if (modules.TryGetValue(moduleNumber, out ModuleState state)
+                    && ReferenceEquals(state.Stream, stream))
+                {
+                    state.Stream = null;
+                    this.NotifyClient($"Disconnected {Label(state)}", false);
+                }
+            }
+        }
+
+        private int NextMessageID()
+        {
+            lock (messageIDLock)
+            {
+                int id = nextMessageID++;
+                if (nextMessageID > 9999) nextMessageID = 1;
+                return id;
             }
         }
 
@@ -495,62 +571,105 @@ namespace DraxTechnology.Panels
             public string IP { get; set; }
         }
 
-        #region commands out (placeholder — TX path not yet wired)
+        #region commands out (TX path — writes scrambled CMD packets to the
+        // module's open TCP connection. Wire format mirrors VB6 MakeNewMessage:
+        //   STX + Scramble("CMD;{ID};{Node};{Serial};;{cmdToPanel};{params}") + ETX
 
-        public override void Evacuate(string passedvalues)
+        // Mirror of VB6 cmdToPanel enum (RSMenum.bas). Position-sensitive — the
+        // numeric values are the wire protocol. Don't reorder.
+        private enum CmdToPanel
         {
-            send_message(ActionType.kEVACTUATE, NwmData.AlarmToAmx, passedvalues);
-        }
-        public override void Alert(string passedvalues) { }
-        public override void EvacuateNetwork(string passedvalues)
-        {
-            send_message(ActionType.kEVACTUATENETWORK, NwmData.AlarmToAmx, passedvalues);
-        }
-        public override void Silence(string passedvalues)
-        {
-            send_message(ActionType.kSILENCE, NwmData.AlarmToAmx, passedvalues);
-        }
-        public override void MuteBuzzers(string passedvalues)
-        {
-            send_message(ActionType.kMUTEBUZZERS, NwmData.AlarmToAmx, passedvalues);
-        }
-        public override void Reset(string passedvalues)
-        {
-            send_message(ActionType.kRESET, NwmData.AlarmToAmx, passedvalues);
-        }
-        public override void DisableDevice(string passedvalues)
-        {
-            send_message(ActionType.kDISABLEDEVICE, NwmData.IsolationToAmx, passedvalues);
-        }
-        public override void EnableDevice(string passedvalues)
-        {
-            send_message(ActionType.kENABLEDEVICE, NwmData.IsolationToAmx, passedvalues);
-        }
-        public override void DisableZone(string passedvalues)
-        {
-            send_message(ActionType.kDISABLEZONE, NwmData.IsolationToAmx, passedvalues);
-        }
-        public override void EnableZone(string passedvalues)
-        {
-            send_message(ActionType.kENABLEZONE, NwmData.IsolationToAmx, passedvalues);
-        }
-        public override void Analogue(string passedvalues)
-        {
-            throw new NotImplementedException();
+            MuteBuzzer = 0,
+            Evacuate = 1,
+            SilenceAlarms = 2,
+            Reset = 3,
+            ResoundAlarms = 4,
+            DisableDevice = 5,
+            EnableDevice = 6,
+            DisableZone = 7,
+            EnableZone = 8,
+            // 9..36 omitted — add as needed; values must still match VB enum order
+            EvacuateNetwork = 37,
+            SilenceNetworkAlarms = 38,
+            MuteNetworkBuzzers = 39,
+            ResetNetwork = 40,
         }
 
-        private void send_message(ActionType action, NwmData type, string passedvalues)
+        public override void Evacuate(string passedvalues)        { SendCommand(CmdToPanel.Evacuate,         passedvalues); }
+        public override void Alert(string passedvalues)           { /* no Alert verb in cmdToPanel — panels don't accept this */ }
+        public override void EvacuateNetwork(string passedvalues) { SendCommand(CmdToPanel.EvacuateNetwork,  passedvalues); }
+        public override void Silence(string passedvalues)         { SendCommand(CmdToPanel.SilenceAlarms,    passedvalues); }
+        public override void MuteBuzzers(string passedvalues)     { SendCommand(CmdToPanel.MuteBuzzer,       passedvalues); }
+        public override void Reset(string passedvalues)           { SendCommand(CmdToPanel.Reset,            passedvalues); }
+        public override void DisableDevice(string passedvalues)   { SendCommand(CmdToPanel.DisableDevice,    passedvalues, withDeviceParams: true); }
+        public override void EnableDevice(string passedvalues)    { SendCommand(CmdToPanel.EnableDevice,     passedvalues, withDeviceParams: true); }
+        public override void DisableZone(string passedvalues)     { SendCommand(CmdToPanel.DisableZone,      passedvalues, withDeviceParams: true); }
+        public override void EnableZone(string passedvalues)      { SendCommand(CmdToPanel.EnableZone,       passedvalues, withDeviceParams: true); }
+        public override void Analogue(string passedvalues)        { throw new NotImplementedException(); }
+
+        /// <summary>
+        /// Resolves the target module from passedvalues' first CSV field
+        /// ("node,loop,zone,device") with the AMX offset applied in reverse,
+        /// then writes a scrambled CMD packet to that module's open TCP
+        /// connection. No-ops with a log line if the target isn't connected.
+        /// </summary>
+        private void SendCommand(CmdToPanel cmd, string passedvalues, bool withDeviceParams = false)
         {
-            string[] parts = passedvalues.Split(',');
-            int node = 1, loop = 0, zone = 0, device = 0, inputtype = 0;
+            string[] parts = string.IsNullOrEmpty(passedvalues) ? new string[0] : passedvalues.Split(',');
+            int node = parts.Length > 0 ? ParseInt(parts[0]) : 0;
+            int loop = parts.Length > 1 ? ParseInt(parts[1]) : 0;
+            int zone = parts.Length > 2 ? ParseInt(parts[2]) : 0;
+            int device = parts.Length > 3 ? ParseInt(parts[3]) : 0;
 
-            if (parts.Length > 0) int.TryParse(parts[0], out node);
-            if (parts.Length > 1) int.TryParse(parts[1], out loop);
-            if (parts.Length > 2) int.TryParse(parts[2], out zone);
-            if (parts.Length > 3) int.TryParse(parts[3], out device);
+            // Inbound EVTs report (Node + Offset) as the module identifier in AMX;
+            // outbound commands target the raw ModuleNumber stored in ModuleState.
+            int targetModule = node - this.Offset;
 
-            node = node + this.Offset;
-            SendEvent("RSM", type, inputtype, "", true, node, loop, device);
+            ModuleState state;
+            NetworkStream stream;
+            lock (modulesLock)
+            {
+                if (!modules.TryGetValue(targetModule, out state))
+                {
+                    this.NotifyClient($"SendCommand {cmd}: module {targetModule} (from node {node} - offset {Offset}) not known", false);
+                    return;
+                }
+                stream = state.Stream;
+            }
+            if (stream == null)
+            {
+                this.NotifyClient($"SendCommand {cmd} {Label(state)}: not currently connected", false);
+                return;
+            }
+
+            // Build the DataPacket. Panel-wide verbs need just the cmd value;
+            // device/zone verbs append loop, address, sub-address (zone here).
+            string dataPacket = ((int)cmd).ToString();
+            if (withDeviceParams)
+            {
+                dataPacket += kSeparator + loop + kSeparator + device + kSeparator + zone;
+            }
+
+            int messageID = NextMessageID();
+            string body = "CMD" + kSeparator + messageID + kSeparator + targetModule + kSeparator
+                          + (state.SerialNumber ?? "") + kSeparator + kSeparator + dataPacket;
+            byte[] bytes = scrambleandencodemessage(body);
+
+            lock (state.WriteLock)
+            {
+                try
+                {
+                    stream.Write(bytes, 0, bytes.Length);
+                    stream.Flush();
+                }
+                catch (Exception ex)
+                {
+                    this.NotifyClient($"SendCommand {cmd} {Label(state)} write failed: {ex.Message}", false);
+                    return;
+                }
+            }
+
+            this.NotifyClient($"SendCommand {cmd} -> {Label(state)} (msgID={messageID}, params='{dataPacket}')", false);
         }
 
         #endregion

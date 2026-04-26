@@ -86,6 +86,7 @@
     <Compile Include="Panels\PanelMorleyZX.cs" />
     <Compile Include="Panels\PanelSyncro.cs" />
     <Compile Include="Panels\PanelRSM.cs" />
+    <Compile Include="Panels\RsmLookups.cs" />
     <Compile Include="Panels\PanelPearl.cs" />
     <Compile Include="Panels\PanelNotifier.cs" />
     <Compile Include="Panels\PanelTaktis.cs" />
