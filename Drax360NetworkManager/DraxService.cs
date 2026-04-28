@@ -1749,7 +1749,11 @@ namespace DraxTechnology
                         foreach (var p in abstractpanels) p.MuteBuzzers(passedvalues);
                         break;
                     case NwmData.IsolationToNwm:
-                        foreach (var p in abstractpanels) p.DisableDevice(passedvalues);
+                        // VB legacy: Dat(12)==0 -> Enable, !=0 -> Disable. In NVM that flag is `On`.
+                        if (rec.On != 0)
+                            foreach (var p in abstractpanels) p.DisableDevice(passedvalues);
+                        else
+                            foreach (var p in abstractpanels) p.EnableDevice(passedvalues);
                         break;
                     default:
                         ln("MTX dispatch: unhandled OurType " + (int)rec.OurType + " (" + rec.OurType + ")");
