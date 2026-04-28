@@ -857,13 +857,12 @@ namespace DraxTechnology.Panels
             MorleyGetDeviceStatus((byte)p2, (byte)p3, (byte)p4);
         }
 
+        // Note: not using AbstractPanel.send_response_amx because Morley ZX swaps
+        // message1 and message2 when forwarding to AMX. Confirm against panel before unifying.
         private void send_response_amx(int evnum, string message1, string message2, string message3 = "")
         {
             string friendlymessage = message2 + (message3.Length > 0 ? (" " + message3) : "");
-
-            // Signal the event back to the main service, so that it can be logged
             this.NotifyClient(friendlymessage, false);
-
             CSAMXSingleton.CS.SendAlarmToAMX(evnum, message2, message1, message3);
             CSAMXSingleton.CS.FlushMessages();
         }
@@ -1105,14 +1104,7 @@ namespace DraxTechnology.Panels
 
         public virtual void send_message(ActionType action, string passedvalues)
         {
-            string[] parts = passedvalues.Split(',');
-
-            int node = 1, loop = 0, zone = 0, device = 0;
-
-            if (parts.Length > 0) int.TryParse(parts[0], out node);
-            if (parts.Length > 1) int.TryParse(parts[1], out loop);
-            if (parts.Length > 2) int.TryParse(parts[2], out zone);
-            if (parts.Length > 3) int.TryParse(parts[3], out device);
+            ParsePassedValues(passedvalues, out int node, out int loop, out int zone, out int device);
 
             DateTime now = DateTime.Now;
 

@@ -1010,14 +1010,7 @@ namespace DraxTechnology.Panels
         }
         public virtual void send_message(ActionType action, string passedvalues)
         {
-            string[] parts = passedvalues.Split(',');
-
-            int node = 1, loop = 0, zone = 0, device = 0;
-
-            if (parts.Length > 0) int.TryParse(parts[0], out node);
-            if (parts.Length > 1) int.TryParse(parts[1], out loop);
-            if (parts.Length > 2) int.TryParse(parts[2], out zone);
-            if (parts.Length > 3) int.TryParse(parts[3], out device);
+            ParsePassedValues(passedvalues, out int node, out int loop, out int zone, out int device);
 
             string loopStr = loop.ToString("D2"); // Pads with leading zeros to 2 digits
             string zoneStr = zone.ToString("D5"); // Pads with leading zeros to 5 digits

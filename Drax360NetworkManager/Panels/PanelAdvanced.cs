@@ -291,14 +291,7 @@ namespace DraxTechnology.Panels
         }
         public override void DisableDevice(string passedvalues)
         {
-            string[] parts = passedvalues.Split(',');
-
-            int node = 1, loop = 0, zone = 0, device = 0;
-
-            if (parts.Length > 0) int.TryParse(parts[0], out node);
-            if (parts.Length > 1) int.TryParse(parts[1], out loop);
-            if (parts.Length > 2) int.TryParse(parts[2], out zone);
-            if (parts.Length > 3) int.TryParse(parts[3], out device);
+            ParsePassedValues(passedvalues, out int node, out int loop, out int zone, out int device);
 
             Byte[] devicedisable = new Byte[] { 70, 0, 0x85, 1, (byte)node, (byte)device, 0, 1 };
 
@@ -318,14 +311,7 @@ namespace DraxTechnology.Panels
         }
         public override void EnableDevice(string passedvalues)
         {
-            string[] parts = passedvalues.Split(',');
-
-            int node = 1, loop = 0, zone = 0, device = 0;
-
-            if (parts.Length > 0) int.TryParse(parts[0], out node);
-            if (parts.Length > 1) int.TryParse(parts[1], out loop);
-            if (parts.Length > 2) int.TryParse(parts[2], out zone);
-            if (parts.Length > 3) int.TryParse(parts[3], out device);
+            ParsePassedValues(passedvalues, out int node, out int loop, out int zone, out int device);
 
             Byte[] enabledevice = new Byte[] { 70, 0, 0x85, 1, (byte)node, (byte)device, 0, 0 };
 
@@ -345,14 +331,7 @@ namespace DraxTechnology.Panels
 
         public override void DisableZone(string passedvalues)
         {
-            string[] parts = passedvalues.Split(',');
-
-            int node = 1, loop = 0, zone = 0, device = 0;
-
-            if (parts.Length > 0) int.TryParse(parts[0], out node);
-            if (parts.Length > 1) int.TryParse(parts[1], out loop);
-            if (parts.Length > 2) int.TryParse(parts[2], out zone);
-            if (parts.Length > 3) int.TryParse(parts[3], out device);
+            ParsePassedValues(passedvalues, out int node, out int loop, out int zone, out int device);
 
             byte lowByte = (byte)(zone % 256);
             byte highByte = (byte)(zone / 256);
@@ -372,14 +351,7 @@ namespace DraxTechnology.Panels
         }
         public override void EnableZone(string passedvalues)
         {
-            string[] parts = passedvalues.Split(',');
-
-            int node = 1, loop = 0, zone = 0, device = 0;
-
-            if (parts.Length > 0) int.TryParse(parts[0], out node);
-            if (parts.Length > 1) int.TryParse(parts[1], out loop);
-            if (parts.Length > 2) int.TryParse(parts[2], out zone);
-            if (parts.Length > 3) int.TryParse(parts[3], out device);
+            ParsePassedValues(passedvalues, out int node, out int loop, out int zone, out int device);
 
             byte lowByte = (byte)(zone % 256);
             byte highByte = (byte)(zone / 256);
@@ -901,16 +873,6 @@ namespace DraxTechnology.Panels
             return result.ToArray();
         }
 
-        private void send_response_amx(int evnum, string message1, string message2, string message3 = "")
-        {
-            string friendlymessage = message2 + (message3.Length > 0 ? (" " + message3) : "");
-
-            // Signal the event back to the main service, so that it can be logged
-            this.NotifyClient(friendlymessage, false);
-
-            CSAMXSingleton.CS.SendAlarmToAMX(evnum, message1, message2, message3);
-            CSAMXSingleton.CS.FlushMessages();
-        }
         // Advanced chunker to handle length-prefixed chunks with end byte
         private List<byte[]> advancedchunker(int lengthofchar, byte[] data, byte end, out int removelength)
         {

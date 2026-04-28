@@ -292,12 +292,32 @@ namespace DraxTechnology.Panels
             serialsend(Encoding.ASCII.GetBytes(toSend));
         }
 
+        protected void send_response_amx(int evnum, string message1, string message2, string message3 = "")
+        {
+            string friendlymessage = message2 + (message3.Length > 0 ? (" " + message3) : "");
+            this.NotifyClient(friendlymessage, false);
+            CSAMXSingleton.CS.SendAlarmToAMX(evnum, message1, message2, message3);
+            CSAMXSingleton.CS.FlushMessages();
+        }
+
         protected void send_response_amx_disable(int evnum, string message1, string message2, string message3, bool on)
         {
             string friendlymessage = message2 + (message3.Length > 0 ? (" " + message3) : "");
             this.NotifyClient(friendlymessage, false);
             CSAMXSingleton.CS.SendAlarmToAMX_disable(evnum, message1, message2, message3, on);
             CSAMXSingleton.CS.FlushMessages();
+        }
+
+        // CSV passedvalues format is "node,loop,zone,device". Defaults match the
+        // historic init values (node=1, others=0) so missing slots behave as before.
+        protected static void ParsePassedValues(string passedvalues, out int node, out int loop, out int zone, out int device)
+        {
+            node = 1; loop = 0; zone = 0; device = 0;
+            string[] parts = (passedvalues ?? "").Split(',');
+            if (parts.Length > 0) int.TryParse(parts[0], out node);
+            if (parts.Length > 1) int.TryParse(parts[1], out loop);
+            if (parts.Length > 2) int.TryParse(parts[2], out zone);
+            if (parts.Length > 3) int.TryParse(parts[3], out device);
         }
         #endregion
 

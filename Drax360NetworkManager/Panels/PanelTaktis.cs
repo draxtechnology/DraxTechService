@@ -1972,16 +1972,6 @@ namespace DraxTechnology.Panels
             }
         }
 
-        private void send_response_amx(int evnum, string message1, string message2, string message3 = "")
-        {
-            string friendlymessage = message2 + (message3.Length > 0 ? (" " + message3) : "");
-
-            // Signal the event back to the main service, so that it can be logged
-            this.NotifyClient(friendlymessage, false);
-
-            CSAMXSingleton.CS.SendAlarmToAMX(evnum, message1, message2, message3);
-            CSAMXSingleton.CS.FlushMessages();
-        }
 
 
         #endregion

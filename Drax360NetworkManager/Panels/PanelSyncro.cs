@@ -1792,14 +1792,8 @@ namespace DraxTechnology.Panels
         }
         private void send_message(ActionType action, NwmData type, string passedvalues)
         {
-            string[] parts = passedvalues.Split(',');
-
-            int node = 1, loop = 0, zone = 0, device = 0, inputtype = 0;
-
-            if (parts.Length > 0) int.TryParse(parts[0], out node);
-            if (parts.Length > 1) int.TryParse(parts[1], out loop);
-            if (parts.Length > 2) int.TryParse(parts[2], out zone);
-            if (parts.Length > 3) int.TryParse(parts[3], out device);
+            ParsePassedValues(passedvalues, out int node, out int loop, out int zone, out int device);
+            int inputtype = 0;
 
             DateTime now = DateTime.Now;
 
