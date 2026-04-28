@@ -114,7 +114,11 @@ namespace DraxTechnology
                     }
                     if (msg.Contains("|"))
                     {
-                        ProcessAmxTransfer(msg);
+                        // Pipe-delimited AMX Graphic command. parts[8] is the command
+                        // code (108/109/110/111). Hand off to the live DraxService.
+                        string[] parts = msg.Split(kpipedelim);
+                        if (parts.Length > 8)
+                            DraxService.OnAmxPipeCommand?.Invoke(parts);
                     }
                 }
                 ;
@@ -126,18 +130,6 @@ namespace DraxTechnology
                 _connected = false;
                 NotifyClient("AMX Connection failed: " + ex.Message);
             }
-        }
-
-        private void ProcessAmxTransfer(string msg)
-        {
-            if (string.IsNullOrEmpty(msg) || !msg.Contains("|"))
-                return;
-            string[] parts = msg.Split(kpipedelim);
-            if (parts.Length <= 8)
-                return;
-
-            // Hand off to the live DraxService instance (which owns abstractpanels).
-            DraxService.OnAmxPipeCommand?.Invoke(parts);
         }
 
         public void NotifyClient(string message)
