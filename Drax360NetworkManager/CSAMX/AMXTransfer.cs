@@ -135,21 +135,9 @@ namespace DraxTechnology
             string[] parts = msg.Split(kpipedelim);
             if (parts.Length <= 8)
                 return;
-            string command = parts[8];
-            switch (command)
-            {
-                case "108": // Device disable from AMX Graphic
-        //            foreach (var p in abstractpanels)
-        //                p.DisableDevice(parts);
-                    break;
-                // Future AMX command types can be added here
-                // case "109":
-                //     ...
-                //     break;
-                default:
-                    // Optional: log unknown command types
-                    break;
-            }
+
+            // Hand off to the live DraxService instance (which owns abstractpanels).
+            DraxService.OnAmxPipeCommand?.Invoke(parts);
         }
 
         public void NotifyClient(string message)

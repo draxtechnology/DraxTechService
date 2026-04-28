@@ -848,6 +848,7 @@ namespace DraxTechnology
 
             // Make this instance reachable from AMXTransfer's MTX: handler.
             OnManualControlFile = this.DispatchAmxFile;
+            OnAmxPipeCommand = this.DispatchAmxPipeCommand;
 
             // used to just load our settings from the ini file
             AbstractPanel apbase = getpanel();
@@ -1712,6 +1713,53 @@ namespace DraxTechnology
         // Set during init_service so AMXTransfer can dispatch MTX: file contents
         // back into the live DraxService instance (which owns abstractpanels).
         public static Action<string> OnManualControlFile;
+
+        // Set during init_service so AMXTransfer.ProcessAmxTransfer can dispatch
+        // pipe-delimited AMX Graphic commands ("|"-split) into the live instance.
+        public static Action<string[]> OnAmxPipeCommand;
+
+        /// <summary>
+        /// Pipe-delimited command from AMX Graphic. parts[8] is the command code.
+        /// Slot meanings follow the legacy VB sub-code convention (DLL.Dat indices):
+        ///   parts[13] = panel, parts[14] = loop, parts[15] = device address.
+        /// </summary>
+        public void DispatchAmxPipeCommand(string[] parts)
+        {
+            if (parts == null || parts.Length <= 8) return;
+
+            string command = parts[8];
+            string panelStr = parts.Length > 13 ? parts[13] : "0";
+            string loopStr  = parts.Length > 14 ? parts[14] : "0";
+            string devStr   = parts.Length > 15 ? parts[15] : "0";
+            string passedvalues = panelStr + "," + loopStr + ",0," + devStr;
+            string zonepv = "0,0," + panelStr + ",0";  // zone packed where AMX Graphic puts it
+
+            try
+            {
+                switch (command)
+                {
+                    case "108": // Disable Device
+                        foreach (var p in abstractpanels) p.DisableDevice(passedvalues);
+                        break;
+                    case "109": // Enable Device
+                        foreach (var p in abstractpanels) p.EnableDevice(passedvalues);
+                        break;
+                    case "110": // Disable Zone
+                        foreach (var p in abstractpanels) p.DisableZone(zonepv);
+                        break;
+                    case "111": // Enable Zone
+                        foreach (var p in abstractpanels) p.EnableZone(zonepv);
+                        break;
+                    default:
+                        ln("AMX pipe: unhandled command " + command);
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                ln("AMX pipe dispatch error: " + ex.Message);
+            }
+        }
 
         /// <summary>
         /// Decode an AMX-written .MTN file (NVM struct format) and dispatch the
