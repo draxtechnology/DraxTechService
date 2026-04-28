@@ -593,7 +593,7 @@ namespace DraxTechnology
         const string ksettingpanelsection = "PANEL";
         const string ksettingmainsection = "MAIN";
 
-        const string CURRENTNWMDATAFILE = @"c:\amx1\Temp\Current.Nwm";  //TODO not code c:\amx1
+        const string CURRENTNWMDATAFILE = @"c:\AMX1\Temp\Current.Nwm";  //TODO not code c:\AMX1
 
         // Todo can these be an enum?
 
