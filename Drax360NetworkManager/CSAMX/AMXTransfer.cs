@@ -1,4 +1,5 @@
-﻿using System;
+﻿using DraxTechnology.Panels;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -14,6 +15,8 @@ namespace DraxTechnology
 {
     internal class AMXTransfer
     {
+        const char kpipedelim = '|';
+
         public event EventHandler OutsideEvents;
 
         private int _port = 3090;
@@ -109,6 +112,10 @@ namespace DraxTechnology
                             AMXTransfer.Instance.SendMessage(fileaname);
                         }
                     }
+                    if (msg.Contains("|"))
+                    {
+                        ProcessAmxTransfer(msg);
+                    }
                 }
                 ;
 
@@ -118,6 +125,30 @@ namespace DraxTechnology
             {
                 _connected = false;
                 NotifyClient("AMX Connection failed: " + ex.Message);
+            }
+        }
+
+        private void ProcessAmxTransfer(string msg)
+        {
+            if (string.IsNullOrEmpty(msg) || !msg.Contains("|"))
+                return;
+            string[] parts = msg.Split(kpipedelim);
+            if (parts.Length <= 8)
+                return;
+            string command = parts[8];
+            switch (command)
+            {
+                case "108": // Device disable from AMX Graphic
+        //            foreach (var p in abstractpanels)
+        //                p.DisableDevice(parts);
+                    break;
+                // Future AMX command types can be added here
+                // case "109":
+                //     ...
+                //     break;
+                default:
+                    // Optional: log unknown command types
+                    break;
             }
         }
 

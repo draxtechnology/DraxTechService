@@ -285,8 +285,27 @@ namespace DraxTechnology.Panels
 
                         case 2:
                             message2 = "Faults Cleared";
-                            p1 = 8; p2 = sPanelNumber;
-                            p3 = 0; p4 = 21;
+                            p1 = 15; p2 = sPanelNumber;
+                            p3 = 0;
+                            switch (sLoopNumber)
+                            {
+                                case 1: p4 = 21; break;
+                                case 2: p4 = 22; break;
+                                case 3: p4 = 23; break;
+                                case 4: p4 = 24; break;
+                                case 5: p4 = 25; break;
+                                case 6: p4 = 26; break;
+                                case 7: p4 = 27; break;
+                                case 8: p4 = 28; break;
+                                case 9: p4 = 29; break;
+                                case 10: p4 = 30; break;
+                                case 11: p4 = 31; break;
+                                case 12: p4 = 32; break;
+                                case 13: p4 = 33; break;
+                                case 14: p4 = 34; break;
+                                case 15: p4 = 35; break;
+                                case 16: p4 = 36; break;
+                            }
 
                             p2 = p2 + this.Offset;
 
@@ -484,12 +503,22 @@ namespace DraxTechnology.Panels
                     break;
 
                 case 9:
-                    message2 = "Fire";
-                    p1 = 15; p2 = sPanelNumber;
-                    p3 = sLoopNumber; p4 = 54;
+                    if (sMSB == 1)  // Call Point
+                    {
+                        message2 = gsTextField;
+                        p1 = 0; p2 = sPanelNumber;
+                        p3 = sLoopNumber; p4 = AddressNumber;
 
-                    p2 = p2 + this.Offset;
+                        p2 = p2 + this.Offset;
+                    }
+                    else
+                    {
+                        message2 = "Fire";
+                        p1 = 15; p2 = sPanelNumber;
+                        p3 = sLoopNumber; p4 = 54;
 
+                        p2 = p2 + this.Offset;
+                    }
                     evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
                     send_response_amx_and_serial(evnum, "", message2);
                     break;
@@ -520,7 +549,6 @@ namespace DraxTechnology.Panels
                     this.NotifyClient("Unknown sMSB: " + sMSB + " sLSB: " + sLSB, false);
                     break;
             }
-
             return true;
         }
 
@@ -835,6 +863,7 @@ namespace DraxTechnology.Panels
 
             if (action == ActionType.kMUTEBUZZERS)
             {
+                text = "Mute Buzzers";
                 gbaryDataToTX[0] = 18;
             }
 
