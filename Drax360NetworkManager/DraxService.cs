@@ -1748,6 +1748,9 @@ namespace DraxTechnology
                     case NwmData.BuzzerMuteToNwm:
                         foreach (var p in abstractpanels) p.MuteBuzzers(passedvalues);
                         break;
+                    case NwmData.IsolationToNwm:
+                        foreach (var p in abstractpanels) p.DisableDevice(passedvalues);
+                        break;
                     default:
                         ln("MTX dispatch: unhandled OurType " + (int)rec.OurType + " (" + rec.OurType + ")");
                         break;
