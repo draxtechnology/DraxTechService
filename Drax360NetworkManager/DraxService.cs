@@ -64,7 +64,9 @@ namespace DraxTechnology
         ForceEVMAttrToAmx = 17,
         EventOutputToNwm = 18,
         StartTestToNwm = 19,
-        endTestToNwm = 20
+        endTestToNwm = 20,
+        ZoneIsolateToNwm = 110,
+        ZoneEnableToNwm = 111
     }
     public enum enmEventType
     {
@@ -1755,6 +1757,18 @@ namespace DraxTechnology
                         else
                             foreach (var p in abstractpanels) p.EnableDevice(passedvalues);
                         break;
+                    case NwmData.ZoneIsolateToNwm:
+                    case NwmData.ZoneEnableToNwm:
+                    {
+                        // VB legacy: zone packed in OurEvent's node field; passedvalues for
+                        // (En|Dis)ableZone is "node,loop,zone,device" so put zone in slot 2.
+                        string zonepv = "0,0," + rec.EventNode + ",0";
+                        if (rec.OurType == NwmData.ZoneIsolateToNwm)
+                            foreach (var p in abstractpanels) p.DisableZone(zonepv);
+                        else
+                            foreach (var p in abstractpanels) p.EnableZone(zonepv);
+                        break;
+                    }
                     default:
                         ln("MTX dispatch: unhandled OurType " + (int)rec.OurType + " (" + rec.OurType + ")");
                         break;
