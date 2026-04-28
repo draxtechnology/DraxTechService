@@ -735,16 +735,6 @@ namespace DraxTechnology.Panels
 
             Console.WriteLine(stracknowledge.Replace("\r", "") + " Sent to Panel");
         }
-        private void send_response_amx_disable(int evnum, string message1, string message2, string message3, bool on)
-        {
-            string friendlymessage = message2 + (message3.Length > 0 ? (" " + message3) : "");
-
-            // Signal the event back to the main service, so that it can be logged
-            this.NotifyClient(friendlymessage, false);
-
-            CSAMXSingleton.CS.SendAlarmToAMX_disable(evnum, message1, message2, message3, on);
-            CSAMXSingleton.CS.FlushMessages();
-        }
         public void GetDeviceTypeText(int piDeviceType)
         {
             gsDeviceText = "";

@@ -569,16 +569,6 @@ namespace DraxTechnology.Panels
                 CSAMXSingleton.CS.FlushMessages();
             }   
         }
-        private void send_response_amx_disable(int evnum, string message1, string message2, string message3, bool on)
-        {
-            string friendlymessage = message2 + (message3.Length > 0 ? (" " + message3) : "");
-
-            // Signal the event back to the main service, so that it can be logged
-            this.NotifyClient(friendlymessage, false);
-
-            CSAMXSingleton.CS.SendAlarmToAMX_disable(evnum, message1, message2, message3, on);
-            CSAMXSingleton.CS.FlushMessages();
-        }
         private bool gentchecksumvalidation(int piMSB, int piLSB, byte[] paryMessage, out int oiMSB, out int oiLSB)
         {
             int iMsgCheckSum = 0;
