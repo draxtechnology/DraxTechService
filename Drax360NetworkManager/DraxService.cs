@@ -1728,12 +1728,9 @@ namespace DraxTechnology
             if (parts == null || parts.Length <= 8) return;
 
             string command = parts[8];
-            //string panelStr = parts.Length > 13 ? parts[13] : "0";
-            //string loopStr  = parts.Length > 14 ? parts[14] : "0";
-            //string devStr   = parts.Length > 15 ? parts[15] : "0";
-            string panelStr = parts.Length > 9 ? parts[9] : "0";
-            string loopStr = parts.Length > 10 ? parts[10] : "0";
-            string devStr = parts.Length > 11 ? parts[11] : "0";
+            string panelStr = parts.Length > 13 ? parts[13] : "0";
+            string loopStr  = parts.Length > 14 ? parts[14] : "0";
+            string devStr   = parts.Length > 15 ? parts[15] : "0";
             string passedvalues = panelStr + "," + loopStr + ",0," + devStr;
             string zonepv = "0,0," + panelStr + ",0";  // zone packed where AMX Graphic puts it
 
