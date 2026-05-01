@@ -311,13 +311,14 @@ namespace DraxTechnology.Panels
                         base.NotifyClient("Send to AMX: Node = " + (giNodeNumber + this.Offset) + " Loop = " + giLoopNumber + " Address = " + giDeviceAddress);
 
                         send_response_amx_and_serial(evnum, gsTextField, "", gsDeviceText);
-                        GlobalData.oktosend = false;
                         Thread.Sleep(2000); // wait for 2 seconds before processing the next line
                     }
                 }
             }
             return true;
         }
+
+
         public bool CreateEventId(SqliteConnection conn, string node, string loop, string device ,string name)
         {
             // Try insert (ignore if exists)

@@ -35,13 +35,22 @@ namespace DraxTechnology
         private static AMXTransfer _instance;
         private static readonly object _lock = new object();
 
-        public static class GlobalData
-        {
-            public static bool oktosend = true;
-        }
         public async Task Run(string[] args)
         {
             await tcpconnect();
+        }
+
+        // Add near the top of the class
+        private static readonly ManualResetEventSlim _makAck = new ManualResetEventSlim(false);
+
+        public static void WaitForMak()
+        {
+            _makAck.Wait();
+        }
+
+        public static void ResetMak()
+        {
+            _makAck.Reset();
         }
         private async Task tcpconnect()
         {
@@ -94,7 +103,7 @@ namespace DraxTechnology
                         {
                             System.IO.File.Delete(fileaname);
                         }
-                        GlobalData.oktosend = true;
+                        _makAck.Set();  // ← release whichever panel is waiting
                     }
                     if (msg.StartsWith("MTX:"))
                     {
@@ -115,6 +124,7 @@ namespace DraxTechnology
                     if (msg.Contains("|"))
                     {
                         ProcessAmxTransfer(msg);
+                        SendMessage("?");  // Send your heartbeat query every second
                     }
                 }
                 ;
