@@ -60,7 +60,7 @@ Per-panel serial settings (baud rate, parity, data bits, stop bits, COM port) li
 
 ### Service installation
 
-- Service name: `DraxTechnology`, runs as `LocalService`, starts automatically.
+- Service name: `DraxTechnology`, runs as `LocalService`, **manual start** (set in `ProjectInstaller.Designer.cs`; Mike/James want a fresh install not to auto-start).
 - `ProjectInstaller.cs` handles Windows Service registration.
 - The `DraxServiceSetup` project (`.vdproj`) produces the installer.
 
