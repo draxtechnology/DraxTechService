@@ -3,6 +3,7 @@ using Microsoft.Data.Sqlite;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.IO.Ports;
 using System.Linq;
 using System.Management;
@@ -46,6 +47,34 @@ namespace DraxTechnology.Panels
         public int KSFUseLoop = 0;
         public int index = 0;
         public int giAnalogRequestLoop = 0;
+
+        // SQLite connection is opened once at construction and reused for the
+        // lifetime of the panel. Previously every parsed event opened, ran
+        // CREATE TABLE, and closed a fresh connection inside the per-line loop —
+        // that was both expensive and used a relative path ("events.db") which,
+        // for a service running as LocalService, resolved under C:\Windows\System32.
+        private SqliteConnection _eventsDb;
+        private readonly object _eventsDbLock = new object();
+
+        // Bumped whenever the [Events] schema changes; EnsureSchema migrates
+        // existing databases up to this version on startup.
+        private const int kEventsSchemaVersion = 1;
+
+        private const string kEventsCreateDdl =
+            "CREATE TABLE [Events] (" +
+            "    [Id]     INTEGER PRIMARY KEY AUTOINCREMENT, " +
+            "    [Node]   INTEGER NOT NULL, " +
+            "    [Loop]   INTEGER NOT NULL, " +
+            "    [Device] INTEGER NOT NULL, " +
+            "    [Name]   TEXT    NOT NULL UNIQUE" +
+            ");";
+
+        // In-memory cache of devicetext -> (node, loop, device). Pre-populated
+        // from the Events table at startup, then updated on each new INSERT.
+        // Repeat events hit only the cache; first-sight events do a single INSERT.
+        private readonly Dictionary<string, (int Node, int Loop, int Device)> _eventCache
+            = new Dictionary<string, (int, int, int)>(StringComparer.Ordinal);
+        private (int Node, int Loop, int Device) _nextAssignment = (1, 1, 0);
 
         public override string FakeString
         {
@@ -115,6 +144,35 @@ namespace DraxTechnology.Panels
                 heartbeat_timer = new System.Threading.Timer(heartbeat_timer_callback, this.Identifier, 500, kheartbeatdelayseconds * 1000);
                 this.Offset = base.GetSetting<int>(ksettingsetupsection, "giAmx1Offset");
                 KSFUseLoop = base.GetSetting<int>(ksettingsetupsection, "UseLoop");
+
+                string dbPath = Path.Combine(baselogfolder, "events.db");
+                _eventsDb = new SqliteConnection("Data Source=" + dbPath);
+                _eventsDb.Open();
+
+                EnsureSchema();
+
+                using (var loadCmd = _eventsDb.CreateCommand())
+                {
+                    loadCmd.CommandText =
+                        "SELECT [Name], [Node], [Loop], [Device] " +
+                        "FROM [Events] " +
+                        "ORDER BY [Id];";
+                    using var reader = loadCmd.ExecuteReader();
+                    while (reader.Read())
+                    {
+                        string name = reader.GetString(0);
+                        int node = reader.GetInt32(1);
+                        int loop = reader.GetInt32(2);
+                        int device = reader.GetInt32(3);
+                        _eventCache[name] = (node, loop, device);
+                        _nextAssignment = (node, loop, device);  // last row by id is the highest assignment
+                    }
+                }
+
+                this.NotifyClient(
+                    "ESPA Events DB: " + _eventCache.Count + " device(s) loaded into cache, " +
+                    "next assignment after (" + _nextAssignment.Node + "," +
+                    _nextAssignment.Loop + "," + _nextAssignment.Device + ")");
             }
         }
 
@@ -223,95 +281,50 @@ namespace DraxTechnology.Panels
                         giLoopNumber = 0;
                         giDeviceAddress = 0;
 
-                        using var connection = new SqliteConnection("Data Source=events.db");
-                        connection.Open();
-
-                        using var command = connection.CreateCommand();
-                        command.CommandText = "CREATE TABLE IF NOT EXISTS Events (Id INTEGER PRIMARY KEY AUTOINCREMENT,Node, Loop, Device, Name TEXT UNIQUE)";
-                        command.ExecuteNonQuery();
-
-
                         // Strip last word from gsTextField to get device text
-
                         string devicetext = gsTextField.Replace("-", "").Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? "";
 
-                        //  Search to see if the device text already exists in the database, if not insert it
-
-                        var selectCmd = connection.CreateCommand();
-                        selectCmd.CommandText = @"SELECT Id FROM Events WHERE Name = $name;";
-                        selectCmd.Parameters.AddWithValue("$name", devicetext);
-
-                        int id = 0;
-                        id = Convert.ToInt32(selectCmd.ExecuteScalar());
-
-                        if (id == 0)
+                        lock (_eventsDbLock)
                         {
-                            int node = 1;
-                            int loop = 1;
-                            int device = 0;
-
-                            using var cmd = connection.CreateCommand();
-                            // cmd.CommandText = @"SELECT node, [loop], device FROM Events ORDER BY node DESC, [loop] DESC, device DESC LIMIT 1;";
-                            cmd.CommandText = @"SELECT node, [loop], device FROM Events ORDER BY id DESC LIMIT 1;";
-
-                            using var reader = cmd.ExecuteReader();
-
-                            if (reader.Read())
+                            if (_eventCache.TryGetValue(devicetext, out var cached))
                             {
-                                node = reader.GetInt32(0);
-                                loop = reader.GetInt32(1);
-                                device = reader.GetInt32(2);
+                                giNodeNumber = cached.Node;
+                                giLoopNumber = cached.Loop;
+                                giDeviceAddress = cached.Device;
                             }
-
-                            // Increment logic
-                            device++;
-
-                            if (device > 254)
+                            else
                             {
-                                device = 1;
-                                loop++;
-
-                                if (loop > 254)
+                                var next = _nextAssignment;
+                                next.Device++;
+                                if (next.Device > 254)
                                 {
-                                    loop = 1;
-                                    node++;
-
-                                    if (node > 254)
+                                    next.Device = 1;
+                                    next.Loop++;
+                                    if (next.Loop > 254)
                                     {
-                                        throw new Exception("Maximum node/loop/device limit reached");
+                                        next.Loop = 1;
+                                        next.Node++;
+                                        if (next.Node > 254)
+                                        {
+                                            throw new Exception("Maximum node/loop/device limit reached");
+                                        }
                                     }
                                 }
-                            }
 
-                            giNodeNumber = node;
-                            giLoopNumber = loop;
-                            giDeviceAddress = device;
-                            CreateEventId(connection, giNodeNumber.ToString(), giLoopNumber.ToString(), giDeviceAddress.ToString(), devicetext);
-                        }
-                        else
-                        {
-                            selectCmd = connection.CreateCommand();
-                            selectCmd.CommandText = @"SELECT node, [loop], device FROM Events WHERE id = $id;";
-
-                            selectCmd.Parameters.AddWithValue("$id", id);
-
-                            using var reader = selectCmd.ExecuteReader();
-
-                            if (reader.Read())
-                            {
-                                giNodeNumber = reader.GetInt32(0);
-                                giLoopNumber = reader.GetInt32(1);
-                                giDeviceAddress = reader.GetInt32(2);
+                                giNodeNumber = next.Node;
+                                giLoopNumber = next.Loop;
+                                giDeviceAddress = next.Device;
+                                CreateEventId(_eventsDb, giNodeNumber, giLoopNumber, giDeviceAddress, devicetext);
+                                _eventCache[devicetext] = next;
+                                _nextAssignment = next;
                             }
                         }
-                        connection.Close();
 
                         evnum = CSAMXSingleton.CS.MakeInputNumber(giNodeNumber, giLoopNumber, giDeviceAddress, p1, on);
 
                         base.NotifyClient("Send to AMX: Node = " + (giNodeNumber + this.Offset) + " Loop = " + giLoopNumber + " Address = " + giDeviceAddress);
 
                         send_response_amx_and_serial(evnum, gsTextField, "", gsDeviceText);
-                        Thread.Sleep(2000); // wait for 2 seconds before processing the next line
                     }
                 }
             }
@@ -319,15 +332,121 @@ namespace DraxTechnology.Panels
         }
 
 
-        public bool CreateEventId(SqliteConnection conn, string node, string loop, string device ,string name)
+        // Bring the Events schema up to kEventsSchemaVersion. Runs at startup,
+        // is idempotent, and migrates legacy databases (untyped node/loop/device
+        // columns from the original DDL) up to the current INTEGER-typed schema.
+        private void EnsureSchema()
         {
-            // Try insert (ignore if exists)
-            var insertCmd = conn.CreateCommand();
-            insertCmd.CommandText = "INSERT OR IGNORE INTO Events(node, loop, device, Name) VALUES($node, $loop, $device, $name);";
-            insertCmd.Parameters.Add("$node", SqliteType.Text).Value = node;
-            insertCmd.Parameters.Add("$loop", SqliteType.Text).Value = loop;
-            insertCmd.Parameters.Add("$device", SqliteType.Text).Value = device;
-            insertCmd.Parameters.AddWithValue("$name", name);
+            int currentVersion = ExecScalarInt("PRAGMA user_version;");
+
+            bool tableExists = ExecScalarInt(
+                "SELECT count(*) FROM [sqlite_master] " +
+                "WHERE [type] = 'table' AND [name] = 'Events';") > 0;
+
+            this.NotifyClient(
+                "ESPA Events DB: schema check (current v" + currentVersion +
+                ", target v" + kEventsSchemaVersion +
+                ", tableExists=" + tableExists + ")");
+
+            if (!tableExists)
+            {
+                using var create = _eventsDb.CreateCommand();
+                create.CommandText = kEventsCreateDdl;
+                create.ExecuteNonQuery();
+                this.NotifyClient("ESPA Events DB: created fresh schema v" + kEventsSchemaVersion);
+            }
+            else if (currentVersion < kEventsSchemaVersion)
+            {
+                this.NotifyClient(
+                    "ESPA Events DB: migrating v" + currentVersion +
+                    " -> v" + kEventsSchemaVersion);
+
+                int legacyCount = ExecScalarInt("SELECT count(*) FROM [Events];");
+                int nullNameCount = ExecScalarInt(
+                    "SELECT count(*) FROM [Events] WHERE [Name] IS NULL;");
+
+                // Legacy schema had untyped node/loop/device columns storing
+                // values as TEXT. Rebuild as INTEGER NOT NULL via rename + copy
+                // with CAST. Rows missing a Name (would violate NOT NULL) are
+                // dropped — the old schema permitted them in theory.
+                using (var tx = _eventsDb.BeginTransaction())
+                {
+                    using (var rename = _eventsDb.CreateCommand())
+                    {
+                        rename.Transaction = tx;
+                        rename.CommandText = "ALTER TABLE [Events] RENAME TO [Events_legacy];";
+                        rename.ExecuteNonQuery();
+                    }
+                    using (var create = _eventsDb.CreateCommand())
+                    {
+                        create.Transaction = tx;
+                        create.CommandText = kEventsCreateDdl;
+                        create.ExecuteNonQuery();
+                    }
+                    using (var copy = _eventsDb.CreateCommand())
+                    {
+                        copy.Transaction = tx;
+                        copy.CommandText =
+                            "INSERT INTO [Events] ([Id], [Node], [Loop], [Device], [Name]) " +
+                            "SELECT [Id], " +
+                            "       CAST([Node]   AS INTEGER), " +
+                            "       CAST([Loop]   AS INTEGER), " +
+                            "       CAST([Device] AS INTEGER), " +
+                            "       [Name] " +
+                            "FROM [Events_legacy] " +
+                            "WHERE [Name] IS NOT NULL;";
+                        copy.ExecuteNonQuery();
+                    }
+                    using (var drop = _eventsDb.CreateCommand())
+                    {
+                        drop.Transaction = tx;
+                        drop.CommandText = "DROP TABLE [Events_legacy];";
+                        drop.ExecuteNonQuery();
+                    }
+
+                    tx.Commit();
+                }
+
+                int kept = ExecScalarInt("SELECT count(*) FROM [Events];");
+                this.NotifyClient(
+                    "ESPA Events DB: migration complete (" +
+                    kept + " kept, " + nullNameCount + " dropped, " +
+                    (legacyCount - kept - nullNameCount) + " other-skipped)");
+            }
+            else
+            {
+                this.NotifyClient("ESPA Events DB: already at v" + currentVersion + ", no migration");
+            }
+
+            using (var setVer = _eventsDb.CreateCommand())
+            {
+                // PRAGMA does not accept parameters, but kEventsSchemaVersion is
+                // a compile-time constant so there is no injection surface here.
+                setVer.CommandText = "PRAGMA user_version = " + kEventsSchemaVersion + ";";
+                setVer.ExecuteNonQuery();
+            }
+        }
+
+        private int ExecScalarInt(string sql)
+        {
+            using var cmd = _eventsDb.CreateCommand();
+            cmd.CommandText = sql;
+            object result = cmd.ExecuteScalar();
+            return result == null || result == DBNull.Value ? 0 : Convert.ToInt32(result);
+        }
+
+        public bool CreateEventId(SqliteConnection conn, int node, int loop, int device, string name)
+        {
+            if (string.IsNullOrEmpty(name)) return false;
+
+            using var insertCmd = conn.CreateCommand();
+            insertCmd.CommandText =
+                "INSERT OR IGNORE INTO [Events] ([Node], [Loop], [Device], [Name]) " +
+                "VALUES ($node, $loop, $device, $name);";
+            insertCmd.Parameters.Add("$node",   SqliteType.Integer).Value = node;
+            insertCmd.Parameters.Add("$loop",   SqliteType.Integer).Value = loop;
+            insertCmd.Parameters.Add("$device", SqliteType.Integer).Value = device;
+            insertCmd.Parameters.Add("$name",   SqliteType.Text).Value    = name;
             insertCmd.ExecuteNonQuery();
             return true;
         }
