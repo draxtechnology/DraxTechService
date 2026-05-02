@@ -1,157 +1,59 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{040A3342-B92B-4794-B3F9-DB63B796BD30}</ProjectGuid>
     <OutputType>Exe</OutputType>
+    <TargetFramework>net481</TargetFramework>
     <RootNamespace>DraxTechnology</RootNamespace>
     <AssemblyName>DraxTechnology</AssemblyName>
-    <TargetFrameworkVersion>v4.8.1</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <Deterministic>true</Deterministic>
     <LangVersion>8.0</LangVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>false</Prefer32Bit>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-  <PropertyGroup>
     <StartupObject>DraxTechnology.Program</StartupObject>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+    <Deterministic>true</Deterministic>
+    <ProjectGuid>{040A3342-B92B-4794-B3F9-DB63B796BD30}</ProjectGuid>
+    <!-- Properties/AssemblyInfo.cs is the source of truth — don't let SDK auto-generate one. -->
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
+
   <ItemGroup>
-    <Reference Include="Microsoft.Data.Sqlite, Version=10.0.7.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Data.Sqlite.Core.10.0.7\lib\netstandard2.0\Microsoft.Data.Sqlite.dll</HintPath>
-    </Reference>
-    <Reference Include="SQLitePCLRaw.batteries_v2, Version=2.1.11.2622, Culture=neutral, PublicKeyToken=8226ea5df37bcae9, processorArchitecture=MSIL">
-      <HintPath>..\packages\SQLitePCLRaw.bundle_e_sqlite3.2.1.11\lib\net461\SQLitePCLRaw.batteries_v2.dll</HintPath>
-    </Reference>
-    <Reference Include="SQLitePCLRaw.core, Version=2.1.11.2622, Culture=neutral, PublicKeyToken=1488e028ca7ab535, processorArchitecture=MSIL">
-      <HintPath>..\packages\SQLitePCLRaw.core.2.1.11\lib\netstandard2.0\SQLitePCLRaw.core.dll</HintPath>
-    </Reference>
-    <Reference Include="SQLitePCLRaw.provider.dynamic_cdecl, Version=2.1.11.2622, Culture=neutral, PublicKeyToken=b68184102cba0b3b, processorArchitecture=MSIL">
-      <HintPath>..\packages\SQLitePCLRaw.provider.dynamic_cdecl.2.1.11\lib\netstandard2.0\SQLitePCLRaw.provider.dynamic_cdecl.dll</HintPath>
-    </Reference>
-    <Reference Include="System" />
-    <Reference Include="System.Buffers, Version=4.0.2.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Buffers.4.4.0\lib\netstandard2.0\System.Buffers.dll</HintPath>
-    </Reference>
     <Reference Include="System.Configuration" />
     <Reference Include="System.Configuration.Install" />
-    <Reference Include="System.Core" />
     <Reference Include="System.Management" />
-    <Reference Include="System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Memory.4.5.3\lib\netstandard2.0\System.Memory.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Numerics" />
-    <Reference Include="System.Numerics.Vectors, Version=4.1.3.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Numerics.Vectors.4.4.0\lib\net46\System.Numerics.Vectors.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Runtime.CompilerServices.Unsafe, Version=4.0.4.1, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Runtime.CompilerServices.Unsafe.4.5.2\lib\netstandard2.0\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Web.Extensions" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Net.Http" />
     <Reference Include="System.ServiceProcess" />
-    <Reference Include="System.Xml" />
+    <Reference Include="System.Web.Extensions" />
   </ItemGroup>
+
   <ItemGroup>
-    <Compile Include="AesDecryption.cs" />
-    <Compile Include="EventLogger.cs" />
-    <Compile Include="Paths.cs" />
-    <Compile Include="Panels\PanelEmail.cs" />
-    <Compile Include="Panels\PanelEspa.cs" />
-    <Compile Include="Panels\PanelMorleyZX.cs" />
-    <Compile Include="Panels\PanelSyncro.cs" />
-    <Compile Include="Panels\PanelRSM.cs" />
-    <Compile Include="Panels\RsmLookups.cs" />
-    <Compile Include="Panels\PanelPearl.cs" />
-    <Compile Include="Panels\PanelNotifier.cs" />
-    <Compile Include="Panels\PanelTaktis.cs" />
-    <Compile Include="Panels\CONVERTED TaktisMock.cs" />
-    <Compile Include="Panels\partials\PanelTaktisDecode.cs" />
-    <Compile Include="ProjectInstaller.cs">
-      <SubType>Component</SubType>
+    <!-- EF Core 3.1.32 is the last version supporting .NET Framework 4.8.1 (netstandard2.0). -->
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="3.1.32" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="3.1.32" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="3.1.32" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="DraxService.Designer.cs">
+      <DependentUpon>DraxService.cs</DependentUpon>
     </Compile>
-    <Compile Include="ProjectInstaller.Designer.cs">
+    <Compile Update="ProjectInstaller.Designer.cs">
       <DependentUpon>ProjectInstaller.cs</DependentUpon>
     </Compile>
-    <Compile Include="SettingsSingletonCustom.cs" />
-    <Compile Include="SettingsSingleton.cs" />
-    <Compile Include="CSAMX\AMXTransfer.cs" />
-    <Compile Include="CSAMX\CSAMX.cs" />
-    <Compile Include="CSAMX\CSAMXSingelton.cs" />
-    <Compile Include="CSAMX\MtnDecoder.cs" />
-    <Compile Include="CSAMX\NVM.cs" />
-    <Compile Include="CustomEventArgs.cs" />
-    <Compile Include="DraxService.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="DraxService.Designer.cs">
-      <DependentUpon>DraxService.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Elements.cs" />
-    <Compile Include="Panels\AbstractPanel.cs" />
-    <Compile Include="Panels\PanelAdvanced.cs" />
-    <Compile Include="Panels\PanelGent.cs" />
-    <Compile Include="Panels\PanelMorelyMax.cs" />
-    <Compile Include="Program.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
+
   <ItemGroup>
-    <None Include="App.config" />
-    <None Include="ini\AdvMan.ini">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="ini\EMLMan.ini">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="ini\GenMan.ini">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="ini\KsfMan.ini" />
-    <None Include="ini\MAXMan.ini">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="ini\MorleyMan.ini" />
-    <None Include="ini\NOTMan.ini" />
-    <None Include="ini\PRLMan.ini" />
-    <None Include="ini\RSMMan.ini" />
-    <None Include="ini\Takman.ini">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="DraxService.resx">
+    <EmbeddedResource Update="DraxService.resx">
       <DependentUpon>DraxService.cs</DependentUpon>
-      <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="ProjectInstaller.resx">
+    <EmbeddedResource Update="ProjectInstaller.resx">
       <DependentUpon>ProjectInstaller.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+
+  <ItemGroup>
+    <None Update="ini\AdvMan.ini" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="ini\EMLMan.ini" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="ini\GenMan.ini" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="ini\MAXMan.ini" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="ini\Takman.ini" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

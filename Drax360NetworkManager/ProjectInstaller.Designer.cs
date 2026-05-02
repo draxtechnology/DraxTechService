@@ -42,7 +42,7 @@
             this.serviceInstaller1.Description = "Network Manager for Drax Technology devices";
             this.serviceInstaller1.DisplayName = "DraxTechnology";
             this.serviceInstaller1.ServiceName = "DraxTechnology";
-            this.serviceInstaller1.StartType = System.ServiceProcess.ServiceStartMode.Automatic;
+            this.serviceInstaller1.StartType = System.ServiceProcess.ServiceStartMode.Manual;
             this.serviceInstaller1.AfterInstall += new System.Configuration.Install.InstallEventHandler(this.serviceInstaller1_AfterInstall);
             // 
             // ProjectInstaller
