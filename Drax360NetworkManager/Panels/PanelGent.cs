@@ -287,25 +287,8 @@ namespace DraxTechnology.Panels
                             message2 = "Faults Cleared";
                             p1 = 15; p2 = sPanelNumber;
                             p3 = 0;
-                            switch (sLoopNumber)
-                            {
-                                case 1: p4 = 21; break;
-                                case 2: p4 = 22; break;
-                                case 3: p4 = 23; break;
-                                case 4: p4 = 24; break;
-                                case 5: p4 = 25; break;
-                                case 6: p4 = 26; break;
-                                case 7: p4 = 27; break;
-                                case 8: p4 = 28; break;
-                                case 9: p4 = 29; break;
-                                case 10: p4 = 30; break;
-                                case 11: p4 = 31; break;
-                                case 12: p4 = 32; break;
-                                case 13: p4 = 33; break;
-                                case 14: p4 = 34; break;
-                                case 15: p4 = 35; break;
-                                case 16: p4 = 36; break;
-                            }
+                            if (sLoopNumber >= 1 && sLoopNumber <= 16)
+                                p4 = 20 + sLoopNumber;
 
                             p2 = p2 + this.Offset;
 
@@ -313,44 +296,28 @@ namespace DraxTechnology.Panels
                             send_response_amx_and_serial(evnum, "", message2);
                             break;
 
-                        case 3:   // Disable Cleared
-                            if (sLoopNumber == 0)
+                        case 3:   // Disablement Cleared (legacy VB: DisablementsCleared)
+                            on = false;
+                            if (AddressNumber == 0)
                             {
-                                switch (sLoopNumber)
-                                {
-                                    case 0: p4 = 53; break;
-                                    case 1: p4 = 37; break;
-                                    case 2: p4 = 38; break;
-                                    case 3: p4 = 39; break;
-                                    case 4: p4 = 40; break;
-                                    case 5: p4 = 41; break;
-                                    case 6: p4 = 42; break;
-                                    case 7: p4 = 43; break;
-                                    case 8: p4 = 44; break;
-                                    case 9: p4 = 45; break;
-                                    case 10: p4 = 46; break;
-                                    case 11: p4 = 47; break;
-                                    case 12: p4 = 48; break;
-                                    case 13: p4 = 49; break;
-                                    case 14: p4 = 50; break;
-                                    case 15: p4 = 51; break;
-                                    case 16: p4 = 52; break;
-                                }
+                                // Zone- or card/loop-level disablement clear.
+                                // Legacy GENNetManager.bas:1252-1296 maps loops 1..16
+                                // to p4 37..52 and clears giLoopNumber. The zone-level
+                                // case (loop 0) mirrors the symmetric Disable-Set
+                                // branch (line 1183) which uses 53.
                                 message2 = "Zone Enable";
                                 p1 = 15;
-                                on = false;
+                                p4 = (sLoopNumber >= 1 && sLoopNumber <= 16) ? 36 + sLoopNumber : 53;
+                                p3 = 0;
                             }
                             else
                             {
                                 message2 = "Device Enable";
                                 p1 = 4;
-                                on = false;
-                                
+                                p3 = sLoopNumber;
+                                p4 = AddressNumber;
                             }
-                            p2 = sPanelNumber;
-                            p3 = sLoopNumber; p4 = 53;
-
-                            p2 = p2 + this.Offset;
+                            p2 = sPanelNumber + this.Offset;
 
                             evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, on);
                             send_response_amx_and_serial(evnum, "", message2);
