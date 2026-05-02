@@ -1719,9 +1719,10 @@ namespace DraxTechnology
         public static Action<string[]> OnAmxPipeCommand;
 
         /// <summary>
-        /// Pipe-delimited command from AMX Graphic. parts[8] is the command code.
-        /// Slot meanings follow the legacy VB sub-code convention (DLL.Dat indices):
-        ///   parts[13] = panel, parts[14] = loop, parts[15] = device address.
+        /// Pipe-delimited command from AMX Graphic. parts[8] is the command code,
+        /// parts[9] = panel, parts[10] = loop, parts[11] = device address. These
+        /// slot indices are the AMX Graphic pipe layout and are NOT the same as
+        /// the legacy VB DLL.Dat indices (which apply to the binary .MTN protocol).
         /// </summary>
         public void DispatchAmxPipeCommand(string[] parts)
         {

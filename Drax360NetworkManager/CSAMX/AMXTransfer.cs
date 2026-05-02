@@ -1,5 +1,6 @@
 ﻿using DraxTechnology.Panels;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -30,14 +31,62 @@ namespace DraxTechnology
         private StreamWriter _writer;
         private System.Timers.Timer _heartbeatTimer;
 
+        // Single-writer outbound queue: every SendMessage call enqueues here,
+        // and a dedicated sender thread drains the queue. NetworkStream.Write
+        // is not safe for concurrent writers, so funnelling all writes through
+        // one thread prevents byte-level interleaving between the heartbeat
+        // timer, inbound echo handler and panel parser callbacks.
+        private readonly BlockingCollection<string> _outbound = new BlockingCollection<string>();
+        private Thread _senderThread;
+        private CancellationTokenSource _senderCts;
+
         public event Action<string> isMessageReceive;
 
         private static AMXTransfer _instance;
         private static readonly object _lock = new object();
 
+        // Reconnect backoff between attempts. The sender thread and outbound
+        // queue persist across reconnects; messages enqueued while disconnected
+        // get the existing 3-attempt retry inside WriteToStream and are then
+        // discarded — the queue does not stack up unbounded.
+        private const int kReconnectDelayMs = 5000;
+
         public async Task Run(string[] args)
         {
-            await tcpconnect();
+            while (true)
+            {
+                try
+                {
+                    await tcpconnect();
+                }
+                catch (Exception ex)
+                {
+                    NotifyClient("AMX connect error: " + ex.Message);
+                }
+
+                CleanupConnection();
+                NotifyClient("AMX disconnected; reconnecting in " + (kReconnectDelayMs / 1000) + "s");
+                await Task.Delay(kReconnectDelayMs);
+            }
+        }
+
+        private void CleanupConnection()
+        {
+            _connected = false;
+            IsConnected = false;
+
+            try { _heartbeatTimer?.Stop(); _heartbeatTimer?.Dispose(); } catch { }
+            _heartbeatTimer = null;
+
+            try { _stream?.Dispose(); } catch { }
+            _stream = null;
+
+            try { _tcpClient?.Close(); } catch { }
+            _tcpClient = null;
+
+            // Drop any leftover ack signal so the next NTX send waits for a
+            // fresh MAK from the new connection rather than racing on a stale set.
+            _makAck.Reset();
         }
 
         // Add near the top of the class
@@ -75,6 +124,7 @@ namespace DraxTechnology
                 IsConnected = true;
                 _stream = _tcpClient.GetStream();
                 _writer = new StreamWriter(_stream, Encoding.UTF8) { AutoFlush = true };
+                StartSender();
                 StartHeartbeatTimer();
 
                 // Log the startup
@@ -84,50 +134,56 @@ namespace DraxTechnology
                 CSAMXSingleton.CS.WriteData(NwmData.MessageForSystemHistoryToAmx, evnum, text, "", "");
                 CSAMXSingleton.CS.FlushMessages();
 
+                // Single subscription per connection. On reconnect we clear the
+                // event first so handlers don't accumulate.
+                isMessageReceive = null;
                 isMessageReceive += msg =>
                 {
                     NotifyClient("Received From AMX: " + msg);
+
+                    // Prefix-tagged messages are mutually exclusive; the
+                    // pipe-delimited graphic command is a separate message
+                    // type. Use else-if so a "NWM:foo|bar" frame doesn't
+                    // double-dispatch.
                     if (msg.StartsWith("NWM:") || msg.StartsWith("GEN:"))
                     {
                         DraxService drax = new DraxService();
                         drax.sendreturncmd("", msg);
                     }
-                    if (msg.StartsWith("MAK:"))
+                    else if (msg.StartsWith("MAK:"))
                     {
                         // "MAK:" is 4 chars — the previous Substring(9) lopped off
                         // 5 extra characters of the file path so the delete silently
                         // missed.
-                        string fileaname = msg.Substring(4).Trim();
-                        fileaname = fileaname.Replace("-", "").Trim();
-                        if (System.IO.File.Exists(fileaname))
+                        string filename = msg.Substring(4).Trim();
+                        filename = filename.Replace("-", "").Trim();
+                        if (System.IO.File.Exists(filename))
                         {
-                            System.IO.File.Delete(fileaname);
+                            System.IO.File.Delete(filename);
                         }
-                        _makAck.Set();  // ← release whichever panel is waiting
+                        _makAck.Set();  // releases the sender thread's WaitForMak
                     }
-                    if (msg.StartsWith("MTX:"))
+                    else if (msg.StartsWith("MTX:"))
                     {
                         // Manual Controls from AMX. The path points at a 224-byte
                         // .MTN file in NVM struct format. Decode and dispatch to
                         // the active panel(s) via DraxService; then preserve the
                         // existing echo-back so AMX's handshake is unaffected.
-                        string fileaname = msg.Substring(4).Trim();
-                        fileaname = fileaname.Replace("-", "").Trim();
+                        string filename = msg.Substring(4).Trim();
+                        filename = filename.Replace("-", "").Trim();
 
-                        DraxService.OnManualControlFile?.Invoke(fileaname);
+                        DraxService.OnManualControlFile?.Invoke(filename);
 
                         if (AMXTransfer.Instance.IsConnected)
                         {
-                            AMXTransfer.Instance.SendMessage(fileaname);
+                            AMXTransfer.Instance.SendMessage(filename);
                         }
                     }
-                    if (msg.Contains("|"))
+                    else if (msg.Contains("|"))
                     {
                         ProcessAmxTransfer(msg);
-                        SendMessage("?");  // Send your heartbeat query every second
                     }
-                }
-                ;
+                };
 
                 await ReceiveDataAsync();
             }
@@ -166,13 +222,63 @@ namespace DraxTechnology
         {
             if (_tcpClient != null && _tcpClient.Connected)
             {
-                SendMessage("?");  // Send your heartbeat query every second
-                Console.WriteLine("Sent AMX Heartbeat ?");
+                // Heartbeat fires every second — don't NotifyClient or it would
+                // flood the event stream. The send itself is logged at debug
+                // depth (Debug.WriteLine survives in attached debuggers but not
+                // in service mode).
+                SendMessage("?");
+                Debug.WriteLine("Sent AMX Heartbeat ?");
             }
         }
         public void SendMessage(string message)
         {
+            if (string.IsNullOrEmpty(message)) return;
+            if (_outbound.IsAddingCompleted) return;
+            _outbound.Add(message);
+        }
+
+        private void StartSender()
+        {
+            if (_senderThread != null && _senderThread.IsAlive) return;
+            _senderCts = new CancellationTokenSource();
+            _senderThread = new Thread(SenderLoop)
+            {
+                IsBackground = true,
+                Name = "AMXSender"
+            };
+            _senderThread.Start();
+        }
+
+        private void SenderLoop()
+        {
+            try
+            {
+                foreach (var message in _outbound.GetConsumingEnumerable(_senderCts.Token))
+                {
+                    WriteToStream(message);
+                }
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                NotifyClient("AMX sender thread terminated: " + ex.Message);
+            }
+        }
+
+        // Wait this long for a MAK ack from AMX before giving up and moving on.
+        // 5s is generous — typical ack is sub-second; bounded so a missing MAK
+        // can't deadlock the sender.
+        private static readonly TimeSpan kMakTimeout = TimeSpan.FromSeconds(5);
+
+        private void WriteToStream(string message)
+        {
             const int maxAttempts = 3;
+
+            // Heartbeat is fire-and-forget; everything else (NTX:, MTX: echo,
+            // file paths) waits for AMX to MAK before we send the next frame.
+            // This is what the sleep was crudely approximating before.
+            bool waitForAck = !string.Equals(message, "?", StringComparison.Ordinal);
+            if (waitForAck) _makAck.Reset();
 
             for (int attempt = 1; attempt <= maxAttempts; attempt++)
             {
@@ -182,24 +288,17 @@ namespace DraxTechnology
                     {
                         if (_stream.CanWrite)
                         {
-                            try
-                            {
-                                byte[] data = Encoding.UTF8.GetBytes(message);
+                            byte[] data = Encoding.UTF8.GetBytes(message);
+                            _stream.Write(data, 0, data.Length);
+                            _stream.Flush();
 
-                                _stream.Write(data, 0, data.Length);
-                                _stream.Flush();
-                                return; // success, exit method
-                            }
-                            catch (Exception ex)
+                            if (waitForAck && !_makAck.Wait(kMakTimeout))
                             {
-                                Debug.WriteLine($"Send FAILED: {ex.Message}");
-                                // Are you swallowing this somewhere up the call stack?
+                                NotifyClient("AMX MAK timeout for: " + message);
                             }
+                            return;
                         }
-                        else
-                        {
-                            NotifyClient("Stream is not writable.");
-                        }
+                        NotifyClient("Stream is not writable.");
                     }
                     catch (Exception ex)
                     {
@@ -210,7 +309,7 @@ namespace DraxTechnology
 
                 if (!_connected && attempt < maxAttempts)
                 {
-                    NotifyClient($"Not connected unable to send");
+                    NotifyClient("Not connected unable to send");
                 }
             }
             NotifyClient("SendMessage failed after 3 attempts.");
@@ -223,8 +322,14 @@ namespace DraxTechnology
                 if (_tcpClient == null || !_tcpClient.Connected)
                     return;
 
-                var buffer = new byte[1024];
+                // TCP doesn't preserve message boundaries. AMX terminates
+                // frames with newlines, so accumulate bytes across reads and
+                // emit complete \n- (or \r\n-) terminated lines. Previously
+                // one TCP read was treated as one message, which silently
+                // truncated long frames or merged short ones.
+                var buffer = new byte[4096];
                 var stream = _tcpClient.GetStream();
+                var pending = new StringBuilder();
 
                 while (_tcpClient.Connected)
                 {
@@ -232,20 +337,33 @@ namespace DraxTechnology
 
                     if (bytesRead == 0)
                     {
-                        Console.WriteLine("Server closed connection");
+                        NotifyClient("AMX server closed connection");
                         break;
                     }
 
-                    string chunk = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+                    pending.Append(Encoding.UTF8.GetString(buffer, 0, bytesRead));
 
-                    isMessageReceive?.Invoke(chunk.Trim());
-
+                    int newlineIdx;
+                    while ((newlineIdx = IndexOfNewline(pending)) >= 0)
+                    {
+                        string line = pending.ToString(0, newlineIdx).Trim();
+                        pending.Remove(0, newlineIdx + 1);
+                        if (line.Length > 0)
+                            isMessageReceive?.Invoke(line);
+                    }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Exception in ReceiveDataAsync: " + ex.Message);
+                NotifyClient("Exception in ReceiveDataAsync: " + ex.Message);
             }
+        }
+
+        private static int IndexOfNewline(StringBuilder sb)
+        {
+            for (int i = 0; i < sb.Length; i++)
+                if (sb[i] == '\n') return i;
+            return -1;
         }
         public static AMXTransfer Instance
         {
