@@ -169,7 +169,8 @@ namespace DraxTechnology.Panels
                         sSectorBitArray += intb.ToString();
                         break;
                     case 8:
-                        sZoneNumber += intb;
+                        // Spec SPEC6201.003 §3 byte 8: Zone Number (0-128, single byte).
+                        sZoneNumber = intb;
                         break;
                     case 9:
                         sLoopNumber = intb;
@@ -182,10 +183,11 @@ namespace DraxTechnology.Panels
                     case 13:
                     case 14:
                     case 15:
-                        sTime += intb.ToString();
-                        break;
                     case 16:
-                        sZoneNumber += intb;
+                        // Spec SPEC6201.003 §3 bytes 11-16: Sec/Min/Hour/Day/Month/Year.
+                        // Was previously folding byte 16 (year) into sZoneNumber by
+                        // mistake, leaving sTime one byte short.
+                        sTime += intb.ToString();
                         break;
                     case 17:
                         sDomainNumber = intb;
