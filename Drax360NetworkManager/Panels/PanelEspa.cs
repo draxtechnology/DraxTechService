@@ -65,6 +65,11 @@ namespace DraxTechnology.Panels
             = new Dictionary<string, (int, int, int)>(StringComparer.Ordinal);
         private (int Node, int Loop, int Device) _nextAssignment = (1, 1, 0);
 
+        // ESPA 4.4.4 byte-level framer. Constructed once the serial port is open
+        // (so the framer can write ACK/NAK back through it). Stays null in
+        // FakeMode and falls through to the legacy log-scrape path.
+        private EspaFramer _framer;
+
         public override string FakeString
         {
             get
@@ -258,60 +263,13 @@ namespace DraxTechnology.Panels
                         {
                             this.NotifyClient("gAlarmType " + gAlarmType + " " + ex.Message, false);
                         }
-                        giNodeNumber = 0;
-                        giLoopNumber = 0;
-                        giDeviceAddress = 0;
-
                         // Strip last word from gsTextField to get device text
                         string devicetext = gsTextField.Replace("-", "").Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? "";
 
-                        lock (_eventsDbLock)
-                        {
-                            if (_eventCache.TryGetValue(devicetext, out var cached))
-                            {
-                                giNodeNumber = cached.Node;
-                                giLoopNumber = cached.Loop;
-                                giDeviceAddress = cached.Device;
-                            }
-                            else
-                            {
-                                var next = _nextAssignment;
-                                next.Device++;
-                                if (next.Device > 254)
-                                {
-                                    next.Device = 1;
-                                    next.Loop++;
-                                    if (next.Loop > 254)
-                                    {
-                                        next.Loop = 1;
-                                        next.Node++;
-                                        if (next.Node > 254)
-                                        {
-                                            throw new Exception("Maximum node/loop/device limit reached");
-                                        }
-                                    }
-                                }
-
-                                giNodeNumber = next.Node;
-                                giLoopNumber = next.Loop;
-                                giDeviceAddress = next.Device;
-
-                                if (!string.IsNullOrEmpty(devicetext))
-                                {
-                                    _eventsDb.Events.Add(new EspaEvent
-                                    {
-                                        Node = giNodeNumber,
-                                        Loop = giLoopNumber,
-                                        Device = giDeviceAddress,
-                                        Name = devicetext
-                                    });
-                                    _eventsDb.SaveChanges();
-                                }
-
-                                _eventCache[devicetext] = next;
-                                _nextAssignment = next;
-                            }
-                        }
+                        var addr = AssignOrLookup(devicetext, null, null);
+                        giNodeNumber = addr.Node;
+                        giLoopNumber = addr.Loop;
+                        giDeviceAddress = addr.Device;
 
                         evnum = CSAMXSingleton.CS.MakeInputNumber(giNodeNumber, giLoopNumber, giDeviceAddress, p1, on);
 
@@ -399,6 +357,14 @@ namespace DraxTechnology.Panels
                 serialport.DiscardInBuffer();
                 serialport.DiscardOutBuffer();
             }
+
+            _framer = new EspaFramer(bytes =>
+            {
+                if (serialport != null && serialport.IsOpen)
+                    serialport.Write(bytes, 0, bytes.Length);
+            });
+            _framer.FrameReceived += OnEspaFrame;
+            _framer.Log += msg => base.NotifyClient(msg, false);
         }
         public override void Evacuate(string passedvalues)
         {
@@ -434,12 +400,150 @@ namespace DraxTechnology.Panels
         {
         }
 
+        /// <summary>
+        /// Called by the framer when a clean ESPA 4.4.4 frame has been received
+        /// (BCC validated, ACK already sent). Classifies the display text into
+        /// an event category, extracts zone and device address where the panel
+        /// supplies them, and emits one AMX event.
+        /// </summary>
+        private void OnEspaFrame(EspaRecord rec)
+        {
+            string text = rec?.DisplayText ?? "";
+            if (string.IsNullOrWhiteSpace(text)) return;
+
+            string lower = Regex.Replace(text.ToLowerInvariant(), @"\s+", " ").Trim();
+
+            int p1 = (int)enmNotAlarmType.NOTStatusEvent;
+            bool on = true;
+            string category = "ESPA Event";
+
+            // Order matters: more specific phrases (cleared / fault / pre-alarm)
+            // before the generic "fire alarm" / "alarm" catch-alls.
+            if (lower.Contains("disablement cleared") || lower.Contains("isolation cleared") ||
+                lower.Contains("disablement reset"))
+            {
+                p1 = (int)enmNotAlarmType.NOTIsolate; on = false; category = "Disablement Cleared";
+            }
+            else if (lower.Contains("disablement") || lower.Contains("isolation") ||
+                     lower.Contains("disabled") || lower.Contains("isolated"))
+            {
+                p1 = (int)enmNotAlarmType.NOTIsolate; category = "Disablement";
+            }
+            else if (lower.Contains("fault cleared") || lower.Contains("fault reset") ||
+                     lower.Contains("fault restored"))
+            {
+                p1 = (int)enmNotAlarmType.NOTFault; on = false; category = "Fault Cleared";
+            }
+            else if (lower.Contains("fire alarm fault") || lower.Contains("fault"))
+            {
+                p1 = (int)enmNotAlarmType.NOTFault; category = "Fault";
+            }
+            else if (lower.Contains("fire pre alarm") || lower.Contains("pre-alarm") ||
+                     lower.Contains("prealarm"))
+            {
+                p1 = (int)enmNotAlarmType.NOTPreAlarm; category = "Pre-Alarm";
+            }
+            else if (lower.Contains("test mode") || lower.Contains("walk test"))
+            {
+                p1 = (int)enmNotAlarmType.NOTTestModeFire; category = "Test Mode";
+            }
+            else if (lower.Contains("fire alarm cleared") || lower.Contains("fire reset") ||
+                     lower.Contains("alarm cleared"))
+            {
+                p1 = (int)enmNotAlarmType.NOTFire; on = false; category = "Fire Reset";
+            }
+            else if (lower.Contains("fire alarm") || lower.Contains("alarm"))
+            {
+                p1 = (int)enmNotAlarmType.NOTFire; category = "Fire";
+            }
+
+            // Examples of useful tokens in the panel's display text:
+            //   "Fire Alarm -ZONE 1 -MAINBUILDING    A1003 -INPUTALARM" → zone 1, addr 1003
+            //   "Fire Alarm  Fault -ZONE 1 -MAIN BUILDING"              → zone 1, no addr
+            //   "Fire Alarm  Fault -     AutroMaster Switchboard ..."   → no zone, system event
+            int? zoneHint = null, devHint = null;
+            var zm = Regex.Match(text, @"\bZONE\s+(\d+)\b", RegexOptions.IgnoreCase);
+            if (zm.Success && int.TryParse(zm.Groups[1].Value, out int zone)) zoneHint = zone;
+
+            var dm = Regex.Match(text, @"\b[A-Z](\d{3,4})\b");
+            if (dm.Success && int.TryParse(dm.Groups[1].Value, out int dev)) devHint = dev;
+
+            string devicetext = text.Replace("-", "").Trim()
+                .Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
+                .LastOrDefault() ?? "";
+
+            var addr = AssignOrLookup(devicetext, zoneHint, devHint);
+
+            int evnum = CSAMXSingleton.CS.MakeInputNumber(addr.Node, addr.Loop, addr.Device, p1, on);
+
+            base.NotifyClient(
+                "ESPA " + category +
+                " (zone=" + (zoneHint?.ToString() ?? "-") +
+                " dev=" + (devHint?.ToString() ?? "-") +
+                "): Send to AMX Node=" + (addr.Node + this.Offset) +
+                " Loop=" + addr.Loop + " Address=" + addr.Device);
+
+            send_response_amx_and_serial(evnum, text.Trim(), category, devicetext);
+        }
+
+        /// <summary>
+        /// Resolve a (node, loop, device) triple for an event. If the panel
+        /// supplied explicit zone/address hints (parsed from the display text)
+        /// those are used directly and not cached — the panel is the source of
+        /// truth. Otherwise fall back to the legacy auto-assigner keyed on
+        /// devicetext, which writes new entries to the EF Core events store.
+        /// </summary>
+        private (int Node, int Loop, int Device) AssignOrLookup(
+            string devicetext, int? hintLoop, int? hintDevice)
+        {
+            if (hintLoop.HasValue && hintDevice.HasValue)
+                return (1, hintLoop.Value, hintDevice.Value);
+
+            lock (_eventsDbLock)
+            {
+                if (!string.IsNullOrEmpty(devicetext) &&
+                    _eventCache.TryGetValue(devicetext, out var cached))
+                {
+                    return cached;
+                }
+
+                var next = _nextAssignment;
+                next.Device++;
+                if (next.Device > 254)
+                {
+                    next.Device = 1;
+                    next.Loop++;
+                    if (next.Loop > 254)
+                    {
+                        next.Loop = 1;
+                        next.Node++;
+                        if (next.Node > 254)
+                            throw new Exception("Maximum node/loop/device limit reached");
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(devicetext))
+                {
+                    _eventsDb.Events.Add(new EspaEvent
+                    {
+                        Node = next.Node,
+                        Loop = next.Loop,
+                        Device = next.Device,
+                        Name = devicetext
+                    });
+                    _eventsDb.SaveChanges();
+                    _eventCache[devicetext] = next;
+                }
+                _nextAssignment = next;
+                return next;
+            }
+        }
+
         private readonly List<byte> _buffer = new List<byte>();
         private readonly byte[] _terminator = { 0x0D, 0x0A, 0x0D, 0x0A }; // \r\n\r\n
 
         public override void SerialPort_Datareceived(object sender, SerialDataReceivedEventArgs e)
         {
-            Thread.Sleep(500); // wait for more data
             int bytesToRead = serialport.BytesToRead;
             if (bytesToRead <= 0) return;
 
@@ -447,9 +551,25 @@ namespace DraxTechnology.Panels
             int read = serialport.Read(incoming, 0, bytesToRead);
             if (read <= 0) return;
 
+            // Real ESPA 4.4.4 traffic from an Autronica panel speaks the byte
+            // protocol (ENQ/SOH/STX/ETX/EOT/BCC). Hand bytes to the framer first;
+            // it consumes everything from ENQ through EOT and replies with
+            // ACK/NAK on the same serial port. Anything the framer doesn't
+            // recognise (e.g. log lines from the upstream helper program used
+            // in dev/test) falls through to the legacy \r\n\r\n scrape path.
+            int consumed = 0;
+            if (_framer != null)
+                consumed = _framer.Feed(incoming);
+
+            if (consumed >= read) return;
+
+            byte[] tail = consumed == 0
+                ? incoming
+                : incoming.Skip(consumed).ToArray();
+
             lock (_buffer)
             {
-                _buffer.AddRange(incoming);
+                _buffer.AddRange(tail);
                 ExtractMessages();
             }
         }
@@ -461,34 +581,13 @@ namespace DraxTechnology.Panels
                 int pos = FindPattern(_buffer, _terminator);
                 if (pos == -1)
                 {
-                    // Now deal with specific message types
-                    if (_buffer.Count >= 4 && _buffer[3].ToString() == "68")
-                    {
-                        int DeviceAnalogueValue = _buffer[7];
-                        int deviceNode = _buffer[2];
-                        int DeviceLoop = giAnalogRequestLoop + 1;
-                        base.NotifyClient("Analogue Node Received: " + deviceNode, false);
-                        base.NotifyClient("Analogue Address Received: " + _buffer[6], false);
-                        base.NotifyClient("Analogue Value Received: " + DeviceAnalogueValue, false);
-                        //string sLavFileName = GetAnalogStoreName(deviceNode, DeviceLoop);
-                    }
-                    else
-                    {
-                        if (_buffer.Count >= 5 && _buffer[4].ToString() == "68")
-                        {
-                            int DeviceAnalogueValue = _buffer[8];
-                            int deviceNode = _buffer[2];
-                            int DeviceLoop = giAnalogRequestLoop + 1;
-                            base.NotifyClient("Analogue Node Received: " + _buffer[3], false);
-                            base.NotifyClient("Analogue Address Received: " + _buffer[7], false);
-                            base.NotifyClient("Analogue Value Received: " + DeviceAnalogueValue, false);
-                            //string sLavFileName = GetAnalogStoreName(deviceNode, DeviceLoop);
-                        }
-                        else
-                        {
-                            return;  // no complete message yet
-                        }
-                    }
+                    // No complete \r\n\r\n frame yet. The legacy code had an
+                    // analog-value branch here that read fixed offsets from
+                    // _buffer when no terminator was found, then fell through
+                    // and tried to take pos + _terminator.Length (= 3) bytes
+                    // off the buffer to Parse — that path was broken. Drop it
+                    // until we have a real spec for the analog reply format.
+                    return;
                 }
 
                 int end = pos + _terminator.Length;
