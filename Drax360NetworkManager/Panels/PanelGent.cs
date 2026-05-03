@@ -283,13 +283,27 @@ namespace DraxTechnology.Panels
                             send_response_amx_and_serial(evnum, "", message2);
                             break;
 
-                        case 2:
+                        case 2:   // Faults Cleared (legacy VB: FaultsCleared)
                             message2 = "Faults Cleared";
-                            p1 = 15; p2 = sPanelNumber;
-                            p3 = 0;
-                            if (sLoopNumber >= 1 && sLoopNumber <= 16)
-                                p4 = 20 + sLoopNumber;
-
+                            p2 = sPanelNumber;
+                            if (AddressNumber == 0)
+                            {
+                                // Loop-level fault clear. Legacy
+                                // GENNetManager.bas:1079-1118 maps loops 1..16 to
+                                // p4 21..36 and zeros the loop number.
+                                p1 = 15;
+                                p3 = 0;
+                                if (sLoopNumber >= 1 && sLoopNumber <= 16)
+                                    p4 = 20 + sLoopNumber;
+                            }
+                            else
+                            {
+                                // Device-level fault clear. Legacy line 1121:
+                                // p1=8, loop and device address pass through.
+                                p1 = 8;
+                                p3 = sLoopNumber;
+                                p4 = AddressNumber;
+                            }
                             p2 = p2 + this.Offset;
 
                             evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
