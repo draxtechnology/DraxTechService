@@ -1889,6 +1889,16 @@ namespace DraxTechnology
             {
                 Console.WriteLine("Error closing TCP connection: " + ex.Message);
             }
+
+            try
+            {
+                AMXTransfer.Instance.Stop();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error stopping AMXTransfer: " + ex.Message);
+            }
+
             ln("Stopped Service");
         }
 

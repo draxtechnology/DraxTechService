@@ -524,14 +524,43 @@ namespace DraxTechnology.Panels
 
                 if (!string.IsNullOrEmpty(devicetext))
                 {
-                    _eventsDb.Events.Add(new EspaEvent
+                    var entity = new EspaEvent
                     {
                         Node = next.Node,
                         Loop = next.Loop,
                         Device = next.Device,
                         Name = devicetext
-                    });
-                    _eventsDb.SaveChanges();
+                    };
+                    _eventsDb.Events.Add(entity);
+                    try
+                    {
+                        _eventsDb.SaveChanges();
+                    }
+                    catch (Exception ex)
+                    {
+                        // If the insert fails (e.g. unique-index collision on Name
+                        // because a stale row exists from before the cache was
+                        // populated), don't strand _nextAssignment on the failed
+                        // slot — the next event with the same name would retry the
+                        // same Node/Loop/Device and throw on a loop. Detach the
+                        // tracked entity, look up the existing row, cache it and
+                        // return that.
+                        _eventsDb.Entry(entity).State = EntityState.Detached;
+                        var existing = _eventsDb.Events.AsNoTracking()
+                            .FirstOrDefault(e => e.Name == devicetext);
+                        if (existing != null)
+                        {
+                            var found = (existing.Node, existing.Loop, existing.Device);
+                            _eventCache[devicetext] = found;
+                            this.NotifyClient(
+                                "ESPA Events DB: SaveChanges failed for '" + devicetext +
+                                "'; reused existing (" + found.Node + "," + found.Loop + "," + found.Device + ")");
+                            return found;
+                        }
+                        this.NotifyClient(
+                            "ESPA Events DB: SaveChanges failed for '" + devicetext + "': " + ex.Message);
+                        throw;
+                    }
                     _eventCache[devicetext] = next;
                 }
                 _nextAssignment = next;

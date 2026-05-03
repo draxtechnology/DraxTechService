@@ -40,6 +40,12 @@ namespace DraxTechnology
         private Thread _senderThread;
         private CancellationTokenSource _senderCts;
 
+        // Set by Stop() so the Run reconnect loop and sender thread exit cleanly
+        // when DraxService.OnStop runs. Without this the while(true) in Run kept
+        // looping until the process died — fine for a normal service stop, but
+        // it leaked _senderCts and _outbound on a programmatic Stop().
+        private volatile bool _stopRequested;
+
         public event Action<string> isMessageReceive;
 
         private static AMXTransfer _instance;
@@ -53,7 +59,7 @@ namespace DraxTechnology
 
         public async Task Run(string[] args)
         {
-            while (true)
+            while (!_stopRequested)
             {
                 try
                 {
@@ -65,9 +71,21 @@ namespace DraxTechnology
                 }
 
                 CleanupConnection();
+                if (_stopRequested) break;
+
                 NotifyClient("AMX disconnected; reconnecting in " + (kReconnectDelayMs / 1000) + "s");
                 await Task.Delay(kReconnectDelayMs);
             }
+
+            NotifyClient("AMX Run loop exited");
+        }
+
+        public void Stop()
+        {
+            _stopRequested = true;
+            try { _outbound.CompleteAdding(); } catch { }
+            try { _senderCts?.Cancel(); } catch { }
+            CleanupConnection();
         }
 
         private void CleanupConnection()
