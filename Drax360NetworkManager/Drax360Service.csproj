@@ -7,8 +7,8 @@
     <AssemblyName>DraxTechnology</AssemblyName>
     <LangVersion>8.0</LangVersion>
     <StartupObject>DraxTechnology.Program</StartupObject>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+    <AutoGenerateBindingRedirects>false</AutoGenerateBindingRedirects>
+    <GenerateBindingRedirectsOutputType>false</GenerateBindingRedirectsOutputType>
     <Deterministic>true</Deterministic>
     <ProjectGuid>{040A3342-B92B-4794-B3F9-DB63B796BD30}</ProjectGuid>
     <!-- Properties/AssemblyInfo.cs is the source of truth — don't let SDK auto-generate one. -->
@@ -25,9 +25,10 @@
 
   <ItemGroup>
     <!-- EF Core 3.1.32 is the last version supporting .NET Framework 4.8.1 (netstandard2.0). -->
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="3.1.32" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.7" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="3.1.32" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="3.1.32" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.2" />
   </ItemGroup>
 
   <ItemGroup>
@@ -55,5 +56,24 @@
     <None Update="ini\MAXMan.ini" CopyToOutputDirectory="PreserveNewest" />
     <None Update="ini\Takman.ini" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+
+  <!-- Always copy App.config → exe.config so editing App.config in VS takes effect
+       on the next Build without needing a Rebuild. AutoGenerateBindingRedirects is
+       off because the redirects are authored directly in App.config. -->
+  <Target Name="SyncAppConfig" AfterTargets="Build">
+    <Copy SourceFiles="$(MSBuildProjectDirectory)\App.config"
+          DestinationFiles="$(OutputPath)$(AssemblyName).exe.config"
+          ContinueOnError="true" />
+  </Target>
+
+  <!-- SQLitePCLRaw.lib.e_sqlite3's buildTransitive targets copy e_sqlite3.dll into
+       runtimes\win-x64\native\ inside the output directory, but .NET Framework only
+       loads native DLLs from the exe directory root. This target copies the DLL there. -->
+  <Target Name="CopyNativeSQLiteToOutputRoot" AfterTargets="Build">
+    <ItemGroup>
+      <_NativeE_Sqlite3 Include="$(NuGetPackageRoot)sqlitepclraw.lib.e_sqlite3\**\runtimes\win-x64\native\e_sqlite3.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_NativeE_Sqlite3)" DestinationFolder="$(OutputPath)" ContinueOnError="true" />
+  </Target>
 
 </Project>

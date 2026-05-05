@@ -332,15 +332,18 @@ unsigned char *TxFile;
                 {
                     if (!file.Equals(fullfilename, StringComparison.OrdinalIgnoreCase))
                     {
-                        //File.Delete(fullfilename);
-                        File.Delete(file);
+                        var fileAge = DateTime.Now - File.GetLastWriteTime(file);
+                        if (fileAge.TotalMinutes > 5)  // Check with Richard if this is the right time to delete old files, currently set to 5 minutes
+                        {
+                            File.Delete(file);
+                        }
                     }
                 }
                 catch
                 {}
             }
 
-            Thread.Sleep(100);
+            // Thread.Sleep(100);
         }
         #endregion
         #region private methods

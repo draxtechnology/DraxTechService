@@ -245,7 +245,8 @@ namespace DraxTechnology
                 // depth (Debug.WriteLine survives in attached debuggers but not
                 // in service mode).
                 SendMessage("?");
-                Debug.WriteLine("Sent AMX Heartbeat ?");
+                this.NotifyClient("Sent AMX Heartbeat ?");
+
             }
         }
         public void SendMessage(string message)
@@ -340,14 +341,8 @@ namespace DraxTechnology
                 if (_tcpClient == null || !_tcpClient.Connected)
                     return;
 
-                // TCP doesn't preserve message boundaries. AMX terminates
-                // frames with newlines, so accumulate bytes across reads and
-                // emit complete \n- (or \r\n-) terminated lines. Previously
-                // one TCP read was treated as one message, which silently
-                // truncated long frames or merged short ones.
                 var buffer = new byte[4096];
                 var stream = _tcpClient.GetStream();
-                var pending = new StringBuilder();
 
                 while (_tcpClient.Connected)
                 {
@@ -359,29 +354,15 @@ namespace DraxTechnology
                         break;
                     }
 
-                    pending.Append(Encoding.UTF8.GetString(buffer, 0, bytesRead));
-
-                    int newlineIdx;
-                    while ((newlineIdx = IndexOfNewline(pending)) >= 0)
-                    {
-                        string line = pending.ToString(0, newlineIdx).Trim();
-                        pending.Remove(0, newlineIdx + 1);
-                        if (line.Length > 0)
-                            isMessageReceive?.Invoke(line);
-                    }
+                    string chunk = Encoding.UTF8.GetString(buffer, 0, bytesRead).Trim();
+                    if (chunk.Length > 0)
+                        isMessageReceive?.Invoke(chunk);
                 }
             }
             catch (Exception ex)
             {
                 NotifyClient("Exception in ReceiveDataAsync: " + ex.Message);
             }
-        }
-
-        private static int IndexOfNewline(StringBuilder sb)
-        {
-            for (int i = 0; i < sb.Length; i++)
-                if (sb[i] == '\n') return i;
-            return -1;
         }
         public static AMXTransfer Instance
         {
