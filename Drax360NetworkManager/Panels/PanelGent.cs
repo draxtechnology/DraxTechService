@@ -486,7 +486,7 @@ namespace DraxTechnology.Panels
                     break;
 
                 case 9:
-                    if (sMSB == 1)  // Call Point
+                    if (sLSB == 1)  // Call Point
                     {
                         message2 = gsTextField;
                         p1 = 0; p2 = sPanelNumber;
