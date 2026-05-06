@@ -320,29 +320,6 @@ namespace DraxTechnology.Panels
     }
 
 
-    public class TimerEventArgs : EventArgs
-    {
-        public int Interval { get; set; }
-    }
-    public class TakControl
-    {
-        public string[] EncodedPacket { get; set; }
-        public TransmissionType RXTX { get; set; }
-    }
-
-    public class TakControlRX : TakControl
-    {
-        public string[] EncodedPacketRX
-        {
-            get => EncodedPacket;
-            set => EncodedPacket = value;
-        }
-    }
-    public class SendImmediateEventArgs : EventArgs
-    {
-        public string[] Data { get; set; }
-        public TransmissionType TransmissionType { get; set; }
-    }
     internal partial class PanelTaktis : AbstractPanel
     {
 
@@ -430,28 +407,26 @@ namespace DraxTechnology.Panels
             public const string CMD_CONTROL = "197";
         }
 
+        // ICD AddrType enum values used in PACKET_TYPE_CONTROL (9.1.37).
+        // Spec: addr_type_sub_address(0), addr_type_zone(4), addr_type_pio_input(6),
+        // addr_type_pio_output(7), addr_type_io_channel(8), addr_type_sounder(12).
         public static class DeviceTypes
         {
             public const string SUB_ADDRESS = "0";
             public const string ZONE = "4";
-            public const string PIO_OUTPUT = "6";
+            public const string PIO_OUTPUT = "7";
             public const string IO_CHANNEL = "8";
             public const string SOUNDER = "12";
         }
         #endregion
 
-        #region private fields   
-        private System.Timers.Timer _txTimer;
-        private System.Timers.Timer _rxTimer;
-
-        private readonly Queue<TakControl> _txQueue = new Queue<TakControl>();
-        private readonly Queue<TakControlRX> _rxQueue = new Queue<TakControlRX>();
-        private bool _txRestart;
-
+        #region private fields
+        // _messageSent / _reconnect / _forceReset are still read by
+        // buildmessage() to gate a few logging branches; the legacy
+        // queue/timer indirection that originally drove them is gone.
         private bool _messageSent = false;
         private bool _reconnect = false;
         private bool _forceReset = false;
-        private string[] _timeArray;
 
         private int _heartBeatCount = 0;
         private long _numHeartbeats = 0;
@@ -461,368 +436,428 @@ namespace DraxTechnology.Panels
         private bool _connectionMonitoringSentTX = true;
         private bool _connectionStopMonitoringSentRX = false;
         private bool _connectionStopMonitoringSentTX = false;
-        private bool _requestEventLogSent = false;
         private bool _requestEventLogEXSent = false;
 
-        private bool _commError = false;
-        public TcpClient client;
-        NetworkStream stream;
-
-        public const string CMD_REQUEST_EVENT_LOG = "78";
-        public const string CMD_REQUEST_ACTIVE_EVENTS = "79";
-        public const string CMD_HEARTBEAT = "86";
-        public const string CMD_EVENT_ACK = "134";
-        public const string CMD_START_MONITORING = "231";
-        public const string CMD_STOP_MONITORING = "244";
-        #endregion
-
-        #region Events
-        public event EventHandler<SendImmediateEventArgs> SendImmediateRequest;
-        public event EventHandler<TimerEventArgs> StartTxTimer;
-        public event EventHandler<TimerEventArgs> StartRxTimer;
+        // Two TCP connections, per ICD section 6.2 / sample sequences:
+        // - RX streams the event log (REQUEST_EVENT_LOG_EX -> EVENT_START/CLEAR
+        //   -> EVENT_ACK). Spec is explicit: this connection cannot be used for
+        //   anything else, not even connection monitoring.
+        // - TX carries START_CONNECTION_MONITORING + the 20s heartbeat plus all
+        //   control commands (Reset/Silence/Evac/Disable/etc).
+        // Each channel owns its own socket, write lock, assembly buffer and
+        // reader Task. WriteFrame routes by TransmissionType from buildmessage.
+        private sealed class Channel
+        {
+            public readonly string Name;
+            public TcpClient Client;
+            public NetworkStream Stream;
+            public readonly object Lock = new object();
+            public readonly List<byte> Assembly = new List<byte>();
+            // Send queue + ACK gate: enforces ICD §6.4 ("client needs to wait
+            // for this response before sending the next query/command"). Only
+            // the TX channel uses GateOnSend = true; RX writes (EVENT_ACK and
+            // the one-shot REQUEST_EVENT_LOG_EX) are not gated since events
+            // are server-initiated and EVENT_ACKs don't get their own reply.
+            public readonly Queue<byte[]> SendQueue = new Queue<byte[]>();
+            public readonly object QueueLock = new object();
+            public readonly System.Threading.ManualResetEventSlim AckGate
+                = new System.Threading.ManualResetEventSlim(true);
+            public bool GateOnSend;
+            // ICD §6.5: panel drops the connection after 5 NACKs. We log a
+            // warning when we see 4 in a row to make the impending drop
+            // visible; the count resets on (re)connect.
+            public int NackCount;
+            public Channel(string name, bool gateOnSend)
+            {
+                Name = name;
+                GateOnSend = gateOnSend;
+            }
+        }
+        private readonly Channel _txCh = new Channel("TX", gateOnSend: true);
+        private readonly Channel _rxCh = new Channel("RX", gateOnSend: false);
         #endregion
 
         #region public properties
-        public int TxQueueCount => _txQueue.Count;
-        public int RxQueueCount => _rxQueue.Count;
         public long[] glSerialNo = new long[4];
         #endregion
         public override string FakeString => throw new NotImplementedException();
 
+        // AMX dispatches these as CSV "node,loop,zone,device". Each override
+        // parses the CSV via the base helper and routes to the matching
+        // TakSendType so buildmessage() emits the correct wire frame.
         public override void Alert(string passedValues)
         {
-            throw new NotImplementedException();
-        }
-
-        public override void DisableDevice(string passedValues)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void DisableZone(string passedValues)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void EnableDevice(string passedValues)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void EnableZone(string passedValues)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void Evacuate(string passedValues)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void EvacuateNetwork(string passedValues)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void MuteBuzzers(string passedValues)
-        {
-            throw new NotImplementedException();
+            ParsePassedValues(passedValues, out int node, out _, out _, out _);
+            sendtotaktis(TakSendType.TAKSendControlStartAlert, node: node);
         }
 
         public override void Reset(string passedValues)
         {
-            throw new NotImplementedException();
+            ParsePassedValues(passedValues, out int node, out _, out _, out _);
+            sendtotaktis(TakSendType.TAKSendControlReset, node: node);
         }
 
         public override void Silence(string passedValues)
         {
-            throw new NotImplementedException();
+            ParsePassedValues(passedValues, out int node, out _, out _, out _);
+            sendtotaktis(TakSendType.TAKSendControlSilence, node: node);
         }
+
+        public override void Evacuate(string passedValues)
+        {
+            ParsePassedValues(passedValues, out int node, out _, out _, out _);
+            sendtotaktis(TakSendType.TAKSendControlStartEVAC, node: node);
+        }
+
+        public override void EvacuateNetwork(string passedValues)
+        {
+            // No dedicated network-evac frame on TAK; broadcast EVAC to node 0
+            // (the legacy VB convention for "all nodes on this loop").
+            sendtotaktis(TakSendType.TAKSendControlStartEVAC, node: 0);
+        }
+
+        public override void MuteBuzzers(string passedValues)
+        {
+            ParsePassedValues(passedValues, out int node, out _, out _, out _);
+            sendtotaktis(TakSendType.TAKSendControlSilenceBuzzer, node: node);
+        }
+
+        public override void DisableDevice(string passedValues)
+        {
+            ParsePassedValues(passedValues, out int node, out int loop, out _, out int device);
+            sendtotaktis(TakSendType.TAKSendControlDisableDevice, node: node, loop: loop, address: device);
+        }
+
+        public override void EnableDevice(string passedValues)
+        {
+            ParsePassedValues(passedValues, out int node, out int loop, out _, out int device);
+            sendtotaktis(TakSendType.TAKSendControlEnableDevice, node: node, loop: loop, address: device);
+        }
+
+        public override void DisableZone(string passedValues)
+        {
+            ParsePassedValues(passedValues, out _, out _, out int zone, out int device);
+            sendtotaktis(TakSendType.TAKSendControlDisableZone, zone: zone, subAddress: device);
+        }
+
+        public override void EnableZone(string passedValues)
+        {
+            ParsePassedValues(passedValues, out _, out _, out int zone, out _);
+            sendtotaktis(TakSendType.TAKSendControlEnableZone, zone: zone);
+        }
+
         public override void Analogue(string passedvalues)
         {
-            throw new NotImplementedException();
+            ParsePassedValues(passedvalues, out int node, out int loop, out _, out int device);
+            sendtotaktis(TakSendType.TAKSendQueryANALDetails, node: node, loop: loop, address: device);
         }
         protected override void heartbeat_timer_callback(object sender)
         {
             base.heartbeat_timer_callback(sender);
-            sendtotaktis(TakSendType.TAKSendHeartBeatTX, clientID: 1);
+            sendtotaktis(TakSendType.TAKSendHeartBeatTX, clientID: _clientID);
         }
 
-        string gsIPAddress = "10.0.11.100";
-        string gsIPPort = "100";
+        // Populated from Takman.ini in the constructor; no hardcoded fallbacks.
+        private string gsIPAddress;
+        private string gsIPPort;
+        private int _clientID = 1;
+        private readonly string _baselogfolder;
 
-        // private TcpClientWithEvents _tcp;
+        private CancellationTokenSource _readerCts;
+        private Task _txReaderTask;
+        private Task _rxReaderTask;
+        private Task _txPumpTask;
+        private Task _rxPumpTask;
+        private string _txLogPath;
+        // ACK-gate timeout: how long the pump waits for the server's ACK/NACK
+        // before giving up on a sent frame and moving to the next. ICD doesn't
+        // pin this; 5s matches the heartbeat grace period mentioned in 10.2.1.
+        private const int kAckTimeoutMs = 5000;
+
         public override void StartUp(int fakemode)
         {
-            //client = new TcpClient();
-
-            if (client == null)
+            if (fakemode > 0)
             {
-                client = new TcpClient();
-
-                client.Connect(gsIPAddress, Convert.ToInt32(gsIPPort));
-                stream = client.GetStream();
-            }
-
-            write(sendinitialstring);
-            Thread.Sleep(500); // wait for response
-            readinitial();
-
-            // send start monitoring
-
-            Console.WriteLine("Start Monitoring");
-
-            write(sendstartstring);
-
-            write(sendstartmonitoringstring);
-            readsusbsequent();
-
-            while (true)
-            {
-                Console.WriteLine("Heartbeat");
-                write(sendheartbeatstring);
-                readsusbsequent();
-            }
-
-        }
-
-        private void write(string[] towrite)
-        {
-            if (client == null || !client.Connected)
-            {
-                client = new TcpClient();
-
-                client.Connect(gsIPAddress, Convert.ToInt32(gsIPPort));
-                stream = client.GetStream();
-            }
-
-            byte[] data = convertstringarraytobytearray(towrite);
-
-            try
-            {
-                stream.Write(data, 0, data.Length);
-                stream.Flush();
-                string logFilePath = @"C:\temp\c#log.txt";
-                string hexString = BitConverter.ToString(data);
-                string decimalString = string.Join(" ", data);
-                File.AppendAllText(logFilePath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} Sent: {decimalString}{Environment.NewLine}");
-
-            }
-            catch (Exception)
-            { }
-        }
-
-        private string[] sendstartstring
-        {
-            get
-            {
-                string[] tosend = new string[12];
-                for (int i = 0; i < 12 - 1; i++)
-                    tosend[i] = "0";
-                tosend[3] = 12.ToString();
-                tosend[7] = CMD_START_MONITORING;
-                tosend[11] = "1";
-
-                return tosend;
-            }
-        }
-
-        private string[] sendackstring
-        {
-            get
-            {
-                string[] tosend = new string[12];
-                for (int i = 0; i < 12; i++)
-                    tosend[i] = "0";
-                tosend[3] = 12.ToString();
-                tosend[7] = CMD_EVENT_ACK;
-                tosend[8] = glSerialNo[0].ToString();
-                tosend[9] = glSerialNo[1].ToString();
-                tosend[10] = glSerialNo[2].ToString();
-                tosend[11] = glSerialNo[3].ToString();
-
-                return tosend;
-            }
-        }
-        private string[] sendinitialstring
-        {
-            get
-            {
-                string[] tosend = new string[8];
-                for (int i = 0; i < 8; i++)
-                    tosend[i] = "0";
-                tosend[3] = 8.ToString();
-                tosend[7] = CMD_REQUEST_ACTIVE_EVENTS;
-                return tosend;
-
-            }
-        }
-
-        private string[] sendheartbeatstring
-        {
-            get
-            {
-                string[] tosend = new string[12];
-                for (int i = 0; i < 12; i++)
-                    tosend[i] = "0";
-                tosend[3] = 12.ToString();
-                tosend[7] = CMD_HEARTBEAT;
-                tosend[11] = "1";
-
-                return tosend;
-            }
-        }
-
-        private string[] sendstartmonitoringstring
-        {
-            get
-            {
-                string[] tosend = new string[12];
-                for (int i = 0; i < 12; i++)
-                    tosend[i] = "0";
-                tosend[3] = 12.ToString();
-                tosend[7] = CMD_REQUEST_EVENT_LOG;
-                tosend[8] = glSerialNo[0].ToString();
-                tosend[9] = glSerialNo[1].ToString();
-                tosend[10] = glSerialNo[2].ToString();
-                tosend[11] = glSerialNo[3].ToString();
-
-                return tosend;
-            }
-        }
-
-        private void readinitial()
-
-        {
-            int counter = 1;
-
-            while (stream.DataAvailable)
-            {
-                byte[] responseBuffer = new byte[1024];
-                int bytesRead = 0;
-
-                try
-                {
-                    if (stream.DataAvailable)
-                    {
-                        bytesRead = stream.Read(responseBuffer, 0, responseBuffer.Length);
-                    }
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e.Message);
-                    break;
-                }
-
-                if (bytesRead == 0)
-                {
-                    continue;
-                }
-
-                string response = Encoding.UTF8.GetString(responseBuffer, 0, bytesRead);
-                Console.WriteLine("Initial Received Response: " + response + " read = " + bytesRead);
-
-                // get serial number from response
-                decodeserialnumberfromresponse(responseBuffer, bytesRead);
-
-                // Convert response to hex string for readability
-                string responseHex = BitConverter.ToString(responseBuffer, 0, bytesRead);
-                NotifyClient($"Initial response ({bytesRead} bytes): {responseHex}");
-                Console.WriteLine("Initial Received response: " + responseHex);
-                DecodeMessage(responseHex);
-
-                write(sendackstring);
-                Thread.Sleep(1500); // wait for response if reduce down not all events appear on first load of AMX
-
-                counter++;
-            }
-            Console.WriteLine("Exited Initial read loop Connected = " + client.Connected);
-        }
-
-        private void readsusbsequent()
-
-        {
-            int counter = 1;
-
-            while (client.Connected)
-            {
-                byte[] responseBuffer = new byte[1024];
-                int bytesRead = 0;
-
-                try
-                {
-                    if (stream.DataAvailable)
-                    {
-                        bytesRead = stream.Read(responseBuffer, 0, responseBuffer.Length);
-                    }
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e.Message);
-                    break;
-                }
-
-                if (bytesRead == 0)
-                {
-                    continue;
-                }
-
-                string response = Encoding.UTF8.GetString(responseBuffer, 0, bytesRead);
-                Console.WriteLine("Subsequent Received Response: " + response + " read = " + bytesRead);
-
-                // get serial number from response
-                decodeserialnumberfromresponse(responseBuffer, bytesRead);
-
-                // Convert response to hex string for readability
-                string responseHex = BitConverter.ToString(responseBuffer, 0, bytesRead);
-                NotifyClient($"Received response ({bytesRead} bytes): {responseHex}");
-                Console.WriteLine("Subsequent Received response: " + responseHex);
-                DecodeMessage(responseHex);
-
-                Thread.Sleep(1000); // wait for response
-                write(sendackstring);
-
-                counter++;
-            }
-            Console.WriteLine("Exited Subsuquent read loop Connected = " + client.Connected);
-            //client.Close();
-            //client.Dispose();
-            //client = null;
-        }
-
-        private void decodeserialnumberfromresponse(byte[] aryHexMessage, int messagelength)
-        {
-            int start = 8;
-
-            if (messagelength == 8)
-            {
+                NotifyClient("TAKTIS FakeMode - readers not started");
                 return;
             }
 
-            if (messagelength == 256)
+            if (string.IsNullOrEmpty(gsIPAddress) || string.IsNullOrEmpty(gsIPPort))
             {
-                start = 16;
+                NotifyClient("TAKTIS StartUp aborted - PanelIPAddress/IPPort missing from Takman.ini");
+                return;
             }
 
-            string sMessageType = "";
-
-            for (int i = start - 4; i <= start - 1; i++)
-            {
-                sMessageType += aryHexMessage[i].ToString("X2"); // format as 2-digit hex
-            }
-
-            glSerialNo[0] = aryHexMessage[start];
-            start++;
-
-            glSerialNo[1] = aryHexMessage[start];
-            start++;
-
-            glSerialNo[2] = aryHexMessage[start];
-            start++;
-
-            glSerialNo[3] = aryHexMessage[start];
-
+            _readerCts?.Cancel();
+            _readerCts = new CancellationTokenSource();
+            var token = _readerCts.Token;
+            // Two readers + two pumps, one pair per channel. Reader owns socket
+            // lifecycle; pump drains the channel's send queue and (on TX) waits
+            // for ACK/NACK between sends.
+            _rxReaderTask = Task.Run(() => ReaderLoop(_rxCh, token));
+            _txReaderTask = Task.Run(() => ReaderLoop(_txCh, token));
+            _rxPumpTask   = Task.Run(() => PumpLoop(_rxCh, token));
+            _txPumpTask   = Task.Run(() => PumpLoop(_txCh, token));
         }
+
+        private void ConnectChannel(Channel ch)
+        {
+            NotifyClient($"TAKTIS [{ch.Name}] connecting to {gsIPAddress}:{gsIPPort}");
+            var c = new TcpClient();
+            c.Connect(gsIPAddress, Convert.ToInt32(gsIPPort));
+            lock (ch.Lock)
+            {
+                ch.Client = c;
+                ch.Stream = c.GetStream();
+            }
+            ch.NackCount = 0;
+            ch.AckGate.Set();
+            NotifyClient($"TAKTIS [{ch.Name}] connected");
+        }
+
+        private void CloseChannel(Channel ch)
+        {
+            lock (ch.Lock)
+            {
+                try { ch.Stream?.Close(); } catch { }
+                try { ch.Client?.Close(); } catch { }
+                ch.Stream = null;
+                ch.Client = null;
+            }
+            // Release the pump if it's blocked waiting for an ACK that will
+            // never arrive on a dead channel.
+            ch.AckGate.Set();
+        }
+
+        // Routes by TransmissionType (set by buildmessage) and enqueues. The
+        // channel's PumpLoop will drain the queue, doing the actual socket
+        // write and (on TX) waiting for ACK/NACK between sends. Callers never
+        // block on the wire - heartbeat/control commands queue and return.
+        private void WriteFrame(byte[] data, TransmissionType rxTx)
+        {
+            Channel ch = (rxTx == TransmissionType.RX) ? _rxCh : _txCh;
+            lock (ch.QueueLock)
+            {
+                ch.SendQueue.Enqueue(data);
+            }
+        }
+
+        private bool WriteFrameRaw(Channel ch, byte[] data)
+        {
+            lock (ch.Lock)
+            {
+                if (ch.Stream == null || ch.Client == null || !ch.Client.Connected)
+                {
+                    NotifyClient($"TAKTIS [{ch.Name}] write skipped - not connected");
+                    return false;
+                }
+                try
+                {
+                    ch.Stream.Write(data, 0, data.Length);
+                    ch.Stream.Flush();
+                    LogTransport($"{ch.Name}>", data);
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    NotifyClient($"TAKTIS [{ch.Name}] write failed: {ex.Message}");
+                    try { ch.Stream?.Close(); } catch { }
+                    try { ch.Client?.Close(); } catch { }
+                    ch.Stream = null;
+                    ch.Client = null;
+                    return false;
+                }
+            }
+        }
+
+        // Drains a channel's send queue. On TX, waits for the AckGate to be
+        // signalled (by the reader on receipt of an ACK/NACK) before sending
+        // the next frame. RX bypasses the gate; its writes are EVENT_ACK
+        // replies and the one-shot REQUEST_EVENT_LOG_EX, neither of which
+        // expects a per-message response.
+        private void PumpLoop(Channel ch, CancellationToken token)
+        {
+            while (!token.IsCancellationRequested)
+            {
+                byte[] data = null;
+                lock (ch.QueueLock)
+                {
+                    if (ch.SendQueue.Count > 0) data = ch.SendQueue.Dequeue();
+                }
+                if (data == null)
+                {
+                    try { Task.Delay(25, token).Wait(token); } catch { break; }
+                    continue;
+                }
+
+                if (ch.GateOnSend) ch.AckGate.Reset();
+                bool sent = WriteFrameRaw(ch, data);
+                if (!sent)
+                {
+                    if (ch.GateOnSend) ch.AckGate.Set();
+                    continue;
+                }
+                if (ch.GateOnSend)
+                {
+                    try
+                    {
+                        if (!ch.AckGate.Wait(kAckTimeoutMs, token))
+                        {
+                            NotifyClient($"TAKTIS [{ch.Name}] ACK timeout - resuming pump");
+                        }
+                    }
+                    catch (OperationCanceledException) { break; }
+                }
+            }
+            NotifyClient($"TAKTIS [{ch.Name}] pump stopped");
+        }
+
+        private void LogTransport(string direction, byte[] data)
+        {
+            if (string.IsNullOrEmpty(_txLogPath)) return;
+            try
+            {
+                string decimalString = string.Join(" ", data);
+                File.AppendAllText(_txLogPath,
+                    $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {direction}: {decimalString}{Environment.NewLine}");
+            }
+            catch { /* logging is best-effort */ }
+        }
+
+        // One reader per Channel. Connects, drains frames, hands each off to
+        // ProcessFrame (which knows whether to ACK), reconnects on error with
+        // a 2s backoff. The start-of-day sequence is channel-specific.
+        private void ReaderLoop(Channel ch, CancellationToken token)
+        {
+            byte[] buffer = new byte[4096];
+            while (!token.IsCancellationRequested)
+            {
+                try
+                {
+                    if (ch.Client == null || !ch.Client.Connected)
+                    {
+                        ConnectChannel(ch);
+                        ch.Assembly.Clear();
+                        SendChannelStartOfDay(ch);
+                    }
+
+                    int bytesRead = ch.Stream.Read(buffer, 0, buffer.Length);
+                    if (bytesRead == 0)
+                    {
+                        NotifyClient($"TAKTIS [{ch.Name}] peer closed - reconnecting");
+                        CloseChannel(ch);
+                        try { Task.Delay(2000, token).Wait(token); } catch { }
+                        continue;
+                    }
+
+                    for (int i = 0; i < bytesRead; i++) ch.Assembly.Add(buffer[i]);
+                    DrainFrames(ch);
+                }
+                catch (OperationCanceledException) { break; }
+                catch (Exception ex)
+                {
+                    if (token.IsCancellationRequested) break;
+                    NotifyClient($"TAKTIS [{ch.Name}] reader: {ex.Message}");
+                    CloseChannel(ch);
+                    try { Task.Delay(2000, token).Wait(token); } catch { break; }
+                }
+            }
+            NotifyClient($"TAKTIS [{ch.Name}] reader stopped");
+        }
+
+        private void SendChannelStartOfDay(Channel ch)
+        {
+            if (ch == _rxCh)
+            {
+                // RX is the event-log stream. Per ICD: once a connection is
+                // streaming the event log it cannot be used for anything else.
+                // We don't issue REQUEST_ACTIVE_EVENTS here because EVENT_LOG_EX
+                // delivers historic + live events from the given serial number.
+                sendtotaktis(TakSendType.TAKSendRequestEventLogEx, glSerialNo);
+            }
+            else // TX
+            {
+                // TX carries control + heartbeat. REQUEST_ACTIVE_EVENTS_TX is
+                // a one-shot snapshot terminated by EVENT_ID; after that the
+                // server may close, but the heartbeat keeps the channel alive.
+                sendtotaktis(TakSendType.TAKSendRequestActEventsTX);
+                sendtotaktis(TakSendType.TAKSendStartConnectionMonitoringTX, clientID: _clientID);
+            }
+        }
+
+        // TAK frames are length-prefixed: bytes 0..3 form a big-endian uint32
+        // length covering the whole frame. We may get multiple frames in one
+        // Read or a frame split across reads; assemble until we have a full
+        // frame, hand it off, then loop.
+        private void DrainFrames(Channel ch)
+        {
+            while (ch.Assembly.Count >= 4)
+            {
+                int frameLen = (ch.Assembly[0] << 24) | (ch.Assembly[1] << 16)
+                             | (ch.Assembly[2] << 8)  |  ch.Assembly[3];
+                if (frameLen <= 0 || frameLen > 65535)
+                {
+                    NotifyClient($"TAKTIS [{ch.Name}] bad frame length {frameLen} - flushing buffer");
+                    ch.Assembly.Clear();
+                    return;
+                }
+                if (ch.Assembly.Count < frameLen) return;
+
+                byte[] frame = new byte[frameLen];
+                ch.Assembly.CopyTo(0, frame, 0, frameLen);
+                ch.Assembly.RemoveRange(0, frameLen);
+                ProcessFrame(ch, frame);
+            }
+        }
+
+        private void ProcessFrame(Channel ch, byte[] frame)
+        {
+            LogTransport($"{ch.Name}<", frame);
+
+            // Serial number lives at bytes 8..11 for any payload-bearing frame.
+            if (frame.Length >= 12)
+            {
+                glSerialNo[0] = frame[8];
+                glSerialNo[1] = frame[9];
+                glSerialNo[2] = frame[10];
+                glSerialNo[3] = frame[11];
+            }
+
+            long mt = frame.Length >= 8 ? ReadFieldU32(frame, 4) : -1;
+
+            // ACK/NACK on TX releases the pump's gate so the next queued frame
+            // can be sent. ICD §6.5: 5 NACKs in a row drops the connection -
+            // log a warning at 4 so the impending drop is visible.
+            if (ch == _txCh)
+            {
+                if (mt == 1 /* ACK */)
+                {
+                    ch.NackCount = 0;
+                    ch.AckGate.Set();
+                }
+                else if (mt == 0 /* NACK */)
+                {
+                    ch.NackCount++;
+                    if (ch.NackCount >= 4)
+                    {
+                        NotifyClient($"TAKTIS [{ch.Name}] NACK #{ch.NackCount} - connection drop after 5 (ICD §6.5)");
+                    }
+                    ch.AckGate.Set();
+                }
+            }
+
+            string responseHex = BitConverter.ToString(frame);
+            DecodeMessage(responseHex);
+
+            // EVENT_ACK is only required for EVENT_START/EVENT_CLEAR frames on
+            // the RX (event-log) channel. Every other inbound frame (ACK/NACK,
+            // EVENT_ID, heartbeat-ACK, control responses) is terminal.
+            if (ch == _rxCh && (mt == 133 /* EVENT_START */ || mt == 135 /* EVENT_CLEAR */))
+            {
+                sendtotaktis(TakSendType.TAKSendEventACKRX, glSerialNo);
+            }
+        }
+
         byte[] convertstringarraytobytearray(string[] stringArray)
         {
             List<byte> ret = new List<byte>();
@@ -843,17 +878,48 @@ namespace DraxTechnology.Panels
 
 
 
-        private void OnSendImmediateRequest(object sender, SendImmediateEventArgs e)
-        {
-            SendImmediateRequest?.Invoke(this, e);
-        }
-
         public PanelTaktis(string baselogfolder, string identifier) : base(baselogfolder, identifier, "TAKMan", "TAK")
         {
-            if (!String.IsNullOrEmpty(identifier))
+            _baselogfolder = baselogfolder;
+            if (string.IsNullOrEmpty(identifier)) return;
+
+            try
             {
-                // heartbeat_timer = new Timer(heartbeat_timer_callback, this.Identifier, 1000, kHeartbeatDelaySeconds * 1000);
+                gsIPAddress = base.GetSetting<string>(ksettingsetupsection, "PanelIPAddress");
+                int port = base.GetSetting<int>(ksettingsetupsection, "IPPort");
+                if (port > 0) gsIPPort = port.ToString();
+
+                int clientId = base.GetSetting<int>(ksettingsetupsection, "ClientID");
+                if (clientId > 0) _clientID = clientId;
+
+                _amx1Offset = base.GetSetting<int>(ksettingsetupsection, "giAmx1Offset");
+                this.Offset = _amx1Offset;
+
+                _ulSettings = base.GetSetting<int>(ksettingsetupsection, "ULSettings") != 0;
+                _ioModuleSettings = base.GetSetting<string>(ksettingsetupsection, "IOModuleSettings") ?? "";
+                _ioModuleSettingsPanels = base.GetSetting<string>(ksettingsetupsection, "IOModuleSettingsPanels") ?? "";
+
+                if (!string.IsNullOrEmpty(_baselogfolder))
+                {
+                    _txLogPath = Path.Combine(_baselogfolder, "TAKTIS_transport.log");
+                }
+
+                NotifyClient($"PanelTaktis: {gsIPAddress}:{gsIPPort} clientID={_clientID} offset={_amx1Offset}");
             }
+            catch (Exception ex)
+            {
+                NotifyClient($"PanelTaktis settings load failed: {ex.Message}");
+            }
+
+            // ICD 10.2.1: heartbeat must be sent every 20 seconds (5s grace).
+            // Faster than the AbstractPanel default (60s) so we can't reuse
+            // kHeartbeatDelaySeconds; use a Taktis-local 20s period.
+            const int kTaktisHeartbeatMs = 20 * 1000;
+            heartbeat_timer = new System.Threading.Timer(
+                heartbeat_timer_callback,
+                this.Identifier,
+                kTaktisHeartbeatMs,
+                kTaktisHeartbeatMs);
         }
 
         #region private methods
@@ -895,7 +961,6 @@ namespace DraxTechnology.Panels
                 }
 
 
-                // Build message based on type
                 string[] dataToSend = buildmessage(
                     sendType,
                     serialNo,
@@ -916,30 +981,10 @@ namespace DraxTechnology.Panels
                     return;
                 }
 
-                // Handle immediate send
-                if (immediateTxSend || immediateRxSend)
-                {
-                    immediateRxSend = false;
-                    immediateTxSend = false;
-
-                    NotifyClient($"Send {rxTx} Immediate");
-                    /*OnSendImmediateRequest(new SendImmediateEventArgs
-                    {
-                        Data = dataToSend,
-                        TransmissionType = rxTx
-                    });
-                    */
-
-
-                    // RJ New
-                    QueueMessage(dataToSend, rxTx, stopSending);
-                    TxTimer_Elapsed(this, null);
-
-                    return;
-                }
-
-                // Queue the message
-                QueueMessage(dataToSend, rxTx, stopSending);
+                // Writes routed by TransmissionType: TX channel for control/
+                // heartbeat, RX channel for event-log requests + EVENT_ACK.
+                byte[] bytes = convertstringarraytobytearray(dataToSend);
+                WriteFrame(bytes, rxTx);
             }
             catch (Exception ex)
             {
@@ -970,35 +1015,14 @@ namespace DraxTechnology.Panels
             {
                 case TakSendType.TAKSendRequestActEvents:
                     NotifyClient("Request Active Events RX");
-                    //_messageSent = true;
-                    //data = CreateBasicMessage(8, TakCommands.CMD_REQUEST_ACTIVE_EVENTS);
-
-
-                    data = new string[8];
-                    for (int i = 0; i < 8 - 1; i++)
-                        data[i] = "0";
-                    data[3] = 8.ToString();
-                    data[7] = 79.ToString();
-
+                    data = CreateBasicMessage(8, TakCommands.CMD_REQUEST_ACTIVE_EVENTS);
                     rxTx = TransmissionType.RX;
                     immediateRxSend = true;
-                    if (_reconnect)
-                        immediateRxSend = true;
                     break;
 
                 case TakSendType.TAKSendRequestActEventsTX:
                     NotifyClient("Request Active Events TX");
-                    //_messageSent = true;
-                    //data = CreateBasicMessage(8, TakCommands.CMD_REQUEST_ACTIVE_EVENTS);
-
-                    data = new string[8];
-                    for (int i = 0; i < 8 - 1; i++)
-                        data[i] = "0";
-                    data[3] = 8.ToString();
-                    data[7] = 79.ToString();
-
-                    dataString = string.Join(",", data);
-                    Console.WriteLine("Request Active Events TX: " + dataString);
+                    data = CreateBasicMessage(8, TakCommands.CMD_REQUEST_ACTIVE_EVENTS);
                     immediateTxSend = true;
                     rxTx = TransmissionType.TX;
                     if (_reconnect)
@@ -1011,17 +1035,23 @@ namespace DraxTechnology.Panels
                     _messageSent = true;
                     data = CreateMessageWithSerialNo(12, TakCommands.CMD_REQUEST_EVENT_LOG, serialNoStr);
                     rxTx = TransmissionType.RX;
-                    HandleReconnect();
                     break;
 
                 case TakSendType.TAKSendRequestEventLogEx:
                     NotifyClient(_reconnect ? "Send Request Event Log EX - Immediate" : "Send Request Event Log EX");
                     immediateRxSend = true;
-                    //_messageSent = true;
                     _requestEventLogEXSent = true;
-                    data = CreateMessageWithSerialNo(12, TakCommands.CMD_REQUEST_EVENT_LOG, serialNoStr);
+                    // ICD 9.1.5: PACKET_TYPE_REQUEST_EVENT_LOG_EX = 0x14E (334).
+                    // Won't fit in a single low byte; use 32-bit BE encoding.
+                    data = CreateMessageWithType32(12, 0x14E);
+                    if (serialNoStr != null && serialNoStr.Length >= 4)
+                    {
+                        data[8]  = serialNoStr[0];
+                        data[9]  = serialNoStr[1];
+                        data[10] = serialNoStr[2];
+                        data[11] = serialNoStr[3];
+                    }
                     rxTx = TransmissionType.RX;
-                    HandleReconnect();
                     break;
 
                 case TakSendType.TAKSendEventACKRX:
@@ -1072,10 +1102,7 @@ namespace DraxTechnology.Panels
 
                 case TakSendType.TAKSendStartConnectionMonitoringTX:
                     _connectionMonitoringSentTX = true;
-                    NotifyClient((_txRestart ? "Send Start Connection Immediate TX: " : "Send Start Connection TX: ") +
-                        _connectionMonitoringSentTX);
-                    if (_txRestart)
-                        immediateTxSend = true;
+                    NotifyClient($"Send Start Connection TX: {_connectionMonitoringSentTX}");
                     data = CreateConnectionMessage(clientIDStr, TakCommands.CMD_START_MONITORING);
                     rxTx = TransmissionType.TX;
                     break;
@@ -1247,33 +1274,42 @@ namespace DraxTechnology.Panels
             };
         }
 
+        // ICD layout: every frame starts with length (4 bytes, BE u32) at
+        // offsets 0..3, then messageType (4 bytes, BE u32) at offsets 4..7.
+        // Both fields used to fit in a single low byte (length<=248,
+        // messageType<256) - except REQUEST_EVENT_LOG_EX, which is 0x14E and
+        // needs the upper byte. CreateBasicMessage handles the common case;
+        // CreateMessageWithType32 handles the >255 case.
         private string[] CreateBasicMessage(int length, string command)
         {
+            if (length < 8) throw new ArgumentException("frame length must be >= 8", nameof(length));
             var data = new string[length];
-            for (int i = 0; i < length - 1; i++)
-                data[i] = "0";
+            for (int i = 0; i < length; i++) data[i] = "0";
             data[3] = length.ToString();
-            data[length - 5] = command;
+            data[7] = command;
             return data;
         }
 
-        private string[] CreateBasicMessageOLD(int length, string command)
+        private string[] CreateMessageWithType32(int length, int messageType)
         {
+            if (length < 8) throw new ArgumentException("frame length must be >= 8", nameof(length));
             var data = new string[length];
-            for (int i = 0; i < length - 1; i++)
-                data[i] = "0";
+            for (int i = 0; i < length; i++) data[i] = "0";
             data[3] = length.ToString();
-            data[length - 1] = command;
+            data[4] = ((messageType >> 24) & 0xff).ToString();
+            data[5] = ((messageType >> 16) & 0xff).ToString();
+            data[6] = ((messageType >> 8)  & 0xff).ToString();
+            data[7] = ( messageType        & 0xff).ToString();
             return data;
         }
 
         private string[] CreateMessageWithSerialNo(int length, string command, string[] serialNo)
         {
             var data = CreateBasicMessage(length, command);
-            if (serialNo != null && serialNo.Length >= 4)
+            if (serialNo != null && serialNo.Length >= 4 && length >= 12)
             {
-                data[8] = serialNo[0];
-                data[9] = serialNo[1];
+                data[8]  = serialNo[0];
+                data[9]  = serialNo[1];
                 data[10] = serialNo[2];
                 data[11] = serialNo[3];
             }
@@ -1350,22 +1386,18 @@ namespace DraxTechnology.Panels
             return data;
         }
 
+        // ICD §9.1.34: SET_TIME payload is a 32-bit BE integer = seconds since
+        // 2000-01-01 00:00:00 UTC. Length 12 = 4 (length) + 4 (type) + 4 (secs).
         private string[] CreateSetTimeMessage()
         {
-            var data = new string[12];
-            for (int i = 0; i < 8; i++)
-                data[i] = "0";
-            data[3] = "12";
-            data[7] = TakCommands.CMD_SET_TIME;
-
-            if (_timeArray != null && _timeArray.Length >= 4)
-            {
-                for (int i = 0; i < 4; i++)
-                {
-                    data[8 + i] = _timeArray[i].Length < 2 ? "0" + _timeArray[i] : _timeArray[i];
-                    NotifyClient($"Set Time{i}: {data[8 + i]}");
-                }
-            }
+            var data = CreateBasicMessage(12, TakCommands.CMD_SET_TIME);
+            var epoch = new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            long seconds = (long)(DateTime.UtcNow - epoch).TotalSeconds;
+            if (seconds < 0) seconds = 0;
+            data[8]  = ((seconds >> 24) & 0xff).ToString();
+            data[9]  = ((seconds >> 16) & 0xff).ToString();
+            data[10] = ((seconds >> 8)  & 0xff).ToString();
+            data[11] = ( seconds        & 0xff).ToString();
             return data;
         }
 
@@ -1388,588 +1420,117 @@ namespace DraxTechnology.Panels
             return data;
         }
 
-        protected virtual void OnSendImmediateRequest(SendImmediateEventArgs e)
-        {
-            SendImmediateRequest?.Invoke(this, e);
-        }
+        // Legacy txTimer/rxTimer queue, the dual SendBytesToPanel writer that
+        // disposed the live NetworkStream every send, and the original
+        // StartListening read loop have all been removed; writes now serialise
+        // through WriteFrame and reads happen on the single ReaderLoop.
 
-        private void HandleReconnect()
-        {
-            if (_reconnect)
-            {
-                _reconnect = false;
-                NotifyClient("Reconnect Set To False");
-
-                if (_txQueue.Count > 0)
-                {
-                    NotifyClient("Turn Send timer on");
-                    OnStartTxTimer(new TimerEventArgs { Interval =  1000});
-                }
-
-                if (_rxQueue.Count > 0)
-                {
-                    NotifyClient("Turn Send timer RX on");
-                    OnStartRxTimer(new TimerEventArgs { Interval =  1000});
-                }
-            }
-        }
-
-        private void QueueMessage(string[] data, TransmissionType rxTx, bool stopSending)
-        {
-            if (rxTx == TransmissionType.RX)
-            {
-                var rxControl = new TakControlRX
-                {
-                    EncodedPacketRX = data,
-                    RXTX = rxTx
-                };
-
-                if (_rxQueue.Count >= 0)
-                {
-                    _rxQueue.Enqueue(rxControl);
-                    NotifyClient($"Add to RX Queue - Count: {_rxQueue.Count}");
-                    OnStartRxTimer(new TimerEventArgs { Interval =  1000});
-                }
-                else
-                {
-                    if (_commError)
-                    {
-                        ClearAllQueues();
-                        NotifyClient("Comm Error - Queues cleared");
-                    }
-                    else
-                    {
-                        _rxQueue.Enqueue(rxControl);
-                        NotifyClient($"Add to RX Queue (multiple) - Count: {_rxQueue.Count}");
-                        OnStartRxTimer(new TimerEventArgs { Interval =  1000});
-                    }
-                }
-            }
-            else // TX
-            {
-                var txControl = new TakControl
-                {
-                    EncodedPacket = data,
-                    RXTX = rxTx
-                };
-
-                if (_txQueue.Count == 0)
-                {
-                    _txQueue.Enqueue(txControl);
-                    NotifyClient($"Add to TX Queue - Count: {_txQueue.Count}");
-                    OnStartTxTimer(new TimerEventArgs { Interval =  1000});
-                }
-                else
-                {
-                    if (_commError)
-                    {
-                        ClearAllQueues();
-                        NotifyClient("Comm Error - Queues cleared");
-                    }
-                    else
-                    {
-                        _txQueue.Enqueue(txControl);
-                        NotifyClient($"Add to TX Queue (multiple) - Count: {_txQueue.Count}");
-                        OnStartTxTimer(new TimerEventArgs { Interval =  1000});
-                    }
-                }
-            }
-        }
-
-        private void ClearAllQueues()
-        {
-            _rxQueue.Clear();
-            _txQueue.Clear();
-        }
-
-        protected virtual void OnStartTxTimer(TimerEventArgs e)
-        {
-            StartTxTimer?.Invoke(this, e);
-        }
-
-        protected virtual void OnStartRxTimer(TimerEventArgs e)
-        {
-            StartRxTimer?.Invoke(this, e);
-        }
-
-        private void TxTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
-        {
-            if (_txTimer != null)
-            {
-               // _txTimer.Stop();
-            }
-
-            var message = DequeueNextTxMessage();
-            if (message != null)
-            {
-                Console.WriteLine($"[TX TIMER] Sending queued message: {string.Join(",", message.EncodedPacket)}");
-                // Implement actual network send here
-                SendBytesToPanel(message.EncodedPacket);
-                // If more messages in queue, restart timer
-                if (TxQueueCount > 0)
-                {
-                  //  _txTimer.Start();
-                }
-            }
-        }
-
-        private void RxTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
-        {
-            //_rxTimer.Stop();
-
-            var message = DequeueNextRxMessage();
-            if (message != null)
-            {
-                Console.WriteLine($"[RX TIMER] Sending queued message: {string.Join(",", message.EncodedPacket)}");
-                // Implement actual network send here
-                SendBytesToPanel(message.EncodedPacket);
-
-                // If more messages in queue, restart timer
-                //if (RxQueueCount > 0)
-                {
-                    //_rxTimer.Start();
-                }
-            }
-        }
-
-        public TakControl DequeueNextTxMessage()
-        {
-            return _txQueue.Count > 0 ? _txQueue.Dequeue() : null;
-        }
-
-        public TakControlRX DequeueNextRxMessage()
-        {
-            return _rxQueue.Count > 0 ? _rxQueue.Dequeue() : null;
-        }
-
-        private void SendBytesToPanel(string[] tosend)
-        {
-            if (string.IsNullOrWhiteSpace(gsIPAddress) || string.IsNullOrWhiteSpace(gsIPPort))
-            {
-                NotifyClient("IP address or port is not set.");
-                return;
-            }
-
-            if (!int.TryParse(gsIPPort, out int port))
-            {
-                NotifyClient($"Invalid port: {gsIPPort}");
-                return;
-            }
-
-            byte[] data = convertstringarraytobytearray(tosend);
-            try
-            {
-                EnsureConnected();
-
-                using (stream = client.GetStream())
-                {
-                    // Send data
-                    stream.Write(data, 0, data.Length);
-                    stream.Flush();
-
-                    string logFilePath = @"C:\temp\c#amxlog.txt";
-                    string hexString = BitConverter.ToString(data);
-                    string decimalString = string.Join(" ", data);
-                    File.AppendAllText(logFilePath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} Sent: {decimalString}{Environment.NewLine}");
-
-                    Thread.Sleep(1000); // wait for response
-
-                    while (stream.DataAvailable)
-                    {
-                        // Read response
-                        var responseBuffer = new byte[1024];
-                        int bytesRead = stream.Read(responseBuffer, 0, responseBuffer.Length);
-                        if (bytesRead > 0)
-                        {
-                            // Convert response to hex string for readability
-                            string responseHex = BitConverter.ToString(responseBuffer, 0, bytesRead);
-                            NotifyClient($"Received response ({bytesRead} bytes): {responseHex}");
-                            Console.WriteLine("Subsequent Received response: " + responseHex);
-
-                            DecodeMessage(responseHex);
-
-                            //if (responseHex.Length > 23)  // don't ACK an ACK
-                            //{
-                            //    sendtotaktis(TakSendType.TAKSendEventACKRX, glSerialNo, clientID: 1);
-                            //}
-
-                            // ACK 
-                            tosend = new string[12];
-                            for (int i = 0; i < 12; i++)
-                                tosend[i] = "0";
-                            tosend[3] = 12.ToString();
-                            tosend[7] = 134.ToString();
-                            tosend[8] = glSerialNo[0].ToString();
-                            tosend[9] = glSerialNo[1].ToString();
-                            tosend[10] = glSerialNo[2].ToString();
-                            tosend[11] = glSerialNo[3].ToString();
-
-                            data = convertstringarraytobytearray(tosend);
-
-                            stream.Write(data, 0, data.Length);
-                            stream.Flush();
-
-                            logFilePath = @"C:\temp\c#amxlog.txt";
-                            hexString = BitConverter.ToString(data);
-                            decimalString = string.Join(" ", data);
-                            File.AppendAllText(logFilePath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} Sent: {decimalString}{Environment.NewLine}");
-
-                            Thread.Sleep(100); // wait for response
-                        }
-                        else
-                        {
-                            NotifyClient("No response received from panel.");
-                        }
-                    }
-                }
-
-                NotifyClient($"Sent {data.Length} bytes to {gsIPAddress}:{port}");
-            }
-            catch (Exception ex)
-            {
-                NotifyClient($"Error sending bytes: {ex.Message}");
-            }
-        }
-
-        private void EnsureConnected()
-        {
-            if (client == null || !client.Connected)
-            {
-                client?.Close();
-                client = new TcpClient();
-                client.Connect(gsIPAddress, int.Parse(gsIPPort));
-            }
-        }
-
-
-
-        private void StartListening()
-        {
-            while (client.Connected)
-            {
-                byte[] responseBuffer = new byte[1024];
-                int bytesRead = 0;
-
-                try
-                {
-                    if (stream.DataAvailable)
-                    {
-                        bytesRead = stream.Read(responseBuffer, 0, responseBuffer.Length);
-                    }
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e.Message);
-                    break;
-                }
-
-                if (bytesRead == 0)
-                {
-                    continue;
-                }
-
-                string response = Encoding.UTF8.GetString(responseBuffer, 0, bytesRead);
-                Console.WriteLine("Subsequent Received Response: " + response + " read = " + bytesRead);
-
-                // get serial number from response
-                decodeserialnumberfromresponse(responseBuffer, bytesRead);
-
-                Thread.Sleep(1000); // wait for response
-
-                //write(sendackstring);
-                //sendtotaktis(TakSendType.TAKSendACK, glSerialNo);
-
-
-                string[] tosend = new string[12];
-                for (int i = 0; i < 12; i++)
-                    tosend[i] = "0";
-                tosend[3] = 12.ToString();
-                tosend[7] = 134.ToString();
-                tosend[8] = glSerialNo[0].ToString();
-                tosend[9] = glSerialNo[1].ToString();
-                tosend[10] = glSerialNo[2].ToString();
-                tosend[11] = glSerialNo[3].ToString();
-                byte[] data = convertstringarraytobytearray(tosend);
-
-                stream.Write(data, 0, data.Length);
-                stream.Flush();
-
-            }
-            Console.WriteLine("Exited Subsuquent read loop Connected = " + client.Connected);
-        }
-
-  
-
+        // Frame layout (post optional 8-byte sentinel strip):
+        //   0..3   length (BE u32)
+        //   4..7   message type (BE u32)
+        //   8..11  serial number (4 bytes)
+        //   12..15 event group (BE u32)
+        //   16..19 event type (BE u32)
+        //   20..23 event code (BE u32)
+        //   24..27 node (BE u32)
+        //   28..31 address type (BE u32)
+        //   32..35 address (BE u32)
+        //   36..39 sub address (BE u32)
+        //   40..43 loop (BE u32)
+        //   44..47 zone (BE u32)
+        //   48..51 input action (BE u32)
+        //   52..55 timestamp (BE u32)
+        //   56..135 location text (ASCII, NUL-padded)
+        //   136..167 panel text (ASCII, NUL-padded)
+        //   168..247 zone text (ASCII, NUL-padded)  -- 80 bytes per ICD 9.4
+        //
+        // The legacy decoder concatenated each byte's decimal string then
+        // parsed - silently wrong for any value > 255. This now reads each
+        // 4-byte field as a proper big-endian uint32.
         private void DecodeMessage(string responseHex)
         {
-            string sLocationText = "";
-            string sPanelText = "";
-            string sZoneText = "";
-            string sEventGroup = "";
-            string sEventType = "";
-            string sEventCode = "";
-            string sNode = "";
-            string sAddressType = "";
-            string sAddress = "";
-            string sLoop = "";
-            string sZone = "";
-            string sSubAddress = "";
-            string sInputAction = "";
-            string sMessageType = "";
-            string sTimeStamp = "";
-            int iCharCount = 0;
             string[] hexStrings = responseHex.Split('-');
-            byte[] aryHexMessage = hexStrings.Select(h => Convert.ToByte(h, 16)).ToArray();
+            byte[] frame = hexStrings.Select(h => Convert.ToByte(h, 16)).ToArray();
+            if (frame.Length <= 8) return;
 
-            if (aryHexMessage.Length > 8)
+            int o = 0;
+            if (frame.Length >= 16
+                && frame[0] == 0x00 && frame[1] == 0x00 && frame[2] == 0x00 && frame[3] == 0x08
+                && frame[4] == 0x00 && frame[5] == 0x00 && frame[6] == 0x00 && frame[7] == 0x01)
             {
-                // Skip the first 8 elements and create a new array
-                if (hexStrings[0] == "00" & hexStrings[1] == "00" & hexStrings[2] == "00" & hexStrings[3] == "08" & hexStrings[4] == "00" & hexStrings[5] == "00" & hexStrings[6] == "00" & hexStrings[7] == "01")
-                {
-                    aryHexMessage = aryHexMessage.Skip(8).ToArray();
-                }
-
-                while (iCharCount < aryHexMessage.Length)
-                {
-                    switch (iCharCount)
-                    {
-                        case 4:
-                        case 5:
-                        case 6:
-                        case 7:
-                            sMessageType += aryHexMessage[iCharCount].ToString("X2"); // format as 2-digit hex
-                            break;
-
-                        case 8:
-
-                            glSerialNo[0] = aryHexMessage[iCharCount];
-                            break;
-
-                        case 9:
-
-                            glSerialNo[1] = aryHexMessage[iCharCount];
-                            break;
-
-                        case 10:
-
-                            glSerialNo[2] = aryHexMessage[iCharCount];
-                            break;
-
-                        case 11:
-
-                            glSerialNo[3] = aryHexMessage[iCharCount];
-                            break;
-
-                        case 12:
-                        case 13:
-                        case 14:
-                        case 15:
-
-                            sEventGroup += aryHexMessage[iCharCount].ToString();
-                            break;
-
-                        case 16:
-                        case 17:
-                        case 18:
-                        case 19:
-
-                            sEventType += aryHexMessage[iCharCount].ToString();
-                            break;
-
-                        case 20:
-                        case 21:
-                        case 22:
-                        case 23:
-                            sEventCode += aryHexMessage[iCharCount].ToString();
-                            break;
-
-                        case 24:
-                        case 25:
-                        case 26:
-                        case 27:
-
-                            sNode += aryHexMessage[iCharCount].ToString();
-                            break;
-
-                        case 28:
-                        case 29:
-                        case 30:
-                        case 31:
-
-                            sAddressType += aryHexMessage[iCharCount].ToString();
-                            break;
-
-                        case 32:
-                        case 33:
-                        case 34:
-                        case 35:
-                            sAddress += aryHexMessage[iCharCount].ToString();
-                            break;
-
-                        case 36:
-                        case 37:
-                        case 38:
-                        case 39:
-                            sSubAddress += aryHexMessage[iCharCount].ToString();
-                            break;
-
-                        case 40:
-                        case 41:
-                        case 42:
-                        case 43:
-
-                            sLoop += aryHexMessage[iCharCount].ToString();
-                            break;
-
-                        case 44:
-                        case 45:
-                        case 46:
-                        case 47:
-
-                            sZone += aryHexMessage[iCharCount].ToString();
-                            break;
-
-                        case 48:
-                        case 49:
-                        case 50:
-                        case 51:
-
-                            sInputAction += hexStrings[iCharCount].ToString();
-                            break;
-
-                        case 52:
-                        case 53:
-                        case 54:
-                        case 55:
-                            // If you want the timestamp as a string of numbers
-                            sTimeStamp += aryHexMessage[iCharCount]; // pad with 0 if needed
-                            break;
-
-                        case int n when (n >= 56 && n <= 135):
-                            if (aryHexMessage[iCharCount] != 0)
-                                sLocationText += Convert.ToChar(aryHexMessage[iCharCount]);
-                            break;
-
-                        case int n when (n >= 136 && n <= 167):
-                            if (aryHexMessage[iCharCount] != 0)
-                                sPanelText += Convert.ToChar(aryHexMessage[iCharCount]);
-                            break;
-
-                        case int n when (n >= 168 && n <= 248):
-                            if (aryHexMessage[iCharCount] != 0)
-                                sZoneText += Convert.ToChar(aryHexMessage[iCharCount]);
-                            break;
-                    }
-                    iCharCount++;
-                }
-                // Replace all '0' with spaces, trim, then convert spaces back to '0'
-                sMessageType = sMessageType.Replace('0', ' ').Trim().Replace(' ', '0');
-
-                // If the result is empty or null, set to "0"
-                if (string.IsNullOrEmpty(sMessageType))
-                {
-                    sMessageType = "0";
-                }
-                long iMessageType = Convert.ToInt64(sMessageType, 16);
-
-                if (sEventGroup == "")
-                {
-                    sEventGroup = "0";
-                }
-
-                if (sEventCode == "")
-                {
-                    sEventCode = "0";
-                }
-
-                if (sEventType == "")
-                {
-                    sEventType = "0";
-                }
-
-                if (sNode == "")
-                {
-                    sNode = "0";
-                }
-
-                if (sAddress == "")
-                {
-                    sAddress = "0";
-                }
-
-                if (sSubAddress == "")
-                {
-                    sSubAddress = "0";
-                }
-
-                if (sAddressType == "")
-                {
-                    sAddressType = "0";
-                }
-
-                if (sZone == "")
-                {
-                    sZone = "0";
-                }
-
-                if (sLoop == "")
-                {
-                    sLoop = "0";
-                }
-
-                if (sInputAction == "")
-                {
-                    sInputAction = "0";
-                }
-
-                if (sTimeStamp == "")
-                {
-                    sTimeStamp = "0";
-                }
-
-                int iNode = Convert.ToInt32(sNode);
-                int iAddress = Convert.ToInt32(sAddress);
-                long lEventCode = Convert.ToInt64(sEventCode);
-                long lEventGroup = Convert.ToInt64(sEventGroup);
-                long lEventType = Convert.ToInt64(sEventType);
-                int iAddressType = Convert.ToInt32(sAddressType);
-                int iSubAddress = Convert.ToInt32(sSubAddress);
-                int iLoop = Convert.ToInt32(sLoop);
-                int iZone = Convert.ToInt32(sZone);
-                int iInputAction = Convert.ToInt32(sInputAction, 16);   // Hex to Int32
-                long lTimeStamp = Convert.ToInt64(sTimeStamp);
-                enmTAKMessageType gMessageType = (enmTAKMessageType)iMessageType;
-                enmTAKEventType gEventType = (enmTAKEventType)lEventType;
-                enmTAKEventCode gEventCode = (enmTAKEventCode)lEventCode;
-
-                if (iNode == 254)  // ' MH Added 140923
-                {
-                    iNode = 1;
-                }
-
-                switch (iMessageType)
-                {
-                    case 0:    // NAK
-                        break;
-                    case 1:    // ACK
-                        break;
-                    case 2:    // Packet Type Event ID
-
-        //                sendtotaktis(TakSendType.TAKSendStartConnectionMonitoringTX, glSerialNo, clientID: 1);
-
-                        break;
-                    case 133:  // Start Event Message
-
-                        ParseTAKMessage(gMessageType, glSerialNo, lEventGroup, gEventType, gEventCode, iNode, iAddressType, iAddress, iSubAddress, iLoop, iZone, iInputAction, lTimeStamp, sLocationText, sPanelText, sZoneText, "", true);
-
-                        break;
-                    case 135:  // Alarm Off
-
-                        ParseTAKMessage(gMessageType, glSerialNo, lEventGroup, gEventType, gEventCode, iNode, iAddressType, iAddress, iSubAddress, iLoop, iZone, iInputAction, lTimeStamp, sLocationText, sPanelText, sZoneText, "", false);
-
-                        break;
-                }
+                o = 8;
             }
+
+            long iMessageType = ReadFieldU32(frame, o + 4);
+
+            if (frame.Length >= o + 12)
+            {
+                glSerialNo[0] = frame[o + 8];
+                glSerialNo[1] = frame[o + 9];
+                glSerialNo[2] = frame[o + 10];
+                glSerialNo[3] = frame[o + 11];
+            }
+
+            long lEventGroup = ReadFieldU32(frame, o + 12);
+            long lEventType  = ReadFieldU32(frame, o + 16);
+            long lEventCode  = ReadFieldU32(frame, o + 20);
+            int  iNode       = (int)ReadFieldU32(frame, o + 24);
+            int  iAddressType= (int)ReadFieldU32(frame, o + 28);
+            int  iAddress    = (int)ReadFieldU32(frame, o + 32);
+            int  iSubAddress = (int)ReadFieldU32(frame, o + 36);
+            int  iLoop       = (int)ReadFieldU32(frame, o + 40);
+            int  iZone       = (int)ReadFieldU32(frame, o + 44);
+            int  iInputAction= (int)ReadFieldU32(frame, o + 48);
+            long lTimeStamp  = ReadFieldU32(frame, o + 52);
+
+            string sLocationText = ReadFieldAscii(frame, o + 56,  o + 135);
+            string sPanelText    = ReadFieldAscii(frame, o + 136, o + 167);
+            string sZoneText     = ReadFieldAscii(frame, o + 168, o + 247);
+
+            enmTAKMessageType gMessageType = (enmTAKMessageType)iMessageType;
+            enmTAKEventType   gEventType   = (enmTAKEventType)lEventType;
+            enmTAKEventCode   gEventCode   = (enmTAKEventCode)lEventCode;
+
+            // MH 14/09/23: legacy panels report node 254 for the local panel.
+            if (iNode == 254) iNode = 1;
+
+            switch (iMessageType)
+            {
+                case 0:   // NAK
+                case 1:   // ACK
+                case 2:   // Event ID
+                    break;
+                case 133: // Start event
+                    ParseTAKMessage(gMessageType, glSerialNo, lEventGroup, gEventType, gEventCode,
+                        iNode, iAddressType, iAddress, iSubAddress, iLoop, iZone, iInputAction,
+                        lTimeStamp, sLocationText, sPanelText, sZoneText, "", true);
+                    break;
+                case 135: // Clear event
+                    ParseTAKMessage(gMessageType, glSerialNo, lEventGroup, gEventType, gEventCode,
+                        iNode, iAddressType, iAddress, iSubAddress, iLoop, iZone, iInputAction,
+                        lTimeStamp, sLocationText, sPanelText, sZoneText, "", false);
+                    break;
+            }
+        }
+
+        private static long ReadFieldU32(byte[] frame, int offset)
+        {
+            if (offset + 3 >= frame.Length) return 0;
+            return ((long)frame[offset] << 24)
+                 | ((long)frame[offset + 1] << 16)
+                 | ((long)frame[offset + 2] << 8)
+                 |  (long)frame[offset + 3];
+        }
+
+        private static string ReadFieldAscii(byte[] frame, int start, int end)
+        {
+            var sb = new StringBuilder();
+            int last = Math.Min(end, frame.Length - 1);
+            for (int i = start; i <= last; i++)
+            {
+                if (frame[i] != 0) sb.Append((char)frame[i]);
+            }
+            return sb.ToString();
         }
 
 
