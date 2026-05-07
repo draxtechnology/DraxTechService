@@ -13,17 +13,15 @@ namespace DraxTechnology
         {
             if (!Elements.isService) return;
             const string source = "Drax360";
-            const string logName = "Service";
 
-            // The MSI registers the source while elevated; this fallback covers
-            // first-run boxes where it hasn't been created yet. LocalService
-            // can't write to HKLM\...\EventLog, so a missing source must never
-            // take the service down — swallow and move on.
+            // SourceExists enumerates every event log under HKLM and reads each
+            // one's Sources list; LocalService can't read them all (Security log
+            // in particular) and the call throws SecurityException — which used
+            // to take the service down with Error 1064. The MSI registers the
+            // source at install time, so we just write directly. Swallow on
+            // failure: a logging miss must never crash the service.
             try
             {
-                if (!EventLog.SourceExists(source))
-                    EventLog.CreateEventSource(source, logName);
-
                 EventLog.WriteEntry(source, message, type);
             }
             catch
