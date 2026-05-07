@@ -36,12 +36,12 @@ namespace DraxTechnology.Panels
             {
                 // two messages are sent, so we return the same message twice
                 string msg = "";
-                msg+="\0\0\0\0X\u0002@\0\0\0\0\u0002/\v\u0017\u0006\u0019\0\0\0\0\0\u0003\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\u0001\u000f";
+                msg += "\0\0\0\0X\u0002@\0\0\0\0\u0002/\v\u0017\u0006\u0019\0\0\0\0\0\u0003\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\u0001\u000f";
                 return msg;
             }
         }
 
-        public PanelGent(string baselogfolder, string identifier) : base(baselogfolder,identifier, "GenMan","GEN")
+        public PanelGent(string baselogfolder, string identifier) : base(baselogfolder, identifier, "GenMan", "GEN")
         {
             if (!String.IsNullOrEmpty(identifier))
             {
@@ -87,12 +87,12 @@ namespace DraxTechnology.Panels
                     this.buffer.RemoveRange(0, processedBytes);
                 }
             }
-            else 
+            else
             {
                 this.buffer.Clear();
             }
         }
-        
+
         private bool processmessage(byte[] chunk)
         {
             string hex = BitConverter.ToString(chunk);
@@ -212,9 +212,9 @@ namespace DraxTechnology.Panels
             {
                 byte b = chunk[i];
                 if (b == 0) continue;
-                gsTextField += b.ToString();
+                gsTextField += (char)b;
             }
-
+            base.NotifyClient("Get Text : " + gsTextField);
 
             int sMSB = 0;
             int sLSB = 0;
@@ -255,7 +255,7 @@ namespace DraxTechnology.Panels
                                 p3 = 0; p4 = 55;
 
                                 p2 = p2 + this.Offset;
-                                
+
                                 evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
                                 send_response_amx_and_serial(evnum, "", message2);
                             }
@@ -370,6 +370,7 @@ namespace DraxTechnology.Panels
                 case 1:
                     if (sLSB == 8)
                     {
+                        base.NotifyClient("********* Cancel Buzzer ************");
                         message2 = "Cancel Buzzer";
                         p1 = 4; p2 = sPanelNumber;
                         p3 = 0; p4 = 1;
@@ -389,6 +390,7 @@ namespace DraxTechnology.Panels
                     switch (sLSB)
                     {
                         case 1:
+                            base.NotifyClient("********* Super Visory On ************");
                             message2 = "Supervisory On";
                             p1 = 15; p2 = sPanelNumber;
                             p3 = 0; p4 = 12;
@@ -400,6 +402,7 @@ namespace DraxTechnology.Panels
                             break;
 
                         case 2:
+                            base.NotifyClient("********* Super Visory Off ************");
                             message2 = "Supervisory Off";
                             p1 = 15; p2 = sPanelNumber;
                             p3 = 0; p4 = 12;
@@ -411,12 +414,14 @@ namespace DraxTechnology.Panels
                             break;
 
                         default:
+                            base.NotifyClient("********* Unknown ************");
                             this.NotifyClient("Unknown sMSB: " + sMSB + " sLSB: " + sLSB, false);
                             break;
                     }
                     break;
 
                 case 4:
+                    base.NotifyClient("********* System Fault ************");
                     message2 = "System Fault";
                     p1 = 15; p2 = sPanelNumber;
                     p3 = 0; p4 = 55;
@@ -428,6 +433,7 @@ namespace DraxTechnology.Panels
                     break;
 
                 case 5:
+                    base.NotifyClient("********* Out Station Loop Fault ************");
                     message2 = "OutStation - Channel " + sChannelNumber; // Out Station Loop Fault
                     p1 = 8; p2 = sPanelNumber;
                     p3 = sLoopNumber; p4 = AddressNumber;
@@ -439,6 +445,7 @@ namespace DraxTechnology.Panels
                     break;
 
                 case 7:
+                    base.NotifyClient("********* Disablement ************");
                     if (AddressNumber == 0)
                     {
                         message2 = "Zone Disablement";
@@ -486,7 +493,8 @@ namespace DraxTechnology.Panels
                     break;
 
                 case 9:
-                    if (sLSB == 1)  // Call Point
+                    base.NotifyClient("********* Fire ************");
+                    if (sLSB == 0)  // Call Point
                     {
                         message2 = gsTextField;
                         p1 = 0; p2 = sPanelNumber;
@@ -507,6 +515,7 @@ namespace DraxTechnology.Panels
                     break;
 
                 case 10:
+                    base.NotifyClient("********* Super Fire ************");
                     message2 = "Super Fire";
                     p1 = 15; p2 = sPanelNumber;
                     p3 = sLoopNumber; p4 = 54;
@@ -550,7 +559,7 @@ namespace DraxTechnology.Panels
 
                 CSAMXSingleton.CS.SendAlarmToAMX(evnum, message1, message2, message3);
                 CSAMXSingleton.CS.FlushMessages();
-            }   
+            }
         }
         private bool gentchecksumvalidation(int piMSB, int piLSB, byte[] paryMessage, out int oiMSB, out int oiLSB)
         {
@@ -591,7 +600,7 @@ namespace DraxTechnology.Panels
             }
             catch (Exception)
             {
-                this.NotifyClient("Checksumvalidation Error:",false);
+                this.NotifyClient("Checksumvalidation Error:", false);
                 this.NotifyClient("piMSB: " + piMSB, false);
                 this.NotifyClient("piLSB: " + piLSB, false);
             }
@@ -629,7 +638,7 @@ namespace DraxTechnology.Panels
                 return;
             }
 
-             // we are a real serial port 
+            // we are a real serial port 
             serialport = new SerialPort(this.Identifier);
             serialport.BaudRate = setttingbaudrate;
 
@@ -650,7 +659,7 @@ namespace DraxTechnology.Panels
             {
                 serialport.Close();
             }
-            base.NotifyClient("Attempting Open "+ serialport.PortName,false);
+            base.NotifyClient("Attempting Open " + serialport.PortName, false);
             serialport.Encoding = System.Text.Encoding.ASCII;
             serialport.DtrEnable = true;
 
@@ -782,7 +791,7 @@ namespace DraxTechnology.Panels
             int sDay = int.Parse(now.ToString("dd"));    // Two-digit day
             int sDayWeek = ((int)now.DayOfWeek + 6) % 7 + 1;// Sunday = 1, Monday = 2, etc.
             bool on = true;
- 
+
             byte[] gbaryDataToTX = new byte[59];
 
             string text = action.ToString();
