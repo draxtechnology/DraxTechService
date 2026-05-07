@@ -29,6 +29,7 @@ namespace DraxTechnology.Panels
         private System.Timers.Timer pollTimer;
         private int consecutiveFailures = 0;
         private int g_intResponseTimeout = RESPONSE_TIMEOUT;
+        private readonly List<int> _activeFaults = new List<int>();
 
         public override string FakeString
         {
@@ -246,6 +247,7 @@ namespace DraxTechnology.Panels
                     switch (sLSB)
                     {
                         case 0:  // Handshake
+                            base.NotifyClient("********* Handshake ************");
                             if (Convert.ToInt32(sEventParam.Substring(2, 2)) > 0)
                             {
                                 int giNoOfFaults = Convert.ToInt32(sEventParam.Substring(2, 2));
@@ -275,6 +277,7 @@ namespace DraxTechnology.Panels
                             break;
 
                         case 1:
+                            base.NotifyClient("********* Fire Reset ************");
                             message2 = "Reset";
                             p1 = 15; p2 = sPanelNumber;
                             p3 = 0; p4 = 9;
@@ -286,6 +289,8 @@ namespace DraxTechnology.Panels
                             break;
 
                         case 2:   // Faults Cleared (legacy VB: FaultsCleared)
+                            on = false;
+                            base.NotifyClient("********* Faults Cleared ************ " + AddressNumber);
                             message2 = "Faults Cleared";
                             p2 = sPanelNumber;
                             if (AddressNumber == 0)
@@ -308,12 +313,14 @@ namespace DraxTechnology.Panels
                             }
                             p2 = p2 + this.Offset;
 
-                            evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
-                            send_response_amx_and_serial(evnum, "", message2);
+                            evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, on);
+                            //  send_response_amx_and_serial(evnum, "", message2);
+                            clear_tracked_faults();
                             break;
 
                         case 3:   // Disablement Cleared (legacy VB: DisablementsCleared)
                             on = false;
+                            base.NotifyClient("********* Disabled Cleared ************");
                             if (AddressNumber == 0)
                             {
                                 // Zone- or card/loop-level disablement clear.
@@ -340,6 +347,7 @@ namespace DraxTechnology.Panels
                             break;
 
                         case 4:
+                            base.NotifyClient("********* Alarms Silenced ************");
                             message2 = "Alarms Silenced";
                             p1 = 15; p2 = sPanelNumber;
                             p3 = 0; p4 = 10;
@@ -351,6 +359,7 @@ namespace DraxTechnology.Panels
                             break;
 
                         case 5:
+                            base.NotifyClient("********* Alarms Sounded ************");
                             message2 = "Alarms Sounded";
                             p1 = 15; p2 = sPanelNumber;
                             p3 = 0; p4 = 1;
@@ -362,6 +371,7 @@ namespace DraxTechnology.Panels
                             break;
 
                         default:
+                            base.NotifyClient("********* Unknown ************");
                             this.NotifyClient("Unknown sMSB: " + sMSB + " sLSB: " + sLSB, false);
                             break;
                     }
@@ -434,13 +444,21 @@ namespace DraxTechnology.Panels
 
                 case 5:
                     base.NotifyClient("********* Out Station Loop Fault ************");
-                    message2 = "OutStation - Channel " + sChannelNumber; // Out Station Loop Fault
+                    if (sChannelNumber > 0)
+                    {
+                        message2 = "OutStation - Channel " + sChannelNumber; // Out Station Loop Fault
+                    }
+                    else
+                    {
+                        message2 = gsTextField;
+                    }
                     p1 = 8; p2 = sPanelNumber;
                     p3 = sLoopNumber; p4 = AddressNumber;
 
                     p2 = p2 + this.Offset;
 
                     evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+                    track_fault(evnum);
                     send_response_amx_and_serial(evnum, "", message2);
                     break;
 
@@ -1061,38 +1079,30 @@ namespace DraxTechnology.Panels
 
             Parse(readbytes);
         }
-        /*
-        // This method is not used in the current code, but it can be useful for converting byte arrays to escaped strings
-        string ConvertByteArrayToEscapedString(byte[] bytes)
+
+        private void track_fault(int evnum)
         {
-            var sb = new StringBuilder();
-            sb.Append('"');
-            foreach (byte b in bytes)
+            if (!_activeFaults.Contains(evnum))
+                _activeFaults.Add(evnum);
+        }
+
+        private void clear_tracked_faults()
+        {
+            this.NotifyClient("clear_tracked_faults: " + _activeFaults.Count + " faults in list", false);
+            this.NotifyClient("Faults Cleared", false);
+            if (serialsend(new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte }))
             {
-                if (b == 0x00)
+                this.NotifyClient("ACK Sent: 00-06-00-06", false);
+                foreach (int faultEvnum in _activeFaults)
                 {
-                    sb.Append(@"\0");
+                    this.NotifyClient("Clearing evnum: " + faultEvnum, false);
+                    int clearEvnum = faultEvnum & 0x7FFFFFFF;
+                    CSAMXSingleton.CS.SendAlarmToAMX(clearEvnum, "", "Faults Cleared", "");
                 }
-                else if (b >= 0x01 && b <= 0x1F)
-                {
-                    sb.Append(@"\u" + b.ToString("X4"));
-                }
-                else if (b == 0x5C) // backslash '\'
-                {
-                    sb.Append(@"\\");
-                }
-                else if (b == 0x22) // double quote '"'
-                {
-                    sb.Append("\\\"");
-                }
-                else
-                {
-                    sb.Append((char)b);
-                }
+                CSAMXSingleton.CS.FlushMessages();
+                _activeFaults.Clear();
             }
-            sb.Append('"');
-            return sb.ToString();
-        }*/
+        }
     }
 
 }
