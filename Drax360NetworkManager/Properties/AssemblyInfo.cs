@@ -5,11 +5,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("Drax 360 Service")]
+[assembly: AssemblyTitle("Drax Technology Service")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Drax 360")]
-[assembly: AssemblyProduct("Drax 360 Service")]
+[assembly: AssemblyCompany("Drax Technology")]
+[assembly: AssemblyProduct("Drax Technology Service")]
 [assembly: AssemblyCopyright("Copyright ©  2025")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
