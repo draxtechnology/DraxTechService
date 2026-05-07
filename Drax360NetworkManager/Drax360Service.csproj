@@ -13,6 +13,7 @@
     <ProjectGuid>{040A3342-B92B-4794-B3F9-DB63B796BD30}</ProjectGuid>
     <!-- Properties/AssemblyInfo.cs is the source of truth — don't let SDK auto-generate one. -->
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>
 
   <ItemGroup>

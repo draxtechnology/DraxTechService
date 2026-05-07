@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+
+  <Package Name="Drax Technology Service"
+           Manufacturer="Drax Technology"
+           Version="1.0.0"
+           UpgradeCode="B5758DCA-6BC5-4E2C-BF55-7FA118631F65"
+           Scope="perMachine"
+           InstallerVersion="500">
+
+    <SummaryInformation Description="Drax Technology Network Manager"
+                        Keywords="Installer,Drax,NetworkManager" />
+
+    <MajorUpgrade DowngradeErrorMessage="A later version of [ProductName] is already installed." />
+
+    <Media Id="1" Cabinet="files.cab" EmbedCab="yes" CompressionLevel="high" />
+
+    <!-- .NET Framework 4.8.1 launch condition (Release >= 533320) -->
+    <Property Id="NETFRAMEWORK481">
+      <RegistrySearch Id="NetFx481Release"
+                      Root="HKLM"
+                      Key="SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full"
+                      Name="Release"
+                      Type="raw" />
+    </Property>
+    <Launch Condition="Installed OR NETFRAMEWORK481 &gt;= &quot;#533320&quot;"
+            Message="This product requires Microsoft .NET Framework 4.8.1 or later." />
+
+    <Feature Id="Main" Title="Drax Technology Service" Level="1">
+      <ComponentGroupRef Id="ServiceComponents" />
+      <ComponentGroupRef Id="DependencyFiles" />
+      <ComponentGroupRef Id="IniFiles" />
+    </Feature>
+
+    <!-- C:\AMX1\ as install location, with ini\ subfolder.
+         TARGETDIR defaults to the volume root (typically C:\). -->
+    <StandardDirectory Id="TARGETDIR">
+      <Directory Id="INSTALLFOLDER" Name="AMX1">
+        <Directory Id="IniFolder" Name="ini" />
+      </Directory>
+    </StandardDirectory>
+
+    <!-- Service component: holds the EXE + service install/control -->
+    <ComponentGroup Id="ServiceComponents" Directory="INSTALLFOLDER">
+      <Component Id="DraxTechnologyExe" Guid="A1B5C2D3-4E5F-6A7B-8C9D-0E1F2A3B4C5D">
+        <File Id="DraxTechnology.exe"
+              Source="$(var.Drax360Service.TargetDir)DraxTechnology.exe"
+              KeyPath="yes" />
+        <File Id="DraxTechnology.exe.config"
+              Source="$(var.Drax360Service.TargetDir)DraxTechnology.exe.config" />
+        <ServiceInstall Id="DraxTechnologyService"
+                        Name="DraxTechnology"
+                        DisplayName="Drax Technology Service"
+                        Description="Drax Technology Network Manager"
+                        Type="ownProcess"
+                        Start="demand"
+                        ErrorControl="normal"
+                        Account="NT AUTHORITY\LocalService"
+                        Vital="yes" />
+        <ServiceControl Id="DraxTechnologyServiceControl"
+                        Name="DraxTechnology"
+                        Stop="both"
+                        Remove="uninstall"
+                        Wait="yes" />
+      </Component>
+    </ComponentGroup>
+
+  </Package>
+
+</Wix>
