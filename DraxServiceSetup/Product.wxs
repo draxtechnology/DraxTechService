@@ -34,9 +34,10 @@
       <ComponentGroupRef Id="IniFiles" />
     </Feature>
 
-    <!-- Standard wizard with a "change install folder" page. -->
+    <!-- Standard wizard with a "change install folder" page. WiX 5 requires
+         the namespaced <ui:WixUI> form; UIRef is rejected for dialog sets.
+         InstallDirectory authors the WIXUI_INSTALLDIR property automatically. -->
     <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
-    <UIRef Id="WixUI_ErrorProgressText" />
 
     <!-- C:\AMX1\ as install location, with ini\ subfolder.
          TARGETDIR defaults to the volume root (typically C:\). -->
