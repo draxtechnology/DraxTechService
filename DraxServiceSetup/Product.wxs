@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
      xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
 
   <Package Name="Drax Technology Service"
@@ -32,6 +33,10 @@
       <ComponentGroupRef Id="DependencyFiles" />
       <ComponentGroupRef Id="IniFiles" />
     </Feature>
+
+    <!-- Standard wizard with a "change install folder" page. -->
+    <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
+    <UIRef Id="WixUI_ErrorProgressText" />
 
     <!-- C:\AMX1\ as install location, with ini\ subfolder.
          TARGETDIR defaults to the volume root (typically C:\). -->
