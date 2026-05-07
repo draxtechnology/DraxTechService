@@ -60,6 +60,10 @@
         <util:EventSource Name="Drax360"
                           Log="Service"
                           EventMessageFile="[WindowsFolder]Microsoft.NET\Framework64\v4.0.30319\EventLogMessages.dll" />
+        <!-- ServiceBase.EventLog uses the service name as source in the Application log -->
+        <util:EventSource Name="DraxTechnology"
+                          Log="Application"
+                          EventMessageFile="[WindowsFolder]Microsoft.NET\Framework64\v4.0.30319\EventLogMessages.dll" />
         <ServiceInstall Id="DraxTechnologyService"
                         Name="DraxTechnology"
                         DisplayName="Drax Technology Service"
