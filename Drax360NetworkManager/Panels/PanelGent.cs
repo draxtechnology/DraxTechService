@@ -1079,7 +1079,7 @@ namespace DraxTechnology.Panels
 
             Parse(readbytes);
         }
-
+         
         private void track_fault(int evnum)
         {
             if (!_activeFaults.Contains(evnum))
