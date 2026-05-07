@@ -11,19 +11,24 @@ namespace DraxTechnology
     {
         public static void WriteToEventLog(string message, EventLogEntryType type)
         {
-
             if (!Elements.isService) return;
-            string source = "Drax360";
-            string logName = "Service";
+            const string source = "Drax360";
+            const string logName = "Service";
 
-            // Check if the source exists; if not, create it
-            if (!EventLog.SourceExists(source))
+            // The MSI registers the source while elevated; this fallback covers
+            // first-run boxes where it hasn't been created yet. LocalService
+            // can't write to HKLM\...\EventLog, so a missing source must never
+            // take the service down — swallow and move on.
+            try
             {
-                EventLog.CreateEventSource(source, logName);
-            }
+                if (!EventLog.SourceExists(source))
+                    EventLog.CreateEventSource(source, logName);
 
-            // Write the entry to the event log
-            EventLog.WriteEntry(source, message, type);
+                EventLog.WriteEntry(source, message, type);
+            }
+            catch
+            {
+            }
         }
     }
 }

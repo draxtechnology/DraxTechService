@@ -49,6 +49,11 @@
               KeyPath="yes" />
         <File Id="DraxTechnology.exe.config"
               Source="$(var.Drax360Service.TargetDir)DraxTechnology.exe.config" />
+        <!-- Register the event source while the MSI is elevated. The service
+             runs as LocalService and cannot create it at runtime. -->
+        <util:EventSource Name="Drax360"
+                          Log="Service"
+                          EventMessageFile="[WindowsFolder]Microsoft.NET\Framework64\v4.0.30319\EventLogMessages.dll" />
         <ServiceInstall Id="DraxTechnologyService"
                         Name="DraxTechnology"
                         DisplayName="Drax Technology Service"

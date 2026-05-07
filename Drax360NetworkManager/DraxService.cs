@@ -2033,9 +2033,9 @@ namespace DraxTechnology
         #region protected methods
         protected override void OnStart(string[] args)
         {
-            EventLogger.WriteToEventLog("Service is starting...", EventLogEntryType.Information);
             try
             {
+                EventLogger.WriteToEventLog("Service is starting...", EventLogEntryType.Information);
                 Run(args);
             }
             catch (Exception e)
@@ -2047,9 +2047,9 @@ namespace DraxTechnology
 
         protected override void OnStop()
         {
-            EventLogger.WriteToEventLog("Service is Stopping...", EventLogEntryType.Information);
             try
             {
+                EventLogger.WriteToEventLog("Service is Stopping...", EventLogEntryType.Information);
                 Stopit();
             }
             catch (Exception e)
