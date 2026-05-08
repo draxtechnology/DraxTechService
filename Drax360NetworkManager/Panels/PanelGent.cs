@@ -30,7 +30,7 @@ namespace DraxTechnology.Panels
         private int consecutiveFailures = 0;
         private int g_intResponseTimeout = RESPONSE_TIMEOUT;
         private readonly List<int> _activeFaults = new List<int>();
-
+        private Boolean bOneShotReset;
         public override string FakeString
         {
             get
@@ -145,6 +145,7 @@ namespace DraxTechnology.Panels
             string sTime = "";
             string sEventParam = "";
             string gsTextField = "";
+            bOneShotReset = false;
             for (int i = 0; i < 25; i++)
             {
                 byte b = chunk[i];
@@ -279,6 +280,7 @@ namespace DraxTechnology.Panels
                         case 1:
                             base.NotifyClient("********* Fire Reset ************");
                             message2 = "Reset";
+                            bOneShotReset = true;
                             p1 = 15; p2 = sPanelNumber;
                             p3 = 0; p4 = 9;
 
@@ -349,6 +351,7 @@ namespace DraxTechnology.Panels
                         case 4:
                             base.NotifyClient("********* Alarms Silenced ************");
                             message2 = "Alarms Silenced";
+                            bOneShotReset = true;
                             p1 = 15; p2 = sPanelNumber;
                             p3 = 0; p4 = 10;
 
@@ -361,6 +364,7 @@ namespace DraxTechnology.Panels
                         case 5:
                             base.NotifyClient("********* Alarms Sounded ************");
                             message2 = "Alarms Sounded";
+                            bOneShotReset = true;
                             p1 = 15; p2 = sPanelNumber;
                             p3 = 0; p4 = 1;
 
@@ -382,6 +386,7 @@ namespace DraxTechnology.Panels
                     {
                         base.NotifyClient("********* Cancel Buzzer ************");
                         message2 = "Cancel Buzzer";
+                        bOneShotReset = true;
                         p1 = 4; p2 = sPanelNumber;
                         p3 = 0; p4 = 1;
 
