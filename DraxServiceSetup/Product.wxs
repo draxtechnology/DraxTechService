@@ -17,6 +17,9 @@
 
     <Media Id="1" Cabinet="files.cab" EmbedCab="yes" CompressionLevel="high" />
 
+    <Icon Id="DraxService.ico" SourceFile="..\Drax360NetworkManager\DT-small.ico" />
+    <Property Id="ARPPRODUCTICON" Value="DraxService.ico" />
+
     <!-- .NET Framework 4.8.1 launch condition (Release >= 533320) -->
     <Property Id="NETFRAMEWORK481">
       <RegistrySearch Id="NetFx481Release"
