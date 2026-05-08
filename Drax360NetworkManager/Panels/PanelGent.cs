@@ -564,6 +564,19 @@ namespace DraxTechnology.Panels
                     this.NotifyClient("Unknown sMSB: " + sMSB + " sLSB: " + sLSB, false);
                     break;
             }
+
+            // OneShot finalisation. Legacy GENNetManager.bas:1751 wrote attribute
+            // 13 = 1 to the EVM after momentary events (Fire Reset, Alarms
+            // Silenced/Sounded, Cancel Buzzer) so AMX auto-clears them. The legacy
+            // Sleep 0 / FlushAMX1Messages dance is unnecessary — the AMXTransfer
+            // queue + MAK ack already serialises this against the preceding event.
+            if (bOneShotReset && evnum != 0)
+            {
+                base.NotifyClient("OneShot - Force EVM Attribute 13");
+                CSAMXSingleton.CS.ForceEvmAttribute(evnum, 13, 1);
+                CSAMXSingleton.CS.FlushMessages();
+            }
+
             return true;
         }
 

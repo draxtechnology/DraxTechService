@@ -267,6 +267,24 @@ unsigned char *TxFile;
         {
             sendalarmorreset(eventnumber, dtext, dtext2, dtext3, false);
         }
+
+        // Modern equivalent of legacy NwmForceEvmAttribute (Gen_Netman.dll). Queues
+        // a type-17 (ForceEVMAttrToAmx) NVM that AMX uses to set EVM attributes —
+        // most commonly attribute 13 = 1 to mark momentary events (Fire Reset,
+        // Alarms Silenced/Sounded, Cancel Buzzer) as one-shot so AMX auto-clears.
+        public void ForceEvmAttribute(int eventnumber, int attributeBit, int onOff)
+        {
+            NVM ournvm = new NVM();
+            ournvm.OurType = (int)NwmData.ForceEVMAttrToAmx;
+            ournvm.OurEvent = eventnumber;
+            ournvm.Value = attributeBit;
+            ournvm.On = onOff;
+            lock (_nvmsLock)
+            {
+                nvms.Add(ournvm);
+            }
+        }
+
         public void LogMessage(int eventtype, int eventnumber, string text, int ophandle)
         {
             NVM ournvm = new NVM();
