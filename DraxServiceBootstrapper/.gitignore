@@ -1,0 +1,5 @@
+# Runtime installers are downloaded by the user (see Bundle.wxs comments)
+# and embedded into the bundle at build time. Don't commit them — they're
+# ~25 MB and freely available from microsoft.com.
+dotnet-runtime-*-win-x64.exe
+dotnet-runtime-*-win-x86.exe

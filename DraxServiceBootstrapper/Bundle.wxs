@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+
+  <Bundle Name="Drax Technology Service"
+          Version="1.0.2"
+          Manufacturer="Drax Technology"
+          UpgradeCode="A2B9F47C-5E1D-4A6B-9D3C-7F2E8B4D5A6E"
+          IconSourceFile="..\Drax360NetworkManager\DT-small.ico">
+
+    <BootstrapperApplication>
+      <bal:WixStandardBootstrapperApplication Theme="hyperlinkLicense"
+                                               LicenseUrl=""
+                                               LogoFile="..\Drax360NetworkManager\DT-small.ico"
+                                               ShowVersion="yes" />
+    </BootstrapperApplication>
+
+    <!--
+      The service is net8.0-windows but does not use WinForms/WPF, so it
+      needs the .NET 8 base runtime (Microsoft.NETCore.App), NOT the
+      Desktop Runtime that DraxClientSetup detects. Different registry
+      key, different installer EXE.
+    -->
+    <util:RegistrySearch Id="SearchNetCoreApp8"
+                         Root="HKLM"
+                         Key="SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.NETCore.App"
+                         Variable="NetCoreApp8Present"
+                         Result="exists" />
+
+    <Chain>
+      <!--
+        .NET 8 base runtime — installed silently only when missing.
+
+        REQUIRED BEFORE BUILDING:
+          1. Go to https://dotnet.microsoft.com/download/dotnet/8.0
+          2. Download the Windows x64 installer under ".NET Runtime 8.x.x"
+             (NOT the Desktop Runtime — that's for the client only).
+          3. Rename it to: dotnet-runtime-8.0-win-x64.exe
+          4. Place it in this folder (DraxServiceBootstrapper\)
+
+        The file is embedded in the bundle at build time (~25 MB extra).
+        To update to a newer patch, replace the file and rebuild.
+      -->
+      <ExePackage Id="NetCoreRuntime8"
+                  SourceFile="dotnet-runtime-8.0.26-win-x64.exe"
+                  DetectCondition="NetCoreApp8Present"
+                  InstallArguments="/install /quiet /norestart"
+                  RepairArguments="/repair /quiet /norestart"
+                  UninstallArguments="/uninstall /quiet /norestart"
+                  Permanent="yes" />
+
+      <!-- Drax Service MSI -->
+      <MsiPackage SourceFile="$(var.DraxServiceSetup.TargetPath)" />
+    </Chain>
+  </Bundle>
+
+</Wix>

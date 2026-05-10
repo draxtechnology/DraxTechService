@@ -5,7 +5,7 @@
 
   <Package Name="Drax Technology Service"
            Manufacturer="Drax Technology"
-           Version="1.0.1"
+           Version="1.0.2"
            UpgradeCode="B5758DCA-6BC5-4E2C-BF55-7FA118631F65"
            Scope="perMachine"
            InstallerVersion="500">
