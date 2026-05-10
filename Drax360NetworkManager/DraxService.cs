@@ -1216,7 +1216,9 @@ namespace DraxTechnology
                     PipeAccessRights.ReadWrite,
                     AccessControlType.Allow));
 
-                pipeserversend = new NamedPipeServerStream(kpipenamesend, PipeDirection.InOut, 254, PipeTransmissionMode.Message, PipeOptions.Asynchronous, 0x4000, 0x400, ps);
+                // .NET 8 dropped the PipeSecurity-aware constructor; the equivalent
+                // factory lives in NamedPipeServerStreamAcl (System.IO.Pipes.AccessControl).
+                pipeserversend = NamedPipeServerStreamAcl.Create(kpipenamesend, PipeDirection.InOut, 254, PipeTransmissionMode.Message, PipeOptions.Asynchronous, 0x4000, 0x400, ps);
                 ln("Pipe Server Send is Started (" + kpipenamesend + ")");
             }
             catch (Exception ex)

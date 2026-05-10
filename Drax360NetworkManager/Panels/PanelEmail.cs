@@ -4,8 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Net.Mail;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
-using System.Web.Script.Serialization;
 
 namespace DraxTechnology.Panels
 {
@@ -188,8 +188,8 @@ namespace DraxTechnology.Panels
             try
             {
                 string json = File.ReadAllText(jsonPath, Encoding.UTF8);
-                var serializer = new JavaScriptSerializer();
-                var raw = serializer.Deserialize<List<ClientEmailGroup>>(json);
+                var raw = JsonSerializer.Deserialize<List<ClientEmailGroup>>(json,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                 if (raw == null) return;
 
                 int n = 1;

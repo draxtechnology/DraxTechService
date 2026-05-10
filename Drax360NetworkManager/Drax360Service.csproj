@@ -2,51 +2,40 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net481</TargetFramework>
+    <TargetFramework>net8.0-windows</TargetFramework>
     <RootNamespace>DraxTechnology</RootNamespace>
     <AssemblyName>DraxTechnology</AssemblyName>
-    <LangVersion>8.0</LangVersion>
     <StartupObject>DraxTechnology.Program</StartupObject>
-    <AutoGenerateBindingRedirects>false</AutoGenerateBindingRedirects>
-    <GenerateBindingRedirectsOutputType>false</GenerateBindingRedirectsOutputType>
     <Deterministic>true</Deterministic>
     <ProjectGuid>{040A3342-B92B-4794-B3F9-DB63B796BD30}</ProjectGuid>
     <!-- Properties/AssemblyInfo.cs is the source of truth — don't let SDK auto-generate one. -->
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <!-- Service is Windows-only by design (ServiceBase, EventLog, WMI, named-pipe ACLs).
+         CA1416 fires for Windows-only APIs even though our TFM is net8.0-windows. -->
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
-    <Reference Include="System.Configuration" />
-    <Reference Include="System.Configuration.Install" />
-    <Reference Include="System.Management" />
-    <Reference Include="System.ServiceProcess" />
-    <Reference Include="System.Web.Extensions" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- EF Core 3.1.32 is the last version supporting .NET Framework 4.8.1 (netstandard2.0). -->
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.7" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="3.1.32" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="3.1.32" />
-    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.2" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.10" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="8.0.1" />
+    <PackageReference Include="System.Diagnostics.EventLog" Version="8.0.1" />
+    <PackageReference Include="System.IO.Pipes.AccessControl" Version="5.0.0" />
+    <PackageReference Include="System.IO.Ports" Version="8.0.0" />
+    <PackageReference Include="System.Management" Version="8.0.0" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.1" />
   </ItemGroup>
 
   <ItemGroup>
     <Compile Update="DraxService.Designer.cs">
       <DependentUpon>DraxService.cs</DependentUpon>
     </Compile>
-    <Compile Update="ProjectInstaller.Designer.cs">
-      <DependentUpon>ProjectInstaller.cs</DependentUpon>
-    </Compile>
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Update="DraxService.resx">
       <DependentUpon>DraxService.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Update="ProjectInstaller.resx">
-      <DependentUpon>ProjectInstaller.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
 
@@ -57,24 +46,5 @@
     <None Update="ini\MAXMan.ini" CopyToOutputDirectory="PreserveNewest" />
     <None Update="ini\Takman.ini" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
-
-  <!-- Always copy App.config → exe.config so editing App.config in VS takes effect
-       on the next Build without needing a Rebuild. AutoGenerateBindingRedirects is
-       off because the redirects are authored directly in App.config. -->
-  <Target Name="SyncAppConfig" AfterTargets="Build">
-    <Copy SourceFiles="$(MSBuildProjectDirectory)\App.config"
-          DestinationFiles="$(OutputPath)$(AssemblyName).exe.config"
-          ContinueOnError="true" />
-  </Target>
-
-  <!-- SQLitePCLRaw.lib.e_sqlite3's buildTransitive targets copy e_sqlite3.dll into
-       runtimes\win-x64\native\ inside the output directory, but .NET Framework only
-       loads native DLLs from the exe directory root. This target copies the DLL there. -->
-  <Target Name="CopyNativeSQLiteToOutputRoot" AfterTargets="Build">
-    <ItemGroup>
-      <_NativeE_Sqlite3 Include="$(NuGetPackageRoot)sqlitepclraw.lib.e_sqlite3\**\runtimes\win-x64\native\e_sqlite3.dll" />
-    </ItemGroup>
-    <Copy SourceFiles="@(_NativeE_Sqlite3)" DestinationFolder="$(OutputPath)" ContinueOnError="true" />
-  </Target>
 
 </Project>

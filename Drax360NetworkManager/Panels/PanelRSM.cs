@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
 using System.Text;
-using System.Web.Script.Serialization;
+using System.Text.Json;
 
 namespace DraxTechnology.Panels
 {
@@ -113,8 +113,8 @@ namespace DraxTechnology.Panels
             try
             {
                 string json = File.ReadAllText(jsonPath, Encoding.UTF8);
-                var serializer = new JavaScriptSerializer();
-                var raw = serializer.Deserialize<List<ClientDevice>>(json);
+                var raw = JsonSerializer.Deserialize<List<ClientDevice>>(json,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                 if (raw == null) return;
 
                 foreach (var d in raw)
