@@ -47,4 +47,14 @@
     <None Update="ini\Takman.ini" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- Copy the win-x64 native SQLite to the output root so the WiX harvest
+       (DraxServiceSetup\Regenerate-Files.ps1) picks it up alongside the
+       managed DLLs. .NET would otherwise probe runtimes\win-x64\native\
+       only, but the installer would need to mirror that subtree. -->
+  <Target Name="CopyNativeSQLiteToOutputRoot" AfterTargets="Build">
+    <Copy SourceFiles="$(OutputPath)runtimes\win-x64\native\e_sqlite3.dll"
+          DestinationFolder="$(OutputPath)"
+          ContinueOnError="true" />
+  </Target>
+
 </Project>

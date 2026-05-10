@@ -8,9 +8,11 @@ Set-Location $PSScriptRoot
 $bin = Join-Path $PSScriptRoot '..\Drax360NetworkManager\bin\Debug'
 if (-not (Test-Path $bin)) { throw "$bin not found - run dotnet build first." }
 
+# Exclude files declared explicitly in Product.wxs (the apphost EXE) and pdb
+# symbols. On net8 the managed DLL, .dll.config, .deps.json and
+# .runtimeconfig.json all flow through DependencyFiles automatically.
 $rootFiles = Get-ChildItem $bin -File | Where-Object {
   $_.Name -ne 'DraxTechnology.exe' -and
-  $_.Name -ne 'DraxTechnology.exe.config' -and
   $_.Name -ne 'DraxTechnology.pdb'
 } | Sort-Object Name
 

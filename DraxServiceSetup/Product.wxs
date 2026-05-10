@@ -20,16 +20,9 @@
     <Icon Id="DraxService.ico" SourceFile="..\Drax360NetworkManager\DT-small.ico" />
     <Property Id="ARPPRODUCTICON" Value="DraxService.ico" />
 
-    <!-- .NET Framework 4.8.1 launch condition (Release >= 533320) -->
-    <Property Id="NETFRAMEWORK481">
-      <RegistrySearch Id="NetFx481Release"
-                      Root="HKLM"
-                      Key="SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full"
-                      Name="Release"
-                      Type="raw" />
-    </Property>
-    <Launch Condition="Installed OR NETFRAMEWORK481 &gt;= &quot;#533320&quot;"
-            Message="This product requires Microsoft .NET Framework 4.8.1 or later." />
+    <!-- The service now targets net8.0-windows. The .NET 8 Runtime is not
+         gated here — pair this MSI with a bootstrapper bundle (mirroring
+         DraxTechClient/DraxClientSetup) when shipping to a fresh machine. -->
 
     <Feature Id="Main" Title="Drax Technology Service" Level="1">
       <ComponentGroupRef Id="ServiceComponents" />
@@ -53,11 +46,13 @@
     <!-- Service component: holds the EXE + service install/control -->
     <ComponentGroup Id="ServiceComponents" Directory="INSTALLFOLDER">
       <Component Id="DraxTechnologyExe" Guid="A1B5C2D3-4E5F-6A7B-8C9D-0E1F2A3B4C5D">
+        <!-- On net8 the exe is the apphost; the managed assembly + config
+             (DraxTechnology.dll, .dll.config, .deps.json, .runtimeconfig.json)
+             are picked up by the auto-generated Files.wxs DependencyFiles
+             group. -->
         <File Id="DraxTechnology.exe"
               Source="$(var.Drax360Service.TargetDir)DraxTechnology.exe"
               KeyPath="yes" />
-        <File Id="DraxTechnology.exe.config"
-              Source="$(var.Drax360Service.TargetDir)DraxTechnology.exe.config" />
         <!-- Register the event source while the MSI is elevated. The service
              runs as LocalService and cannot create it at runtime. -->
         <util:EventSource Name="Drax360"
