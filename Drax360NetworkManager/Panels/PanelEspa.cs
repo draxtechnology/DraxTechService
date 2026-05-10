@@ -7,7 +7,6 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Ports;
 using System.Linq;
-using System.Management;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;

@@ -5,7 +5,6 @@ using System.IO.Ports;
 using System.Linq;
 using System.Reflection.Emit;
 using System.Runtime.InteropServices;
-using System.Runtime.Remoting.Messaging;
 using System.Text;
 using System.Timers;
 
