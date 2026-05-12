@@ -4,7 +4,7 @@
      xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
 
   <Bundle Name="Drax Technology Service"
-          Version="1.0.3"
+          Version="1.0.4"
           Manufacturer="Drax Technology"
           UpgradeCode="A2B9F47C-5E1D-4A6B-9D3C-7F2E8B4D5A6E"
           IconSourceFile="..\Drax360NetworkManager\DT-small.ico">
@@ -17,36 +17,43 @@
     </BootstrapperApplication>
 
     <!--
-      The service is net10.0-windows but does not use WinForms/WPF, so it
-      needs the .NET 10 base runtime (Microsoft.NETCore.App), NOT the
-      Desktop Runtime that DraxClientSetup detects. Different registry
-      key, different installer EXE.
+      The service is net10.0-windows and doesn't actually use WinForms/WPF,
+      so strictly only the .NET 10 base runtime (Microsoft.NETCore.App) is
+      required. We bundle the Desktop Runtime anyway because it's a strict
+      superset (it installs both Microsoft.NETCore.App AND
+      Microsoft.WindowsDesktop.App), which means the service + client
+      installers share one runtime EXE — Mike only has to download it once
+      per patch. Costs ~30 MB extra on the service install; worth it for
+      build/maintenance ergonomics. Detection matches: present when the
+      Desktop Runtime is installed.
     -->
-    <util:RegistrySearch Id="SearchNetCoreApp10"
+    <util:RegistrySearch Id="SearchNetDesktop10"
                          Root="HKLM"
-                         Key="SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.NETCore.App"
-                         Variable="NetCoreApp10Present"
+                         Key="SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.WindowsDesktop.App"
+                         Variable="NetDesktop10Present"
                          Result="exists" />
 
     <Chain>
       <!--
-        .NET 10 base runtime — installed silently only when missing.
+        .NET 10 Desktop Runtime — installed silently only when missing.
+        Same EXE as DraxTechClient/DraxClientSetup; download once, drop a
+        copy into both bootstrapper folders.
 
         REQUIRED BEFORE BUILDING:
           1. Go to https://dotnet.microsoft.com/download/dotnet/10.0
-          2. Download the Windows x64 installer under ".NET Runtime 10.x.x"
-             (NOT the Desktop Runtime — that's for the client only).
+          2. Download the Windows x64 installer under ".NET Desktop
+             Runtime 10.x.x".
           3. Place it in this folder (DraxServiceBootstrapper\). Microsoft's
              native filename already matches what SourceFile= expects, so no
              rename is needed.
 
-        The file is embedded in the bundle at build time (~28 MB extra).
+        The file is embedded in the bundle at build time (~60 MB extra).
         To update to a newer patch, replace the file, update the SourceFile
         attribute below to the new filename, and rebuild.
       -->
-      <ExePackage Id="NetCoreRuntime10"
-                  SourceFile="dotnet-runtime-10.0.7-win-x64.exe"
-                  DetectCondition="NetCoreApp10Present"
+      <ExePackage Id="NetDesktopRuntime10"
+                  SourceFile="windowsdesktop-runtime-10.0.7-win-x64.exe"
+                  DetectCondition="NetDesktop10Present"
                   InstallArguments="/install /quiet /norestart"
                   RepairArguments="/repair /quiet /norestart"
                   UninstallArguments="/uninstall /quiet /norestart"

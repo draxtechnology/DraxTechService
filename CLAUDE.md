@@ -64,7 +64,7 @@ Per-panel serial settings (baud rate, parity, data bits, stop bits, COM port) li
 
 - Service name: `DraxTechnology`, runs as `LocalService`, **manual start** (Mike/James want a fresh install not to auto-start). The start-mode is set via WiX `Start="demand"` in `DraxServiceSetup\Product.wxs`.
 - `DraxServiceSetup` (WiX 5 SDK-style `.wixproj`) produces the bare MSI (`DraxTechnologyServiceSetup.msi`).
-- `DraxServiceBootstrapper` (WiX 5 bundle) wraps the MSI behind a silent `Microsoft.NETCore.App` 10.x runtime install for fresh-machine deploys. Requires `dotnet-runtime-10.0.x-win-x64.exe` to be dropped into the bootstrapper folder before building (see `Bundle.wxs` comments).
+- `DraxServiceBootstrapper` (WiX 5 bundle) wraps the MSI behind a silent .NET 10 Desktop Runtime install for fresh-machine deploys. Same EXE as `DraxTechClient/DraxClientSetup` (the Desktop Runtime is a strict superset of the base runtime), so the same `windowsdesktop-runtime-10.0.x-win-x64.exe` file just needs to be dropped into both bootstrapper folders before building — see `Bundle.wxs` comments. The service doesn't actually use WinForms/WPF; we trade ~30 MB on the install for one-runtime-EXE-per-patch maintenance.
 - The legacy `ProjectInstaller.cs` (System.Configuration.Install) is gone — WiX owns service registration entirely via `<ServiceInstall>` + `<ServiceControl>`.
 
 ### Ports & protocols
