@@ -2,12 +2,6 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   <Fragment>
     <ComponentGroup Id="DependencyFiles" Directory="INSTALLFOLDER">
-      <Component Id="cmp_1" Guid="0F4EFDBC-3419-8A32-A32C-ABAF35206E0E">
-        <File Id="fil_1" Source="$(var.Drax360Service.TargetDir)1" KeyPath="yes" />
-      </Component>
-      <Component Id="cmp_drax360service_InstallLog" Guid="0466DF68-6593-55D3-0410-A79CBB56B442">
-        <File Id="fil_drax360service_InstallLog" Source="$(var.Drax360Service.TargetDir)drax360service.InstallLog" KeyPath="yes" />
-      </Component>
       <Component Id="cmp_DraxTechnology_deps_json" Guid="F91FFF1A-1250-B428-8072-3F876BD74DA6">
         <File Id="fil_DraxTechnology_deps_json" Source="$(var.Drax360Service.TargetDir)DraxTechnology.deps.json" KeyPath="yes" />
       </Component>
@@ -22,9 +16,6 @@
       </Component>
       <Component Id="cmp_e_sqlite3_dll" Guid="D5E1A5E2-76EA-DFB5-7B1B-1EEDD1D7660E">
         <File Id="fil_e_sqlite3_dll" Source="$(var.Drax360Service.TargetDir)e_sqlite3.dll" KeyPath="yes" />
-      </Component>
-      <Component Id="cmp_events_db" Guid="8AD39818-BC71-B109-9DCD-7E8C5101E0C1">
-        <File Id="fil_events_db" Source="$(var.Drax360Service.TargetDir)events.db" KeyPath="yes" />
       </Component>
       <Component Id="cmp_Microsoft_Data_Sqlite_dll" Guid="4BC0A4DC-1DAE-EDA2-F6AE-7EF8019E06E7">
         <File Id="fil_Microsoft_Data_Sqlite_dll" Source="$(var.Drax360Service.TargetDir)Microsoft.Data.Sqlite.dll" KeyPath="yes" />
@@ -119,26 +110,23 @@
       <Component Id="cmp_ini_Takman_ini" Guid="260E2648-4112-410D-55AB-04EB721E9FA7">
         <File Id="fil_ini_Takman_ini" Source="$(var.Drax360Service.TargetDir)ini\Takman.ini" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_ini_temp_ini" Guid="EB41919D-F84B-08AC-D45D-239F1656492B">
-        <File Id="fil_ini_temp_ini" Source="$(var.Drax360Service.TargetDir)ini\temp.ini" KeyPath="yes" />
-      </Component>
     </ComponentGroup>
 
     <ComponentGroup Id="WinRuntimeFiles" Directory="WinRuntimeDir">
-      <Component Id="cmp_winrt_System_Diagnostics_EventLog_dll" Guid="7602FC18-EC43-3164-2F78-0D4A65A46295">
-        <File Id="fil_winrt_System_Diagnostics_EventLog_dll" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net8.0\System.Diagnostics.EventLog.dll" KeyPath="yes" />
+      <Component Id="cmp_winrt_System_Diagnostics_EventLog_dll" Guid="F48B14F4-B455-D108-6688-92ABA44185A5">
+        <File Id="fil_winrt_System_Diagnostics_EventLog_dll" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\System.Diagnostics.EventLog.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_winrt_System_Diagnostics_EventLog_Messages_dll" Guid="5B381F5B-B91F-CD6E-14A7-CDFACF4951B7">
-        <File Id="fil_winrt_System_Diagnostics_EventLog_Messages_dll" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net8.0\System.Diagnostics.EventLog.Messages.dll" KeyPath="yes" />
+      <Component Id="cmp_winrt_System_Diagnostics_EventLog_Messages_dll" Guid="40D8C017-F164-467B-F882-09CACB1EED1B">
+        <File Id="fil_winrt_System_Diagnostics_EventLog_Messages_dll" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\System.Diagnostics.EventLog.Messages.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_winrt_System_IO_Ports_dll" Guid="80FB62C0-A4DF-D44D-9934-2108DA4396EA">
-        <File Id="fil_winrt_System_IO_Ports_dll" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net8.0\System.IO.Ports.dll" KeyPath="yes" />
+      <Component Id="cmp_winrt_System_IO_Ports_dll" Guid="BA8F8BDB-470F-0704-0F29-FDB2FBCAF4A1">
+        <File Id="fil_winrt_System_IO_Ports_dll" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\System.IO.Ports.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_winrt_System_Management_dll" Guid="D7FE00A3-29E9-D8F4-AF56-B25D93CB722C">
-        <File Id="fil_winrt_System_Management_dll" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net8.0\System.Management.dll" KeyPath="yes" />
+      <Component Id="cmp_winrt_System_Management_dll" Guid="B41E1342-22B5-7A3F-F41D-D2D0EFE7BF1E">
+        <File Id="fil_winrt_System_Management_dll" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\System.Management.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_winrt_System_ServiceProcess_ServiceController_dll" Guid="9DED07E5-99B1-3112-C0A3-C3342867A29C">
-        <File Id="fil_winrt_System_ServiceProcess_ServiceController_dll" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net8.0\System.ServiceProcess.ServiceController.dll" KeyPath="yes" />
+      <Component Id="cmp_winrt_System_ServiceProcess_ServiceController_dll" Guid="311540BC-62CA-0F6C-507F-FE4673F16659">
+        <File Id="fil_winrt_System_ServiceProcess_ServiceController_dll" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\System.ServiceProcess.ServiceController.dll" KeyPath="yes" />
       </Component>
     </ComponentGroup>
   </Fragment>

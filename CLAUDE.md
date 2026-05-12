@@ -16,7 +16,7 @@ dotnet build SerialTest/SerialTest.csproj
 dotnet build "Taktis Receive/Taktis Receive.csproj"
 ```
 
-All projects target **.NET 8** (the service is `net8.0-windows`; the utilities are `net8.0`). The service was retargeted from .NET Framework 4.8.1 on 2026-05-10 to align with the (already net8) DraxTechClient codebase.
+All projects target **.NET 10** (the service is `net10.0-windows`; the utilities are `net10.0`). The service was retargeted from .NET Framework 4.8.1 to net8 on 2026-05-10 (to align with the DraxTechClient codebase), then forward to net10 on 2026-05-12 once it became clear net8 had already entered Maintenance phase — net10 LTS runs through November 2028.
 
 There is no automated test suite. `SerialTest` is a manual utility for verifying serial port connectivity.
 
@@ -37,7 +37,7 @@ Fire Alarm Panel (Serial/TCP)
 
 ### Key components
 
-**`DraxService.cs`** — The service entry point (`ServiceBase`; `System.ServiceProcess` is supplied inbox by the `net8.0-windows` TFM — no NuGet package needed). Reads `App.config` to determine which panel type is active, instantiates the correct panel, manages the AMX TCP connection, and runs a named pipe server for inter-process communication with external tools.
+**`DraxService.cs`** — The service entry point (`ServiceBase`, from `System.ServiceProcess.ServiceController`). Reads `App.config` to determine which panel type is active, instantiates the correct panel, manages the AMX TCP connection, and runs a named pipe server for inter-process communication with external tools.
 
 **`Panels/AbstractPanel.cs`** — Base class for all panel drivers. Defines the contract (`StartUp()`, `Parse()`, `Evacuate()`, `Alert()`, `Silence()`, `Reset()`, etc.) and manages serial port I/O and event firing via `OutsideEvents`. Each manufacturer has a concrete subclass: `PanelGent`, `PanelMorleyZX`, `PanelMorelyMax`, `PanelNotifier`, `PanelPearl`, `PanelRSM`, `PanelSyncro`, `PanelTaktis`, `PanelEmail`, `PanelAdvanced`, `PanelEspa`.
 
@@ -47,13 +47,13 @@ Fire Alarm Panel (Serial/TCP)
 
 **`SettingsSingleton.cs`** — INI file reader (singleton). Each panel type has its own INI file in `Drax360NetworkManager/ini/` (e.g., `GenMan.ini` for Gent, `MAXMan.ini` for Morley MAX, `Takman.ini` for Taktis).
 
-**`Data/`** — EF Core 8 contexts. `EspaEventsContext` is the template; `EspaEventsLegacyMigrator` handles the one-shot raw-SQL migration from the legacy v0 ESPA schema.
+**`Data/`** — EF Core 10 contexts. `EspaEventsContext` is the template; `EspaEventsLegacyMigrator` handles the one-shot raw-SQL migration from the legacy v0 ESPA schema.
 
 **`Security/AesDecryption.cs`** — AES-256/PBKDF2 decryption supporting OpenSSL format with salt, used for encrypted panel configurations.
 
 ### Configuration
 
-`App.config` (copied to `DraxTechnology.dll.config` at build time on net8) controls runtime behaviour:
+`App.config` (copied to `DraxTechnology.dll.config` at build time on .NET Core) controls runtime behaviour:
 - `Panels` — active panel type (e.g., `GENT`, `MORLEYMAX`, `RSM`, `TAKTIS`)
 - `Configuration` — base folder path for INI files and logs
 - `FakeMode` — set to `1` to run without real hardware
@@ -64,7 +64,7 @@ Per-panel serial settings (baud rate, parity, data bits, stop bits, COM port) li
 
 - Service name: `DraxTechnology`, runs as `LocalService`, **manual start** (Mike/James want a fresh install not to auto-start). The start-mode is set via WiX `Start="demand"` in `DraxServiceSetup\Product.wxs`.
 - `DraxServiceSetup` (WiX 5 SDK-style `.wixproj`) produces the bare MSI (`DraxTechnologyServiceSetup.msi`).
-- `DraxServiceBootstrapper` (WiX 5 bundle) wraps the MSI behind a silent `Microsoft.NETCore.App` 8.x runtime install for fresh-machine deploys. Requires `dotnet-runtime-8.0.x-win-x64.exe` to be dropped into the bootstrapper folder before building (see `Bundle.wxs` comments).
+- `DraxServiceBootstrapper` (WiX 5 bundle) wraps the MSI behind a silent `Microsoft.NETCore.App` 10.x runtime install for fresh-machine deploys. Requires `dotnet-runtime-10.0.x-win-x64.exe` to be dropped into the bootstrapper folder before building (see `Bundle.wxs` comments).
 - The legacy `ProjectInstaller.cs` (System.Configuration.Install) is gone — WiX owns service registration entirely via `<ServiceInstall>` + `<ServiceControl>`.
 
 ### Ports & protocols

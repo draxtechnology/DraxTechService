@@ -9,7 +9,7 @@ $bin = Join-Path $PSScriptRoot '..\Drax360NetworkManager\bin\Debug'
 if (-not (Test-Path $bin)) { throw "$bin not found - run dotnet build first." }
 
 # Exclude files declared explicitly in Product.wxs (the apphost EXE) and pdb
-# symbols. On net8 the managed DLL, .dll.config, .deps.json and
+# symbols. On .NET (Core) the managed DLL, .dll.config, .deps.json and
 # .runtimeconfig.json all flow through DependencyFiles automatically.
 $rootFiles = Get-ChildItem $bin -File | Where-Object {
   $_.Name -ne 'DraxTechnology.exe' -and
@@ -19,10 +19,10 @@ $rootFiles = Get-ChildItem $bin -File | Where-Object {
 $iniFiles = Get-ChildItem (Join-Path $bin 'ini') -File -ErrorAction SilentlyContinue | Sort-Object Name
 
 # NuGet packages like System.ServiceProcess.ServiceController ship Windows-specific
-# DLLs under runtimes\win\lib\net8.0\. The .NET runtime resolves these via the
+# DLLs under runtimes\win\lib\net10.0\. The .NET runtime resolves these via the
 # runtimeTargets in deps.json, so they must be installed into the matching subfolder
-# (C:\AMX1\runtimes\win\lib\net8.0\) — not just the app root.
-$winRuntimeDir = Join-Path $bin 'runtimes\win\lib\net8.0'
+# (C:\AMX1\runtimes\win\lib\net10.0\) — not just the app root.
+$winRuntimeDir = Join-Path $bin 'runtimes\win\lib\net10.0'
 $winRuntimeFiles = if (Test-Path $winRuntimeDir) {
   Get-ChildItem $winRuntimeDir -File | Sort-Object Name
 } else { @() }
@@ -63,9 +63,9 @@ foreach ($f in $iniFiles) {
 [void]$sb.AppendLine('    <ComponentGroup Id="WinRuntimeFiles" Directory="WinRuntimeDir">')
 foreach ($f in $winRuntimeFiles) {
   $safe = Sanitize $f.Name
-  $guid = StableGuid("DraxSetup:runtimes\win\lib\net8.0\$($f.Name)")
+  $guid = StableGuid("DraxSetup:runtimes\win\lib\net10.0\$($f.Name)")
   [void]$sb.AppendLine("      <Component Id=`"cmp_winrt_$safe`" Guid=`"$guid`">")
-  [void]$sb.AppendLine("        <File Id=`"fil_winrt_$safe`" Source=`"`$(var.Drax360Service.TargetDir)runtimes\win\lib\net8.0\$($f.Name)`" KeyPath=`"yes`" />")
+  [void]$sb.AppendLine("        <File Id=`"fil_winrt_$safe`" Source=`"`$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\$($f.Name)`" KeyPath=`"yes`" />")
   [void]$sb.AppendLine('      </Component>')
 }
 [void]$sb.AppendLine('    </ComponentGroup>')

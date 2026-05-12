@@ -20,7 +20,7 @@
     <Icon Id="DraxService.ico" SourceFile="..\Drax360NetworkManager\DT-small.ico" />
     <Property Id="ARPPRODUCTICON" Value="DraxService.ico" />
 
-    <!-- The service now targets net8.0-windows. The .NET 8 Runtime is not
+    <!-- The service targets net10.0-windows. The .NET 10 Runtime is not
          gated here — pair this MSI with a bootstrapper bundle (mirroring
          DraxTechClient/DraxClientSetup) when shipping to a fresh machine. -->
 
@@ -37,15 +37,17 @@
     <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
 
     <!-- C:\AMX1\ as install location, with ini\ subfolder and the
-         runtimes\win\lib\net8.0\ subtree that the .NET runtime expects
-         for RID-specific NuGet assets (ServiceController, EventLog, etc.). -->
+         runtimes\win\lib\net10.0\ subtree that the .NET runtime expects
+         for RID-specific NuGet assets (ServiceController, EventLog, etc.).
+         The leaf folder name must match the TFM in Drax360Service.csproj —
+         the runtime resolves it literally from runtimeTargets in deps.json. -->
     <StandardDirectory Id="TARGETDIR">
       <Directory Id="INSTALLFOLDER" Name="AMX1">
         <Directory Id="IniFolder" Name="ini" />
         <Directory Id="RuntimesDir" Name="runtimes">
           <Directory Id="RuntimesWinDir" Name="win">
             <Directory Id="RuntimesWinLibDir" Name="lib">
-              <Directory Id="WinRuntimeDir" Name="net8.0" />
+              <Directory Id="WinRuntimeDir" Name="net10.0" />
             </Directory>
           </Directory>
         </Directory>
@@ -55,7 +57,7 @@
     <!-- Service component: holds the EXE + service install/control -->
     <ComponentGroup Id="ServiceComponents" Directory="INSTALLFOLDER">
       <Component Id="DraxTechnologyExe" Guid="A1B5C2D3-4E5F-6A7B-8C9D-0E1F2A3B4C5D">
-        <!-- On net8 the exe is the apphost; the managed assembly + config
+        <!-- On .NET (Core) the exe is the apphost; the managed assembly + config
              (DraxTechnology.dll, .dll.config, .deps.json, .runtimeconfig.json)
              are picked up by the auto-generated Files.wxs DependencyFiles
              group. -->

@@ -4,7 +4,7 @@
      xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
 
   <Bundle Name="Drax Technology Service"
-          Version="1.0.2"
+          Version="1.0.3"
           Manufacturer="Drax Technology"
           UpgradeCode="A2B9F47C-5E1D-4A6B-9D3C-7F2E8B4D5A6E"
           IconSourceFile="..\Drax360NetworkManager\DT-small.ico">
@@ -17,34 +17,36 @@
     </BootstrapperApplication>
 
     <!--
-      The service is net8.0-windows but does not use WinForms/WPF, so it
-      needs the .NET 8 base runtime (Microsoft.NETCore.App), NOT the
+      The service is net10.0-windows but does not use WinForms/WPF, so it
+      needs the .NET 10 base runtime (Microsoft.NETCore.App), NOT the
       Desktop Runtime that DraxClientSetup detects. Different registry
       key, different installer EXE.
     -->
-    <util:RegistrySearch Id="SearchNetCoreApp8"
+    <util:RegistrySearch Id="SearchNetCoreApp10"
                          Root="HKLM"
                          Key="SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.NETCore.App"
-                         Variable="NetCoreApp8Present"
+                         Variable="NetCoreApp10Present"
                          Result="exists" />
 
     <Chain>
       <!--
-        .NET 8 base runtime — installed silently only when missing.
+        .NET 10 base runtime — installed silently only when missing.
 
         REQUIRED BEFORE BUILDING:
-          1. Go to https://dotnet.microsoft.com/download/dotnet/8.0
-          2. Download the Windows x64 installer under ".NET Runtime 8.x.x"
+          1. Go to https://dotnet.microsoft.com/download/dotnet/10.0
+          2. Download the Windows x64 installer under ".NET Runtime 10.x.x"
              (NOT the Desktop Runtime — that's for the client only).
-          3. Rename it to: dotnet-runtime-8.0-win-x64.exe
-          4. Place it in this folder (DraxServiceBootstrapper\)
+          3. Place it in this folder (DraxServiceBootstrapper\). Microsoft's
+             native filename already matches what SourceFile= expects, so no
+             rename is needed.
 
-        The file is embedded in the bundle at build time (~25 MB extra).
-        To update to a newer patch, replace the file and rebuild.
+        The file is embedded in the bundle at build time (~28 MB extra).
+        To update to a newer patch, replace the file, update the SourceFile
+        attribute below to the new filename, and rebuild.
       -->
-      <ExePackage Id="NetCoreRuntime8"
-                  SourceFile="dotnet-runtime-8.0.26-win-x64.exe"
-                  DetectCondition="NetCoreApp8Present"
+      <ExePackage Id="NetCoreRuntime10"
+                  SourceFile="dotnet-runtime-10.0.7-win-x64.exe"
+                  DetectCondition="NetCoreApp10Present"
                   InstallArguments="/install /quiet /norestart"
                   RepairArguments="/repair /quiet /norestart"
                   UninstallArguments="/uninstall /quiet /norestart"
