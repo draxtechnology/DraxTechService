@@ -18,6 +18,15 @@ $rootFiles = Get-ChildItem $bin -File | Where-Object {
 
 $iniFiles = Get-ChildItem (Join-Path $bin 'ini') -File -ErrorAction SilentlyContinue | Sort-Object Name
 
+# NuGet packages like System.ServiceProcess.ServiceController ship Windows-specific
+# DLLs under runtimes\win\lib\net8.0\. The .NET runtime resolves these via the
+# runtimeTargets in deps.json, so they must be installed into the matching subfolder
+# (C:\AMX1\runtimes\win\lib\net8.0\) — not just the app root.
+$winRuntimeDir = Join-Path $bin 'runtimes\win\lib\net8.0'
+$winRuntimeFiles = if (Test-Path $winRuntimeDir) {
+  Get-ChildItem $winRuntimeDir -File | Sort-Object Name
+} else { @() }
+
 function Sanitize($name) { ($name -replace '[^A-Za-z0-9_]', '_') }
 function StableGuid($s) {
   $sha = [System.Security.Cryptography.SHA1]::Create()
@@ -50,8 +59,18 @@ foreach ($f in $iniFiles) {
   [void]$sb.AppendLine('      </Component>')
 }
 [void]$sb.AppendLine('    </ComponentGroup>')
+[void]$sb.AppendLine()
+[void]$sb.AppendLine('    <ComponentGroup Id="WinRuntimeFiles" Directory="WinRuntimeDir">')
+foreach ($f in $winRuntimeFiles) {
+  $safe = Sanitize $f.Name
+  $guid = StableGuid("DraxSetup:runtimes\win\lib\net8.0\$($f.Name)")
+  [void]$sb.AppendLine("      <Component Id=`"cmp_winrt_$safe`" Guid=`"$guid`">")
+  [void]$sb.AppendLine("        <File Id=`"fil_winrt_$safe`" Source=`"`$(var.Drax360Service.TargetDir)runtimes\win\lib\net8.0\$($f.Name)`" KeyPath=`"yes`" />")
+  [void]$sb.AppendLine('      </Component>')
+}
+[void]$sb.AppendLine('    </ComponentGroup>')
 [void]$sb.AppendLine('  </Fragment>')
 [void]$sb.AppendLine('</Wix>')
 
 Set-Content -Path (Join-Path $PSScriptRoot 'Files.wxs') -Value $sb.ToString() -Encoding UTF8 -NoNewline
-"Wrote Files.wxs: deps=$($rootFiles.Count) ini=$($iniFiles.Count)"
+"Wrote Files.wxs: deps=$($rootFiles.Count) ini=$($iniFiles.Count) winrt=$($winRuntimeFiles.Count)"

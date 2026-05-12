@@ -37,7 +37,7 @@ Fire Alarm Panel (Serial/TCP)
 
 ### Key components
 
-**`DraxService.cs`** — The service entry point (`ServiceBase`, via the `System.ServiceProcess.ServiceController` NuGet package on net8). Reads `App.config` to determine which panel type is active, instantiates the correct panel, manages the AMX TCP connection, and runs a named pipe server for inter-process communication with external tools.
+**`DraxService.cs`** — The service entry point (`ServiceBase`; `System.ServiceProcess` is supplied inbox by the `net8.0-windows` TFM — no NuGet package needed). Reads `App.config` to determine which panel type is active, instantiates the correct panel, manages the AMX TCP connection, and runs a named pipe server for inter-process communication with external tools.
 
 **`Panels/AbstractPanel.cs`** — Base class for all panel drivers. Defines the contract (`StartUp()`, `Parse()`, `Evacuate()`, `Alert()`, `Silence()`, `Reset()`, etc.) and manages serial port I/O and event firing via `OutsideEvents`. Each manufacturer has a concrete subclass: `PanelGent`, `PanelMorleyZX`, `PanelMorelyMax`, `PanelNotifier`, `PanelPearl`, `PanelRSM`, `PanelSyncro`, `PanelTaktis`, `PanelEmail`, `PanelAdvanced`, `PanelEspa`.
 

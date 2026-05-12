@@ -28,6 +28,7 @@
       <ComponentGroupRef Id="ServiceComponents" />
       <ComponentGroupRef Id="DependencyFiles" />
       <ComponentGroupRef Id="IniFiles" />
+      <ComponentGroupRef Id="WinRuntimeFiles" />
     </Feature>
 
     <!-- Standard wizard with a "change install folder" page. WiX 5 requires
@@ -35,11 +36,19 @@
          InstallDirectory authors the WIXUI_INSTALLDIR property automatically. -->
     <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
 
-    <!-- C:\AMX1\ as install location, with ini\ subfolder.
-         TARGETDIR defaults to the volume root (typically C:\). -->
+    <!-- C:\AMX1\ as install location, with ini\ subfolder and the
+         runtimes\win\lib\net8.0\ subtree that the .NET runtime expects
+         for RID-specific NuGet assets (ServiceController, EventLog, etc.). -->
     <StandardDirectory Id="TARGETDIR">
       <Directory Id="INSTALLFOLDER" Name="AMX1">
         <Directory Id="IniFolder" Name="ini" />
+        <Directory Id="RuntimesDir" Name="runtimes">
+          <Directory Id="RuntimesWinDir" Name="win">
+            <Directory Id="RuntimesWinLibDir" Name="lib">
+              <Directory Id="WinRuntimeDir" Name="net8.0" />
+            </Directory>
+          </Directory>
+        </Directory>
       </Directory>
     </StandardDirectory>
 
