@@ -284,8 +284,9 @@ namespace DraxTechnology.Panels
                             p3 = 0; p4 = 9;
 
                             p2 = p2 + this.Offset;
+                            on = false; 
 
-                            evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+                            evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, on);
                             send_response_amx_and_serial(evnum, "", message2);
                             break;
 
