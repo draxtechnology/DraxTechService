@@ -29,6 +29,8 @@ namespace DraxTechnology.Panels
         private int consecutiveFailures = 0;
         private int g_intResponseTimeout = RESPONSE_TIMEOUT;
         private readonly List<int> _activeFaults = new List<int>();
+        private readonly List<int> _activeFires = new List<int>();
+        private bool _panelInFire = false;
         private Boolean bOneShotReset;
         public override string FakeString
         {
@@ -278,6 +280,14 @@ namespace DraxTechnology.Panels
 
                         case 1:
                             base.NotifyClient("********* Fire Reset ************");
+                            // Clear every fire previously dispatched to AMX so the
+                            // individual points (Call Point devices and panel-level
+                            // addr 54) come out of the alarmed state. Legacy
+                            // GENNetManager.bas:1760-1790 walks garyAlarmsSent and
+                            // emits a cleared message for each, then a final
+                            // "Panel or Panels In Fire Cleared" if gbPanelInFire.
+                            clear_tracked_fires();
+
                             message2 = "Reset";
                             bOneShotReset = true;
                             p1 = 15; p2 = sPanelNumber;
@@ -436,10 +446,14 @@ namespace DraxTechnology.Panels
                     break;
 
                 case 4:
+                    // Legacy GENNetManager.bas:1393-1396 maps SystemFault (sMSB=4,
+                    // e.g. battery primary fault) to address 11, not 55. Address 55
+                    // is the panel-in-fault count path driven by the Handshake
+                    // (case 0/0 above), which is a separate event from the panel.
                     base.NotifyClient("********* System Fault ************");
                     message2 = "System Fault";
                     p1 = 15; p2 = sPanelNumber;
-                    p3 = 0; p4 = 55;
+                    p3 = 0; p4 = 11;
 
                     p2 = p2 + this.Offset;
 
@@ -534,6 +548,7 @@ namespace DraxTechnology.Panels
                         p2 = p2 + this.Offset;
                     }
                     evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+                    track_fire(evnum, isPanelLevel: sLSB != 0);
                     send_response_amx_and_serial(evnum, "", message2);
                     break;
 
@@ -546,6 +561,7 @@ namespace DraxTechnology.Panels
                     p2 = p2 + this.Offset;
 
                     evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+                    track_fire(evnum, isPanelLevel: true);
                     send_response_amx_and_serial(evnum, "", message2);
                     break;
 
@@ -1120,6 +1136,38 @@ namespace DraxTechnology.Panels
                 CSAMXSingleton.CS.FlushMessages();
                 _activeFaults.Clear();
             }
+        }
+
+        private void track_fire(int evnum, bool isPanelLevel)
+        {
+            if (!_activeFires.Contains(evnum))
+                _activeFires.Add(evnum);
+            if (isPanelLevel)
+                _panelInFire = true;
+        }
+
+        private void clear_tracked_fires()
+        {
+            this.NotifyClient("clear_tracked_fires: " + _activeFires.Count + " fires in list", false);
+            foreach (int fireEvnum in _activeFires)
+            {
+                this.NotifyClient("Clearing fire evnum: " + fireEvnum, false);
+                int clearEvnum = fireEvnum & 0x7FFFFFFF;
+                CSAMXSingleton.CS.SendAlarmToAMX(clearEvnum, "", "Reset", "");
+            }
+            _activeFires.Clear();
+
+            if (_panelInFire)
+            {
+                _panelInFire = false;
+                // Legacy GENNetManager.bas:1776-1786 hardcodes giPanelNumber = 1 for
+                // this cleanup; same convention as the Handshake panel-fault-count
+                // path above (case 0/0).
+                int evnum = CSAMXSingleton.CS.MakeInputNumber(1 + this.Offset, 0, 54, 15);
+                this.NotifyClient("------------ Clear Panel in Fire --------------", false);
+                CSAMXSingleton.CS.SendAlarmToAMX(evnum, "", "Panel or Panels In Fire Cleared", "");
+            }
+            CSAMXSingleton.CS.FlushMessages();
         }
     }
 
