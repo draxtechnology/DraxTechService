@@ -453,6 +453,7 @@ namespace DraxTechnology.Panels
 
         private void SerialPort_DataReceived(object sender, SerialDataReceivedEventArgs e)
         {
+            lastDataReceived = DateTime.Now;
             try
             {
                 SerialPort sp = (SerialPort)sender;

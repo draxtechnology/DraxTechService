@@ -572,6 +572,8 @@ namespace DraxTechnology.Panels
 
         public override void SerialPort_Datareceived(object sender, SerialDataReceivedEventArgs e)
         {
+            lastDataReceived = DateTime.Now;
+
             int bytesToRead = serialport.BytesToRead;
             if (bytesToRead <= 0) return;
 

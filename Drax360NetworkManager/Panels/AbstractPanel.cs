@@ -125,6 +125,13 @@ namespace DraxTechnology.Panels
 
         public virtual void SerialPort_Datareceived(object sender, SerialDataReceivedEventArgs e)
         {
+            // Stamp every received-bytes event so GETCOMMPORTSTATUS can report
+            // "Data Last Received: <ts>" — drives the client's connection
+            // progress bar. Overrides that don't call base must do this too
+            // (PanelGent does at line 1096; PanelEspa and PanelMorleyZX need
+            // the same stamp at the top of their handlers).
+            lastDataReceived = DateTime.Now;
+
             System.Threading.Thread.Sleep(1000);
             int bytestoread = serialport.BytesToRead;
             if (bytestoread == 0) return;
