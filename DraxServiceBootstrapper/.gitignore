@@ -1,5 +1,11 @@
 # Runtime installers are downloaded by the user (see Bundle.wxs comments)
 # and embedded into the bundle at build time. Don't commit them — they're
-# ~25 MB and freely available from microsoft.com.
+# 25-60 MB and freely available from microsoft.com. The service bundle
+# was on the base runtime (dotnet-runtime-*) up to 2026-05-12, then
+# switched to the Desktop runtime (windowsdesktop-runtime-*) to share
+# one installer with DraxClientSetup. Both patterns kept here so older
+# branches still ignore correctly.
 dotnet-runtime-*-win-x64.exe
 dotnet-runtime-*-win-x86.exe
+windowsdesktop-runtime-*-win-x64.exe
+windowsdesktop-runtime-*-win-x86.exe
