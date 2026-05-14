@@ -841,9 +841,26 @@ namespace DraxTechnology
 
         private void init_service()
         {
-            // now go grab com ports
+            // SERVICERESTART re-enters this method while the previous panel
+            // is still holding its SerialPort. Clearing the collection drops
+            // our reference but leaves the port owned by the GC-pending panel,
+            // so the fresh StartUp() below can't reopen the COM port and the
+            // writer queue gets stuck on "Port not open, command queued for
+            // later" (AbstractPanel.serialsend). Shutdown explicitly here —
+            // mirrors the OnStop path further down.
+            foreach (AbstractPanel ap in abstractpanels)
+            {
+                try { ap.OutsideEvents -= Sp_Fire; } catch { }
+                try { ap.Shutdown(); } catch { }
+            }
             abstractpanels.Clear();
-            //sps.Clear();
+
+            // Same story for the fake-mode timers: Clear() drops the refs
+            // but the underlying threading.Timer keeps firing. Dispose first.
+            foreach (System.Threading.Timer t in faketimers)
+            {
+                try { t.Dispose(); } catch { }
+            }
             faketimers.Clear();
 
             // Make this instance reachable from AMXTransfer's MTX: handler.
