@@ -294,9 +294,14 @@ namespace DraxTechnology.Panels
                             p3 = 0; p4 = 9;
 
                             p2 = p2 + this.Offset;
-                            on = false; 
+                            // Momentary ON pulse — matches Alarms Silenced (case 4),
+                            // Alarms Sounded (case 5), Cancel Buzzer (case 17/18).
+                            // The OneShot below (attribute 13 = 1) clears it. Sending
+                            // this with on=false meant AMX received "input off" with
+                            // nothing ever turned on to react to, so the panel-level
+                            // Reset never appeared on AMX (Mike's #7).
 
-                            evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, on);
+                            evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
                             send_response_amx_and_serial(evnum, "", message2);
                             break;
 
