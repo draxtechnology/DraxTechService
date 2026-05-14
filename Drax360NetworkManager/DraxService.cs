@@ -970,6 +970,28 @@ namespace DraxTechnology
                                  .OrderBy(f => f)
                                  .ToList();
 
+            // Pathological-backlog guard. Files are normally deleted on AMX's
+            // MAK ack (AMXTransfer.cs); a folder this full means the ack-delete
+            // path was broken (e.g. the historical Substring(9) bug) or AMX has
+            // been offline long enough that nothing here represents real recent
+            // activity. Replaying it would flood AMX with stale events — purge
+            // instead and log a warning. Threshold = 2x the per-pass buffer
+            // size; legitimate crash-recovery scenarios stay well below this.
+            const int kBacklogSanityLimit = 128;
+            if (files.Count > kBacklogSanityLimit)
+            {
+                ln($"WARNING: {files.Count} .GEN files in {tempPath} exceeds " +
+                   $"sanity limit ({kBacklogSanityLimit}). Skipping replay and " +
+                   "purging — the ack-delete path was likely broken when these " +
+                   "were written. Check AMX connectivity if this recurs.");
+                foreach (var f in files)
+                {
+                    try { File.Delete(Path.Combine(tempPath, f)); }
+                    catch (Exception ex) { Debug.WriteLine($"Could not delete '{f}': {ex.Message}"); }
+                }
+                files.Clear();
+            }
+
             if (files.Count > 0)
             {
                 int x;
