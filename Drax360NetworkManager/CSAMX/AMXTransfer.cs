@@ -29,6 +29,9 @@ namespace DraxTechnology
 
         private NetworkStream _stream;
         private StreamWriter _writer;
+        // Receive-side accumulator for partial AMX frames straddling TCP reads.
+        // See ReceiveDataAsync for the framing logic.
+        private readonly System.Text.StringBuilder _rxAccum = new System.Text.StringBuilder();
         private System.Timers.Timer _heartbeatTimer;
 
         // Single-writer outbound queue: every SendMessage call enqueues here,
@@ -362,22 +365,36 @@ namespace DraxTechnology
                         break;
                     }
 
-                    string chunk = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+                    // AMX delimits replies with '-' but TCP doesn't guarantee
+                    // message boundaries — a single read can span multiple
+                    // replies AND a single reply can straddle two reads. Mike's
+                    // earlier session left 3 .GEN files behind (file numbers
+                    // 1, 5, 8 — gap pattern) after the prefix-split fix took
+                    // most of them; the survivors looked like MAK acks that
+                    // had been chopped across chunk boundaries so neither half
+                    // matched the prefix dispatch.
+                    //
+                    // Accumulate incoming bytes; emit only what's before the
+                    // last '-' (one or more complete frames), keeping any
+                    // trailing partial for the next read.
+                    _rxAccum.Append(Encoding.UTF8.GetString(buffer, 0, bytesRead));
+                    int lastSep = -1;
+                    for (int i = _rxAccum.Length - 1; i >= 0; i--)
+                    {
+                        if (_rxAccum[i] == '-') { lastSep = i; break; }
+                    }
+                    if (lastSep < 0)
+                    {
+                        // No separator yet — partial frame, wait for more.
+                        continue;
+                    }
+                    string complete = _rxAccum.ToString(0, lastSep);
+                    string remainder = _rxAccum.ToString(lastSep + 1,
+                                                        _rxAccum.Length - lastSep - 1);
+                    _rxAccum.Clear();
+                    _rxAccum.Append(remainder);
 
-                    // AMX frames each reply with '-' separators and can pack
-                    // multiple replies into a single TCP read — Mike's trace
-                    // showed "-NWM:CLOSEALLWINDOWS---MAK:NTX:c:\AMX1\Temp\
-                    // 3772.GEN-" arriving as one chunk. Previously we fired
-                    // isMessageReceive with the whole blob, so the prefix
-                    // checks (StartsWith "MAK:" etc.) matched only the first
-                    // payload and the embedded MAK was dropped — file stayed
-                    // on disk and the sender thread eventually logged a MAK
-                    // timeout. Splitting on '-' and dispatching each segment
-                    // individually means every payload gets its own pass
-                    // through the prefix dispatch. Safe because the protocol
-                    // payloads we see (MAK:, NWM:, GEN:, MTX:, CTRL|...) have
-                    // no internal '-' characters; .GEN/.MTN paths are numeric.
-                    foreach (string segment in chunk.Split(
+                    foreach (string segment in complete.Split(
                         new[] { '-' }, StringSplitOptions.RemoveEmptyEntries))
                     {
                         string msg = segment.Trim();
