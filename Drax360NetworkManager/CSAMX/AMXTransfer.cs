@@ -170,10 +170,18 @@ namespace DraxTechnology
                     }
                     else if (msg.StartsWith("MAK:"))
                     {
-                        // "MAK:" is 4 chars — the previous Substring(9) lopped off
-                        // 5 extra characters of the file path so the delete silently
-                        // missed.
+                        // AMX echoes the original NTX: send back as "MAK:NTX:<path>".
+                        // Strip BOTH prefixes — the previous code stripped only
+                        // "MAK:" (4 chars), leaving "NTX:" wedged into the filename
+                        // so File.Exists/Delete silently missed. The version before
+                        // that used Substring(9) which over-corrected and lopped
+                        // the drive letter off the path. Mike's 10 .GEN files left
+                        // on disk after a clean test were this bug.
                         string filename = msg.Substring(4).Trim();
+                        if (filename.StartsWith("NTX:"))
+                        {
+                            filename = filename.Substring(4).Trim();
+                        }
                         filename = filename.Replace("-", "").Trim();
                         if (System.IO.File.Exists(filename))
                         {
