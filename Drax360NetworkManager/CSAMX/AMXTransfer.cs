@@ -362,9 +362,28 @@ namespace DraxTechnology
                         break;
                     }
 
-                    string chunk = Encoding.UTF8.GetString(buffer, 0, bytesRead).Trim();
-                    if (chunk.Length > 0)
-                        isMessageReceive?.Invoke(chunk);
+                    string chunk = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+
+                    // AMX frames each reply with '-' separators and can pack
+                    // multiple replies into a single TCP read — Mike's trace
+                    // showed "-NWM:CLOSEALLWINDOWS---MAK:NTX:c:\AMX1\Temp\
+                    // 3772.GEN-" arriving as one chunk. Previously we fired
+                    // isMessageReceive with the whole blob, so the prefix
+                    // checks (StartsWith "MAK:" etc.) matched only the first
+                    // payload and the embedded MAK was dropped — file stayed
+                    // on disk and the sender thread eventually logged a MAK
+                    // timeout. Splitting on '-' and dispatching each segment
+                    // individually means every payload gets its own pass
+                    // through the prefix dispatch. Safe because the protocol
+                    // payloads we see (MAK:, NWM:, GEN:, MTX:, CTRL|...) have
+                    // no internal '-' characters; .GEN/.MTN paths are numeric.
+                    foreach (string segment in chunk.Split(
+                        new[] { '-' }, StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        string msg = segment.Trim();
+                        if (msg.Length > 0)
+                            isMessageReceive?.Invoke(msg);
+                    }
                 }
             }
             catch (Exception ex)
