@@ -227,12 +227,37 @@ namespace DraxTechnology
         {
             if (string.IsNullOrEmpty(msg) || !msg.Contains("|"))
                 return;
-            string[] parts = msg.Split(kpipedelim);
-            if (parts.Length <= 8)
-                return;
 
-            // Hand off to the live DraxService instance (which owns abstractpanels).
-            DraxService.OnAmxPipeCommand?.Invoke(parts);
+            // Bulk graphic-control case. AMX may concatenate multiple "CTRL|"
+            // blocks back-to-back inside one frame (David's Friday concern via
+            // Mike: 256-device bulk dispatches). Split on the "CTRL|" token
+            // and run each block through the dispatch independently so each
+            // becomes its own panel-writer queue entry — no SQL detour, panel
+            // sets the drain pace. Single CTRL falls through to the original
+            // path.
+            //
+            // Bulk format per Mike's note (assumed, not yet confirmed on the
+            // wire): "CTRL|a|b|...|CTRL|a|b|...|CTRL|a|b|...|"
+            int firstCtrl = msg.IndexOf("CTRL|");
+            if (firstCtrl >= 0 && msg.IndexOf("CTRL|", firstCtrl + 5) >= 0)
+            {
+                string[] blocks = msg.Split(
+                    new[] { "CTRL|" }, StringSplitOptions.RemoveEmptyEntries);
+                NotifyClient($"Bulk CTRL frame: {blocks.Length} blocks");
+                foreach (string block in blocks)
+                {
+                    string[] parts = ("CTRL|" + block).Split(kpipedelim);
+                    if (parts.Length > 8)
+                        DraxService.OnAmxPipeCommand?.Invoke(parts);
+                }
+                return;
+            }
+
+            // Single CTRL or other pipe-delimited graphic command.
+            string[] partsSingle = msg.Split(kpipedelim);
+            if (partsSingle.Length <= 8)
+                return;
+            DraxService.OnAmxPipeCommand?.Invoke(partsSingle);
         }
 
         public void NotifyClient(string message)
