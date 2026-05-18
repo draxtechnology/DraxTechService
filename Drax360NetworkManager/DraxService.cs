@@ -12,6 +12,7 @@ using System.Management;
 using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
+using System.Runtime.Intrinsics.Arm;
 using System.Security.AccessControl;
 using System.Security.Principal;
 using System.ServiceProcess;
@@ -594,7 +595,7 @@ namespace DraxTechnology
         const string ksettingmainsection = "MAIN";
 
         const string CURRENTNWMDATAFILE = @"c:\AMX1\Temp\Current.Nwm";  //TODO not code c:\AMX1
-
+        // private static readonly string CURRENTNWMDATAFILE = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Temp", "Current.Nwm");
         // Todo can these be an enum?
 
         // Network Manager handle constants
@@ -1051,22 +1052,40 @@ namespace DraxTechnology
                     if (line.Contains("Network Manager") && current == null)
                         exists = true;
                 }
+                int port = 0;
                 if (!exists)
                 {
                     using (StreamWriter w = File.AppendText(CURRENTNWMDATAFILE))
                     {
-                        w.WriteLine("[0]\r\nProgName=GEN Network Manager");
-                        w.WriteLine("Name=GEN\r\nVersion=1.0.0\r\nNodeName=Gent Fire Panel");     // TODO to make dynamic
-                        w.WriteLine("Offset=0\r\nFirstNode=1\r\nLastNode=" + GetNwmMaxNodes(0, "NwmHandleGent"));   // TODO to make dynamic
+                        AbstractPanel apbase = getpanel();
+
+                        if (apbase.Extension.ToUpper() == "MORLEY" || (apbase.Extension.ToUpper() == "MAX"))
+                        {
+                            port = apbase.GetSetting<int>("SETUP", "CommPort");
+                        }
+                        else
+                        {
+                            port = apbase.GetSetting<int>("PANEL1", "CommPort");
+                        }
+
+                        w.WriteLine("[0]\r\nProgName=" + panel + " Network Manager");
+                        w.WriteLine("Name=GEN\r\nVersion=1.0.0\r\nNodeName=" + panel + " Fire Panel"); 
+                        w.WriteLine("Offset=0\r\nFirstNode=1\r\nLastNode=" + GetNwmMaxNodes(0, "NwmHandleGent"));
                         w.WriteLine("Startup=" + DateTime.Now);
-                        w.WriteLine("1A=NWM DLL File Date\r\n1B=16/04/2010 16:29:34");   // TODO Date of the c# service file
-                        w.WriteLine("2A=Gent Panel Timeout\r\n2B=None");
-                        w.WriteLine("3A=Communications Port 1\r\n3B=COM3");
+
+                        string exePath = Environment.ProcessPath!;
+                        DateTime exeDate = File.GetLastWriteTime(exePath);
+
+                        string exeDateTime = exeDate.ToString("dd/MM/yyyy HH:mm:ss");
+
+                        w.WriteLine("1A=NWM DLL File Date\r\n1B=" + exeDateTime);
+                        w.WriteLine("2A=" + panel + " Panel Timeout\r\n2B=None");
+                        w.WriteLine("3A=Communications Port 1\r\n3B=COM" + port);
                         w.WriteLine("4A=Communications Port 2\r\n4B=COM1");
                         w.WriteLine("5A=Communications Port 3\r\n5B=COM1");
                         w.WriteLine("6A=Communications Port 4\r\n6B=COM1");
                         w.WriteLine("7A=Communications Port 5\r\n7B=COM1");
-                        w.WriteLine("8A=Communications Port 6\r\n8B=COM1");
+                        w.WriteLine("8A=Communications Port 6\r\n8B=COM1");               
                         w.WriteLine("9A=Comms Port 1 Settings\r\n9B=19200,e,8,1");      //TODO read the ini file for the settings
                         w.WriteLine("10A=Comms Port 2 Settings\r\n10B=9600,e,8,1");
                         w.WriteLine("11A=Comms Port 3 Settings\r\n11B=9600,e,8,1");

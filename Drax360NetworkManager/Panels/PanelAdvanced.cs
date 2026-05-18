@@ -136,7 +136,7 @@ namespace DraxTechnology.Panels
             HBT_Panel1 = base.GetSetting<byte>(ksettingpanelsection + "1", "hb");
             gbUseSubAddressOffset = base.GetSetting<bool>(ksettingsetupsection, "UseSubAddressOffset");
             giSubAddressOffset = base.GetSetting<int>(ksettingsetupsection, "SubAddressOffset");
-            UseClassicIsolations = base.GetSetting<int>(ksettingsetupsection, "UseClassicIsolations");
+            UseClassicIsolations = base.GetSetting<int>(ksettingsetupsection, "UseClassicIsolations");        
 
             string x = GetZoneText(1.ToString());
             if (fakemode > 0)

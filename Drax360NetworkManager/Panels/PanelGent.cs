@@ -26,12 +26,18 @@ namespace DraxTechnology.Panels
         private bool connectionLostNotified = false;
         private DateTime lastSuccessfulResponse = DateTime.MinValue;
         private System.Timers.Timer pollTimer;
-        private int consecutiveFailures = 0;
         private int g_intResponseTimeout = RESPONSE_TIMEOUT;
+        private int gbDisplayChkSumFails = 0;
+        private int gbExtendedText = 0;
+        private string gsExtendedTextPath = "";
+        private int gbNWMDisplayUnknownEvents = 0;
+        private int gbOutstationFaultGenFault = 0;
+        private int gbDisablePanelText = 0;
         private readonly List<int> _activeFaults = new List<int>();
         private readonly List<int> _activeFires = new List<int>();
         private bool _panelInFire = false;
         private Boolean bOneShotReset;
+        public int glNumHeartbeats = 0;
         public override string FakeString
         {
             get
@@ -127,10 +133,13 @@ namespace DraxTechnology.Panels
                             break;
                     }
                 }
-                int evnum1 = CSAMXSingleton.CS.MakeInputNumber(sPanelNumber1, 0, 13, 15);
-                string message1 = "Chksum Fail: Evt Code : " + sEventCode1;
-                CSAMXSingleton.CS.SendAlarmToAMX(evnum1, message1, "", "");
-                CSAMXSingleton.CS.FlushMessages();
+                if (gbDisplayChkSumFails != 0)
+                {
+                    int evnum1 = CSAMXSingleton.CS.MakeInputNumber(sPanelNumber1, 0, 13, 15);
+                    string message1 = "Chksum Fail: Evt Code : " + sEventCode1;
+                    CSAMXSingleton.CS.SendAlarmToAMX(evnum1, message1, "", "");
+                    CSAMXSingleton.CS.FlushMessages();
+                }
                 return false;
             }
 
@@ -392,6 +401,13 @@ namespace DraxTechnology.Panels
                         default:
                             base.NotifyClient("********* Unknown ************");
                             this.NotifyClient("Unknown sMSB: " + sMSB + " sLSB: " + sLSB, false);
+                            if (gbNWMDisplayUnknownEvents != 0)
+                            {
+                                int evnum1 = CSAMXSingleton.CS.MakeInputNumber(sPanelNumber, 0, 13, 15);
+                                string message1 = "Unknown sMSB: " + sMSB + " sLSB: " + sLSB;
+                                CSAMXSingleton.CS.SendAlarmToAMX(evnum1, message1, "", "");
+                                CSAMXSingleton.CS.FlushMessages();
+                            }
                             break;
                     }
                     break;
@@ -413,6 +429,14 @@ namespace DraxTechnology.Panels
                     else
                     {
                         this.NotifyClient("Unknown sMSB: " + sMSB + " sLSB: " + sLSB, false);
+                        if (gbNWMDisplayUnknownEvents != 0)
+                        {
+                            int evnum1 = CSAMXSingleton.CS.MakeInputNumber(sPanelNumber, 0, 13, 15);
+                            string message1 = "Unknown sMSB: " + sMSB + " sLSB: " + sLSB;
+                            CSAMXSingleton.CS.SendAlarmToAMX(evnum1, message1, "", "");
+                            CSAMXSingleton.CS.FlushMessages();
+                        }
+                        break;
                     }
                     break;
 
@@ -446,6 +470,13 @@ namespace DraxTechnology.Panels
                         default:
                             base.NotifyClient("********* Unknown ************");
                             this.NotifyClient("Unknown sMSB: " + sMSB + " sLSB: " + sLSB, false);
+                            if (gbNWMDisplayUnknownEvents != 0)
+                            {
+                                int evnum1 = CSAMXSingleton.CS.MakeInputNumber(sPanelNumber, 0, 13, 15);
+                                string message1 = "Unknown sMSB: " + sMSB + " sLSB: " + sLSB;
+                                CSAMXSingleton.CS.SendAlarmToAMX(evnum1, message1, "", "");
+                                CSAMXSingleton.CS.FlushMessages();
+                            }
                             break;
                     }
                     break;
@@ -468,16 +499,41 @@ namespace DraxTechnology.Panels
 
                 case 5:
                     base.NotifyClient("********* Out Station Loop Fault ************");
-                    if (sChannelNumber > 0)
+                    if (AddressNumber == 0)
                     {
-                        message2 = "OutStation - Channel " + sChannelNumber; // Out Station Loop Fault
+                        AddressNumber = sLoopNumber + 20;
+                        p1 = 15; p2 = sPanelNumber;
+                        p3 = 0; p4 = AddressNumber;
                     }
                     else
                     {
-                        message2 = gsTextField;
+                        if (gbOutstationFaultGenFault != 0)
+                        {
+                            p1 = 8; p2 = sPanelNumber;
+                            p3 = sLoopNumber; p4 = AddressNumber;
+                        }
+                        else
+                        {
+                            if (sChannelNumber > 0)
+                            {
+                                message2 = "OutStation - Channel " + sChannelNumber; // Out Station Loop Fault
+                                p1 = sChannelNumber switch
+                                {
+                                    1 => 3,
+                                    2 => 5,
+                                    3 => 7,
+                                    4 => 9,
+                                    _ => 8
+                                };
+                            }
+                            else
+                            {
+                                message2 = gsTextField;
+                                p1 = 8; p2 = sPanelNumber;
+                                p3 = sLoopNumber; p4 = AddressNumber;
+                            }
+                        }
                     }
-                    p1 = 8; p2 = sPanelNumber;
-                    p3 = sLoopNumber; p4 = AddressNumber;
 
                     p2 = p2 + this.Offset;
 
@@ -583,6 +639,13 @@ namespace DraxTechnology.Panels
 
                 default:
                     this.NotifyClient("Unknown sMSB: " + sMSB + " sLSB: " + sLSB, false);
+                    if (gbNWMDisplayUnknownEvents != 0)
+                    {
+                        int evnum1 = CSAMXSingleton.CS.MakeInputNumber(sPanelNumber, 0, 13, 15);
+                        string message1 = "Unknown sMSB: " + sMSB + " sLSB: " + sLSB;
+                        CSAMXSingleton.CS.SendAlarmToAMX(evnum1, message1, "", "");
+                        CSAMXSingleton.CS.FlushMessages();
+                    }
                     break;
             }
 
@@ -606,7 +669,7 @@ namespace DraxTechnology.Panels
             string friendlymessage = message2 + (message3.Length > 0 ? (" " + message3) : "");
 
             // Signal the event back to the main service, so that it can be logged
-            this.NotifyClient(friendlymessage, false);
+            this.NotifyClient("friendlymessage: " + friendlymessage, false);
 
             if (serialsend(new byte[] { kzerobyte, kackbyte, kzerobyte, kackbyte }))
             {
@@ -677,7 +740,6 @@ namespace DraxTechnology.Panels
                     base.ProcessQueuedCommands();
                 }
                 lastSuccessfulResponse = DateTime.Now;
-                consecutiveFailures = 0;
             }
         }
 
@@ -688,10 +750,14 @@ namespace DraxTechnology.Panels
             string settingparity = base.GetSetting<string>(ksettingsetupsection, "Parity");
             int settingdatabits = base.GetSetting<int>(ksettingsetupsection, "DataBits");
             int settingstopbits = base.GetSetting<int>(ksettingsetupsection, "StopBits");
-
+            gbDisplayChkSumFails = base.GetSetting<int>(ksettingsetupsection, "DISPLAYCHKSUMFAILS");
+            gbNWMDisplayUnknownEvents = base.GetSetting<int>(ksettingsetupsection, "DisplayUnknownEvents");
+            gbOutstationFaultGenFault = base.GetSetting<int>(ksettingsetupsection, "OutStationFaultsGenFault");
+            gbDisablePanelText = base.GetSetting<int>(ksettingsetupsection, "gbDisablePanelText");
+            gbExtendedText = base.GetSetting<int>(ksettingsetupsection, "gbExtendedText");
+            gsExtendedTextPath = base.GetSetting<string>(ksettingsetupsection, "ExtendedTextFilePath");
             if (fakemode > 0)
             {
-
                 return;
             }
 
@@ -1091,7 +1157,6 @@ namespace DraxTechnology.Panels
             }
         }
 
-
         public override void SerialPort_Datareceived(object sender, SerialDataReceivedEventArgs e)
         {
             const int kchunksize = 59;  // packet size
@@ -1118,13 +1183,11 @@ namespace DraxTechnology.Panels
 
             Parse(readbytes);
         }
-         
         private void track_fault(int evnum)
         {
             if (!_activeFaults.Contains(evnum))
                 _activeFaults.Add(evnum);
         }
-
         private void clear_tracked_faults()
         {
             this.NotifyClient("clear_tracked_faults: " + _activeFaults.Count + " faults in list", false);
@@ -1175,5 +1238,4 @@ namespace DraxTechnology.Panels
             CSAMXSingleton.CS.FlushMessages();
         }
     }
-
 }

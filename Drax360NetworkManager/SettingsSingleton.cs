@@ -113,7 +113,6 @@ namespace DraxTechnology
             }
         }
 
-
         public void SetSetting(string section, string name, object value)
         {
             RemoveSetting(section, name);
@@ -143,7 +142,6 @@ namespace DraxTechnology
             }
             return default(T);
         }
-
         public string GetSettingsKeysInSection(string section)
         {
             string ret = "";

@@ -13,7 +13,6 @@ namespace DraxTechnology
 
         public event EventHandler OutsideEvents;
 
-        //private const string kgenextension = "GEN";
         private const int kmaxfilenumber = 1000000;
         private const string csamxfolder = "Temp";
         #endregion
