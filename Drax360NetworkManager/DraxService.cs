@@ -1076,6 +1076,7 @@ namespace DraxTechnology
                         string exePath = Environment.ProcessPath!;
                         DateTime exeDate = File.GetLastWriteTime(exePath);
 
+
                         string exeDateTime = exeDate.ToString("dd/MM/yyyy HH:mm:ss");
 
                         w.WriteLine("1A=NWM DLL File Date\r\n1B=" + exeDateTime);
