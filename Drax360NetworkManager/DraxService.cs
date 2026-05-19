@@ -891,14 +891,6 @@ namespace DraxTechnology
                 ap.OutsideEvents += Sp_Fire;
                 abstractpanels.Add(ap);
 
-                /* identifier = "192.168.3.1";
-                 ap = getpanel(identifier);
-                 ap.StartUp(fakemode);
-                 ap.OutsideEvents += Sp_Fire;
-                 abstractpanels.Add(ap);
-                */
-
-
                 try
                 {
                     rsmtcpListener = new TcpListener(IPAddress.Any, krsmport);
@@ -919,9 +911,7 @@ namespace DraxTechnology
                 StartDeviceWatcher();
 
                 return;
-
             }
-
 
             for (int i = 1; i < 7; i++)
             {
@@ -1072,9 +1062,15 @@ namespace DraxTechnology
                         int databits = apbase.GetSetting<int>("SETUP", "DATABITS");
                         int stopbits = apbase.GetSetting<int>("SETUP", "STOPBITS");
 
+                        var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+                        string versionString = version.ToString(); // "1.0.0.0"
+
                         w.WriteLine("[0]\r\nProgName=" + panel + " Network Manager");
-                        w.WriteLine("Name=GEN\r\nVersion=1.0.0\r\nNodeName=" + panel + " Fire Panel"); 
-                        w.WriteLine("Offset=0\r\nFirstNode=1\r\nLastNode=" + GetNwmMaxNodes(0, "NwmHandleGent"));
+                        w.WriteLine("Name=" + panel + "\r\nVersion=" + versionString + "\r\nNodeName=" + panel + " Fire Panel");
+
+                        string result = System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(panel.ToLower());
+
+                        w.WriteLine("Offset=0\r\nFirstNode=1\r\nLastNode=" + GetNwmMaxNodes(0, "NwmHandle" + result));
                         w.WriteLine("Startup=" + DateTime.Now);
 
                         string exePath = Environment.ProcessPath!;

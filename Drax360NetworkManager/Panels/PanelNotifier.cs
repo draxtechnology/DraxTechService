@@ -104,6 +104,17 @@ namespace DraxTechnology.Panels
                 }
                 catch { }
                 giAddressNumber = address;
+                string sTextField = "";
+                for (int i = 36; i < ourmessage.Length; i++)
+                {
+                    if (ourmessage[i] == 254)
+                    {
+                        break;
+                    }
+
+                    sTextField += Encoding.UTF8.GetString(ourmessage, i, 1);
+
+                }
                 bool on = true;
 
                 int iDevicetype = 0;
@@ -149,7 +160,7 @@ namespace DraxTechnology.Panels
                     sChecksum += Encoding.UTF8.GetString(new byte[] { ourmessage[ourmessage.Length - 1] });
                 }
                 bValidChecksum = CheckSumValidation(sChecksum, ourmessage);
-
+                bool getDeviceText = true;
                 switch ((enmNotEventType)eventcode)
                 {
                     case enmNotEventType.Fire:
@@ -222,12 +233,14 @@ namespace DraxTechnology.Panels
                         Console.WriteLine("Device " + address + " Enabled");
                         gAlarmType = enmNotAlarmType.NOTIsolate.ToString();
                         gsTextField = "Device " + address + " Enabled";
+                        gsTextField = sTextField;  // xxx
                         on = false;
                         break;
 
                     case enmNotEventType.Devicedisabled:
                         gAlarmType = enmNotAlarmType.NOTIsolate.ToString();
                         gsTextField = "Device " + address + " Disabled";
+                        gsTextField = sTextField;
                         Console.WriteLine("Device " + address + " Disabled");
                         break;
 
@@ -298,17 +311,23 @@ namespace DraxTechnology.Panels
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.EnableZone:
-                        gAlarmType = enmNotAlarmType.NOTDisableZone.ToString();
-                        gsTextField = "Zone " + zone + " Enabled";
+                    case enmNotEventType.EnableZone:   // 136
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        gsTextField = "Entire Zone " + zone + " Enabled";
+                        getDeviceText = false;
+                        loop = 15;
                         on = false;
-                        Console.WriteLine("Zone " + zone + " Enabled");
+                        giAddressNumber = 1;
+                        Console.WriteLine("Entire Zone " + zone + " Enabled");
                         break;
 
-                    case enmNotEventType.DisableZone:
-                        gAlarmType = enmNotAlarmType.NOTDisableZone.ToString();
-                        gsTextField = "Zone " + zone + " Disabled";
-                        Console.WriteLine("Zone " + zone + " Disabled");
+                    case enmNotEventType.DisableZone:   // 137
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        gsTextField = "Entire Zone " + zone + " Disabled";
+                        getDeviceText = false;
+                        loop = 15;
+                        giAddressNumber = 1;
+                        Console.WriteLine("Entire Zone " + zone + " Disabled");
                         break;
 
                     case enmNotEventType.LIBCardLoopCPUFault:
@@ -560,6 +579,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 10;
                         gsTextField = "Alarms Silenced";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -577,10 +597,11 @@ namespace DraxTechnology.Panels
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.Evacuate:  // 138
+                     case enmNotEventType.Evacuate:  // 138
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 1;
                         gsTextField = "Evacuate";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -588,6 +609,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 30;
                         gsTextField = "System Clock Adjust";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -595,6 +617,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 31;
                         gsTextField = "Edited Changes Confirmed";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -602,14 +625,15 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 32;
                         gsTextField = "Comms Fail";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
-
 
                     case enmNotEventType.ID2NetworkDupNode:  // 203
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 33;
                         gsTextField = "ID2 Net Duplicate Node";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -617,6 +641,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 35;
                         gsTextField = "Power Fault ID2 Booster";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -624,6 +649,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 76;
                         gsTextField = "Access Level 1";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -631,6 +657,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 77;
                         gsTextField = "Access Level 2";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -638,6 +665,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 78;
                         gsTextField = "Access Level 3";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -645,6 +673,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 79;
                         gsTextField = "Access Level 4";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -694,8 +723,8 @@ namespace DraxTechnology.Panels
                         base.NotifyClient("Unkown Event " + ((enmNotEventType)eventcode));
                         break;
                 }
-
-                if (gbSectoring == false)
+                gsDeviceText = "";
+                if (getDeviceText & gbSectoring == false)
                 {
                     GetDeviceTypeText(iDevicetype);
                 }
@@ -863,9 +892,7 @@ namespace DraxTechnology.Panels
                 }
             }
             catch (Exception ex)
-            {
-
-            }
+            {}
         }
 
         private bool CheckForSectoring(int psEventCode, int psLoopNo)
@@ -929,7 +956,9 @@ namespace DraxTechnology.Panels
             serialport.DataBits = settingdatabits;
             serialport.StopBits = (StopBits)settingstopbits;
             serialport.Handshake = Handshake.None;
+            serialport.RtsEnable = false;
             serialport.DataReceived += SerialPort_Datareceived;
+ 
             if (serialport.IsOpen)
             {
                 serialport.Close();
