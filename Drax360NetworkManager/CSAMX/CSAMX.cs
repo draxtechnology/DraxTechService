@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Timers;
 
 
 namespace DraxTechnology
@@ -24,6 +26,9 @@ namespace DraxTechnology
         private string extension = "";
         private List<NVM> nvms = new List<NVM>();
         private readonly object _nvmsLock = new object();
+        private readonly ConcurrentDictionary<string, DateTime> _pendingDelete =
+            new ConcurrentDictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+        private System.Timers.Timer _cleanupTimer;
         #endregion
 
         #region constructor
@@ -49,7 +54,18 @@ namespace DraxTechnology
             {
                 Directory.CreateDirectory(this.logfiles);
             }
+
+            // Option 3: delete leftover files from any previous run before resuming.
+            foreach (var f in Directory.GetFiles(this.logfiles, "*." + extension))
+            {
+                try { File.Delete(f); } catch { }
+            }
+
             determinelastfilenumber();
+
+            _cleanupTimer = new System.Timers.Timer(10_000) { AutoReset = true };
+            _cleanupTimer.Elapsed += CleanupTimerElapsed;
+            _cleanupTimer.Enabled = true;
         }
 
         private void Instance_OutsideEvents(object sender, EventArgs e)
@@ -297,6 +313,24 @@ unsigned char *TxFile;
             }
         }
 
+        public void ScheduleDelete(string filename)
+        {
+            if (!string.IsNullOrEmpty(filename))
+                _pendingDelete[filename] = DateTime.UtcNow;
+        }
+
+        private void CleanupTimerElapsed(object sender, ElapsedEventArgs e)
+        {
+            foreach (var kv in _pendingDelete)
+            {
+                if ((DateTime.UtcNow - kv.Value).TotalSeconds > 15)
+                {
+                    try { File.Delete(kv.Key); } catch { }
+                    _pendingDelete.TryRemove(kv.Key, out _);
+                }
+            }
+        }
+
         public void FlushMessages()
         {
             List<NVM> toProcess;
@@ -350,7 +384,7 @@ unsigned char *TxFile;
                     if (!file.Equals(fullfilename, StringComparison.OrdinalIgnoreCase))
                     {
                         var fileAge = DateTime.Now - File.GetLastWriteTime(file);
-                        if (fileAge.TotalMinutes > 5)  // Check with Richard if this is the right time to delete old files, currently set to 5 minutes
+                        if (fileAge.TotalMinutes > 5)  //  last resort but should rarely (if ever) fire now.
                         {
                             File.Delete(file);
                         }
