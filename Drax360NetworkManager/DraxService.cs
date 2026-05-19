@@ -1049,7 +1049,7 @@ namespace DraxTechnology
                 bool exists = false;
                 foreach (var line in File.ReadAllLines(CURRENTNWMDATAFILE))
                 {
-                    if (line.Contains("Network Manager") && current == null)
+                    if (line.Contains(panel + " Network Manager") && current == null)
                         exists = true;
                 }
                 int port = 0;
@@ -1067,6 +1067,10 @@ namespace DraxTechnology
                         {
                             port = apbase.GetSetting<int>("PANEL1", "CommPort");
                         }
+                        int baud = apbase.GetSetting<int>("SETUP", "BAUDRATE");
+                        string parity = apbase.GetSetting<string>("SETUP", "PARITY");
+                        int databits = apbase.GetSetting<int>("SETUP", "DATABITS");
+                        int stopbits = apbase.GetSetting<int>("SETUP", "STOPBITS");
 
                         w.WriteLine("[0]\r\nProgName=" + panel + " Network Manager");
                         w.WriteLine("Name=GEN\r\nVersion=1.0.0\r\nNodeName=" + panel + " Fire Panel"); 
@@ -1075,8 +1079,6 @@ namespace DraxTechnology
 
                         string exePath = Environment.ProcessPath!;
                         DateTime exeDate = File.GetLastWriteTime(exePath);
-
-
                         string exeDateTime = exeDate.ToString("dd/MM/yyyy HH:mm:ss");
 
                         w.WriteLine("1A=NWM DLL File Date\r\n1B=" + exeDateTime);
@@ -1087,7 +1089,7 @@ namespace DraxTechnology
                         w.WriteLine("6A=Communications Port 4\r\n6B=COM1");
                         w.WriteLine("7A=Communications Port 5\r\n7B=COM1");
                         w.WriteLine("8A=Communications Port 6\r\n8B=COM1");               
-                        w.WriteLine("9A=Comms Port 1 Settings\r\n9B=19200,e,8,1");      //TODO read the ini file for the settings
+                        w.WriteLine("9A=Comms Port 1 Settings\r\n9B=" + baud + "," + parity.ToLower().Substring(0,1) + "," + databits + "," + stopbits);
                         w.WriteLine("10A=Comms Port 2 Settings\r\n10B=9600,e,8,1");
                         w.WriteLine("11A=Comms Port 3 Settings\r\n11B=9600,e,8,1");
                         w.WriteLine("12A=Comms Port 4 Settings\r\n12B=9600,e,8,1");
@@ -1596,6 +1598,13 @@ namespace DraxTechnology
                     SettingsSingleton.Instance(panel).ReLoadSettings();
                     break;
 
+                case "GETPANELHANDSHAKE":
+                    ret = abstractpanels.FirstOrDefault()?.NumHeartbeats.ToString() ?? "0";
+                    break;
+
+                case "GETPANELNUMMESSAGES":
+                    ret = abstractpanels.FirstOrDefault()?.NumMessages.ToString() ?? "0";
+                    break;
                 default:
 
                     ln("Pipe Message Not Handled " + cmd);

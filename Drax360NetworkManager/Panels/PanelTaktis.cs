@@ -478,6 +478,7 @@ namespace DraxTechnology.Panels
         public long[] glSerialNo = new long[4];
         #endregion
         public override string FakeString => throw new NotImplementedException();
+        public override int NumHeartbeats => (int)_numHeartbeats;
 
         // AMX dispatches these as CSV "node,loop,zone,device". Each override
         // parses the CSV via the base helper and routes to the matching

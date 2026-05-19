@@ -38,6 +38,9 @@ namespace DraxTechnology.Panels
         private bool _panelInFire = false;
         private Boolean bOneShotReset;
         public int glNumHeartbeats = 0;
+        public int glNumMessages = 0;
+        public override int NumHeartbeats => glNumHeartbeats;
+        public override int NumMessages => glNumMessages;
         public override string FakeString
         {
             get
@@ -103,6 +106,12 @@ namespace DraxTechnology.Panels
 
         private bool processmessage(byte[] chunk)
         {
+            glNumMessages++;
+            if (glNumMessages > 1000000)
+            {
+                glNumMessages = 0;
+            }
+
             string hex = BitConverter.ToString(chunk);
             this.NotifyClient("Received: " + hex, false);
 
@@ -740,6 +749,11 @@ namespace DraxTechnology.Panels
                     base.ProcessQueuedCommands();
                 }
                 lastSuccessfulResponse = DateTime.Now;
+                glNumHeartbeats++;
+                if (glNumHeartbeats > 1000000)
+                {
+                    glNumHeartbeats = 0;
+                }
             }
         }
 
