@@ -1,38 +1,358 @@
-﻿
-using DraxTechnology.Data;
+﻿using DraxTechnology.Data;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.IO.Ports;
 using System.Linq;
-using System.Reflection;
-using System.Reflection.Emit;
-using System.Runtime.CompilerServices;
-using System.Runtime.ConstrainedExecution;
-using System.Runtime.InteropServices;
-using System.Security.Claims;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
-using System.Timers;
-using System.Xml.Linq;
 using static DraxTechnology.AMXTransfer;
 using static DraxTechnology.Panels.PanelTaktis;
 
 namespace DraxTechnology.Panels
 {
+    internal class EspaRecord
+    {
+        public string PagerAddress { get; set; }
+        public string Line1 { get; set; }
+        public string Line2 { get; set; }
+        public string DisplayText { get; set; }
+        public string Beeps { get; set; }
+        public string MessageType { get; set; }
+        public string Transmission { get; set; }
+        public string Priority { get; set; }
+        public DateTime Timestamp { get; set; }
+        public byte[] RawBytes { get; set; }
+    }
+
+    internal class EspaFramer
+    {
+        private const byte SOH = 0x01;
+        private const byte STX = 0x02;
+        private const byte ETX = 0x03;
+        private const byte EOT = 0x04;
+        private const byte ENQ = 0x05;
+        private const byte ACK = 0x06;
+        private const byte NAK = 0x15;
+        private const byte US = 0x1F;
+        private const byte RS = 0x1E;
+        private const int OurDeviceNumber = 2;
+
+        public event Action<EspaRecord> FrameReceived;
+        public event Action<string> Log;
+
+        private enum State { Idle, Selected, InFrame }
+
+        private State _state = State.Idle;
+        private List<byte> _frame = new List<byte>();
+        private List<byte> _line = new List<byte>();
+
+        // SELECT detection: panel sends 1<ENQ> immediately followed by 2<ENQ> with no EOT between
+        private bool _lastWasInterface1Poll = false;
+        private DateTime _lastInterface1PollTime = DateTime.MinValue;
+
+        private readonly Action<byte[], int, int> _write;
+
+        public EspaFramer(Action<byte[], int, int> writeAction)
+        {
+            _write = writeAction ?? throw new ArgumentNullException(nameof(writeAction));
+        }
+
+        public EspaFramer(Action<byte[]> writeAction)
+            : this((buf, off, len) =>
+            {
+                var slice = new byte[len];
+                Array.Copy(buf, off, slice, 0, len);
+                writeAction(slice);
+            })
+        { }
+
+        public int Feed(byte[] data)
+        {
+            int i = 0;
+            while (i < data.Length)
+            {
+                byte b = data[i];
+
+                switch (_state)
+                {
+                    case State.Idle:
+
+                        if (b == SOH)
+                        {
+                            // Start of an ESPA frame
+                            _line.Clear();
+                            _frame.Clear();
+                            _frame.Add(b);
+                            _state = State.InFrame;
+                            i++;
+                            break;
+                        }
+
+                        if (b == ENQ)
+                        {
+                            // End of poll line — process it
+                            _line.Add(b);
+                            string pollLine = Encoding.ASCII.GetString(_line.ToArray());
+                            _line.Clear();
+                            i++;
+                            HandlePollLine(pollLine);
+                            break;
+                        }
+
+                        if (b == EOT)
+                        {
+                            // End of transaction — reset
+                            _line.Clear();
+                            _lastWasInterface1Poll = false;
+                            _state = State.Idle;
+                            i++;
+                            break;
+                        }
+
+                        // Printable ASCII and ESPA separator bytes belong to poll line
+                        if (b >= 0x20 || b == 0x0D || b == 0x0A ||
+                            b == RS || b == US || b == STX)
+                        {
+                            _line.Add(b);
+                            i++;
+                            break;
+                        }
+
+                        // Unrecognised control byte — stop consuming
+                        return i;
+
+                    case State.Selected:
+
+                        if (b == SOH)
+                        {
+                            LogMsg("SOH received in Selected → switching to InFrame");
+                            _line.Clear();
+                            _frame.Clear();
+                            _frame.Add(b);
+                            _state = State.InFrame;
+                            i++;
+                            break;
+                        }
+
+                        if (b == EOT)
+                        {
+                            LogMsg("EOT in Selected state — panel abandoned transaction");
+                            _line.Clear();
+                            _lastWasInterface1Poll = false;
+                            _state = State.Idle;
+                            i++;
+                            break;
+                        }
+
+                        // Unexpected byte — back to idle without consuming
+                        LogMsg($"Unexpected byte 0x{b:X2} in Selected → Idle");
+                        _state = State.Idle;
+                        break;
+
+                    case State.InFrame:
+
+                        _frame.Add(b);
+                        i++;
+
+                        // Byte after ETX is the BCC — frame complete
+                        if (_frame.Count >= 2 &&
+                            _frame[_frame.Count - 2] == ETX)
+                        {
+                            ProcessCompleteFrame();
+                            _state = State.Idle;
+                        }
+                        break;
+                }
+            }
+            return i;
+        }
+
+        private void HandlePollLine(string line)
+        {
+            string content = line.TrimEnd((char)ENQ).Trim();
+            string hex = BitConverter.ToString(
+                Encoding.ASCII.GetBytes(line)).Replace("-", " ");
+            LogMsg("Poll HEX: " + hex + " | '" + content + "'");
+
+            // Interface 1 poll — send nothing, set SELECT flag with timestamp
+            if (content == "1")
+            {
+                LogMsg("← POLL+ENQ (ESPA interface 1) → no response");
+                _lastWasInterface1Poll = true;
+                _lastInterface1PollTime = DateTime.Now;
+                return;
+            }
+
+            if (content == OurDeviceNumber.ToString())
+            {
+                // SELECT: interface 1 poll followed within 500ms by our poll, with no EOT between
+                bool isSelect = _lastWasInterface1Poll &&
+                                (DateTime.Now - _lastInterface1PollTime).TotalMilliseconds < 500;
+
+                _lastWasInterface1Poll = false;
+
+                if (isSelect)
+                {
+                    LogMsg("← SELECT+ENQ (after interface 1 poll) → ACK");
+                    Send(ACK);
+                    _state = State.Selected;
+                    return;
+                }
+
+                LogMsg("← POLL+ENQ (our address, idle) → EOT");
+                Send(EOT);
+                _state = State.Idle;
+                return;
+            }
+
+            // Full text fallback (pager tool output)
+            string norm = Regex.Replace(content, @"\s+", " ").ToUpperInvariant();
+            if (norm.Contains("SELECT") && norm.Contains(OurDeviceNumber.ToString()))
+            {
+                LogMsg("← SELECT+ENQ (text) → ACK");
+                Send(ACK);
+                _state = State.Selected;
+            }
+            else if (norm.Contains("POLL") && norm.Contains(OurDeviceNumber.ToString()))
+            {
+                LogMsg("← POLL+ENQ (text) → EOT");
+                Send(EOT);
+                _state = State.Idle;
+            }
+            else
+            {
+                LogMsg("← UNKNOWN poll: '" + content + "'");
+            }
+
+            _lastWasInterface1Poll = false;
+        }
+
+        private void ProcessCompleteFrame()
+        {
+            if (_frame.Count < 4)
+            {
+                LogMsg("Frame too short (" + _frame.Count + " bytes) → NAK");
+                Send(NAK);
+                return;
+            }
+
+            // ETX is second-to-last byte, BCC is last
+            int etxPos = _frame.Count - 2;
+            if (_frame[etxPos] != ETX)
+            {
+                etxPos = -1;
+                for (int i = _frame.Count - 2; i >= 0; i--)
+                {
+                    if (_frame[i] == ETX) { etxPos = i; break; }
+                }
+            }
+
+            if (etxPos < 0)
+            {
+                LogMsg("No ETX found in frame → NAK");
+                Send(NAK);
+                return;
+            }
+
+            // BCC = XOR of all bytes AFTER SOH through ETX inclusive
+            // Autronica excludes SOH from the BCC calculation
+            byte calculated = 0;
+            for (int i = 1; i <= etxPos; i++)
+                calculated ^= _frame[i];
+
+            byte received = _frame[etxPos + 1];
+
+            if (calculated != received)
+            {
+                LogMsg($"BCC mismatch: calc=0x{calculated:X2} recv=0x{received:X2} → NAK");
+                Send(NAK);
+                return;
+            }
+
+            Send(ACK);
+            LogMsg("← Frame OK (BCC 0x" + received.ToString("X2") + ") → ACK");
+
+            var record = ParseFrame(_frame, etxPos);
+            if (record != null)
+            {
+                LogMsg("ESPA addr=" + record.PagerAddress + " | " + record.DisplayText);
+                FrameReceived?.Invoke(record);
+            }
+        }
+
+        private EspaRecord ParseFrame(List<byte> frame, int etxPos)
+        {
+            try
+            {
+                byte[] body = frame.Take(etxPos + 1).ToArray();
+                string raw = Encoding.ASCII.GetString(body);
+
+                var rec = new EspaRecord
+                {
+                    RawBytes = frame.ToArray(),
+                    Timestamp = DateTime.Now
+                };
+
+                string[] fields = raw.Split((char)RS);
+
+                foreach (string field in fields)
+                {
+                    int usIdx = field.IndexOf((char)US);
+                    if (usIdx < 0) continue;
+
+                    string tag = field.Substring(0, usIdx)
+                                      .TrimStart((char)SOH, (char)STX, ' ')
+                                      .Trim();
+
+                    string val = field.Substring(usIdx + 1)
+                                      .TrimEnd((char)ETX)
+                                      .Trim();
+
+                    switch (tag)
+                    {
+                        case "1": rec.PagerAddress = val; break;
+                        case "2":
+                            string[] parts = val.Split((char)US);
+                            rec.Line1 = parts.Length > 0
+                                ? Regex.Replace(parts[0], @"\s+", " ").Trim()
+                                : string.Empty;
+                            rec.Line2 = parts.Length > 1
+                                ? Regex.Replace(parts[1], @"\s+", " ").Trim()
+                                : string.Empty;
+                            rec.DisplayText = (rec.Line1 + " " + rec.Line2).Trim();
+                            break;
+                        case "3": rec.Beeps = val; break;
+                        case "4": rec.MessageType = val; break;
+                        case "5": rec.Transmission = val; break;
+                        case "6": rec.Priority = val; break;
+                    }
+                }
+
+                return rec;
+            }
+            catch (Exception ex)
+            {
+                LogMsg("ParseFrame error: " + ex.Message);
+                return null;
+            }
+        }
+
+        private void Send(byte b) => _write(new[] { b }, 0, 1);
+
+        private void LogMsg(string msg) => Log?.Invoke("[EspaFramer] " + msg);
+    }
+
     internal class PanelEspa : AbstractPanel
     {
-        #region constants
-
-        const int MAXINPUTSTRINGS = 5;
-        const byte kheartbeatdelayseconds = 1;
-
+        #region Constants
+        private const int MAXINPUTSTRINGS = 5;
+        private const byte kheartbeatdelayseconds = 1;
         #endregion
 
+        #region Fields
         public string[] Ip = new string[MAXINPUTSTRINGS];
         public string[] UserMessages = new string[16];
         public int[] UserTypes = new int[16];
@@ -47,37 +367,31 @@ namespace DraxTechnology.Panels
         public int KSFUseLoop = 0;
         public int index = 0;
         public int giAnalogRequestLoop = 0;
+        #endregion
 
-        // EF Core DbContext for the ESPA events store. Opened once at
-        // construction and reused for the lifetime of the panel.
-        // EspaEventsLegacyMigrator runs first to bring any pre-EF database up
-        // to the current schema before the context takes over.
+        #region EF Core / event cache
         private EspaEventsContext _eventsDb;
         private readonly object _eventsDbLock = new object();
-
-        // In-memory cache of devicetext -> (node, loop, device). Pre-populated
-        // from the Events table at startup, then updated on each new INSERT.
-        // Repeat events hit only the cache; first-sight events do a single INSERT.
-        // The cache is what makes lookups effectively instant — the database
-        // is only touched on first-sight devices and at process start.
         private readonly Dictionary<string, (int Node, int Loop, int Device)> _eventCache
             = new Dictionary<string, (int, int, int)>(StringComparer.Ordinal);
         private (int Node, int Loop, int Device) _nextAssignment = (1, 1, 0);
+        #endregion
 
-        // ESPA 4.4.4 byte-level framer. Constructed once the serial port is open
-        // (so the framer can write ACK/NAK back through it). Stays null in
-        // FakeMode and falls through to the legacy log-scrape path.
+        #region Serial / framer
         private EspaFramer _framer;
+        private readonly List<byte> _buffer = new List<byte>();
+        private readonly byte[] _terminator = { 0x0D, 0x0A, 0x0D, 0x0A };
+        #endregion
 
+        #region FakeString
         public override string FakeString
         {
             get
             {
-
                 string msg = "Receiving : Poll   ESPA  interface   1<ENQ>" + (char)13 + (char)10;
                 msg += "Receiving : Select pager transmitter 2<ENQ>" + (char)13 + (char)10;
                 msg += "SENDING   : <ACK>" + (char)13 + (char)10;
-                msg += "Receiving : EspaString <SOH>1<STX>1<US>999<RS>2<US>Fire Alarm  Fault -     AutroMaster Switchboard Loss of     communication <RS>3<US>2<RS>4<US>3<RS>5<US>2<RS>6<US>3<ETX>" + (char)13 + (char)10;
+                msg += "Receiving : EspaString <SOH>1<STX>1<US>999<RS>2<US>Fire Alarm  Fault -     AutroMaster Switchboard Loss of     communication <RS>3<US>2<RS>4<US>3<RS>5<US>2<RS>6<US>3<ETX>" + (char)13 + (char)10;
                 msg += "   Pager Address : 999" + (char)13 + (char)10;
                 msg += "   Pager Text    : |Fire Alarm  Fault -     AutroMaster Switchboard |" + (char)13 + (char)10;
                 msg += "   Pager Text    : |Loss of     communication                       |" + (char)13 + (char)10;
@@ -125,24 +439,25 @@ namespace DraxTechnology.Panels
                 msg += "   Pager Text    : |AutroGuard  SD                                  |" + (char)13 + (char)10;
                 msg += "   Pager Ctrl    : Beeps=5, Type=3, Trans=3, Pri=1, " + (char)13 + (char)10;
                 msg += "-----------------: 2026-04-16 13:35:06.781 " + (char)13 + (char)10;
-
                 return msg;
             }
         }
+        #endregion
 
-        public PanelEspa(string baselogfolder, string identifier) : base(baselogfolder, identifier, "KsfMan", "ESPA")
+        #region Constructor
+        public PanelEspa(string baselogfolder, string identifier)
+            : base(baselogfolder, identifier, "Espa", "ESPA")
         {
-            if (!String.IsNullOrEmpty(identifier))
+            if (!string.IsNullOrEmpty(identifier))
             {
-                heartbeat_timer = new System.Threading.Timer(heartbeat_timer_callback, this.Identifier, 500, kheartbeatdelayseconds * 1000);
+                heartbeat_timer = new Timer(
+                    heartbeat_timer_callback, this.Identifier,
+                    500, kheartbeatdelayseconds * 1000);
+
                 this.Offset = base.GetSetting<int>(ksettingsetupsection, "giAmx1Offset");
                 KSFUseLoop = base.GetSetting<int>(ksettingsetupsection, "UseLoop");
 
                 string dbPath = Path.Combine(baselogfolder, "events.db");
-
-                // Bring any legacy schema up to the current version before EF
-                // attaches. EnsureCreated() afterwards is a no-op if the table
-                // already exists, and creates it from the entity model if not.
                 EspaEventsLegacyMigrator.EnsureMigrated(dbPath, msg => this.NotifyClient(msg));
 
                 _eventsDb = new EspaEventsContext(dbPath);
@@ -160,18 +475,153 @@ namespace DraxTechnology.Panels
                     _nextAssignment.Loop + "," + _nextAssignment.Device + ")");
             }
         }
+        #endregion
 
+        #region StartUp
+        public override void StartUp(int fakemode)
+        {
+            int settingBaudRate = base.GetSetting<int>("SetUp", "BaudRate");
+            string settingParity = base.GetSetting<string>("SetUp", "Parity");
+            int settingDataBits = base.GetSetting<int>("SetUp", "DataBits");
+            int settingStopBits = base.GetSetting<int>("SetUp", "StopBits");
+
+            if (fakemode > 0)
+            {
+                base.NotifyClient("ESPA running in FAKE mode — serial port not opened.", false);
+                return;
+            }
+
+            serialport = new SerialPort(this.Identifier);
+            serialport.BaudRate = settingBaudRate;
+
+            Parity parity = Parity.None;
+            if (!string.IsNullOrEmpty(settingParity))
+            {
+                string p = settingParity.Substring(0, 1).ToUpper();
+                if (p == "E") parity = Parity.Even;
+                if (p == "O") parity = Parity.Odd;
+            }
+            serialport.Parity = parity;
+            serialport.DataBits = settingDataBits;
+            serialport.StopBits = (StopBits)settingStopBits;
+            serialport.Handshake = Handshake.None;
+            serialport.DtrEnable = true;
+            serialport.Encoding = Encoding.ASCII;
+            serialport.ReadBufferSize = 8000;
+            serialport.ReadTimeout = 500;
+            serialport.ParityReplace = 0;
+            serialport.ReceivedBytesThreshold = 1;
+
+            serialport.DataReceived += SerialPort_Datareceived;
+
+            if (serialport.IsOpen) serialport.Close();
+
+            base.NotifyClient("Attempting open " + serialport.PortName +
+                              " @ " + settingBaudRate + " baud", false);
+            try
+            {
+                serialport.Open();
+            }
+            catch (Exception ex)
+            {
+                base.NotifyClient("Failed to open " + serialport.PortName +
+                                  ": " + ex.Message, false);
+                return;
+            }
+
+            if (serialport.IsOpen)
+            {
+                serialport.DiscardInBuffer();
+                serialport.DiscardOutBuffer();
+                base.NotifyClient("Serial port " + serialport.PortName + " open OK.", false);
+            }
+
+            _framer = new EspaFramer(bytes =>
+            {
+                if (serialport != null && serialport.IsOpen)
+                    serialport.Write(bytes, 0, bytes.Length);
+            });
+
+            _framer.FrameReceived += OnEspaFrame;
+            _framer.Log += msg => base.NotifyClient(msg, false);
+
+            base.NotifyClient("ESPA framer started — waiting for panel polls.", false);
+        }
+        #endregion
+
+        #region SerialPort_DataReceived
+        public override void SerialPort_Datareceived(object sender, SerialDataReceivedEventArgs e)
+        {
+            lastDataReceived = DateTime.Now;
+
+            int bytesToRead = serialport.BytesToRead;
+            if (bytesToRead <= 0) return;
+
+            byte[] incoming = new byte[bytesToRead];
+            int read = serialport.Read(incoming, 0, bytesToRead);
+            if (read <= 0) return;
+
+            string hex = BitConverter.ToString(incoming, 0, read).Replace("-", " ");
+            string asc = new string(incoming.Take(read)
+                .Select(b => b >= 0x20 && b < 0x7F ? (char)b : '.').ToArray());
+            base.NotifyClient($"RX {read} bytes | HEX: {hex} | ASC: {asc}", false);
+
+            if (_framer != null)
+            {
+                int offset = 0;
+                while (offset < read)
+                {
+                    byte[] chunk = incoming.Skip(offset).Take(read - offset).ToArray();
+                    int consumed = _framer.Feed(chunk);
+                    base.NotifyClient($"Framer consumed {consumed} of {chunk.Length} bytes", false);
+
+                    if (consumed == 0)
+                    {
+                        lock (_buffer) { _buffer.AddRange(chunk); ExtractMessages(); }
+                        break;
+                    }
+                    offset += consumed;
+                }
+                return;
+            }
+
+            lock (_buffer) { _buffer.AddRange(incoming.Take(read)); ExtractMessages(); }
+        }
+
+        private void ExtractMessages()
+        {
+            while (true)
+            {
+                int pos = FindPattern(_buffer, _terminator);
+                if (pos == -1) return;
+                int end = pos + _terminator.Length;
+                byte[] message = _buffer.Take(end).ToArray();
+                _buffer.RemoveRange(0, end);
+                Parse(message);
+            }
+        }
+
+        private int FindPattern(List<byte> buffer, byte[] pattern)
+        {
+            for (int i = 0; i <= buffer.Count - pattern.Length; i++)
+            {
+                bool match = true;
+                for (int j = 0; j < pattern.Length; j++)
+                    if (buffer[i + j] != pattern[j]) { match = false; break; }
+                if (match) return i;
+            }
+            return -1;
+        }
+        #endregion
+
+        #region Parse / processmessage — legacy log-scrape / fake mode
         public override void Parse(byte[] buffer)
         {
             base.Parse(buffer);
-            int bufferlength = buffer.Length;
-            string result = Encoding.UTF8.GetString(buffer);
-
-            if (bufferlength > 0)
-            {
-                processmessage(result);
-            }
+            if (buffer.Length > 0)
+                processmessage(Encoding.UTF8.GetString(buffer));
         }
+
         private bool processmessage(string result)
         {
             gsDeviceText = "";
@@ -186,225 +636,83 @@ namespace DraxTechnology.Panels
 
             for (int i = 0; i < lines.Length; i++)
             {
-
                 string line = lines[i];
                 string lineLower = Regex.Replace(line.ToLower(), @"\s+", " ").Trim();
                 gsDeviceText = "";
 
-                if (lineLower.Contains("pager text"))
+                if (!lineLower.Contains("pager text")) continue;
+
+                if (lineLower.Contains("fire alarm fault"))
                 {
-                    if (lineLower.Contains("fire alarm fault"))
-                    {
-                        tIpType = 8;
-                        gsTextField = line.Substring(19);   //Remove the text Pager Text
-                        gsTextField = gsTextField.Replace("-", " - ");
-                        gsTextField = Regex.Replace(gsTextField, @"\s+", " ").Trim();
-                        gsTextField = gsTextField.Replace("|", "");
-                        gsTextField = gsTextField.Substring(19).Trim();
-                        if (gsTextField.EndsWith("-"))
-                        {
-                            gsTextField = gsTextField.Substring(0, gsTextField.Length - 1).Trim();
-                        }
+                    tIpType = 8;
+                    gsTextField = line.Substring(19).Replace("-", " - ");
+                    gsTextField = Regex.Replace(gsTextField, @"\s+", " ").Trim().Replace("|", "");
+                    gsTextField = gsTextField.Substring(19).Trim();
+                    if (gsTextField.EndsWith("-"))
+                        gsTextField = gsTextField.Substring(0, gsTextField.Length - 1).Trim();
+                    string nl = (i + 1 < lines.Length) ? lines[i + 1] : null;
+                    if (nl != null)
+                        gsDeviceText = Regex.Replace(nl, @"\s+", " ").Substring(14).Trim().Replace("|", "");
+                }
+                else if (lineLower.Contains("fire pre alarm"))
+                {
+                    tIpType = 2;
+                    gsTextField = line.Substring(19).Replace("-", " - ");
+                    gsTextField = Regex.Replace(gsTextField, @"\s+", " ").Trim().Replace("|", "");
+                    gsTextField = gsTextField.Substring(16).Trim();
+                    if (gsTextField.EndsWith("-"))
+                        gsTextField = gsTextField.Substring(0, gsTextField.Length - 1).Trim();
+                }
+                else if (lineLower.Contains("fire alarm"))
+                {
+                    tIpType = 0;
+                    gsTextField = line.Substring(19).Replace("-", " - ");
+                    gsTextField = Regex.Replace(gsTextField, @"\s+", " ").Trim().Replace("|", "");
+                    gsTextField = gsTextField.Substring(12).Trim();
+                    if (gsTextField.ToLower().EndsWith("input"))
+                        gsTextField = gsTextField.Substring(0, gsTextField.Length - 5).Trim();
+                    if (gsTextField.EndsWith("-"))
+                        gsTextField = gsTextField.Substring(0, gsTextField.Length - 1).Trim();
+                    string nl = (i + 1 < lines.Length) ? lines[i + 1] : null;
+                    if (nl != null)
+                        gsDeviceText = Regex.Replace(nl, @"\s+", " ").Substring(14).Trim().Replace("|", "");
+                }
 
-                        string nextLine = (i + 1 < lines.Length) ? lines[i + 1] : null;
-                        if (nextLine != null)
-                        {
-                            gsDeviceText = Regex.Replace(nextLine, @"\s+", " ").Substring(14).Trim();
-                            gsDeviceText = gsDeviceText.Replace("|", "");
-                        }
-                    }
-                    else if (lineLower.Contains("fire pre alarm"))
+                if (gsTextField.Length > 0)
+                {
+                    try
                     {
-                        tIpType = 2;
-                        gsTextField = line.Substring(19);
-                        gsTextField = gsTextField.Replace("-", " - ");
-                        gsTextField = Regex.Replace(gsTextField, @"\s+", " ").Trim();
-                        gsTextField = gsTextField.Replace("|", "");
-                        gsTextField = gsTextField.Substring(16).Trim();
-                        if (gsTextField.EndsWith("-"))
-                        {
-                            gsTextField = gsTextField.Substring(0, gsTextField.Length - 1).Trim();
-                        }
+                        p1 = (int)(enmNotAlarmType)Enum.Parse(typeof(enmNotAlarmType), tIpType.ToString());
                     }
-                    else if (lineLower.Contains("fire alarm"))
+                    catch (Exception ex)
                     {
-                        tIpType = 0;
-                        gsTextField = line.Substring(19);
-                        gsTextField = gsTextField.Replace("-", " - ");
-                        gsTextField = Regex.Replace(gsTextField, @"\s+", " ").Trim();
-                        gsTextField = gsTextField.Replace("|", "");
-                        gsTextField = gsTextField.Substring(12).Trim();
-                        if (gsTextField.ToLower().EndsWith("input"))
-                        {
-                            gsTextField = gsTextField.Substring(0, gsTextField.Length - 5).Trim();
-                        }
-                        if (gsTextField.EndsWith("-"))
-                        {
-                            gsTextField = gsTextField.Substring(0, gsTextField.Length - 1).Trim();
-                        }
-
-                        string nextLine = (i + 1 < lines.Length) ? lines[i + 1] : null;
-                        if (nextLine != null)
-                        {
-                            gsDeviceText = Regex.Replace(nextLine, @"\s+", " ").Substring(14).Trim();
-                            gsDeviceText = gsDeviceText.Replace("|", "");
-                        }
+                        this.NotifyClient("gAlarmType " + gAlarmType + " " + ex.Message, false);
                     }
 
-                    if (gsTextField.Length > 0)
-                    {
-                        try
-                        {
-                            enmNotAlarmType enumValue = (enmNotAlarmType)Enum.Parse(typeof(enmNotAlarmType), tIpType.ToString());
-                            p1 = (int)(enumValue);
-                        }
-                        catch (Exception ex)
-                        {
-                            this.NotifyClient("gAlarmType " + gAlarmType + " " + ex.Message, false);
-                        }
-                        // Strip last word from gsTextField to get device text
-                        string devicetext = gsTextField.Replace("-", "").Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? "";
+                    string devicetext = gsTextField.Replace("-", "").Trim()
+                        .Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
+                        .LastOrDefault() ?? "";
 
-                        var addr = AssignOrLookup(devicetext, null, null);
-                        giNodeNumber = addr.Node;
-                        giLoopNumber = addr.Loop;
-                        giDeviceAddress = addr.Device;
+                    var addr = AssignOrLookup(devicetext, null, null);
+                    giNodeNumber = addr.Node;
+                    giLoopNumber = addr.Loop;
+                    giDeviceAddress = addr.Device;
 
-                        evnum = CSAMXSingleton.CS.MakeInputNumber(giNodeNumber, giLoopNumber, giDeviceAddress, p1, on);
+                    evnum = CSAMXSingleton.CS.MakeInputNumber(
+                        giNodeNumber, giLoopNumber, giDeviceAddress, p1, on);
 
-                        base.NotifyClient("Send to AMX: Node = " + (giNodeNumber + this.Offset) + " Loop = " + giLoopNumber + " Address = " + giDeviceAddress);
+                    base.NotifyClient("Send to AMX: Node=" + (giNodeNumber + this.Offset) +
+                                      " Loop=" + giLoopNumber + " Address=" + giDeviceAddress);
 
-                        send_response_amx_and_serial(evnum, gsTextField, "", gsDeviceText);
-                    }
+                    Thread.Sleep(1000);
+                    send_response_amx_and_serial(evnum, gsTextField, "", gsDeviceText);
                 }
             }
             return true;
         }
+        #endregion
 
-
-        private void send_response_amx_and_serial(int evnum, string message1, string message2, string message3 = "")
-        {
-            string friendlymessage = message2 + (message3.Length > 0 ? (" " + message3) : "");
-
-            // Signal the event back to the main service, so that it can be logged
-            this.NotifyClient(friendlymessage, false);
-
-            CSAMXSingleton.CS.SendAlarmToAMX(evnum, message1, message2, message3);
-            CSAMXSingleton.CS.FlushMessages();
-        }
-
-        protected override void heartbeat_timer_callback(object sender)
-        {
-            //base.heartbeat_timer_callback(sender);
-
-            // send_message(ActionType.KHandShake, NwmData.AlarmToAmx, "0,0,0,0");
-        }
-
-        public override void StartUp(int fakemode)
-        {
-            int setttingbaudrate = base.GetSetting<int>(ksettingsyncrosection, "BaudRate");
-            string settingparity = base.GetSetting<string>(ksettingsyncrosection, "Parity");
-            int settingdatabits = base.GetSetting<int>(ksettingsyncrosection, "DataBits");
-            int settingstopbits = base.GetSetting<int>(ksettingsyncrosection, "StopBits");
-
-            if (fakemode > 0)
-            {
-                return;
-            }
-
-            // we are a real serial port 
-            serialport = new SerialPort(this.Identifier);
-            serialport.BaudRate = setttingbaudrate;
-
-            Parity parity = Parity.None;
-            string friendlyparity = settingparity.Substring(0, 1).ToUpper();
-            if (friendlyparity == "E")
-                parity = Parity.Even;
-            if (friendlyparity == "O")
-                parity = Parity.Odd;
-
-            serialport.Parity = parity;
-
-            serialport.DataBits = settingdatabits;
-            serialport.StopBits = (StopBits)settingstopbits;
-            serialport.Handshake = Handshake.None;
-            serialport.DataReceived += SerialPort_Datareceived;
-            if (serialport.IsOpen)
-            {
-                serialport.Close();
-            }
-            base.NotifyClient("Attempting Open " + serialport.PortName, false);
-            serialport.Encoding = System.Text.Encoding.ASCII;
-            serialport.DtrEnable = true;
-
-            serialport.ReadBufferSize = 8000;
-
-            serialport.ReadTimeout = 500;
-            serialport.ParityReplace = (byte)0;
-            serialport.ReceivedBytesThreshold = 8;
-            try
-            {
-                serialport.Open();
-            }
-            catch (Exception e)
-            {
-                base.NotifyClient("Failed To Open " + serialport.PortName + " " + e.ToString(), false);
-            }
-
-            if (serialport.IsOpen)
-            {
-                serialport.DiscardInBuffer();
-                serialport.DiscardOutBuffer();
-            }
-
-            _framer = new EspaFramer(bytes =>
-            {
-                if (serialport != null && serialport.IsOpen)
-                    serialport.Write(bytes, 0, bytes.Length);
-            });
-            _framer.FrameReceived += OnEspaFrame;
-            _framer.Log += msg => base.NotifyClient(msg, false);
-        }
-        public override void Evacuate(string passedvalues)
-        {
-        }
-        public override void Alert(string passedvalues)
-        {
-        }
-        public override void EvacuateNetwork(string passedvalues)
-        {
-        }
-        public override void Silence(string passedvalues)
-        {
-        }
-        public override void MuteBuzzers(string passedvalues)
-        {
-        }
-        public override void Reset(string passedvalues)
-        {
-        }
-        public override void DisableDevice(string passedvalues)
-        {
-        }
-        public override void EnableDevice(string passedvalues)
-        {
-        }
-        public override void DisableZone(string passedvalues)
-        {
-        }
-        public override void EnableZone(string passedvalues)
-        {
-        }
-        public override void Analogue(string passedvalues)
-        {
-        }
-
-        /// <summary>
-        /// Called by the framer when a clean ESPA 4.4.4 frame has been received
-        /// (BCC validated, ACK already sent). Classifies the display text into
-        /// an event category, extracts zone and device address where the panel
-        /// supplies them, and emits one AMX event.
-        /// </summary>
+        #region OnEspaFrame — real panel byte-protocol path
         private void OnEspaFrame(EspaRecord rec)
         {
             string text = rec?.DisplayText ?? "";
@@ -416,54 +724,31 @@ namespace DraxTechnology.Panels
             bool on = true;
             string category = "ESPA Event";
 
-            // Order matters: more specific phrases (cleared / fault / pre-alarm)
-            // before the generic "fire alarm" / "alarm" catch-alls.
             if (lower.Contains("disablement cleared") || lower.Contains("isolation cleared") ||
                 lower.Contains("disablement reset"))
-            {
-                p1 = (int)enmNotAlarmType.NOTIsolate; on = false; category = "Disablement Cleared";
-            }
+            { p1 = (int)enmNotAlarmType.NOTIsolate; on = false; category = "Disablement Cleared"; }
             else if (lower.Contains("disablement") || lower.Contains("isolation") ||
                      lower.Contains("disabled") || lower.Contains("isolated"))
-            {
-                p1 = (int)enmNotAlarmType.NOTIsolate; category = "Disablement";
-            }
+            { p1 = (int)enmNotAlarmType.NOTIsolate; category = "Disablement"; }
             else if (lower.Contains("fault cleared") || lower.Contains("fault reset") ||
                      lower.Contains("fault restored"))
-            {
-                p1 = (int)enmNotAlarmType.NOTFault; on = false; category = "Fault Cleared";
-            }
+            { p1 = (int)enmNotAlarmType.NOTFault; on = false; category = "Fault Cleared"; }
             else if (lower.Contains("fire alarm fault") || lower.Contains("fault"))
-            {
-                p1 = (int)enmNotAlarmType.NOTFault; category = "Fault";
-            }
+            { p1 = (int)enmNotAlarmType.NOTFault; category = "Fault"; }
             else if (lower.Contains("fire pre alarm") || lower.Contains("pre-alarm") ||
                      lower.Contains("prealarm"))
-            {
-                p1 = (int)enmNotAlarmType.NOTPreAlarm; category = "Pre-Alarm";
-            }
+            { p1 = (int)enmNotAlarmType.NOTPreAlarm; category = "Pre-Alarm"; }
             else if (lower.Contains("test mode") || lower.Contains("walk test"))
-            {
-                p1 = (int)enmNotAlarmType.NOTTestModeFire; category = "Test Mode";
-            }
+            { p1 = (int)enmNotAlarmType.NOTTestModeFire; category = "Test Mode"; }
             else if (lower.Contains("fire alarm cleared") || lower.Contains("fire reset") ||
                      lower.Contains("alarm cleared"))
-            {
-                p1 = (int)enmNotAlarmType.NOTFire; on = false; category = "Fire Reset";
-            }
+            { p1 = (int)enmNotAlarmType.NOTFire; on = false; category = "Fire Reset"; }
             else if (lower.Contains("fire alarm") || lower.Contains("alarm"))
-            {
-                p1 = (int)enmNotAlarmType.NOTFire; category = "Fire";
-            }
+            { p1 = (int)enmNotAlarmType.NOTFire; category = "Fire"; }
 
-            // Examples of useful tokens in the panel's display text:
-            //   "Fire Alarm -ZONE 1 -MAINBUILDING    A1003 -INPUTALARM" → zone 1, addr 1003
-            //   "Fire Alarm  Fault -ZONE 1 -MAIN BUILDING"              → zone 1, no addr
-            //   "Fire Alarm  Fault -     AutroMaster Switchboard ..."   → no zone, system event
             int? zoneHint = null, devHint = null;
             var zm = Regex.Match(text, @"\bZONE\s+(\d+)\b", RegexOptions.IgnoreCase);
             if (zm.Success && int.TryParse(zm.Groups[1].Value, out int zone)) zoneHint = zone;
-
             var dm = Regex.Match(text, @"\b[A-Z](\d{3,4})\b");
             if (dm.Success && int.TryParse(dm.Groups[1].Value, out int dev)) devHint = dev;
 
@@ -472,7 +757,6 @@ namespace DraxTechnology.Panels
                 .LastOrDefault() ?? "";
 
             var addr = AssignOrLookup(devicetext, zoneHint, devHint);
-
             int evnum = CSAMXSingleton.CS.MakeInputNumber(addr.Node, addr.Loop, addr.Device, p1, on);
 
             base.NotifyClient(
@@ -480,18 +764,13 @@ namespace DraxTechnology.Panels
                 " (zone=" + (zoneHint?.ToString() ?? "-") +
                 " dev=" + (devHint?.ToString() ?? "-") +
                 "): Send to AMX Node=" + (addr.Node + this.Offset) +
-                " Loop=" + addr.Loop + " Address=" + addr.Device);
+                " Loop=" + addr.Loop + " Addr=" + addr.Device);
 
             send_response_amx_and_serial(evnum, text.Trim(), category, devicetext);
         }
+        #endregion
 
-        /// <summary>
-        /// Resolve a (node, loop, device) triple for an event. If the panel
-        /// supplied explicit zone/address hints (parsed from the display text)
-        /// those are used directly and not cached — the panel is the source of
-        /// truth. Otherwise fall back to the legacy auto-assigner keyed on
-        /// devicetext, which writes new entries to the EF Core events store.
-        /// </summary>
+        #region AssignOrLookup
         private (int Node, int Loop, int Device) AssignOrLookup(
             string devicetext, int? hintLoop, int? hintDevice)
         {
@@ -502,148 +781,73 @@ namespace DraxTechnology.Panels
             {
                 if (!string.IsNullOrEmpty(devicetext) &&
                     _eventCache.TryGetValue(devicetext, out var cached))
-                {
                     return cached;
-                }
 
                 var next = _nextAssignment;
                 next.Device++;
-                if (next.Device > 254)
-                {
-                    next.Device = 1;
-                    next.Loop++;
-                    if (next.Loop > 254)
-                    {
-                        next.Loop = 1;
-                        next.Node++;
-                        if (next.Node > 254)
-                            throw new Exception("Maximum node/loop/device limit reached");
-                    }
-                }
+                if (next.Device > 254) { next.Device = 1; next.Loop++; }
+                if (next.Loop > 254) { next.Loop = 1; next.Node++; }
+                if (next.Node > 254)
+                    throw new Exception("Maximum node/loop/device limit reached");
 
                 if (!string.IsNullOrEmpty(devicetext))
                 {
                     var entity = new EspaEvent
-                    {
-                        Node = next.Node,
-                        Loop = next.Loop,
-                        Device = next.Device,
-                        Name = devicetext
-                    };
+                    { Node = next.Node, Loop = next.Loop, Device = next.Device, Name = devicetext };
                     _eventsDb.Events.Add(entity);
-                    try
-                    {
-                        _eventsDb.SaveChanges();
-                    }
+                    try { _eventsDb.SaveChanges(); }
                     catch (Exception ex)
                     {
-                        // If the insert fails (e.g. unique-index collision on Name
-                        // because a stale row exists from before the cache was
-                        // populated), don't strand _nextAssignment on the failed
-                        // slot — the next event with the same name would retry the
-                        // same Node/Loop/Device and throw on a loop. Detach the
-                        // tracked entity, look up the existing row, cache it and
-                        // return that.
                         _eventsDb.Entry(entity).State = EntityState.Detached;
                         var existing = _eventsDb.Events.AsNoTracking()
-                            .FirstOrDefault(e => e.Name == devicetext);
+                                                .FirstOrDefault(e => e.Name == devicetext);
                         if (existing != null)
                         {
                             var found = (existing.Node, existing.Loop, existing.Device);
                             _eventCache[devicetext] = found;
-                            this.NotifyClient(
-                                "ESPA Events DB: SaveChanges failed for '" + devicetext +
+                            this.NotifyClient("ESPA Events DB: SaveChanges failed for '" + devicetext +
                                 "'; reused existing (" + found.Node + "," + found.Loop + "," + found.Device + ")");
                             return found;
                         }
-                        this.NotifyClient(
-                            "ESPA Events DB: SaveChanges failed for '" + devicetext + "': " + ex.Message);
+                        this.NotifyClient("ESPA Events DB: SaveChanges failed for '" + devicetext + "': " + ex.Message);
                         throw;
                     }
                     _eventCache[devicetext] = next;
                 }
+
                 _nextAssignment = next;
                 return next;
             }
         }
+        #endregion
 
-        private readonly List<byte> _buffer = new List<byte>();
-        private readonly byte[] _terminator = { 0x0D, 0x0A, 0x0D, 0x0A }; // \r\n\r\n
-
-        public override void SerialPort_Datareceived(object sender, SerialDataReceivedEventArgs e)
+        #region AMX response
+        private void send_response_amx_and_serial(
+            int evnum, string message1, string message2, string message3 = "")
         {
-            lastDataReceived = DateTime.Now;
-
-            int bytesToRead = serialport.BytesToRead;
-            if (bytesToRead <= 0) return;
-
-            byte[] incoming = new byte[bytesToRead];
-            int read = serialport.Read(incoming, 0, bytesToRead);
-            if (read <= 0) return;
-
-            // Real ESPA 4.4.4 traffic from an Autronica panel speaks the byte
-            // protocol (ENQ/SOH/STX/ETX/EOT/BCC). Hand bytes to the framer first;
-            // it consumes everything from ENQ through EOT and replies with
-            // ACK/NAK on the same serial port. Anything the framer doesn't
-            // recognise (e.g. log lines from the upstream helper program used
-            // in dev/test) falls through to the legacy \r\n\r\n scrape path.
-            int consumed = 0;
-            if (_framer != null)
-                consumed = _framer.Feed(incoming);
-
-            if (consumed >= read) return;
-
-            byte[] tail = consumed == 0
-                ? incoming
-                : incoming.Skip(consumed).ToArray();
-
-            lock (_buffer)
-            {
-                _buffer.AddRange(tail);
-                ExtractMessages();
-            }
+            string friendly = message2 + (message3.Length > 0 ? " " + message3 : "");
+            this.NotifyClient(friendly, false);
+            CSAMXSingleton.CS.SendAlarmToAMX(evnum, message1, message2, message3);
+            CSAMXSingleton.CS.FlushMessages();
         }
+        #endregion
 
-        private void ExtractMessages()
-        {
-            while (true)
-            {
-                int pos = FindPattern(_buffer, _terminator);
-                if (pos == -1)
-                {
-                    // No complete \r\n\r\n frame yet. The legacy code had an
-                    // analog-value branch here that read fixed offsets from
-                    // _buffer when no terminator was found, then fell through
-                    // and tried to take pos + _terminator.Length (= 3) bytes
-                    // off the buffer to Parse — that path was broken. Drop it
-                    // until we have a real spec for the analog reply format.
-                    return;
-                }
+        #region Heartbeat
+        protected override void heartbeat_timer_callback(object sender) { }
+        #endregion
 
-                int end = pos + _terminator.Length;
-                byte[] message = _buffer.Take(end).ToArray();
-
-                _buffer.RemoveRange(0, end);
-                Parse(message);
-            }
-        }
-
-        private int FindPattern(List<byte> buffer, byte[] pattern)
-        {
-            for (int i = 0; i <= buffer.Count - pattern.Length; i++)
-            {
-                bool match = true;
-                for (int j = 0; j < pattern.Length; j++)
-                {
-                    if (buffer[i + j] != pattern[j])
-                    {
-                        match = false;
-                        break;
-                    }
-                }
-                if (match) return i;
-            }
-            return -1;
-        }
+        #region Abstract overrides
+        public override void Evacuate(string p) { }
+        public override void Alert(string p) { }
+        public override void EvacuateNetwork(string p) { }
+        public override void Silence(string p) { }
+        public override void MuteBuzzers(string p) { }
+        public override void Reset(string p) { }
+        public override void DisableDevice(string p) { }
+        public override void EnableDevice(string p) { }
+        public override void DisableZone(string p) { }
+        public override void EnableZone(string p) { }
+        public override void Analogue(string p) { }
+        #endregion
     }
 }

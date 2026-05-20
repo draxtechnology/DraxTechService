@@ -1752,6 +1752,9 @@ namespace DraxTechnology
                 case "SYNCRO":
                     this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "CreateLog"));
                     break;
+                case "ESPA":
+                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "CreateLog"));
+                    break;
                 default:
                     this.DebugLog = true;
                     break;
