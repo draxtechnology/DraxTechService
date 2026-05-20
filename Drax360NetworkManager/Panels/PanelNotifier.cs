@@ -1194,17 +1194,13 @@ namespace DraxTechnology.Panels
                  zone.ToString("D5");
             }
 
-            string sChecksum = CreateNOTChecksum(message);
-            message = message + "\r";
+            // VB6 computes checksum over body without the leading ">"
+            string sChecksum = CreateNOTChecksum(message.Substring(1));
+            message = message + sChecksum + "\r";
 
-            foreach (char ch in message)
-            {
-                SendChar(ch);
-            }
+            serialsend(message);
 
-            //serialstringsend(">" + message + "\r");
-
-            Console.WriteLine(">" + message + " Sent to panel");
+            Console.WriteLine(message.Replace("\r", "") + " Sent to panel");
         }
 
         public string CreateNOTChecksum(string myString)
