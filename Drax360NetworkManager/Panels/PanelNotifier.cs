@@ -8,9 +8,7 @@ using System.Threading.Tasks;
 using System.Xml.Schema;
 
 namespace DraxTechnology.Panels
-{
-
-    internal class PanelNotifier : AbstractPanel
+{    internal class PanelNotifier : AbstractPanel
     {
         public string gsDeviceText = "";
         public EnmDeviceType gDeviceType;
@@ -31,7 +29,6 @@ namespace DraxTechnology.Panels
 
                 ">IE0220611450330000000BDD\r";
         }
-
         public PanelNotifier(string baselogfolder, string identifier) : base(baselogfolder, identifier, "NOTMan", "NOT")
         {
             if (!String.IsNullOrEmpty(identifier))
@@ -39,7 +36,6 @@ namespace DraxTechnology.Panels
                 heartbeat_timer = new Timer(heartbeat_timer_callback, this.Identifier, 1000, kHeartbeatDelaySeconds * 1000);
             }
         }
-
         public override void Parse(byte[] buffer)
         {
             base.Parse(buffer);
@@ -124,8 +120,6 @@ namespace DraxTechnology.Panels
                 }
                 catch { };
 
-                Console.WriteLine("Event " + eventcode + " Zone " + zone + " Address " + address);
-
                 if (CheckForSectoring(eventcode, loop))
                 {
                     gsSectorNo = loop;
@@ -167,73 +161,84 @@ namespace DraxTechnology.Panels
                         gsTextField = "Fire";
                         Console.WriteLine(gsTextField);
                         gAlarmType = enmNotAlarmType.NOTFire.ToString();
+                        getDeviceText = false;
                         break;
 
                     case enmNotEventType.TestFire:
                         gsTextField = "Test Fire";
                         Console.WriteLine(gsTextField);
                         gAlarmType = enmNotAlarmType.NOTFire.ToString();
+                        getDeviceText = false;
                         break;
 
                     case enmNotEventType.FireDisabled:
                         gsTextField = "Fire Disabled";
                         Console.WriteLine(gsTextField);
                         gAlarmType = enmNotAlarmType.NOTTestModeFire.ToString();
+                        getDeviceText = false;
                         break;
 
                     case enmNotEventType.NoReplyMissing:
                         gAlarmType = enmNotAlarmType.NOTFault.ToString();
                         gsTextField = "Device Missing";
                         Console.WriteLine(gsTextField);
+                        getDeviceText = false;
                         break;
 
                     case enmNotEventType.TypeMisMatch:
                         gAlarmType = enmNotAlarmType.NOTFault.ToString();
                         gsTextField = "Type Mismatch";
                         Console.WriteLine(gsTextField);
+                        getDeviceText = false;
                         break;
 
                     case enmNotEventType.PreAlarm:
                         gAlarmType = enmNotAlarmType.NOTPreAlarm.ToString();
                         gsTextField = "Pre Alarm";
                         Console.WriteLine(gsTextField);
+                        getDeviceText = false;
                         break;
 
                     case enmNotEventType.RemovedDisabled:
                         gAlarmType = enmNotAlarmType.NOTFault.ToString();
                         gsTextField = "Removed Under Disablement";
                         Console.WriteLine(gsTextField);
+                        getDeviceText = false;
                         break;
 
                     case enmNotEventType.FireCleared:
                         gAlarmType = enmNotAlarmType.NOTFire.ToString();
                         gsTextField = "Fire Cleared";
                         Console.WriteLine(gsTextField);
+                        getDeviceText = false;
                         break;
 
                     case enmNotEventType.FaultCleared:
                         gAlarmType = enmNotAlarmType.NOTFault.ToString();
                         gsTextField = "Fault Cleared";
                         Console.WriteLine(gsTextField);
+                        getDeviceText = false;
                         break;
 
                     case enmNotEventType.MissingCleared:
                         gAlarmType = enmNotAlarmType.NOTFault.ToString();
                         gsTextField = "Missing Cleared";
                         Console.WriteLine(gsTextField);
+                        getDeviceText = false;
                         break;
 
                     case enmNotEventType.SensorModuleFault:
                         gAlarmType = enmNotAlarmType.NOTFault.ToString();
                         gsTextField = "Sensor Fault";
                         Console.WriteLine(gsTextField);
+                        getDeviceText = false;
                         break;
 
                     case enmNotEventType.Deviceenabled:
                         Console.WriteLine("Device " + address + " Enabled");
                         gAlarmType = enmNotAlarmType.NOTIsolate.ToString();
                         gsTextField = "Device " + address + " Enabled";
-                        gsTextField = sTextField;  // xxx
+                        gsTextField = sTextField;   // xxxx
                         on = false;
                         break;
 
@@ -245,62 +250,73 @@ namespace DraxTechnology.Panels
                         break;
 
                     case enmNotEventType.SystemReset:
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Panel Reset";
                         giAddressNumber = 9;
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
                     case enmNotEventType.ModuleLoadShortCircuit:
                         gAlarmType = enmNotAlarmType.NOTFault.ToString();
                         gsTextField = "Module Load Short Circuit";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
                     case enmNotEventType.OutputModuleTestDeActivation:
                         gAlarmType = enmNotAlarmType.NOTOutputActivate.ToString();
                         gsTextField = "Module Activation";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
                     case enmNotEventType.OutputModuleTestActivation:
                         gAlarmType = enmNotAlarmType.NOTOutputActivate.ToString();
                         gsTextField = "Module DeActivation";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
                     case enmNotEventType.DuplicateAddress:
                         gAlarmType = enmNotAlarmType.NOTFault.ToString();
                         gsTextField = "Duplicate Address";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
                     case enmNotEventType.AUXSet:
                         gAlarmType = enmNotAlarmType.NOTNonFireAlarm.ToString();
                         gsTextField = "AUX Set";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
                     case enmNotEventType.AuxCleared:
                         gAlarmType = enmNotAlarmType.NOTNonFireAlarm.ToString();
                         gsTextField = "Aux Cleared";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
                     case enmNotEventType.TechnicalAlarm:
                         gAlarmType = enmNotAlarmType.NOTNonFireAlarm.ToString();
                         gsTextField = "Technical Alarm";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
                     case enmNotEventType.PowerSupplyFault:
                         gAlarmType = enmNotAlarmType.NOTFault.ToString();
                         gsTextField = "Power Supply Fault";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
                     case enmNotEventType.LoopBoosterFault:
                         gAlarmType = enmNotAlarmType.NOTFault.ToString();
                         gsTextField = "Loop Booster Fault";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -308,6 +324,87 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTNonFireAlarm.ToString();
                         giAddressNumber = 0;
                         gsTextField = "Thermal Alarm";
+                        getDeviceText = false;
+                        Console.WriteLine(gsTextField);
+                        break;
+
+                    case enmNotEventType.SounderCircuit1ShortFault:
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 13;
+                        gsTextField = "Sounder Circuit 1 Short";
+                        getDeviceText = false;
+                        Console.WriteLine(gsTextField);
+                        break;
+
+                    case enmNotEventType.SounderCircuit2ShortFault:
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 14;
+                        gsTextField = "Sounder Circuit 2 Short";
+                        getDeviceText = false;
+                        Console.WriteLine(gsTextField);
+                        break;
+
+                    case enmNotEventType.SounderCircuit1OpenFault:
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 82;
+                        gsTextField = "Sounder Circuit 1 Open";
+                        getDeviceText = false;
+                        Console.WriteLine(gsTextField);
+                        break;
+
+                    case enmNotEventType.SounderCircuit2OpenFault:
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 83;
+                        gsTextField = "Sounder Circuit 2 Open";
+                        getDeviceText = false;
+                        Console.WriteLine(gsTextField);
+                        break;
+
+                    case enmNotEventType.SounderCircuit1RelayFault:
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 84;
+                        gsTextField = "Sounder Circuit 1 Relay";
+                        getDeviceText = false;
+                        Console.WriteLine(gsTextField);
+                        break;
+
+                    case enmNotEventType.SounderCircuit2RelayFault:
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 85;
+                        gsTextField = "Sounder Circuit 2 Relay";
+                        getDeviceText = false;
+                        Console.WriteLine(gsTextField);
+                        break;
+
+                    case enmNotEventType.SounderCircuit3ShortFault:
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 86;
+                        gsTextField = "Sounder Circuit 3 Short";
+                        getDeviceText = false;
+                        Console.WriteLine(gsTextField);
+                        break;
+
+                    case enmNotEventType.SounderCircuit4ShortFault:
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 87;
+                        gsTextField = "Sounder Circuit 4 Short";
+                        getDeviceText = false;
+                        Console.WriteLine(gsTextField);
+                        break;
+
+                    case enmNotEventType.SounderCircuit3OpenFault:
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 88;
+                        gsTextField = "Sounder Circuit 3 Open";
+                        getDeviceText = false;
+                        Console.WriteLine(gsTextField);
+                        break;
+
+                    case enmNotEventType.SounderCircuit4OpenFault:
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 89;
+                        gsTextField = "Sounder Circuit 4 Open";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -334,6 +431,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 41;
                         gsTextField = "LIB Card Loop CPU Fault";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -341,6 +439,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 42;
                         gsTextField = "LIB Card Loop CPU Power Restart";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -348,6 +447,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 34;
                         gsTextField = "LIB Card Loop Short Circuit";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -355,6 +455,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 44;
                         gsTextField = "LIB Card Device Zero Present";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -362,6 +463,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 45;
                         gsTextField = "LIB Card Missing";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -369,6 +471,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 46;
                         gsTextField = "LIB Card Loop End Driver Fault";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -376,6 +479,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 47;
                         gsTextField = "LIB Card Loop Signal Degraded";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -383,6 +487,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 48;
                         gsTextField = "LIB Card ROM Checksum Error";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -390,6 +495,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 49;
                         gsTextField = "RS232 Link Fault";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -397,6 +503,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 50;
                         gsTextField = "PSU Charger Fault";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -404,6 +511,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 51;
                         gsTextField = "Battery Low Voltage";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -411,6 +519,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 52;
                         gsTextField = "Battery Failure";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -418,6 +527,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 36;
                         gsTextField = "Software Failure";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -425,6 +535,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 40;
                         gsTextField = "Panel Key Stuck";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -432,6 +543,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 37;
                         gsTextField = "Aux Output 1 Fault";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -439,6 +551,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 38;
                         gsTextField = "Aux Output 2 Fault";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -446,6 +559,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 53;
                         gsTextField = "Network Zone Assign Incorrect";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -453,6 +567,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 54;
                         gsTextField = "Network Ref Assign Incorrect";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -460,6 +575,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 55;
                         gsTextField = "ID2 Net Zone Duplication";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -467,6 +583,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 56;
                         gsTextField = "ID2 Net Startup Fault NetCard Missing";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -474,6 +591,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 57;
                         gsTextField = "ID2 Net Startup Fault No Ack";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -481,6 +599,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 58;
                         gsTextField = "ID2 Net Startup Fault No Reply";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -488,6 +607,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 59;
                         gsTextField = "ID2 Net Startup Fault Join Fail";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -495,6 +615,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 60;
                         gsTextField = "ID2 Net Run Time Fault";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -502,6 +623,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 61;
                         gsTextField = "ID2 Net Channel 1 Link Fault";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -509,6 +631,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 62;
                         gsTextField = "ID2 Net Channel 2 Link Fault";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -516,6 +639,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 63;
                         gsTextField = "ID2 Net Flash checksum Error";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -523,6 +647,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 64;
                         gsTextField = "ID2 Net OverLoad Timeout";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -530,6 +655,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 65;
                         gsTextField = "Over-Ride Sounder/Investigation delay";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -537,6 +663,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 66;
                         gsTextField = "Investigation delay extended";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -544,6 +671,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 67;
                         gsTextField = "Remote Fire Output Test";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -551,6 +679,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 99;
                         gsTextField = "Signalled Fault at Panel Input 1";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -558,6 +687,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 100;
                         gsTextField = "Signalled Fault at Panel Input 2";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -565,6 +695,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 102;
                         gsTextField = "External PSU Fault";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -572,6 +703,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 96;
                         gsTextField = "End Zone " + zone + " Test";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -587,6 +719,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 18;
                         gsTextField = "Internal Buzzer Muted";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -594,6 +727,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 96;
                         gsTextField = "Start Zone " + zone + " Test";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -625,6 +759,14 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 32;
                         gsTextField = "Comms Fail";
+                        getDeviceText = false;
+                        Console.WriteLine(gsTextField);
+                        break;
+
+                    case enmNotEventType.ReSoundSounder:  // 157
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 29;
+                        gsTextField = "Re-Sound Sounders";
                         getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
@@ -681,6 +823,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 101;
                         gsTextField = "Control Outputs Enabled";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -688,6 +831,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 101;
                         gsTextField = "Control Outputs Disabled";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -695,6 +839,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 97;
                         gsTextField = "Entire Zone Enable";
+                        getDeviceText = false;
                         on = false;
                         Console.WriteLine(gsTextField);
                         break;
@@ -703,6 +848,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 97;
                         gsTextField = "Entire Zone Disable";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -710,6 +856,7 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 93;
                         gsTextField = "Network Entire Zone Enable";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -717,12 +864,27 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 93;
                         gsTextField = "Network Entire Zone Enable";
+                        getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
+
+                    case enmNotEventType.SuspectedLoopBreak:  // 143
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        gsTextField = "Suspected Loop Break " + loop;
+                        giAddressNumber = 20 + loop;
+                        loop = 0;
+                        getDeviceText = false;
+                        Console.WriteLine(gsTextField);
+                        break;
+
                     default:
                         base.NotifyClient("Unkown Event " + ((enmNotEventType)eventcode));
                         break;
                 }
+
+                Console.WriteLine("Event " + eventcode + " Zone " + zone + " Address " + giAddressNumber);
+
+
                 gsDeviceText = "";
                 if (getDeviceText & gbSectoring == false)
                 {
@@ -767,6 +929,7 @@ namespace DraxTechnology.Panels
                     send_response_amx_disable(evnum, gsTextField, zonetext, gsDeviceText, on);
                 }
                 send_response_amx_and_serial(evnum, gsTextField, gsDeviceText, zonetext);
+                Thread.Sleep(1000);
             }
         }
         private void send_response_amx_and_serial(int evnum, string message1, string message2, string message3 = "")

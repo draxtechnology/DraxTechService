@@ -756,7 +756,7 @@ namespace DraxTechnology.Panels
                 .LastOrDefault() ?? "";
 
             //var addr = AssignOrLookup(devicetext, zoneHint, devHint);
-            var addr = AssignOrLookup(devicetext, null, null);
+            var addr = AssignOrLookup(devicetext, null, null);  // Just do a name lookup / assignment for now, since the hints are often unreliable / inconsistent in format
             int evnum = CSAMXSingleton.CS.MakeInputNumber(addr.Node, addr.Loop, addr.Device, p1, on);
 
             base.NotifyClient(
