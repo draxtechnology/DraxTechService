@@ -7,5 +7,6 @@ namespace DraxTechnology.Data
         public int Loop { get; set; }
         public int Device { get; set; }
         public string Name { get; set; }
+        public string DateCreated { get; set; }
     }
 }

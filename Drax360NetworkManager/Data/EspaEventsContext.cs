@@ -35,6 +35,9 @@ namespace DraxTechnology.Data
                 b.Property(e => e.Device).IsRequired();
                 b.Property(e => e.Name).IsRequired();
                 b.HasIndex(e => e.Name).IsUnique();
+                b.Property(e => e.DateCreated)
+    .IsRequired()
+    .HasDefaultValueSql("datetime('now', 'localtime')");
             });
         }
     }

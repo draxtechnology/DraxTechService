@@ -24,6 +24,7 @@ namespace DraxTechnology.Data
             "    [Loop]   INTEGER NOT NULL, " +
             "    [Device] INTEGER NOT NULL, " +
             "    [Name]   TEXT    NOT NULL UNIQUE" +
+            "    [DateCreated] TEXT    NOT NULL DEFAULT (datetime('now', 'localtime'))" +
             ");";
 
         public static void EnsureMigrated(string dbPath, Action<string> log = null)

@@ -600,7 +600,6 @@ namespace DraxTechnology.Panels
                 Parse(message);
             }
         }
-
         private int FindPattern(List<byte> buffer, byte[] pattern)
         {
             for (int i = 0; i <= buffer.Count - pattern.Length; i++)
@@ -756,7 +755,8 @@ namespace DraxTechnology.Panels
                 .Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
                 .LastOrDefault() ?? "";
 
-            var addr = AssignOrLookup(devicetext, zoneHint, devHint);
+            //var addr = AssignOrLookup(devicetext, zoneHint, devHint);
+            var addr = AssignOrLookup(devicetext, null, null);
             int evnum = CSAMXSingleton.CS.MakeInputNumber(addr.Node, addr.Loop, addr.Device, p1, on);
 
             base.NotifyClient(
@@ -770,7 +770,9 @@ namespace DraxTechnology.Panels
         }
         #endregion
 
-        #region AssignOrLookup
+        // Add to SQL Lite DB if not found, with optional hints to reuse existing loop/device for known zones/devices
+
+        #region AssignOrLookup  
         private (int Node, int Loop, int Device) AssignOrLookup(
             string devicetext, int? hintLoop, int? hintDevice)
         {
