@@ -15,6 +15,8 @@ namespace DraxTechnology.Panels
         public bool gbHalfDuplex = false;
         public bool gbSectoring = false;
         public int gsSectorNo;
+        private readonly List<(int zone, int p2, int p3, int p4, int p1)> _disabledZones = new();
+        private bool bOneShotReset;
         public override string FakeString
         {
             get =>
@@ -74,6 +76,7 @@ namespace DraxTechnology.Panels
 
             if (cmd == "IE")
             {
+                bOneShotReset = false;
                 string gsTextField = "";
                 string gAlarmType = "";
                 decimal giAddressNumber = 0;
@@ -155,27 +158,23 @@ namespace DraxTechnology.Panels
                 }
                 bValidChecksum = CheckSumValidation(sChecksum, ourmessage);
                 bool getDeviceText = true;
+                bool bDontSendToAMX = false;
                 switch ((enmNotEventType)eventcode)
                 {
                     case enmNotEventType.Fire:
-                        gsTextField = "Fire";
                         Console.WriteLine(gsTextField);
                         gAlarmType = enmNotAlarmType.NOTFire.ToString();
-                        getDeviceText = false;
                         break;
 
                     case enmNotEventType.TestFire:
-                        gsTextField = "Test Fire";
                         Console.WriteLine(gsTextField);
                         gAlarmType = enmNotAlarmType.NOTFire.ToString();
-                        getDeviceText = false;
                         break;
 
                     case enmNotEventType.FireDisabled:
-                        gsTextField = "Fire Disabled";
                         Console.WriteLine(gsTextField);
                         gAlarmType = enmNotAlarmType.NOTTestModeFire.ToString();
-                        getDeviceText = false;
+                        bDontSendToAMX = true;
                         break;
 
                     case enmNotEventType.NoReplyMissing:
@@ -208,9 +207,9 @@ namespace DraxTechnology.Panels
 
                     case enmNotEventType.FireCleared:
                         gAlarmType = enmNotAlarmType.NOTFire.ToString();
-                        gsTextField = "Fire Cleared";
                         Console.WriteLine(gsTextField);
                         getDeviceText = false;
+                        bDontSendToAMX = true;
                         break;
 
                     case enmNotEventType.FaultCleared:
@@ -222,9 +221,9 @@ namespace DraxTechnology.Panels
 
                     case enmNotEventType.MissingCleared:
                         gAlarmType = enmNotAlarmType.NOTFault.ToString();
-                        gsTextField = "Missing Cleared";
                         Console.WriteLine(gsTextField);
                         getDeviceText = false;
+                        bDontSendToAMX = true;
                         break;
 
                     case enmNotEventType.SensorModuleFault:
@@ -306,6 +305,15 @@ namespace DraxTechnology.Panels
                         Console.WriteLine(gsTextField);
                         break;
 
+                    case enmNotEventType.NetworkGenerlaReset:
+                    case enmNotEventType.NetworkSilenceSounders:
+                    case enmNotEventType.NetworkGeneralMuteSounder:
+                    case enmNotEventType.NetworkZoneInTestMode:
+                    case enmNotEventType.NetworkZoneInTest:
+                    case enmNotEventType.NetworkZoneInFault:
+                        bDontSendToAMX = true;
+                        break;
+
                     case enmNotEventType.PowerSupplyFault:
                         gAlarmType = enmNotAlarmType.NOTFault.ToString();
                         gsTextField = "Power Supply Fault";
@@ -313,6 +321,15 @@ namespace DraxTechnology.Panels
                         Console.WriteLine(gsTextField);
                         break;
 
+
+                    case enmNotEventType.PowerRestart:
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        gsTextField = "Power Restart";
+                        getDeviceText = false;
+                        giAddressNumber = 98;
+                        Console.WriteLine(gsTextField);
+
+                        break;
                     case enmNotEventType.LoopBoosterFault:
                         gAlarmType = enmNotAlarmType.NOTFault.ToString();
                         gsTextField = "Loop Booster Fault";
@@ -414,7 +431,7 @@ namespace DraxTechnology.Panels
                         getDeviceText = false;
                         loop = 15;
                         on = false;
-                        giAddressNumber = 1;
+                        giAddressNumber = zone;
                         Console.WriteLine("Entire Zone " + zone + " Enabled");
                         break;
 
@@ -423,7 +440,7 @@ namespace DraxTechnology.Panels
                         gsTextField = "Entire Zone " + zone + " Disabled";
                         getDeviceText = false;
                         loop = 15;
-                        giAddressNumber = 1;
+                        giAddressNumber = zone;
                         Console.WriteLine("Entire Zone " + zone + " Disabled");
                         break;
 
@@ -736,6 +753,7 @@ namespace DraxTechnology.Panels
                         giAddressNumber = 1;
                         gsTextField = "Evacuate";
                         getDeviceText = false;
+                        bOneShotReset = true;
                         Console.WriteLine(gsTextField);
                         break;
 
@@ -926,9 +944,43 @@ namespace DraxTechnology.Panels
                 evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, on);
                 if (p1 == (int)enmPRLAlarmType.Isolate)  // If Disable Device neeed to also send another event to AMX to increase the Isolation count
                 {
-                    send_response_amx_disable(evnum, gsTextField, zonetext, gsDeviceText, on);
+                    if (!bDontSendToAMX)
+                    {
+                        send_response_amx_disable(evnum, gsTextField, zonetext, gsDeviceText, on);
+                    }
                 }
-                send_response_amx_and_serial(evnum, gsTextField, gsDeviceText, zonetext);
+
+                if ((enmNotEventType)eventcode == enmNotEventType.DisableZone)
+                    _disabledZones.Add(((int)zone, p2, p3, p4, p1));
+
+                if ((enmNotEventType)eventcode == enmNotEventType.EnableZone)
+                {
+                    foreach (var entry in _disabledZones.Where(e => e.zone == (int)zone).ToList())
+                    {
+                        if (!bDontSendToAMX)
+                        {
+                            int offEvnum = CSAMXSingleton.CS.MakeInputNumber(entry.p2, entry.p3, entry.p4, entry.p1, false);
+                            CSAMXSingleton.CS.SendResetToAMX(offEvnum, gsTextField, "", "");
+                        }
+                    }
+                    _disabledZones.RemoveAll(e => e.zone == (int)zone);
+                }
+
+                if (!bDontSendToAMX)
+                {
+                    this.NotifyClient("Sending gsTextField: " + gsTextField + " gsDeviceText: " + gsDeviceText + " zonetext: " + zonetext, false);
+                    send_response_amx_and_serial(evnum, gsTextField, gsDeviceText, zonetext);
+                }
+
+                if (bOneShotReset && evnum != 0)
+                {
+                    if (!bDontSendToAMX)
+                    {
+                        base.NotifyClient("OneShot - Force EVM Attribute 13");
+                        CSAMXSingleton.CS.ForceEvmAttribute(evnum, 13, 1);
+                        CSAMXSingleton.CS.FlushMessages();
+                    }
+                }
                 Thread.Sleep(1000);
             }
         }
