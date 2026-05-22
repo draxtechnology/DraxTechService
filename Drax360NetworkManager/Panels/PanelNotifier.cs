@@ -1261,6 +1261,15 @@ namespace DraxTechnology.Panels
         {
             ParsePassedValues(passedvalues, out int node, out int loop, out int zone, out int device);
 
+            if (action == ActionType.kDISABLEDEVICE & device >= 100)
+            {
+                action = ActionType.kDISABLEMODULE;
+            }
+            if (action == ActionType.kENABLEDEVICE & device >= 100)
+            {
+                action = ActionType.kENABLEMODULE;
+            }
+
             string loopStr = loop.ToString("D2"); // Pads with leading zeros to 2 digits
             string zoneStr = zone.ToString("D5"); // Pads with leading zeros to 5 digits
 
@@ -1369,7 +1378,7 @@ namespace DraxTechnology.Panels
                  loop.ToString("D2") +
                  zone.ToString("D5") +
                  "M" +
-                 device.ToString("D2");
+                 (device - 100).ToString("D2");
             }
 
             if (action == ActionType.kENABLEMODULE)
@@ -1384,7 +1393,7 @@ namespace DraxTechnology.Panels
                  loop.ToString("D2") +
                  zone.ToString("D5") +
                  "M" +
-                 device.ToString("D2");
+                 (device - 100).ToString("D2");
             }
 
             if (action == ActionType.kDISABLEZONE)
