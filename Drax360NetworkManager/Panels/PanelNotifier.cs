@@ -103,18 +103,24 @@ namespace DraxTechnology.Panels
                 }
                 catch { }
                 giAddressNumber = address;
+
                 string sTextField = "";
-                for (int i = 36; i < ourmessage.Length; i++)
+                if (ourmessage != null && ourmessage.Length > 37)
                 {
-                    if (ourmessage[i] == 254)
-                    {
-                        break;
-                    }
+                    int start = (ourmessage[36] == 254) ? 37 : 36;
+                    int end = Array.IndexOf(ourmessage, (byte)254, start);
+                    if (end < 0) end = ourmessage.Length; // no terminator found, read to end
 
-                    sTextField += Encoding.UTF8.GetString(ourmessage, i, 1);
+                    sTextField = Encoding.UTF8.GetString(ourmessage, start, end - start);
 
+                    int quoteIndex = sTextField.IndexOf('"');
+                    if (quoteIndex >= 0)
+                        sTextField = sTextField.Substring(0, quoteIndex).Trim();
                 }
+                
                 bool on = true;
+
+                gsTextField = sTextField;
 
                 int iDevicetype = 0;
                 try
@@ -1333,8 +1339,7 @@ namespace DraxTechnology.Panels
                  loop.ToString("D2") +
                  zone.ToString("D5") +
                  "S" +
-                 device.ToString("D2") +
-                 "00";
+                 device.ToString("D2");
             }
 
             if (action == ActionType.kENABLEDEVICE)
@@ -1349,8 +1354,7 @@ namespace DraxTechnology.Panels
                  loop.ToString("D2") +
                  zone.ToString("D5") +
                  "S" +
-                 device.ToString("D2") +
-                 "00";
+                 device.ToString("D2");
             }
 
             if (action == ActionType.kDISABLEMODULE)
@@ -1365,8 +1369,7 @@ namespace DraxTechnology.Panels
                  loop.ToString("D2") +
                  zone.ToString("D5") +
                  "M" +
-                 device.ToString("D2") +
-                 "00";
+                 device.ToString("D2");
             }
 
             if (action == ActionType.kENABLEMODULE)
@@ -1381,8 +1384,7 @@ namespace DraxTechnology.Panels
                  loop.ToString("D2") +
                  zone.ToString("D5") +
                  "M" +
-                 device.ToString("D2") +
-                 "00";
+                 device.ToString("D2");
             }
 
             if (action == ActionType.kDISABLEZONE)
