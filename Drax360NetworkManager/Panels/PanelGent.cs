@@ -1165,7 +1165,10 @@ namespace DraxTechnology.Panels
 
                 if (action == ActionType.kDISABLEDEVICE || action == ActionType.kENABLEDEVICE)
                 {
-                    System.Threading.Thread.Sleep(200);  // VB6 delay
+                    // Removed Thread.Sleep(200) "VB6 delay" here (2026-05-23):
+                    // serialsend already paces serial writes at its own rate,
+                    // and the AMX writer queue + MAK ack handles outbound
+                    // pacing. The legacy 200 ms pre-write delay was vestigial.
                     send_response_amx_disable(evnum, "", text, "", on);  // TODO VB6 does not do
                 }
             }

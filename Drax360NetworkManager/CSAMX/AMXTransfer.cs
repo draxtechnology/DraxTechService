@@ -60,6 +60,10 @@ namespace DraxTechnology
         // discarded — the queue does not stack up unbounded.
         private const int kReconnectDelayMs = 5000;
 
+        // Accumulator cap for the receive framing buffer (see ReceiveDataAsync).
+        // 64 KB — far above any expected frame size, defensive only.
+        private const int kRxAccumMaxBytes = 65536;
+
         public async Task Run(string[] args)
         {
             while (!_stopRequested)
@@ -180,12 +184,17 @@ namespace DraxTechnology
                         // that used Substring(9) which over-corrected and lopped
                         // the drive letter off the path. Mike's 10 .GEN files left
                         // on disk after a clean test were this bug.
+                        // No need to strip frame-separator hyphens here — the
+                        // receive loop already splits chunks on '-' before
+                        // dispatching, so msg is clean. Stripping hyphens with
+                        // Replace("-", "") would also corrupt any AMX path
+                        // containing an internal hyphen (e.g. C:\AMX1\Temp\my-
+                        // folder\1.GEN), so it's been removed (2026-05-23).
                         string filename = msg.Substring(4).Trim();
                         if (filename.StartsWith("NTX:"))
                         {
                             filename = filename.Substring(4).Trim();
                         }
-                        filename = filename.Replace("-", "").Trim();
                         CSAMXSingleton.CS.ScheduleDelete(filename);
                         _makAck.Set();  // releases the sender thread's WaitForMak
                     }
@@ -195,8 +204,10 @@ namespace DraxTechnology
                         // .MTN file in NVM struct format. Decode and dispatch to
                         // the active panel(s) via DraxService; then preserve the
                         // existing echo-back so AMX's handshake is unaffected.
+                        // (Receive loop already strips frame-separator '-' before
+                        // dispatch, so no extra hyphen cleanup needed here —
+                        // doing so would corrupt paths containing internal '-'.)
                         string filename = msg.Substring(4).Trim();
-                        filename = filename.Replace("-", "").Trim();
 
                         DraxService.OnManualControlFile?.Invoke(filename);
 
@@ -322,6 +333,12 @@ namespace DraxTechnology
         // can't deadlock the sender.
         private static readonly TimeSpan kMakTimeout = TimeSpan.FromSeconds(5);
 
+        // Backoff between WriteToStream retries — earlier the loop spun three
+        // attempts in microseconds with no pause and no reconnect, then dropped
+        // the message. A short pause gives the Run() reconnect loop a chance
+        // to re-establish before we burn the next attempt.
+        private const int kSendRetryBackoffMs = 300;
+
         private void WriteToStream(string message)
         {
             const int maxAttempts = 3;
@@ -363,6 +380,13 @@ namespace DraxTechnology
                 {
                     NotifyClient("Not connected unable to send");
                 }
+
+                if (attempt < maxAttempts)
+                {
+                    // Pause before the next attempt so the reconnect loop in Run()
+                    // has time to re-establish the stream after a transient drop.
+                    Thread.Sleep(kSendRetryBackoffMs);
+                }
             }
             NotifyClient("SendMessage failed after 3 attempts.");
         }
@@ -400,6 +424,19 @@ namespace DraxTechnology
                     // last '-' (one or more complete frames), keeping any
                     // trailing partial for the next read.
                     _rxAccum.Append(Encoding.UTF8.GetString(buffer, 0, bytesRead));
+
+                    // Defensive cap: if AMX (or a wedged connection) never sends
+                    // a frame separator, the accumulator would grow without
+                    // bound. 64 KB is far larger than any expected frame; if we
+                    // ever cross it, dump and continue rather than OOM the
+                    // service. Not an expected condition.
+                    if (_rxAccum.Length > kRxAccumMaxBytes)
+                    {
+                        NotifyClient($"AMX receive accumulator exceeded {kRxAccumMaxBytes} bytes without a separator — dropping {_rxAccum.Length} buffered bytes");
+                        _rxAccum.Clear();
+                        continue;
+                    }
+
                     int lastSep = -1;
                     for (int i = _rxAccum.Length - 1; i >= 0; i--)
                     {

@@ -18,6 +18,7 @@ namespace DraxTechnology
 
         #region private variables
         private static SettingsSingleton instance = null;
+        private static readonly object _instanceLock = new object();
         private Dictionary<string, string> settings = new Dictionary<string, string>();
         private string settingsfile;
         #endregion
@@ -161,9 +162,30 @@ namespace DraxTechnology
 
         public static SettingsSingleton Instance(string panelfilename)
         {
+            // Double-checked locking around lazy init. Today only one panel
+            // type is active at a time (App.config "Panels"), so the cached
+            // instance's filename is expected to match every call. If it
+            // doesn't, the caller would silently get the wrong settings —
+            // log so we'd notice if the architecture ever changed to support
+            // multiple concurrent panel types.
             if (instance == null)
             {
-                instance = new SettingsSingleton(panelfilename);
+                lock (_instanceLock)
+                {
+                    if (instance == null)
+                    {
+                        instance = new SettingsSingleton(panelfilename);
+                    }
+                }
+            }
+            else
+            {
+                string expected = Path.Combine("ini", panelfilename + ".ini");
+                if (!string.Equals(instance.settingsfile, expected, StringComparison.OrdinalIgnoreCase))
+                {
+                    Console.WriteLine(
+                        $"SettingsSingleton: requested '{panelfilename}.ini' but cached instance holds '{instance.settingsfile}' — returning cached (may be wrong settings)");
+                }
             }
             return instance;
         }

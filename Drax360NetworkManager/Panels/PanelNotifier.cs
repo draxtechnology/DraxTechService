@@ -94,20 +94,15 @@ namespace DraxTechnology.Panels
                 decimal seconds = Convert.ToDecimal(Encoding.UTF8.GetString(ourmessage, 14 - 1, 2));
                 int loop = Convert.ToInt32(Encoding.UTF8.GetString(ourmessage, 16 - 1, 2));
                 decimal zone = 0;
-                try
-                {
-                    zone = Convert.ToDecimal(Encoding.UTF8.GetString(ourmessage, 18 - 1, 5));
-                }
-                catch { }
+                decimal.TryParse(Encoding.UTF8.GetString(ourmessage, 18 - 1, 5), out zone);
+
                 string sensor = Encoding.UTF8.GetString(ourmessage, 23 - 1, 1);
                 int address = 0;
-                try
-                {
-                    string straddress = Encoding.UTF8.GetString(ourmessage, 24 - 1, 2);
-
-                    address = Convert.ToInt32(straddress, 16);
-                }
-                catch { }
+                int.TryParse(
+                    Encoding.UTF8.GetString(ourmessage, 24 - 1, 2),
+                    System.Globalization.NumberStyles.HexNumber,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out address);
                 giAddressNumber = address;
 
                 string sTextField = "";
@@ -129,11 +124,7 @@ namespace DraxTechnology.Panels
                 gsTextField = sTextField;
 
                 int iDevicetype = 0;
-                try
-                {
-                    iDevicetype = Convert.ToInt32(Encoding.UTF8.GetString(ourmessage, 26 - 1, 2));
-                }
-                catch { };
+                int.TryParse(Encoding.UTF8.GetString(ourmessage, 26 - 1, 2), out iDevicetype);
 
                 if (CheckForSectoring(eventcode, loop))
                 {
@@ -317,7 +308,7 @@ namespace DraxTechnology.Panels
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.NetworkGenerlaReset:
+                    case enmNotEventType.NetworkGeneralReset:
                     case enmNotEventType.NetworkSilenceSounders:
                     case enmNotEventType.NetworkGeneralMuteSounder:
                     case enmNotEventType.NetworkZoneInTestMode:
@@ -714,6 +705,10 @@ namespace DraxTechnology.Panels
 
                     case enmNotEventType.SignalledFaultatPanelInput2:
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        // AMX status-event slot for Panel Input 2 (NOT the
+                        // module-address threshold kModuleAddressMin — the
+                        // 100 here is coincidentally the same value but a
+                        // different concept; don't tidy to the constant).
                         giAddressNumber = 100;
                         gsTextField = "Signalled Fault at Panel Input 2";
                         getDeviceText = false;
@@ -874,7 +869,7 @@ namespace DraxTechnology.Panels
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmNotEventType.EnitreZoneDisable:  // 229
+                    case enmNotEventType.EntireZoneDisable:  // 229
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 97;
                         gsTextField = "Entire Zone Disable";
@@ -893,7 +888,7 @@ namespace DraxTechnology.Panels
                     case enmNotEventType.NetworkEntireZoneDisable:  // 231
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 93;
-                        gsTextField = "Network Entire Zone Enable";
+                        gsTextField = "Network Entire Zone Disable";
                         getDeviceText = false;
                         Console.WriteLine(gsTextField);
                         break;
@@ -908,7 +903,7 @@ namespace DraxTechnology.Panels
                         break;
 
                     default:
-                        base.NotifyClient("Unkown Event " + ((enmNotEventType)eventcode));
+                        base.NotifyClient("Unknown Event " + ((enmNotEventType)eventcode));
                         break;
                 }
 
@@ -916,7 +911,7 @@ namespace DraxTechnology.Panels
 
 
                 gsDeviceText = "";
-                if (getDeviceText & gbSectoring == false)
+                if (getDeviceText && !gbSectoring)
                 {
                     GetDeviceTypeText(iDevicetype);
                 }
@@ -937,9 +932,9 @@ namespace DraxTechnology.Panels
                     Console.WriteLine($"Unexpected error: {ex.Message}");
                 }
 
-                if (sensor.ToLower() == "m")   // Module at 100 to address
+                if (sensor.ToLower() == "m")   // Module: addresses ≥ kModuleAddressMin
                 {
-                    giAddressNumber = giAddressNumber + 100;
+                    giAddressNumber += kModuleAddressMin;
                 }
 
                 p2 = panel;
@@ -993,7 +988,10 @@ namespace DraxTechnology.Panels
                         CSAMXSingleton.CS.FlushMessages();
                     }
                 }
-                Thread.Sleep(1000);
+                // Removed Thread.Sleep(1000) here (2026-05-23): the AMX writer
+                // queue + MAK ack already paces outbound traffic, so blocking
+                // the receive thread for a full second after a dispatch was
+                // just delaying the next inbound parse cycle for no benefit.
             }
         }
         private void send_response_amx_and_serial(int evnum, string message1, string message2, string message3 = "")

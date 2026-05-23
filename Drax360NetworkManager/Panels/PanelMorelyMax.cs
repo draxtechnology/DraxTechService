@@ -92,30 +92,21 @@ namespace DraxTechnology.Panels
                 decimal seconds = Convert.ToDecimal(Encoding.UTF8.GetString(ourmessage, 14 - 1, 2));
                 int loop = Convert.ToInt32(Encoding.UTF8.GetString(ourmessage, 16 - 1, 2));
                 decimal zone = 0;
-                try
-                {
-                    zone = Convert.ToDecimal(Encoding.UTF8.GetString(ourmessage, 18 - 1, 5));
-                }
-                catch { }
+                decimal.TryParse(Encoding.UTF8.GetString(ourmessage, 18 - 1, 5), out zone);
+
                 string sensor = Encoding.UTF8.GetString(ourmessage, 23 - 1, 1);
 
                 int address = 0;
-                try
-                {
-                    string straddress = Encoding.UTF8.GetString(ourmessage, 24 - 1, 2);
-
-                    address = Convert.ToInt32(straddress, 16);
-                }
-                catch { }
+                int.TryParse(
+                    Encoding.UTF8.GetString(ourmessage, 24 - 1, 2),
+                    System.Globalization.NumberStyles.HexNumber,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out address);
 
                 giAddressNumber = address;
 
                 int iDevicetype = 0;
-                try
-                {
-                    iDevicetype = Convert.ToInt32(Encoding.UTF8.GetString(ourmessage, 26 - 1, 2));
-                }
-                catch { }
+                int.TryParse(Encoding.UTF8.GetString(ourmessage, 26 - 1, 2), out iDevicetype);
 
                 bool on = true;
 
@@ -662,7 +653,7 @@ namespace DraxTechnology.Panels
                         Console.WriteLine(gsTextField);
                         break;
 
-                    case enmEventType.EnitreZoneDisable:  // 229
+                    case enmEventType.EntireZoneDisable:  // 229
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 97;
                         gsTextField = "Entire Zone Disable";

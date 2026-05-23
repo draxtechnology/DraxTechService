@@ -109,7 +109,7 @@ namespace DraxTechnology
         LossOfLoop = 148,
         LossPartLoop = 149,
         EndBFaultLoop = 150,
-        NetworkGenerlaReset = 153,
+        NetworkGeneralReset = 153,
         NetworkSilenceSounders = 154,
         NetworkGeneralMuteSounder = 155,
         NetworkDisabled = 156,
@@ -134,7 +134,7 @@ namespace DraxTechnology
         FaultRelayDisabled = 183,
         SounderRelayCircuitEnabled = 184,
         FireRelayEnabled = 185,
-        FaultRelyEnabled = 186,
+        FaultRelayEnabled = 186,
         NetworkZoneInTestMode = 191,
         NetworkZoneInEnabled = 192,
         NetworkZoneInDisabled = 193,
@@ -154,7 +154,7 @@ namespace DraxTechnology
         ControlOutputsEnabled1 = 209,
         ControlOutputsDisabled1 = 210,
         EntireZoneEnable = 228,
-        EnitreZoneDisable = 229,
+        EntireZoneDisable = 229,
         NetworkEntireZoneEnable = 230,
         NetworkEntireZoneDisable = 231,
         LIBCardLoopCPUFault = 257,
@@ -258,7 +258,7 @@ namespace DraxTechnology
         LossOfLoop = 148,
         LossPartLoop = 149,
         EndBFaultLoop = 150,
-        NetworkGenerlaReset = 153,
+        NetworkGeneralReset = 153,
         NetworkSilenceSounders = 154,
         NetworkGeneralMuteSounder = 155,
         NetworkDisabled = 156,
@@ -283,7 +283,7 @@ namespace DraxTechnology
         FaultRelayDisabled = 183,
         SounderRelayCircuitEnabled = 184,
         FireRelayEnabled = 185,
-        FaultRelyEnabled = 186,
+        FaultRelayEnabled = 186,
         NetworkZoneInTestMode = 191,
         NetworkZoneInEnabled = 192,
         NetworkZoneInDisabled = 193,
@@ -303,7 +303,7 @@ namespace DraxTechnology
         ControlOutputsEnabled1 = 209,
         ControlOutputsDisabled1 = 210,
         EntireZoneEnable = 228,
-        EnitreZoneDisable = 229,
+        EntireZoneDisable = 229,
         NetworkEntireZoneEnable = 230,
         NetworkEntireZoneDisable = 231,
         LIBCardLoopCPUFault = 257,
@@ -393,7 +393,7 @@ namespace DraxTechnology
         LossOfLoop = 148,
         LossPartLoop = 149,
         EndBFaultLoop = 150,
-        NetworkGenerlaReset = 153,
+        NetworkGeneralReset = 153,
         NetworkSilenceSounders = 154,
         NetworkGeneralMuteSounder = 155,
         NetworkDisabled = 156,
@@ -418,7 +418,7 @@ namespace DraxTechnology
         FaultRelayDisabled = 183,
         SounderRelayCircuitEnabled = 184,
         FireRelayEnabled = 185,
-        FaultRelyEnabled = 186,
+        FaultRelayEnabled = 186,
         NetworkZoneInTestMode = 191,
         NetworkZoneInEnabled = 192,
         NetworkZoneInDisabled = 193,
@@ -438,7 +438,7 @@ namespace DraxTechnology
         ControlOutputsEnabled1 = 209,
         ControlOutputsDisabled1 = 210,
         EntireZoneEnable = 228,
-        EnitreZoneDisable = 229,
+        EntireZoneDisable = 229,
         NetworkEntireZoneEnable = 230,
         NetworkEntireZoneDisable = 231,
         LIBCardLoopCPUFault = 257,
@@ -728,14 +728,10 @@ namespace DraxTechnology
         // RSM End
 
 
-        private int _port = 3090;
-        private string _address = "localhost";
-        private TcpClient _tcpClient;
-        private bool _connected = true;
-
-        private NetworkStream _stream;
-        private StreamWriter _writer;
-        private System.Timers.Timer _heartbeatTimer;
+        // TCP shadow fields (_port, _address, _tcpClient, _connected, _stream,
+        // _writer, _heartbeatTimer) were leftover from before the connection
+        // was extracted into AMXTransfer; all dead, deleted 2026-05-23.
+        // AMXTransfer.Instance now owns the connection lifecycle.
         private NamedPipeServerStream pipeserversend = null;
 
         private string panel = "";
@@ -920,7 +916,8 @@ namespace DraxTechnology
                 // now work out the settings for this panel                               
                 int port = 0;
 
-                if (apbase.Extension.ToUpper() == "MORLEY" || (apbase.Extension.ToUpper() == "MAX" & i == 1))
+                string ext = apbase.Extension.ToUpper();
+                if (ext == "MORLEY" || (ext == "MAX" && i == 1))
                 {
                     port = apbase.GetSetting<int>("SETUP", "CommPort");
                 }
@@ -1049,7 +1046,8 @@ namespace DraxTechnology
                     {
                         AbstractPanel apbase = getpanel();
 
-                        if (apbase.Extension.ToUpper() == "MORLEY" || (apbase.Extension.ToUpper() == "MAX"))
+                        string ext = apbase.Extension.ToUpper();
+                        if (ext == "MORLEY" || ext == "MAX")
                         {
                             port = apbase.GetSetting<int>("SETUP", "CommPort");
                         }
@@ -1759,9 +1757,12 @@ namespace DraxTechnology
                     this.DebugLog = true;
                     break;
             }
-            AMXTransfer amxtransfer = new AMXTransfer();
-            amxtransfer.OutsideEvents += Sp_Log;
-            AMXTransfer.Instance.Run(args);
+            // OutsideEvents must subscribe on the singleton, not a fresh instance —
+            // earlier code instantiated a throwaway AMXTransfer just to add the
+            // handler, but Run() drives Instance only, so Sp_Log was silently
+            // never invoked. Fixed 2026-05-23.
+            AMXTransfer.Instance.OutsideEvents += Sp_Log;
+            _ = AMXTransfer.Instance.Run(args);   // long-lived reconnect loop; fire-and-forget by design
 
             startpipeserver();
 
@@ -1948,17 +1949,8 @@ namespace DraxTechnology
             }
             abstractpanels.Clear();
 
-            try
-            {
-                _tcpClient?.Close();
-                _tcpClient?.Dispose();
-                _tcpClient = null;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Error closing TCP connection: " + ex.Message);
-            }
-
+            // TCP cleanup is AMXTransfer.Instance.Stop()'s job now (the
+            // shadow-field cleanup that lived here was a no-op).
             try
             {
                 AMXTransfer.Instance.Stop();

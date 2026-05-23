@@ -134,6 +134,15 @@ namespace DraxTechnology.Panels
             // the same stamp at the top of their handlers).
             lastDataReceived = DateTime.Now;
 
+            // TODO(2026-05-23): this 1-second Sleep is a fixed wait giving the
+            // SerialPort buffer time to accumulate the rest of a frame before
+            // we read it. It's an anti-pattern (serialises receive at 1 Hz on
+            // chatty panels) and should be replaced with a bounded poll-until-
+            // buffer-stable loop like PanelGent already uses at line ~1183.
+            // Leaving as-is for now because every panel that doesn't override
+            // depends on it for frame accumulation — needs per-panel testing
+            // (Notifier, MorleyZX, MorleyMax, Pearl, RSM) before swapping in
+            // the bounded version.
             System.Threading.Thread.Sleep(1000);
             int bytestoread = serialport.BytesToRead;
             if (bytestoread == 0) return;
