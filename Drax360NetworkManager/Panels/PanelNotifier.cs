@@ -1267,6 +1267,14 @@ namespace DraxTechnology.Panels
         {
             ParsePassedValues(passedvalues, out int node, out int loop, out int zone, out int device);
 
+            // Diagnostic for the module-disable investigation (Richard, 2026-05-23).
+            // If "device < 100" appears in the console when triggering Disable
+            // Module from AMX, the gate below correctly skips the remap because
+            // the upstream AMX → CTRL → DispatchAmxPipeCommand path isn't passing
+            // the +100 module offset — fix would be there, not in PanelNotifier.
+            // Remove this line once the module-disable path is verified end-to-end.
+            this.NotifyClient($"send_message: action={action} device={device}");
+
             // --- Suggested change (Richard, 2026-05-23) — more robust gate ---
             // Uses && (short-circuit, idiomatic) implicitly via switch expression,
             // hoists the device check, drops the duplicated if-block structure,
