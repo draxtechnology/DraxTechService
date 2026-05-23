@@ -10,6 +10,12 @@ using System.Xml.Schema;
 namespace DraxTechnology.Panels
 {    internal class PanelNotifier : AbstractPanel
     {
+        // Device addresses ≥ this are modules rather than physical sensor
+        // devices. The disable/enable remap below (send_message) uses it as the
+        // gate, and the >IE…M.. wire format subtracts it to get the module
+        // index (DISABLEMODULE / ENABLEMODULE branches further down).
+        private const int kModuleAddressMin = 100;
+
         public string gsDeviceText = "";
         public EnmDeviceType gDeviceType;
         public bool gbHalfDuplex = false;
@@ -1261,14 +1267,32 @@ namespace DraxTechnology.Panels
         {
             ParsePassedValues(passedvalues, out int node, out int loop, out int zone, out int device);
 
-            if (action == ActionType.kDISABLEDEVICE & device >= 100)
+            // --- Suggested change (Richard, 2026-05-23) — more robust gate ---
+            // Uses && (short-circuit, idiomatic) implicitly via switch expression,
+            // hoists the device check, drops the duplicated if-block structure,
+            // and replaces the magic 100 with kModuleAddressMin (defined top of
+            // class, also referenced in the >IE…M.. message builders below).
+            // Behaviour-equivalent to Mike's original (preserved beneath). Mike:
+            // revert this block to the commented version if you'd rather.
+            if (device >= kModuleAddressMin)
             {
-                action = ActionType.kDISABLEMODULE;
+                action = action switch
+                {
+                    ActionType.kDISABLEDEVICE => ActionType.kDISABLEMODULE,
+                    ActionType.kENABLEDEVICE  => ActionType.kENABLEMODULE,
+                    _                          => action,
+                };
             }
-            if (action == ActionType.kENABLEDEVICE & device >= 100)
-            {
-                action = ActionType.kENABLEMODULE;
-            }
+
+            // Original (Mike, commit 43b1206 — "Notifier Module Disable", 2026-05-22):
+            // if (action == ActionType.kDISABLEDEVICE & device >= 100)
+            // {
+            //     action = ActionType.kDISABLEMODULE;
+            // }
+            // if (action == ActionType.kENABLEDEVICE & device >= 100)
+            // {
+            //     action = ActionType.kENABLEMODULE;
+            // }
 
             string loopStr = loop.ToString("D2"); // Pads with leading zeros to 2 digits
             string zoneStr = zone.ToString("D5"); // Pads with leading zeros to 5 digits
@@ -1378,7 +1402,7 @@ namespace DraxTechnology.Panels
                  loop.ToString("D2") +
                  zone.ToString("D5") +
                  "M" +
-                 (device - 100).ToString("D2");
+                 (device - kModuleAddressMin).ToString("D2");
             }
 
             if (action == ActionType.kENABLEMODULE)
@@ -1393,7 +1417,7 @@ namespace DraxTechnology.Panels
                  loop.ToString("D2") +
                  zone.ToString("D5") +
                  "M" +
-                 (device - 100).ToString("D2");
+                 (device - kModuleAddressMin).ToString("D2");
             }
 
             if (action == ActionType.kDISABLEZONE)

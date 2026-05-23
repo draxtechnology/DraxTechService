@@ -4,7 +4,7 @@
      xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
 
   <Bundle Name="Drax Technology Service"
-          Version="1.0.4"
+          Version="1.0.5"
           Manufacturer="Drax Technology"
           UpgradeCode="A2B9F47C-5E1D-4A6B-9D3C-7F2E8B4D5A6E"
           IconSourceFile="..\Drax360NetworkManager\DT-small.ico">
