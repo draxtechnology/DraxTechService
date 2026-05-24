@@ -42,7 +42,12 @@
     <None Update="ini\AdvMan.ini" CopyToOutputDirectory="PreserveNewest" />
     <None Update="ini\EMLMan.ini" CopyToOutputDirectory="PreserveNewest" />
     <None Update="ini\GenMan.ini" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="ini\KsfMan.ini" CopyToOutputDirectory="PreserveNewest" />
     <None Update="ini\MAXMan.ini" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="ini\MorleyMan.ini" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="ini\NOTMan.ini" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="ini\PRLMan.ini" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="ini\RSMMan.ini" CopyToOutputDirectory="PreserveNewest" />
     <None Update="ini\Takman.ini" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

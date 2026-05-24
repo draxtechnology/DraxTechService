@@ -49,8 +49,6 @@ Fire Alarm Panel (Serial/TCP)
 
 **`Data/`** — EF Core 10 contexts. `EspaEventsContext` is the template; `EspaEventsLegacyMigrator` handles the one-shot raw-SQL migration from the legacy v0 ESPA schema.
 
-**`Security/AesDecryption.cs`** — AES-256/PBKDF2 decryption supporting OpenSSL format with salt, used for encrypted panel configurations.
-
 ### Configuration
 
 `App.config` (copied to `DraxTechnology.dll.config` at build time on .NET Core) controls runtime behaviour:

@@ -31,7 +31,6 @@ namespace DraxTechnology
 
         public void SaveSettings()
         {
-            string settingfiletemp = Path.Combine("", file + ".txt");
             string section = "";
             string buffer = "";
             foreach (string key in settings.Keys.OrderBy(i => i))
