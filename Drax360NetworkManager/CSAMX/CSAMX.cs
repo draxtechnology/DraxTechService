@@ -1,9 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading;
 using System.Timers;
 
 
@@ -34,16 +33,12 @@ namespace DraxTechnology
         #region constructor
         public CSAMX()
         {
-            
-
-            // determine starting filenumber
-           
         }
-        
+
         #endregion
 
         #region public methods
-        public void Startup(string logfiles,string extension)
+        public void Startup(string logfiles, string extension)
         {
             this.extension = extension;
             this.logfiles = Path.Combine(logfiles, csamxfolder);
@@ -73,89 +68,11 @@ namespace DraxTechnology
             OutsideEvents?.Invoke(this, e);
         }
 
-        // MIKE
-
-        /* *********************************************************** 
-This function reads one data structure from an NWM transfer file
-
-Data is passed back in the array Ddat:
-	0-7	= Spare
-	8	= Type
-	9	= Event number
-	10	= Time
-	11	= length of text
-	12  = onoff
-
-If Dtext = NULL then no text is passed back
-
-Function created: 11/11/97   Revised: 
-
-Returns: -1 on success, else 0
-*/
-/*
- * DllExport __int16  WINAPI GetNWMData(fname, index, Ddat, LocText, ExText, ExText2)
-char* fname;
-        __int16 index;
-        long* Ddat;
-        char* LocText;
-        char* ExText;
-        char* ExText2;
-{
-            __int16 r = -1, i;
-
-    long p;
-        struct NWMSTRUCT Nwm;
-	FILE* ftmp;
-
-	for(i=0;i<20;i++)
-		Ddat[i] = 0L;		// Clear the array of longs
-	p = (long) (index-1) * (long) (long)sizeof(struct NWMSTRUCT);
-	ftmp = fopen(fname,"rb");		// NB - explicit filename
-	if(ftmp == NULL) {
-		return 0;
-	}
-	if(fseek(ftmp, p, SEEK_SET) != 0) {
-		r = 0;
-	}
-	else {
-		if(fread(&Nwm, (long)sizeof(struct NWMSTRUCT), 1, ftmp) < 1) {
-			r = 0;
-		}
-
-        else
-{
-    for (i = 0; i < 8; i++)
-    {
-        Ddat[i] = Nwm.spare[i];     // Copy the additional data 
-    }
-    Ddat[8] = Nwm.type;
-    Ddat[9] = Nwm.event;
-    Ddat[10] = Nwm.time;
-    Ddat[12] = (long)Nwm.OnOff;
-    Ddat[13] = Nwm.Dat1;
-    Ddat[14] = Nwm.Dat2;
-    Ddat[15] = Nwm.Dat3;
-    Ddat[16] = Nwm.Dat4;
-    Ddat[17] = Nwm.Dat5;
-    Ddat[18] = Nwm.Dat6;
-    Ddat[19] = (long)Nwm.Value;
-    Ddat[20] = (long)Nwm.ControlType;
-    Ddat[21] = (long)Nwm.Node;
-    // Copy the texts
-    Ddat[11] = (long)copystring(LocText, Nwm.Text);     // Location/description
-    Ddat[22] = (long)copystring(ExText, Nwm.Text2);     // Extended - e.g device type - used for event type phrase when sending to output NWMs
-    Ddat[23] = (long)copystring(ExText2, Nwm.Text3);    // Extended - e.g zone text 
-}
-	}
-	fclose(ftmp);
-return r;
-}
-*/
 
 
         public int IncrementInputNumber(int inputNumber)
         {
-            return (int) (inputNumber + 0x80000000);
+            return (int)(inputNumber + 0x80000000);
         }
         public int MakeInputNumber(int node, int loop, int inputn, int inputtype, bool on = true)
         {
@@ -170,12 +87,12 @@ return r;
         }
 
         public void WriteData(NwmData eventtype, int eventnumber,
-             string textparameter, string textparameter2, string textparameter3, bool on=true)
+             string textparameter, string textparameter2, string textparameter3, bool on = true)
         {
             NVM ournvm = new NVM();
             ournvm.OurType = Convert.ToInt32(eventtype);
             ournvm.OurEvent = eventnumber;
-            ournvm.On = on?1:0;
+            ournvm.On = on ? 1 : 0;
 
             ournvm.Text = textparameter;
             ournvm.Text2 = textparameter2;
@@ -187,87 +104,6 @@ return r;
             }
         }
 
-        /*
-         
-        DllExport __int16  WINAPI SendResetToAMX1(AlarmType, EventNumber, LongTime, iPar, Dtext, Dtext2, Dtext3, TxFile)
-__int16 AlarmType;
-long    EventNumber;		
-long	LongTime;			// Time in c long time format
-__int16	iPar;				// Integer parameter
-unsigned char *Dtext;		// String parameter
-unsigned char *Dtext2;		// String parameter
-unsigned char *Dtext3;		// String parameter
-unsigned char *TxFile;
-{
-	__int16 res=0;
-	struct NWMSTRUCT NwmCmd;
-	time_t tm;					// Used in time routines
-
-	if(LongTime == 0L) {
-		tm = time(&tm);
-	}
-	else{
-		tm = (time_t)LongTime;
-	}
-	memset(&NwmCmd, 0, sizeof(struct NWMSTRUCT));								
-	NwmCmd.type = 1;					// Event Type
-	NwmCmd.event = EventNumber;			// Event number
-	NwmCmd.time = (long)tm;
-	NwmCmd.OnOff = 0;
-	if((Dtext != 0) && (Dtext != NULL)) {
-		strncpy(NwmCmd.Text, Dtext, 64);
-	}
-	if((Dtext2 != 0) && (Dtext2 != NULL)) {
-		strncpy(NwmCmd.Text2, Dtext2, 40);		
-	}
-	if((Dtext3 != 0) && (Dtext3 != NULL)) {
-		strncpy(NwmCmd.Text3, Dtext3, 40);	
-	}
-	res += SendEventToAMX1(TxFile, &NwmCmd);	// Now send it
-	return res;
-}
-         
-        DllExport __int16  WINAPI SendAlarmToAMX1(AlarmType, EventNumber, LongTime, iPar, Dtext, Dtext2, Dtext3, TxFile)
-__int16 AlarmType;
-long    EventNumber;		
-long	LongTime;			// Time in c long time format
-__int16	iPar;				// Integer parameter
-unsigned char *Dtext;		// String parameter
-unsigned char *Dtext2;		// String parameter
-unsigned char *Dtext3;		// String parameter
-unsigned char *TxFile;
-{
-	__int16 res=0;
-	struct NWMSTRUCT NwmCmd;
-	time_t tm;				// Used in time routines
-
-	if(LongTime == 0L) {
-		tm = time(&tm);
-	}
-	else{
-		tm = (time_t)LongTime;
-	}
-	memset(&NwmCmd, 0, sizeof(struct NWMSTRUCT));								
-	NwmCmd.type = 1;							// Event Type
-	NwmCmd.event = EventNumber;					// Event number
-	NwmCmd.time = (long)tm;
-	NwmCmd.OnOff = 1;
-	NwmCmd.event |= 0x80000000;
-	if((Dtext != 0) && (Dtext != NULL)) {
-		strncpy(NwmCmd.Text, Dtext, 64);
-	}
-	if((Dtext2 != 0) && (Dtext2 != NULL)) {
-		strncpy(NwmCmd.Text2, Dtext2, 40);		
-	}
-	if((Dtext3 != 0) && (Dtext3 != NULL)) {
-		strncpy(NwmCmd.Text3, Dtext3, 40);	
-	}
-
-	res += SendEventToAMX1(TxFile, &NwmCmd);	// Now send it
-	return res;
-}
-
-        */
 
         public void SendAlarmToAMX(int eventnumber, string dtext = "", string dtext2 = "", string dtext3 = "")
         {
@@ -356,13 +192,14 @@ unsigned char *TxFile;
             filenumber++;
             if (filenumber > kmaxfilenumber) filenumber = 1;
 
-            string filename = filenumber.ToString() +"."+ extension;
+            string filename = filenumber.ToString() + "." + extension;
             string fullfilename = Path.Combine(logfiles, filename);
 
             // Open the file in write mode, changed from append as we need to create a new file on flush
 
-            if (System.IO.File.Exists(fullfilename)) {
-                System.IO.File.Delete(fullfilename);  
+            if (System.IO.File.Exists(fullfilename))
+            {
+                System.IO.File.Delete(fullfilename);
             }
 
             using (FileStream fileStream = new FileStream(fullfilename, FileMode.CreateNew, FileAccess.Write))
@@ -391,10 +228,9 @@ unsigned char *TxFile;
                     }
                 }
                 catch
-                {}
+                { }
             }
 
-            // Thread.Sleep(100);
         }
         #endregion
         #region private methods

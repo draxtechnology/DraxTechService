@@ -39,7 +39,7 @@ Fire Alarm Panel (Serial/TCP)
 
 **`DraxService.cs`** — The service entry point (`ServiceBase`, from `System.ServiceProcess.ServiceController`). Reads `App.config` to determine which panel type is active, instantiates the correct panel, manages the AMX TCP connection, and runs a named pipe server for inter-process communication with external tools.
 
-**`Panels/AbstractPanel.cs`** — Base class for all panel drivers. Defines the contract (`StartUp()`, `Parse()`, `Evacuate()`, `Alert()`, `Silence()`, `Reset()`, etc.) and manages serial port I/O and event firing via `OutsideEvents`. Each manufacturer has a concrete subclass: `PanelGent`, `PanelMorleyZX`, `PanelMorelyMax`, `PanelNotifier`, `PanelPearl`, `PanelRSM`, `PanelSyncro`, `PanelTaktis`, `PanelEmail`, `PanelAdvanced`, `PanelEspa`.
+**`Panels/AbstractPanel.cs`** — Base class for all panel drivers. Defines the contract (`StartUp()`, `Parse()`, `Evacuate()`, `Alert()`, `Silence()`, `Reset()`, etc.) and manages serial port I/O and event firing via `OutsideEvents`. Each manufacturer has a concrete subclass: `PanelGent`, `PanelMorleyZX`, `PanelMorleyMax`, `PanelNotifier`, `PanelPearl`, `PanelRSM`, `PanelSyncro`, `PanelTaktis`, `PanelEmail`, `PanelAdvanced`, `PanelEspa`.
 
 **`CSAMX/AMXTransfer.cs`** — Singleton TCP client to the AMX system. Handles bidirectional messaging with heartbeat/keepalive plus a writer queue + MAK ack gate (replaces the old Thread.Sleep pacing).
 

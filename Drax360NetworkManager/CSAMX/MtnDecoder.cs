@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Text;
 
@@ -95,25 +95,25 @@ namespace DraxTechnology
 
             MtnRecord rec = new MtnRecord
             {
-                SourceFile  = sourceFile,
-                OurType     = (NwmData)BitConverter.ToInt32(buf, 0x00),
-                OurEvent    = BitConverter.ToInt32(buf, 0x04),
-                On          = BitConverter.ToInt16(buf, 0x08),
-                Value       = BitConverter.ToInt16(buf, 0x0A),
-                Node        = BitConverter.ToInt16(buf, 0x0C),
-                Zone        = BitConverter.ToInt16(buf, 0x0E),
-                Op          = BitConverter.ToInt16(buf, 0x10),
+                SourceFile = sourceFile,
+                OurType = (NwmData)BitConverter.ToInt32(buf, 0x00),
+                OurEvent = BitConverter.ToInt32(buf, 0x04),
+                On = BitConverter.ToInt16(buf, 0x08),
+                Value = BitConverter.ToInt16(buf, 0x0A),
+                Node = BitConverter.ToInt16(buf, 0x0C),
+                Zone = BitConverter.ToInt16(buf, 0x0E),
+                Op = BitConverter.ToInt16(buf, 0x10),
                 ControlType = BitConverter.ToInt16(buf, 0x12),
-                Dat1        = BitConverter.ToInt32(buf, 0x14),
-                Dat2        = BitConverter.ToInt32(buf, 0x18),
-                Dat3        = BitConverter.ToInt32(buf, 0x1C),
-                Dat4        = BitConverter.ToInt32(buf, 0x20),
-                Dat5        = BitConverter.ToInt32(buf, 0x24),
-                Dat6        = BitConverter.ToInt32(buf, 0x28),
-                Time        = BitConverter.ToUInt32(buf, 0x2C),
-                Text        = ReadText(buf, 0x50, 64),
-                Text2       = ReadText(buf, 0x90, 40),
-                Text3       = ReadText(buf, 0xB8, 40),
+                Dat1 = BitConverter.ToInt32(buf, 0x14),
+                Dat2 = BitConverter.ToInt32(buf, 0x18),
+                Dat3 = BitConverter.ToInt32(buf, 0x1C),
+                Dat4 = BitConverter.ToInt32(buf, 0x20),
+                Dat5 = BitConverter.ToInt32(buf, 0x24),
+                Dat6 = BitConverter.ToInt32(buf, 0x28),
+                Time = BitConverter.ToUInt32(buf, 0x2C),
+                Text = ReadText(buf, 0x50, 64),
+                Text2 = ReadText(buf, 0x90, 40),
+                Text3 = ReadText(buf, 0xB8, 40),
             };
 
             for (int i = 0; i < 8; i++)

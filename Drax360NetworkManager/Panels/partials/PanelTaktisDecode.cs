@@ -1,11 +1,6 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Xml.Linq;
 
 namespace DraxTechnology.Panels
 {
@@ -165,7 +160,7 @@ namespace DraxTechnology.Panels
                 if (alarmOn)
                 {
                     this.NotifyClient("Add to Alarm List");
-                      _alarmList.Add(inputType, inputNumber);  
+                    _alarmList.Add(inputType, inputNumber);
                 }
 
                 // Handle zone disablement
@@ -2186,7 +2181,7 @@ namespace DraxTechnology.Panels
             }
         }
 
-  
+
         private void HandleReset()
         {
             //_networkManager.StopActiveEventsTimer();

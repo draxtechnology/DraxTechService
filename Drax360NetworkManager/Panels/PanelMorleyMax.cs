@@ -1,13 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+using System;
 using System.IO.Ports;
-using System.Linq;
-using System.Security.Policy;
-using System.ServiceProcess;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
-using static DraxTechnology.Panels.PanelTaktis;
 
 namespace DraxTechnology.Panels
 {
@@ -35,7 +29,7 @@ namespace DraxTechnology.Panels
 
         }
 
-        public PanelMorleyMax(string baselogfolder,string identifier) : base(baselogfolder,identifier, "MaxMan","MAX")
+        public PanelMorleyMax(string baselogfolder, string identifier) : base(baselogfolder, identifier, "MaxMan", "MAX")
         {
             if (!String.IsNullOrEmpty(identifier))
             {
@@ -58,7 +52,8 @@ namespace DraxTechnology.Panels
                     break;
 
                 }
-            };
+            }
+            ;
             if (foundat <= 0) return;
             this.buffer.Clear();
             string strmsg = Encoding.UTF8.GetString(ourmessage, 0, foundat);
@@ -698,7 +693,7 @@ namespace DraxTechnology.Panels
                 p3 = loop;
                 p4 = Convert.ToInt32(giAddressNumber);
 
-                evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1,on);
+                evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, on);
                 if (p1 == (int)enmPRLAlarmType.Isolate)  // If Disable Device neeed to also send another event to AMX to increase the Isolation count
                 {
                     send_response_amx_disable(evnum, gsTextField, gsDeviceText, gsZoneText, on);
@@ -824,13 +819,13 @@ namespace DraxTechnology.Panels
                 }
             }
             catch (Exception ex)
-            {}
+            { }
         }
 
         protected override void heartbeat_timer_callback(object sender)
         {
-          
-            base.heartbeat_timer_callback (sender);
+
+            base.heartbeat_timer_callback(sender);
 
             serialsend(">IQS\r");
         }
@@ -895,7 +890,7 @@ namespace DraxTechnology.Panels
                 serialport.DiscardInBuffer();
                 serialport.DiscardOutBuffer();
             }
-        } 
+        }
 
         public override void Evacuate(string passedvalues)
         {
@@ -961,7 +956,7 @@ namespace DraxTechnology.Panels
             int sYear = int.Parse(now.ToString("yy"));   // Two-digit year
             int sMonth = int.Parse(now.ToString("MM"));  // Two-digit month
             int sDate = int.Parse(now.ToString("dd"));   // Two-digit day
-            
+
             string message = "";
 
             if (action == ActionType.kRESET)
@@ -999,7 +994,7 @@ namespace DraxTechnology.Panels
                  loop.ToString("D2") +
                  zone.ToString("D5") +
                  "S" +
-                 device.ToString("D2")+
+                 device.ToString("D2") +
                  "00";
             }
 
@@ -1059,7 +1054,7 @@ namespace DraxTechnology.Panels
                  sHour.ToString("D2") +
                  sMinute.ToString("D2") +
                  sSecond.ToString("D2") +
-                 "00"+
+                 "00" +
                  zone.ToString("D5");
             }
 

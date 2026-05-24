@@ -1,4 +1,3 @@
-﻿using DraxTechnology.Panels;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -12,7 +11,6 @@ using System.Management;
 using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
-using System.Runtime.Intrinsics.Arm;
 using System.Security.AccessControl;
 using System.Security.Principal;
 using System.ServiceProcess;
@@ -20,7 +18,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using static System.Net.Mime.MediaTypeNames;
+using DraxTechnology.Panels;
 
 namespace DraxTechnology
 {
@@ -596,65 +594,6 @@ namespace DraxTechnology
 
         const string CURRENTNWMDATAFILE = @"c:\AMX1\Temp\Current.Nwm";  //TODO not code c:\AMX1
         // private static readonly string CURRENTNWMDATAFILE = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Temp", "Current.Nwm");
-        // Todo can these be an enum?
-
-        // Network Manager handle constants
-        // NB. Ensure correct handle is used throughout the NWM else odd DDE effects will be noticed
-        /*
-        public const int NwmHandleKsf = 12;   // Kentec Signifire NWM Handle
-        public const int NwmHandleZx = 196;  // Zetaplex NWM Handle
-        public const int NwmHandleMbs = 347;  // Modbus Slave NWM Handle
-        public const int NwmHandleMbm = 35;   // Modbus NWM Handle
-        public const int NwmHandleMbmv2 = 36;   // Modbus v2 NWM Handle
-        public const int NwmHandleAnz = 197;  // AMS-Net NWM Handle
-        public const int NwmHandleCctv = 149;  // CCTV NWM Handle
-        public const int NwmHandleAteis = 150;  // Ateis OEM Handle
-        public const int NwmHandleGent = 200;  // Gent NWM Handle
-        public const int NwmHandleGentPrinter = 201; // Gent Printer NWM Handle
-        public const int NwmHandleAdvanced = 242;  // Advanced Electronics
-        public const int NwmHandleGalaxy = 301;  // Ademco Galaxy Network Manager
-        public const int NwmHandleMenvier = 322;  // Menvier DF4000 Network Manager
-        public const int NwmHandleMen6000 = 323;  // Menvier DF6000 Network Manager
-        public const int NwmHandleCooper = 324;  // Cooper Network Manager
-        public const int NwmHandleEuroplex = 344;  // Europlex 3GS Network Manager
-        public const int NwmHandleStatic = 366;  // Static Systems Codemlon general alarm system
-        public const int NwmHandleStatic925 = 367;  // Static Systems 925 alarm system printer output
-        public const int NwmHandleNBT = 400;  // North BT Network Manager
-        public const int NwmHandlePaxton = 450;  // Paxton Access Control Network Manager
-        public const int NwmHandleAdventXT = 461;  // Advent XT Network Manager
-        public const int NwmHandleQuantec = 462;  // Quantec Network Manager
-        public const int NwmHandlePager = 501;  // Pager output NWM Handle
-        public const int NwmHandleEprn = 502;  // Event printer NWM Handle
-        public const int NwmHandleAngel = 503;  // Angel Interface NWM Handle
-        public const int NwmHandleSMS = 504;  // SMS NWM Handle
-        public const int NwmHandleGSM = 505;  // GSM NWM Handle
-        public const int NwmHandleDECT = 506;
-        public const int NwmHandleEmail = 507;  // Email NWM Handle
-        public const int NwmHandleZigBee = 550;  // ZigBee NWM Handle
-        public const int NwmHandleMorley = 601;  // Morley system
-        public const int NwmHandleMorleyDXc = 603;  // Morley system
-        public const int NwmHandleTCPIP = 700;  // TCP/IP Network Manager
-        public const int NwmHandleEIP = 701;  // TCP/IP V2 Network Manager
-        public const int NwmHandleRSM = 702;  // Remote Site Modules NWM
-        public const int NwmHandleHaesHS = 800;  // Haes HS Network Manager
-        public const int NwmHandleZiton = 810;  // Ziton
-        public const int NwmHandleNotifier = 900;  // Notifier ID3000 Network Manager
-        public const int NwmHandlePlan = 910;  // Plan access Network Manager
-        public const int NwmHandleProtec = 920;  // Protec Network Manager
-        public const int NwmHandleRHT = 930;  // RHT Network Manager
-        public const int NwmHandleEsser = 940;  // Esser Fire Panel
-        public const int NwmHandleKidde = 950;  // Kidde Network Manager
-        public const int NwmHandleADT = 960;  // ADT Network Manager
-        public const int NwmHandleCTec = 970;  // CTec Network Manager
-        public const int NwmHandleActionair = 980;  // Actionair
-        public const int NwmHandlePearl = 990;  // Notifier Pearl
-        public const int NwmHandleAteisVelox = 1000; // Ateis Velox Pearl
-        public const int NwmHandleEDA = 1010; // EDA Panel
-        public const int NwmHandleTAK = 1020; // Taktis Panel
-        public const int NwmHandleELO = 1030; // EloTek Panel
-        public const int NwmHandleMAX = 1040; // MAX Panel
-        public const int nwmHandleSYNCCTV = 1050; // Synetics CCTV Panel
-        */
 
         private const int NwmMaxNodesKsf = 64;   // Kentec Signifire NWM Maximum nodes in Lite versions
         private const int NwmMaxNodesZx = 255;  // Zetaplex NWM Maximum nodes in Lite versions
@@ -1082,8 +1021,8 @@ namespace DraxTechnology
                         w.WriteLine("5A=Communications Port 3\r\n5B=COM1");
                         w.WriteLine("6A=Communications Port 4\r\n6B=COM1");
                         w.WriteLine("7A=Communications Port 5\r\n7B=COM1");
-                        w.WriteLine("8A=Communications Port 6\r\n8B=COM1");               
-                        w.WriteLine("9A=Comms Port 1 Settings\r\n9B=" + baud + "," + parity.ToLower().Substring(0,1) + "," + databits + "," + stopbits);
+                        w.WriteLine("8A=Communications Port 6\r\n8B=COM1");
+                        w.WriteLine("9A=Comms Port 1 Settings\r\n9B=" + baud + "," + parity.ToLower().Substring(0, 1) + "," + databits + "," + stopbits);
                         w.WriteLine("10A=Comms Port 2 Settings\r\n10B=9600,e,8,1");
                         w.WriteLine("11A=Comms Port 3 Settings\r\n11B=9600,e,8,1");
                         w.WriteLine("12A=Comms Port 4 Settings\r\n12B=9600,e,8,1");
@@ -1800,8 +1739,8 @@ namespace DraxTechnology
 
             string command = parts[8];
             string panelStr = parts.Length > 9 ? parts[9] : "0";
-            string loopStr  = parts.Length > 10 ? parts[10] : "0";
-            string devStr   = parts.Length > 11 ? parts[11] : "0";
+            string loopStr = parts.Length > 10 ? parts[10] : "0";
+            string devStr = parts.Length > 11 ? parts[11] : "0";
             string passedvalues = panelStr + "," + loopStr + ",0," + devStr;
             string zonepv = "0,0," + panelStr + ",0";  // zone packed where AMX Graphic puts it
 

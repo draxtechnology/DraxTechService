@@ -1,13 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http.Headers;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DraxTechnology
 {
-    // Move the extension method to a non-generic static class
     internal static class ElementsExtensions
     {
         public static bool In<T>(this T item, params T[] items)
@@ -54,7 +50,7 @@ namespace DraxTechnology
             int startpos = -1;
             int endpos = -1;
             removelength = 0;
- 
+
             for (int intcount = 0; intcount < data.Length; intcount++)
             {
                 byte workingbyte = data[intcount];

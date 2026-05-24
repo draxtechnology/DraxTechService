@@ -1,4 +1,4 @@
-﻿
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -595,17 +595,17 @@ namespace DraxTechnology.Panels
             ResetNetwork = 40,
         }
 
-        public override void Evacuate(string passedvalues)        { SendCommand(CmdToPanel.Evacuate,         passedvalues); }
-        public override void Alert(string passedvalues)           { /* no Alert verb in cmdToPanel — panels don't accept this */ }
-        public override void EvacuateNetwork(string passedvalues) { SendCommand(CmdToPanel.EvacuateNetwork,  passedvalues); }
-        public override void Silence(string passedvalues)         { SendCommand(CmdToPanel.SilenceAlarms,    passedvalues); }
-        public override void MuteBuzzers(string passedvalues)     { SendCommand(CmdToPanel.MuteBuzzer,       passedvalues); }
-        public override void Reset(string passedvalues)           { SendCommand(CmdToPanel.Reset,            passedvalues); }
-        public override void DisableDevice(string passedvalues)   { SendCommand(CmdToPanel.DisableDevice,    passedvalues, withDeviceParams: true); }
-        public override void EnableDevice(string passedvalues)    { SendCommand(CmdToPanel.EnableDevice,     passedvalues, withDeviceParams: true); }
-        public override void DisableZone(string passedvalues)     { SendCommand(CmdToPanel.DisableZone,      passedvalues, withDeviceParams: true); }
-        public override void EnableZone(string passedvalues)      { SendCommand(CmdToPanel.EnableZone,       passedvalues, withDeviceParams: true); }
-        public override void Analogue(string passedvalues)        { throw new NotImplementedException(); }
+        public override void Evacuate(string passedvalues) { SendCommand(CmdToPanel.Evacuate, passedvalues); }
+        public override void Alert(string passedvalues) { /* no Alert verb in cmdToPanel — panels don't accept this */ }
+        public override void EvacuateNetwork(string passedvalues) { SendCommand(CmdToPanel.EvacuateNetwork, passedvalues); }
+        public override void Silence(string passedvalues) { SendCommand(CmdToPanel.SilenceAlarms, passedvalues); }
+        public override void MuteBuzzers(string passedvalues) { SendCommand(CmdToPanel.MuteBuzzer, passedvalues); }
+        public override void Reset(string passedvalues) { SendCommand(CmdToPanel.Reset, passedvalues); }
+        public override void DisableDevice(string passedvalues) { SendCommand(CmdToPanel.DisableDevice, passedvalues, withDeviceParams: true); }
+        public override void EnableDevice(string passedvalues) { SendCommand(CmdToPanel.EnableDevice, passedvalues, withDeviceParams: true); }
+        public override void DisableZone(string passedvalues) { SendCommand(CmdToPanel.DisableZone, passedvalues, withDeviceParams: true); }
+        public override void EnableZone(string passedvalues) { SendCommand(CmdToPanel.EnableZone, passedvalues, withDeviceParams: true); }
+        public override void Analogue(string passedvalues) { throw new NotImplementedException(); }
 
         /// <summary>
         /// Resolves the target module from passedvalues' first CSV field

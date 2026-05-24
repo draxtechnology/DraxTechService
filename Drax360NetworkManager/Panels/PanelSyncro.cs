@@ -1,20 +1,10 @@
-﻿
+
 using System;
 using System.Collections.Generic;
 using System.IO.Ports;
 using System.Linq;
-using System.Reflection;
-using System.Reflection.Emit;
-using System.Runtime.CompilerServices;
-using System.Runtime.ConstrainedExecution;
-using System.Runtime.InteropServices;
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
-using System.Timers;
-using System.Xml.Linq;
-using static DraxTechnology.Panels.PanelTaktis;
 
 namespace DraxTechnology.Panels
 {
@@ -1172,7 +1162,7 @@ namespace DraxTechnology.Panels
                                 }
                             }
                         }
-                        
+
                         break;
 
                     case "DISABLED ZONE":
@@ -1561,7 +1551,7 @@ namespace DraxTechnology.Panels
                 }
             }
             catch
-            {}
+            { }
 
             return 0;   // default
         }
@@ -2064,9 +2054,9 @@ namespace DraxTechnology.Panels
             return $@"\History\Analog\{iNode:000#}{iLoop:00#}.LAV";
         }
 
-        private short GetBoardAddress(long ip) 
-        { 
-            return (short)((ip & 0x07ff0000) / 0x10000); 
+        private short GetBoardAddress(long ip)
+        {
+            return (short)((ip & 0x07ff0000) / 0x10000);
         }
         private short GetInputNumber(long ip)
         {

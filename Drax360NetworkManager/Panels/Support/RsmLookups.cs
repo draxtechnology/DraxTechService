@@ -1,5 +1,3 @@
-﻿using System;
-
 namespace DraxTechnology.Panels
 {
     /// <summary>
@@ -23,16 +21,16 @@ namespace DraxTechnology.Panels
             {
                 switch (devType)
                 {
-                    case 0:  return "";                            // dvtUNKNOWN
-                    case 1:  return "Shop Unit";                   // dvtSHOPUNIT
-                    case 2:  return "Sounder";                     // dvtSOUNDER
-                    case 3:  return "I/O Unit";                    // dvtIOUNIT
-                    case 4:  return "Ionisation Detector";         // dvtIONDET
-                    case 5:  return "Zone Monitor";                // dvtZONEMON
-                    case 6:  return "Optical Detector";            // dvtOPTDET
-                    case 7:  return "Heat Detector";               // dvtHEATDET
-                    case 8:  return "Manual Call Point";           // dvtMCP
-                    case 9:  return "Relay";                       // dvtRELAY
+                    case 0: return "";                            // dvtUNKNOWN
+                    case 1: return "Shop Unit";                   // dvtSHOPUNIT
+                    case 2: return "Sounder";                     // dvtSOUNDER
+                    case 3: return "I/O Unit";                    // dvtIOUNIT
+                    case 4: return "Ionisation Detector";         // dvtIONDET
+                    case 5: return "Zone Monitor";                // dvtZONEMON
+                    case 6: return "Optical Detector";            // dvtOPTDET
+                    case 7: return "Heat Detector";               // dvtHEATDET
+                    case 8: return "Manual Call Point";           // dvtMCP
+                    case 9: return "Relay";                       // dvtRELAY
                     case 10: return "Non-Specified Sensor";        // dvtNONSPECSENSOR
                     case 11: return "8-way Input";                 // dvt8WAYIP
                     case 12: return "Mini Repeater";               // dvtMINIREP
@@ -82,7 +80,7 @@ namespace DraxTechnology.Panels
                         case 221: return "Carbon Monoxide Montioring Sensor(CO)";  // VB typo preserved
                         case 222: return "Flame Sensor (FLM)";
                         case 223: return "Multimode Heat Sensor(MMH)";
-                        default:  return "";
+                        default: return "";
                     }
 
                 case "GE":
@@ -113,7 +111,7 @@ namespace DraxTechnology.Panels
                         case 223: return "Disablement Cleared";
                         case 224: return "Supervisory OFF";
                         case 225: return "Supervisory ON";
-                        default:  return "";
+                        default: return "";
                     }
 
                 case "CO":
@@ -132,7 +130,7 @@ namespace DraxTechnology.Panels
                         case 211: return "Access Control";
                         case 212: return "Emergency Light Mod";
                         case 213: return "4~20mA";
-                        default:  return "";
+                        default: return "";
                     }
 
                 default:
@@ -187,60 +185,60 @@ namespace DraxTechnology.Panels
                     case 0xD5: return "Call-point (Ex)";
                     case 0xD9: return "Interface Fire (Ex)";
                     case 0xDD: return "Interface Non-Fire";
-                    default:   return "";
+                    default: return "";
                 }
             }
 
             // inputType == 15 — Ziton status/fault codes
             switch (statusCode)
             {
-                case 14:  return "Loop Fault";
-                case 15:  return "Earth Leakage";
-                case 16:  return "Alarm Fault";
-                case 17:  return "Manual Call-point Loop";
-                case 18:  return "Halon Detonator Loop";
-                case 19:  return "Halon Bell Fault";
-                case 20:  return "T-Bar Recommended";
-                case 21:  return "No Sensors";
-                case 22:  return "External Line Fault";
-                case 23:  return "Fire Station Fault";
-                case 24:  return "RAM Fault";
-                case 25:  return "Power Fault";
-                case 26:  return "Battery Fault";
-                case 27:  return "Charger Fault";
-                case 28:  return "RAM Backup Battery Voltage Low";
-                case 29:  return "Panel Offline";
-                case 30:  return "Panel Online";
-                case 31:  return "Zone Disabled";
-                case 33:  return "Bell Fault";
-                case 36:  return "Panel Reset";
-                case 37:  return "Panel Alarms Accepted";
-                case 38:  return "Panel Sound Alarms";
-                case 39:  return "Printer Options Set";
-                case 44:  return "Alarm / Trigger";
-                case 54:  return "Panel Data Accessed/Changed";
-                case 57:  return "Triggered Pulsed Output";
-                case 58:  return "Normal Pulsed Output";
-                case 60:  return "RDU Offline";
-                case 61:  return "RDU Alarm Fault";
-                case 62:  return "RDU Battery Fault";
-                case 63:  return "RDU Mains Fault";
-                case 66:  return "Memory R/W fault";
-                case 67:  return "Checksum Fault";
-                case 78:  return "Stack Fault";
-                case 79:  return "Ext. Computer Offline";
-                case 80:  return "Faulty Z-Input";
-                case 81:  return "Input On";
-                case 83:  return "Offline Board";
-                case 85:  return "System Fault AGV";
-                case 86:  return "Dual Monitored Loop";
-                case 87:  return "Output Cancelled";
-                case 91:  return "Text Area Full";
-                case 92:  return "Security Switch Activated";
-                case 95:  return "Sounders Silenced";
-                case 97:  return "System Fault Restored";
-                case 98:  return "EPROM Changed";
-                case 99:  return "I/O Disabled";
+                case 14: return "Loop Fault";
+                case 15: return "Earth Leakage";
+                case 16: return "Alarm Fault";
+                case 17: return "Manual Call-point Loop";
+                case 18: return "Halon Detonator Loop";
+                case 19: return "Halon Bell Fault";
+                case 20: return "T-Bar Recommended";
+                case 21: return "No Sensors";
+                case 22: return "External Line Fault";
+                case 23: return "Fire Station Fault";
+                case 24: return "RAM Fault";
+                case 25: return "Power Fault";
+                case 26: return "Battery Fault";
+                case 27: return "Charger Fault";
+                case 28: return "RAM Backup Battery Voltage Low";
+                case 29: return "Panel Offline";
+                case 30: return "Panel Online";
+                case 31: return "Zone Disabled";
+                case 33: return "Bell Fault";
+                case 36: return "Panel Reset";
+                case 37: return "Panel Alarms Accepted";
+                case 38: return "Panel Sound Alarms";
+                case 39: return "Printer Options Set";
+                case 44: return "Alarm / Trigger";
+                case 54: return "Panel Data Accessed/Changed";
+                case 57: return "Triggered Pulsed Output";
+                case 58: return "Normal Pulsed Output";
+                case 60: return "RDU Offline";
+                case 61: return "RDU Alarm Fault";
+                case 62: return "RDU Battery Fault";
+                case 63: return "RDU Mains Fault";
+                case 66: return "Memory R/W fault";
+                case 67: return "Checksum Fault";
+                case 78: return "Stack Fault";
+                case 79: return "Ext. Computer Offline";
+                case 80: return "Faulty Z-Input";
+                case 81: return "Input On";
+                case 83: return "Offline Board";
+                case 85: return "System Fault AGV";
+                case 86: return "Dual Monitored Loop";
+                case 87: return "Output Cancelled";
+                case 91: return "Text Area Full";
+                case 92: return "Security Switch Activated";
+                case 95: return "Sounders Silenced";
+                case 97: return "System Fault Restored";
+                case 98: return "EPROM Changed";
+                case 99: return "I/O Disabled";
                 case 100: return "I/O Enabled";
                 case 101: return "Comms 2 Ext. Computer Responding";
                 case 102: return "Addressable Comms Board Offline";
@@ -267,7 +265,7 @@ namespace DraxTechnology.Panels
                 case 129: return "Device battery fault";
                 case 130: return "Processor fault: LD-PIC, etc.";
                 case 131: return "Double-address fault";
-                default:  return "Unknown panel status event";
+                default: return "Unknown panel status event";
             }
         }
 
@@ -286,25 +284,25 @@ namespace DraxTechnology.Panels
                 {
                     case 252: return onOff != 0 ? "Engineer Present" : "Engineer No Longer Present";
                     case 253: return "RSM Module Startup";
-                    default:  return null;
+                    default: return null;
                 }
             }
 
             // all other module types
             switch (address)
             {
-                case 1:   return "Internal Buzzer Muted";
-                case 2:   return "Alarms Silenced";
-                case 3:   return "General Disablement";
-                case 4:   return "Panel in Fire";
-                case 5:   return "Panel in Fault";
-                case 6:   return "Panel in Pre-alarm";
-                case 7:   return "Panel in Test Mode";
-                case 8:   return "Panel in Delay Mode Period";
-                case 9:   return "Master Panel RS232 Comms Lost";
-                case 10:  return "RSM Module Startup";
+                case 1: return "Internal Buzzer Muted";
+                case 2: return "Alarms Silenced";
+                case 3: return "General Disablement";
+                case 4: return "Panel in Fire";
+                case 5: return "Panel in Fault";
+                case 6: return "Panel in Pre-alarm";
+                case 7: return "Panel in Test Mode";
+                case 8: return "Panel in Delay Mode Period";
+                case 9: return "Master Panel RS232 Comms Lost";
+                case 10: return "RSM Module Startup";
                 case 252: return onOff != 0 ? "Engineer Present" : "Engineer No Longer Present";
-                default:  return null;
+                default: return null;
             }
         }
 

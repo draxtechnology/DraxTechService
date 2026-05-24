@@ -1,21 +1,11 @@
-﻿using System;
-using System.Collections;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Sockets;
-using System.Reflection;
-using System.Reflection.Emit;
-using System.Runtime.InteropServices.ComTypes;
-using System.Security.Policy;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Xml.Linq;
-using static DraxTechnology.Panels.PanelTaktis;
-using System.Globalization;
 
 namespace DraxTechnology.Panels
 {
@@ -594,8 +584,8 @@ namespace DraxTechnology.Panels
             // for ACK/NACK between sends.
             _rxReaderTask = Task.Run(() => ReaderLoop(_rxCh, token));
             _txReaderTask = Task.Run(() => ReaderLoop(_txCh, token));
-            _rxPumpTask   = Task.Run(() => PumpLoop(_rxCh, token));
-            _txPumpTask   = Task.Run(() => PumpLoop(_txCh, token));
+            _rxPumpTask = Task.Run(() => PumpLoop(_rxCh, token));
+            _txPumpTask = Task.Run(() => PumpLoop(_txCh, token));
         }
 
         private void ConnectChannel(Channel ch)
@@ -792,7 +782,7 @@ namespace DraxTechnology.Panels
             while (ch.Assembly.Count >= 4)
             {
                 int frameLen = (ch.Assembly[0] << 24) | (ch.Assembly[1] << 16)
-                             | (ch.Assembly[2] << 8)  |  ch.Assembly[3];
+                             | (ch.Assembly[2] << 8) | ch.Assembly[3];
                 if (frameLen <= 0 || frameLen > 65535)
                 {
                     NotifyClient($"TAKTIS [{ch.Name}] bad frame length {frameLen} - flushing buffer");
@@ -1044,8 +1034,8 @@ namespace DraxTechnology.Panels
                     data = CreateMessageWithType32(12, 0x14E);
                     if (serialNoStr != null && serialNoStr.Length >= 4)
                     {
-                        data[8]  = serialNoStr[0];
-                        data[9]  = serialNoStr[1];
+                        data[8] = serialNoStr[0];
+                        data[9] = serialNoStr[1];
                         data[10] = serialNoStr[2];
                         data[11] = serialNoStr[3];
                     }
@@ -1296,8 +1286,8 @@ namespace DraxTechnology.Panels
             data[3] = length.ToString();
             data[4] = ((messageType >> 24) & 0xff).ToString();
             data[5] = ((messageType >> 16) & 0xff).ToString();
-            data[6] = ((messageType >> 8)  & 0xff).ToString();
-            data[7] = ( messageType        & 0xff).ToString();
+            data[6] = ((messageType >> 8) & 0xff).ToString();
+            data[7] = (messageType & 0xff).ToString();
             return data;
         }
 
@@ -1306,8 +1296,8 @@ namespace DraxTechnology.Panels
             var data = CreateBasicMessage(length, command);
             if (serialNo != null && serialNo.Length >= 4 && length >= 12)
             {
-                data[8]  = serialNo[0];
-                data[9]  = serialNo[1];
+                data[8] = serialNo[0];
+                data[9] = serialNo[1];
                 data[10] = serialNo[2];
                 data[11] = serialNo[3];
             }
@@ -1392,10 +1382,10 @@ namespace DraxTechnology.Panels
             var epoch = new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             long seconds = (long)(DateTime.UtcNow - epoch).TotalSeconds;
             if (seconds < 0) seconds = 0;
-            data[8]  = ((seconds >> 24) & 0xff).ToString();
-            data[9]  = ((seconds >> 16) & 0xff).ToString();
-            data[10] = ((seconds >> 8)  & 0xff).ToString();
-            data[11] = ( seconds        & 0xff).ToString();
+            data[8] = ((seconds >> 24) & 0xff).ToString();
+            data[9] = ((seconds >> 16) & 0xff).ToString();
+            data[10] = ((seconds >> 8) & 0xff).ToString();
+            data[11] = (seconds & 0xff).ToString();
             return data;
         }
 
@@ -1470,24 +1460,24 @@ namespace DraxTechnology.Panels
             }
 
             long lEventGroup = ReadFieldU32(frame, o + 12);
-            long lEventType  = ReadFieldU32(frame, o + 16);
-            long lEventCode  = ReadFieldU32(frame, o + 20);
-            int  iNode       = (int)ReadFieldU32(frame, o + 24);
-            int  iAddressType= (int)ReadFieldU32(frame, o + 28);
-            int  iAddress    = (int)ReadFieldU32(frame, o + 32);
-            int  iSubAddress = (int)ReadFieldU32(frame, o + 36);
-            int  iLoop       = (int)ReadFieldU32(frame, o + 40);
-            int  iZone       = (int)ReadFieldU32(frame, o + 44);
-            int  iInputAction= (int)ReadFieldU32(frame, o + 48);
-            long lTimeStamp  = ReadFieldU32(frame, o + 52);
+            long lEventType = ReadFieldU32(frame, o + 16);
+            long lEventCode = ReadFieldU32(frame, o + 20);
+            int iNode = (int)ReadFieldU32(frame, o + 24);
+            int iAddressType = (int)ReadFieldU32(frame, o + 28);
+            int iAddress = (int)ReadFieldU32(frame, o + 32);
+            int iSubAddress = (int)ReadFieldU32(frame, o + 36);
+            int iLoop = (int)ReadFieldU32(frame, o + 40);
+            int iZone = (int)ReadFieldU32(frame, o + 44);
+            int iInputAction = (int)ReadFieldU32(frame, o + 48);
+            long lTimeStamp = ReadFieldU32(frame, o + 52);
 
-            string sLocationText = ReadFieldAscii(frame, o + 56,  o + 135);
-            string sPanelText    = ReadFieldAscii(frame, o + 136, o + 167);
-            string sZoneText     = ReadFieldAscii(frame, o + 168, o + 247);
+            string sLocationText = ReadFieldAscii(frame, o + 56, o + 135);
+            string sPanelText = ReadFieldAscii(frame, o + 136, o + 167);
+            string sZoneText = ReadFieldAscii(frame, o + 168, o + 247);
 
             enmTAKMessageType gMessageType = (enmTAKMessageType)iMessageType;
-            enmTAKEventType   gEventType   = (enmTAKEventType)lEventType;
-            enmTAKEventCode   gEventCode   = (enmTAKEventCode)lEventCode;
+            enmTAKEventType gEventType = (enmTAKEventType)lEventType;
+            enmTAKEventCode gEventCode = (enmTAKEventCode)lEventCode;
 
             // MH 14/09/23: legacy panels report node 254 for the local panel.
             if (iNode == 254) iNode = 1;
@@ -1517,7 +1507,7 @@ namespace DraxTechnology.Panels
             return ((long)frame[offset] << 24)
                  | ((long)frame[offset + 1] << 16)
                  | ((long)frame[offset + 2] << 8)
-                 |  (long)frame[offset + 3];
+                 | (long)frame[offset + 3];
         }
 
         private static string ReadFieldAscii(byte[] frame, int start, int end)

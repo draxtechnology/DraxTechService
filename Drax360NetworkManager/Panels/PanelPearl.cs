@@ -1,11 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+using System;
 using System.IO.Ports;
-using System.Linq;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
-using System.Xml.Schema;
 
 namespace DraxTechnology.Panels
 {
@@ -714,7 +710,7 @@ namespace DraxTechnology.Panels
 
                 p3 = loop;
                 p4 = Convert.ToInt32(giAddressNumber);
-       
+
                 string zonetext = "";
                 if (zone > 0)
                 {

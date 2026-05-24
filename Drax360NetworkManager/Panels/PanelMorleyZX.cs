@@ -1,14 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.Diagnostics.SymbolStore;
 using System.IO.Ports;
 using System.Linq;
-using System.Security.Policy;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Timers;
-using static DraxTechnology.Panels.PanelTaktis;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace DraxTechnology.Panels
 {
@@ -32,7 +27,7 @@ namespace DraxTechnology.Panels
         // Response timeout
         private const int RESPONSE_TIMEOUT = 20; // mSec = 2 Sec
         private const int RESPONSE_TIMEOUT_EXTENDED = 30; // mSec = 9.5 Sec
-        private const int RESPONSE_TIMEOUT_SUPER_EXTENDED = 32; 
+        private const int RESPONSE_TIMEOUT_SUPER_EXTENDED = 32;
 
         private const byte MASTER_PANEL_ID = 1;
         private const byte SOURCE_ID = 3; // PC/Host ID
@@ -1252,7 +1247,7 @@ namespace DraxTechnology.Panels
             }
         }
 
-        public void MorleyIsolateZone(byte bytPanelID,byte bytZoneID,bool blnIsolate)
+        public void MorleyIsolateZone(byte bytPanelID, byte bytZoneID, bool blnIsolate)
         {
             byte[] bytCommand;
             byte bytIsolate;

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Ports;
@@ -14,7 +14,7 @@ namespace DraxTechnology.Panels
         private const byte kackbyte = 0x06;
         private const byte kheartbeatdelayseconds = 5;
         private const byte kAdvancedStart = 254;
-        private const byte kAdvanedEnd = 255;
+        private const byte kAdvancedEnd = 255;
         private const string AdvancedZoneTextFile = "Temp\\AdvZones";
 
         private const string adtUNKNOWNDEVICE = "Unknown Device";
@@ -55,7 +55,7 @@ namespace DraxTechnology.Panels
 
         #region private variables
         private bool AcknowledgeMessage = false;
-        private  int AdvancedDestinationAddress = 0;
+        private int AdvancedDestinationAddress = 0;
         private int AdvancedSourceAddress = 0;
         private int ControlPacketSequence = 0;
         private int giNWMDefaultZoneText = 0;
@@ -125,7 +125,7 @@ namespace DraxTechnology.Panels
 
         public override void StartUp(int fakemode)
         {
-            int setttingbaudrate = base.GetSetting<int>(ksettingsetupsection, "BaudRate");
+            int settingbaudrate = base.GetSetting<int>(ksettingsetupsection, "BaudRate");
             string settingparity = base.GetSetting<string>(ksettingsetupsection, "Parity");
             int settingdatabits = base.GetSetting<int>(ksettingsetupsection, "DataBits");
             int settingstopbits = base.GetSetting<int>(ksettingsetupsection, "StopBits");
@@ -136,7 +136,7 @@ namespace DraxTechnology.Panels
             HBT_Panel1 = base.GetSetting<byte>(ksettingpanelsection + "1", "hb");
             gbUseSubAddressOffset = base.GetSetting<bool>(ksettingsetupsection, "UseSubAddressOffset");
             giSubAddressOffset = base.GetSetting<int>(ksettingsetupsection, "SubAddressOffset");
-            UseClassicIsolations = base.GetSetting<int>(ksettingsetupsection, "UseClassicIsolations");        
+            UseClassicIsolations = base.GetSetting<int>(ksettingsetupsection, "UseClassicIsolations");
 
             string x = GetZoneText(1.ToString());
             if (fakemode > 0)
@@ -146,7 +146,7 @@ namespace DraxTechnology.Panels
 
             // we are a real serial port 
             serialport = new SerialPort(this.Identifier);
-            serialport.BaudRate = setttingbaudrate;
+            serialport.BaudRate = settingbaudrate;
 
             Parity parity = Parity.None;
             string friendlyparity = settingparity.Substring(0, 1).ToUpper();
@@ -213,7 +213,7 @@ namespace DraxTechnology.Panels
 
             Byte[] evacnew = definecontrol(evac);
 
-            // Byte[] evactest = new Byte[] { kAdvancedStart, 128, 0, 0, 4, 61, 7, 1, 0, 0, 0, 0, 240, 225, 100, kAdvanedEnd };
+            // Byte[] evactest = new Byte[] { kAdvancedStart, 128, 0, 0, 4, 61, 7, 1, 0, 0, 0, 0, 240, 225, 100, kAdvancedEnd };
 
             serialsend(evacnew);
 
@@ -450,13 +450,13 @@ namespace DraxTechnology.Panels
                 return true; // skip this specific pattern
             }
 
-            
+
             string filePath = @"C:\Temp\Advanced_c#.txt";
             string messageText = string.Join(" ", ourmessage);
             string logLine = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
                            + " - " + messageText;
             File.AppendAllText(filePath, logLine + Environment.NewLine);
-       
+
             int removebytes = 0;
 
             List<byte[]> chunks = advancedchunker(1, ourmessage.Skip(3).ToArray(), 240, out removebytes);
@@ -504,8 +504,8 @@ namespace DraxTechnology.Panels
                         if ((int)chunk[9] == 0)   // Device Enabled
                         {
 
-                            if (giSubAddressOffset == 1 && (ElementsExtensions.In(devicetype,"Switch","Relay","Zone Monitor")))
-                                // if (giSubAddressOffset == 1 && (devicetype == "Switch" || devicetype == "Relay" || devicetype == "Zone Monitor"))
+                            if (giSubAddressOffset == 1 && (ElementsExtensions.In(devicetype, "Switch", "Relay", "Zone Monitor")))
+                            // if (giSubAddressOffset == 1 && (devicetype == "Switch" || devicetype == "Relay" || devicetype == "Zone Monitor"))
                             {
                                 iNodeOffset = giSubAddressOffset;
                             }
@@ -522,7 +522,7 @@ namespace DraxTechnology.Panels
                                 if (devicesubaddress == 0)
                                 {
                                     if (giSubAddressOffset == 1 && (ElementsExtensions.In(devicetype, "Relay", "Zone Monitor")))
-                                        // if (devicetype == "Switch" || devicetype == "Relay" || devicetype == "Zone Monitor")
+                                    // if (devicetype == "Switch" || devicetype == "Relay" || devicetype == "Zone Monitor")
                                     {
                                         iNodeOffset = giSubAddressOffset;
                                     }
@@ -643,8 +643,8 @@ namespace DraxTechnology.Panels
                         }
                         evnum1 = CSAMXSingleton.CS.MakeInputNumber(node + iNodeOffset, loopnumber, deviceaddress, inputtype, on);
                         string message1 = devicetext;
-                        
-                        CSAMXSingleton.CS.SendAlarmToAMX(evnum1, GetZoneText(zone.ToString()),message1, devicetypetext);
+
+                        CSAMXSingleton.CS.SendAlarmToAMX(evnum1, GetZoneText(zone.ToString()), message1, devicetypetext);
                         CSAMXSingleton.CS.FlushMessages();
                         break;
 
@@ -756,7 +756,7 @@ namespace DraxTechnology.Panels
             }
             return true;
         }
-        
+
         private string getadvanceddevicetype(int deviceType)
         {
             switch (deviceType)
