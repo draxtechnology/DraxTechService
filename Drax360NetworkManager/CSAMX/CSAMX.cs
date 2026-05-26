@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Timers;
@@ -26,6 +27,9 @@ namespace DraxTechnology
         private List<NVM> nvms = new List<NVM>();
         private readonly object _nvmsLock = new object();
         private readonly ConcurrentDictionary<string, DateTime> _pendingDelete =
+            new ConcurrentDictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+        // Tracks when each orphaned file was last re-sent to prevent queue flooding.
+        private readonly ConcurrentDictionary<string, DateTime> _resentAt =
             new ConcurrentDictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
         private System.Timers.Timer _cleanupTimer;
         #endregion
@@ -53,7 +57,7 @@ namespace DraxTechnology
             // Option 3: delete leftover files from any previous run before resuming.
             foreach (var f in Directory.GetFiles(this.logfiles, "*." + extension))
             {
-                try { File.Delete(f); } catch { }
+      //          try { File.Delete(f); } catch { }
             }
 
             determinelastfilenumber();
@@ -159,12 +163,51 @@ namespace DraxTechnology
         {
             foreach (var kv in _pendingDelete)
             {
-                if ((DateTime.UtcNow - kv.Value).TotalSeconds > 15)
+                if ((DateTime.UtcNow - kv.Value).TotalSeconds > 1)
                 {
-                    try { File.Delete(kv.Key); } catch { }
-                    _pendingDelete.TryRemove(kv.Key, out _);
+                    try
+                    {
+                        File.Delete(kv.Key);
+                        _pendingDelete.TryRemove(kv.Key, out _);
+                        _resentAt.TryRemove(kv.Key, out _);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine("File Delete Error: " + ex.Message);
+                    }
                 }
             }
+
+            // Re-send NTX for files that were never MAK'd (written when disconnected,
+            // or whose MAK timed out). Any file older than 30 s that isn't already
+            // pending deletion is orphaned. Throttle to once per 60 s per file so
+            // we don't flood the sender queue on a prolonged outage.
+            if (!AMXTransfer.Instance.IsConnected) return;
+            if (string.IsNullOrEmpty(logfiles) || string.IsNullOrEmpty(extension)) return;
+
+            try
+            {
+                foreach (var file in Directory.GetFiles(logfiles, "*." + extension))
+                {
+                    if (_pendingDelete.ContainsKey(file)) continue;
+
+                    var age = DateTime.UtcNow - File.GetLastWriteTimeUtc(file);
+                    if (age.TotalSeconds < 30) continue;
+
+                    if (_resentAt.TryGetValue(file, out DateTime lastSent) &&
+                        (DateTime.UtcNow - lastSent).TotalSeconds < 60) continue;
+
+                    _resentAt[file] = DateTime.UtcNow;
+                    AMXTransfer.Instance.SendMessage("NTX:" + file);
+                }
+
+                // Prune _resentAt for files that have already been deleted.
+                foreach (var key in _resentAt.Keys.ToList())
+                {
+                    if (!File.Exists(key)) _resentAt.TryRemove(key, out _);
+                }
+            }
+            catch { }
         }
 
         public void FlushMessages()

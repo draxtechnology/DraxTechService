@@ -190,7 +190,10 @@ namespace DraxTechnology
                         {
                             filename = filename.Substring(4).Trim();
                         }
-                        CSAMXSingleton.CS.ScheduleDelete(filename);
+                        if (File.Exists(filename))
+                        {
+                            CSAMXSingleton.CS.ScheduleDelete(filename);
+                        }
                         _makAck.Set();  // releases the sender thread's WaitForMak
                     }
                     else if (msg.StartsWith("MTX:"))

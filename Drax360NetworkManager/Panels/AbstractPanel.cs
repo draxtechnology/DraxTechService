@@ -170,7 +170,6 @@ namespace DraxTechnology.Panels
         {
             Console.WriteLine("Sent Heartbeat");
         }
-
         protected bool serialsend(byte[] toSend)
         {
             // Always add to queue first
@@ -288,12 +287,20 @@ namespace DraxTechnology.Panels
             return false;
         }
 
-
         protected void SendChar(char ch)
         {
             if (serialport?.IsOpen != true)
             {
-                serialport.Open();
+                try
+                {
+                    serialport.Open();
+                }
+                catch (Exception ex)
+                {
+                    this.NotifyClient("Failed to open " + serialport.PortName +
+                                      ": " + ex.Message, false);
+                    return;
+                }
             }
 
             // Send a single character as ASCII byte

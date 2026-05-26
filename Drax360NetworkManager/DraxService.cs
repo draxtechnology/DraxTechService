@@ -847,7 +847,7 @@ namespace DraxTechnology
 
                 return;
             }
-
+            string ext = apbase.Extension.ToUpper();
             for (int i = 1; i < 7; i++)
             {
                 string panel = ksettingpanelsection + i;
@@ -855,7 +855,7 @@ namespace DraxTechnology
                 // now work out the settings for this panel                               
                 int port = 0;
 
-                string ext = apbase.Extension.ToUpper();
+
                 if (ext == "MORLEY" || (ext == "MAX" && i == 1))
                 {
                     port = apbase.GetSetting<int>("SETUP", "CommPort");
@@ -892,7 +892,7 @@ namespace DraxTechnology
 
             var mytMaxNWMBuffers = 64;
             var tempPath = @"C:\AMX1\Temp\";
-            var files = Directory.GetFiles(tempPath, "*.GEN")
+            var files = Directory.GetFiles(tempPath, "*." + ext)
                                  .Select(Path.GetFileName)
                                  .OrderBy(f => f)
                                  .ToList();
@@ -954,6 +954,7 @@ namespace DraxTechnology
                 for (int n = x; n <= files.Count; n++)
                 {
                     AMXTransfer.Instance.SendMessage("NTX:" + Path.Combine(tempPath, files[n - 1]));
+                    Thread.Sleep(100);
                     File.Delete(tempPath + files[n - 1]);
                 }
             }
