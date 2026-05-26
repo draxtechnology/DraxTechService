@@ -156,7 +156,19 @@ namespace DraxTechnology
         public void ScheduleDelete(string filename)
         {
             if (!string.IsNullOrEmpty(filename))
+            {
                 _pendingDelete[filename] = DateTime.UtcNow;
+                Notify("MAK received, scheduled delete: " + Path.GetFileName(filename));
+            }
+        }
+
+        // Diagnostic surface for the delete/orphan-resend paths. Routes through
+        // the same OutsideEvents channel AMXTransfer.NotifyClient uses so the
+        // file lifecycle (MAK -> scheduled -> deleted, or orphan -> re-sent)
+        // is visible in the log without changing any timing.
+        private void Notify(string message)
+        {
+            OutsideEvents?.Invoke(this, new CustomEventArgs(message, false));
         }
 
         private void CleanupTimerElapsed(object sender, ElapsedEventArgs e)
@@ -170,6 +182,7 @@ namespace DraxTechnology
                         File.Delete(kv.Key);
                         _pendingDelete.TryRemove(kv.Key, out _);
                         _resentAt.TryRemove(kv.Key, out _);
+                        Notify("Cleanup deleted (post-MAK): " + Path.GetFileName(kv.Key));
                     }
                     catch (Exception ex)
                     {
@@ -199,6 +212,7 @@ namespace DraxTechnology
 
                     _resentAt[file] = DateTime.UtcNow;
                     AMXTransfer.Instance.SendMessage("NTX:" + file);
+                    Notify($"Orphan re-send (age {(int)age.TotalSeconds}s): " + Path.GetFileName(file));
                 }
 
                 // Prune _resentAt for files that have already been deleted.
