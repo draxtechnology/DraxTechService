@@ -677,6 +677,19 @@ namespace DraxTechnology.Panels
                         Console.WriteLine(gsTextField);
                         break;
 
+                    case enmNotEventType.SounderDisabled:  // 159
+                        gAlarmType = enmNotAlarmType.NOTIsolate.ToString();
+                        gsTextField = "Sounder Disabled";
+                        Console.WriteLine(gsTextField);
+                        break;
+
+                    case enmNotEventType.SounderEnabled:  // 169
+                        gAlarmType = enmNotAlarmType.NOTIsolate.ToString();
+                        gsTextField = "Sounder Enabled";
+                        on = false;
+                        Console.WriteLine(gsTextField);
+                        break;
+
                     case enmNotEventType.InvestigateDelayExtended:
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 66;
@@ -919,15 +932,21 @@ namespace DraxTechnology.Panels
                 int p4 = 0;
                 int evnum = 0;
 
-                try
+                // Unknown / unhandled events leave gAlarmType empty; default to
+                // NOTStatusEvent so the AMX side gets a benign status code rather
+                // than a parse exception. Enum.TryParse avoids the throw entirely.
+                if (string.IsNullOrEmpty(gAlarmType))
                 {
-                    enmNotAlarmType enumValue = (enmNotAlarmType)Enum.Parse(typeof(enmNotAlarmType), gAlarmType);
-                    p1 = (int)(enumValue);
+                    gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                 }
-                catch (Exception ex)
+                if (Enum.TryParse(gAlarmType, out enmNotAlarmType enumValue))
                 {
-                    this.NotifyClient("gAlarmType " + gAlarmType + " " + ex.Message, false);
-                    Console.WriteLine($"Unexpected error: {ex.Message}");
+                    p1 = (int)enumValue;
+                }
+                else
+                {
+                    this.NotifyClient("gAlarmType " + gAlarmType + " not a valid enmNotAlarmType", false);
+                    p1 = (int)enmNotAlarmType.NOTStatusEvent;
                 }
 
                 if (sensor.ToLower() == "m")   // Module: addresses ≥ kModuleAddressMin

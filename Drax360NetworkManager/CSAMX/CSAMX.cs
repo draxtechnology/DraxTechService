@@ -46,8 +46,7 @@ namespace DraxTechnology
         {
             this.extension = extension;
             this.logfiles = Path.Combine(logfiles, csamxfolder);
-            AMXTransfer.Instance.OutsideEvents += Instance_OutsideEvents;
-            // check if the temp directory exists   
+            // check if the temp directory exists
 
             if (!Directory.Exists(this.logfiles))
             {
@@ -66,13 +65,6 @@ namespace DraxTechnology
             _cleanupTimer.Elapsed += CleanupTimerElapsed;
             _cleanupTimer.Enabled = true;
         }
-
-        private void Instance_OutsideEvents(object sender, EventArgs e)
-        {
-            OutsideEvents?.Invoke(this, e);
-        }
-
-
 
         public int IncrementInputNumber(int inputNumber)
         {
