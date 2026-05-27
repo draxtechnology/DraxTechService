@@ -454,7 +454,10 @@ namespace DraxTechnology
                     foreach (string segment in complete.Split(
                         new[] { '-' }, StringSplitOptions.RemoveEmptyEntries))
                     {
-                        string msg = segment.Trim();
+                        // Strip BOM — AMX occasionally injects U+FEFF inside MAK frames
+                        // (sometimes wedged between MAK: and NTX:, sometimes as a standalone
+                        // "MAK:<BOM>" ghost frame). .Trim() doesn't treat U+FEFF as whitespace.
+                        string msg = segment.Trim().Replace("\uFEFF", "");
                         if (msg.Length > 0)
                             isMessageReceive?.Invoke(msg);
                     }

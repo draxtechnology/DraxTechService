@@ -1,4 +1,4 @@
-﻿using DraxTechnology.Data;
+using DraxTechnology.Data;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -8,8 +8,6 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
-using static DraxTechnology.AMXTransfer;
-using static DraxTechnology.Panels.PanelTaktis;
 
 namespace DraxTechnology.Panels
 {
