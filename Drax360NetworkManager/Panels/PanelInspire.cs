@@ -6,7 +6,8 @@ using System.Text;
 using System.Threading;
 
 namespace DraxTechnology.Panels
-{    internal class PanelNotifier : AbstractPanel
+{
+    internal class PanelInspire : AbstractPanel
     {
         // Device addresses ≥ this are modules rather than physical sensor
         // devices. The disable/enable remap below (send_message) uses it as the
@@ -25,7 +26,7 @@ namespace DraxTechnology.Panels
         {
             get =>
 
-                /* Notifier
+                /* PanelInspire
             >IS0001C000000000000BE7\r
             >IE0220611450330000000BDD\r
             >IE0220611450330000000BDD\r
@@ -35,7 +36,7 @@ namespace DraxTechnology.Panels
 
                 ">IE0220611450330000000BDD\r";
         }
-        public PanelNotifier(string baselogfolder, string identifier) : base(baselogfolder, identifier, "NOTMan", "NOT")
+        public PanelInspire(string baselogfolder, string identifier) : base(baselogfolder, identifier, "INSMan", "INS")
         {
             if (!String.IsNullOrEmpty(identifier))
             {
@@ -116,7 +117,7 @@ namespace DraxTechnology.Panels
                     if (quoteIndex >= 0)
                         sTextField = sTextField.Substring(0, quoteIndex).Trim();
                 }
-                
+
                 bool on = true;
 
                 gsTextField = sTextField;
@@ -753,7 +754,7 @@ namespace DraxTechnology.Panels
                         Console.WriteLine(gsTextField);
                         break;
 
-                     case enmNotEventType.Evacuate:  // 138
+                    case enmNotEventType.Evacuate:  // 138
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 1;
                         gsTextField = "Evacuate";
@@ -940,7 +941,7 @@ namespace DraxTechnology.Panels
 
                 p3 = loop;
                 p4 = Convert.ToInt32(giAddressNumber);
-       
+
                 string zonetext = "";
                 if (zone > 0)
                 {
@@ -1115,7 +1116,7 @@ namespace DraxTechnology.Panels
                 }
             }
             catch (Exception ex)
-            {}
+            { }
         }
 
         private bool CheckForSectoring(int psEventCode, int psLoopNo)
@@ -1159,7 +1160,6 @@ namespace DraxTechnology.Panels
 
             if (fakemode > 0)
             {
-
                 return;
             }
 
@@ -1181,7 +1181,7 @@ namespace DraxTechnology.Panels
             serialport.Handshake = Handshake.None;
             serialport.RtsEnable = false;
             serialport.DataReceived += SerialPort_Datareceived;
- 
+
             if (serialport.IsOpen)
             {
                 serialport.Close();
@@ -1267,7 +1267,7 @@ namespace DraxTechnology.Panels
             // If "device < 100" appears in the console when triggering Disable
             // Module from AMX, the gate below correctly skips the remap because
             // the upstream AMX → CTRL → DispatchAmxPipeCommand path isn't passing
-            // the +100 module offset — fix would be there, not in PanelNotifier.
+            // the +100 module offset — fix would be there, not in PanelInspire.
             // Remove this line once the module-disable path is verified end-to-end.
             this.NotifyClient($"send_message: action={action} device={device}");
 
@@ -1283,12 +1283,12 @@ namespace DraxTechnology.Panels
                 action = action switch
                 {
                     ActionType.kDISABLEDEVICE => ActionType.kDISABLEMODULE,
-                    ActionType.kENABLEDEVICE  => ActionType.kENABLEMODULE,
-                    _                          => action,
+                    ActionType.kENABLEDEVICE => ActionType.kENABLEMODULE,
+                    _ => action,
                 };
             }
 
-            // Original (Mike, commit 43b1206 — "Notifier Module Disable", 2026-05-22):
+            // Original (Mike, commit 43b1206 — "PanelInspire Module Disable", 2026-05-22):
             // if (action == ActionType.kDISABLEDEVICE & device >= 100)
             // {
             //     action = ActionType.kDISABLEMODULE;
@@ -1463,7 +1463,7 @@ namespace DraxTechnology.Panels
 
             for (int n = 0; n < myString.Length; n++)
             {
-                int i = (int)myString[n]; 
+                int i = (int)myString[n];
                 i = i ^ (checksum / 256);
                 int j = i / 16;
                 i = i ^ j;

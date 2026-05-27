@@ -997,6 +997,10 @@ namespace DraxTechnology
                         }
                         int baud = apbase.GetSetting<int>("SETUP", "BAUDRATE");
                         string parity = apbase.GetSetting<string>("SETUP", "PARITY");
+                        if (parity is null || parity.Length == 0)
+                        {
+                            parity = " ";
+                        }
                         int databits = apbase.GetSetting<int>("SETUP", "DATABITS");
                         int stopbits = apbase.GetSetting<int>("SETUP", "STOPBITS");
 
@@ -1165,6 +1169,10 @@ namespace DraxTechnology
 
                 case "GENT":
                     ret = new PanelGent(this.configurationbasefolder, identifier);
+                    break;
+
+                case "INSPIRE":
+                    ret = new PanelInspire(this.configurationbasefolder, identifier);
                     break;
 
                 case "MORLEYMAX":
