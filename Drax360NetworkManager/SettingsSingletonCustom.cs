@@ -43,12 +43,12 @@ namespace DraxTechnology
                     section = workingsection;
                     string msgsection = ksectionstart + section + ksectionend;
                     buffer += msgsection + Environment.NewLine;
-                    Console.WriteLine("Adding section: " + msgsection);
+                    Console.WriteLine(DateTime.Now + ": " + "Adding section: " + msgsection);
                 }
 
                 string msgline = splits[1] + ksettingvaluedelim + settings[key];
                 buffer += msgline + Environment.NewLine;
-                Console.WriteLine("\tAdding Line: " + msgline);
+                Console.WriteLine(DateTime.Now + ": " + "\tAdding Line: " + msgline);
             }
 
             File.WriteAllText(settingsfile, buffer);

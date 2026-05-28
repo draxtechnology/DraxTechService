@@ -48,12 +48,12 @@ namespace DraxTechnology
                     section = workingsection;
                     string msgsection = ksectionstart + section + ksectionend;
                     buffer += msgsection + Environment.NewLine;
-                    Console.WriteLine("Adding section: " + msgsection);
+                    Console.WriteLine(DateTime.Now + ": " + "Adding section: " + msgsection);
                 }
 
                 string msgline = splits[1] + ksettingvaluedelim + settings[key];
                 buffer += msgline + Environment.NewLine;
-                Console.WriteLine("\tAdding Line: " + msgline);
+                Console.WriteLine(DateTime.Now + ": " + "\tAdding Line: " + msgline);
             }
             if (testmode)
             {
@@ -183,7 +183,7 @@ namespace DraxTechnology
                 string expected = Path.Combine("ini", panelfilename + ".ini");
                 if (!string.Equals(instance.settingsfile, expected, StringComparison.OrdinalIgnoreCase))
                 {
-                    Console.WriteLine(
+                    Console.WriteLine(DateTime.Now + ": " + 
                         $"SettingsSingleton: requested '{panelfilename}.ini' but cached instance holds '{instance.settingsfile}' — returning cached (may be wrong settings)");
                 }
             }

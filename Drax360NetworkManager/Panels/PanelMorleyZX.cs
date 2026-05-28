@@ -799,26 +799,26 @@ namespace DraxTechnology.Panels
                 bool isSet = (statusBitset & bit) != 0;
                 if (isSet)
                 {
-                    Console.WriteLine($"  ✓ Bit {n}: {GetPanelStatusText(n)}");
+                    Console.WriteLine(DateTime.Now + ": " + $"  ✓ Bit {n}: {GetPanelStatusText(n)}");
                     anySet = true;
                 }
             }
             if (!anySet)
             {
-                Console.WriteLine("  (All status bits clear - panel normal)");
+                Console.WriteLine(DateTime.Now + ": " + "  (All status bits clear - panel normal)");
             }
         }
         private void ParseQuickStatusResponse(byte[] response)
         {
-            Console.WriteLine("--- Quick Status Response ---");
+            Console.WriteLine(DateTime.Now + ": " + "--- Quick Status Response ---");
 
             byte panelID = response[2];
             int eventCount = response[4];      // Number of alarms/faults
             int priority = response[5];         // Priority level
 
-            Console.WriteLine($"Panel ID: {panelID}");
-            Console.WriteLine($"Event Count: {eventCount}");
-            Console.WriteLine($"Priority: {priority}");
+            Console.WriteLine(DateTime.Now + ": " + $"Panel ID: {panelID}");
+            Console.WriteLine(DateTime.Now + ": " + $"Event Count: {eventCount}");
+            Console.WriteLine(DateTime.Now + ": " + $"Priority: {priority}");
 
 
 
@@ -827,7 +827,7 @@ namespace DraxTechnology.Panels
             // If there are alarms, request detailed info for each
             if (eventCount > 0 && priority > 0)
             {
-                Console.WriteLine($"Requesting detailed info for {eventCount} alarm(s)...");
+                Console.WriteLine(DateTime.Now + ": " + $"Requesting detailed info for {eventCount} alarm(s)...");
                 waitingForDetailedResponse = true;  // Stop polling until we get responses
 
                 for (byte alarmNum = 1; alarmNum <= eventCount; alarmNum++)
@@ -864,7 +864,7 @@ namespace DraxTechnology.Panels
         {
             if (response.Length < 56) return;
 
-            Console.WriteLine("--- Detailed Alarm Response ---");
+            Console.WriteLine(DateTime.Now + ": " + "--- Detailed Alarm Response ---");
 
             byte panelID = response[2];                 // Use index 2 like VB6
             byte loop = response[7];                    // Loop number (0 if panel event)
@@ -897,20 +897,20 @@ namespace DraxTechnology.Panels
             }
             alarmText = alarmText.Trim();
 
-            Console.WriteLine($"Panel ID: {panelID}");
-            Console.WriteLine($"Loop: {loop}");
-            Console.WriteLine($"Zone: {zoneNumber}");
-            Console.WriteLine($"Device Address: {deviceAddress}");
-            Console.WriteLine($"Analogue Value: {analogueValue}");
-            Console.WriteLine($"Detector Type: {detectorType}");
-            Console.WriteLine($"Event Type: {eventType} ({GetEventTypeName(eventType)})");
-            Console.WriteLine($"Originating Panel: {originatingPanelID}");
-            Console.WriteLine($"Sub Address: {subAddress}");
-            Console.WriteLine($"Alarm Text: '{alarmText}'");
+            Console.WriteLine(DateTime.Now + ": " + $"Panel ID: {panelID}");
+            Console.WriteLine(DateTime.Now + ": " + $"Loop: {loop}");
+            Console.WriteLine(DateTime.Now + ": " + $"Zone: {zoneNumber}");
+            Console.WriteLine(DateTime.Now + ": " + $"Device Address: {deviceAddress}");
+            Console.WriteLine(DateTime.Now + ": " + $"Analogue Value: {analogueValue}");
+            Console.WriteLine(DateTime.Now + ": " + $"Detector Type: {detectorType}");
+            Console.WriteLine(DateTime.Now + ": " + $"Event Type: {eventType} ({GetEventTypeName(eventType)})");
+            Console.WriteLine(DateTime.Now + ": " + $"Originating Panel: {originatingPanelID}");
+            Console.WriteLine(DateTime.Now + ": " + $"Sub Address: {subAddress}");
+            Console.WriteLine(DateTime.Now + ": " + $"Alarm Text: '{alarmText}'");
 
             // The VB6 format: Panel-Loop-Device/EventType
             string eventKey = $"{panelID}-{loop}-{deviceAddress}/{eventType}";
-            Console.WriteLine($"Event Key (VB6 format): {eventKey}");
+            Console.WriteLine(DateTime.Now + ": " + $"Event Key (VB6 format): {eventKey}");
 
             string notifyMsg = $"ALARM [{eventKey}]: Zone {zoneNumber}, " +
                              $"Type: {GetEventTypeName(eventType)}, Text: {alarmText}";
@@ -1203,7 +1203,7 @@ namespace DraxTechnology.Panels
                 case MorleyDetectorType.NoDetector:
                     return "No Detector";
                 default:
-                    Console.WriteLine("Unknown Morley Device Type: " + (int)detectorType);
+                    Console.WriteLine(DateTime.Now + ": " + "Unknown Morley Device Type: " + (int)detectorType);
                     return "Unknown Device";
             }
         }

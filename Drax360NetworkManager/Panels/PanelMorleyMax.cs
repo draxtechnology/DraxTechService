@@ -60,7 +60,7 @@ namespace DraxTechnology.Panels
             if (!strmsg.StartsWith(">")) return;
             string cmd = strmsg.Substring(1, 2);
 
-            Console.WriteLine(strmsg.Replace("\r", "") + " Received from Panel");
+            Console.WriteLine(DateTime.Now + ": " + strmsg.Replace("\r", "") + " Received from Panel");
 
             //
             if (cmd == "IS")
@@ -71,7 +71,7 @@ namespace DraxTechnology.Panels
                 {
                     SendChar(ch);
                 }
-                Console.WriteLine(stracknowledge.Replace("\r", "") + " Sent to Panel");
+                Console.WriteLine(DateTime.Now + ": " + stracknowledge.Replace("\r", "") + " Sent to Panel");
             }
 
             if (cmd == "IE")
@@ -115,71 +115,71 @@ namespace DraxTechnology.Panels
                 }
 
                 //GetTextData(ourmessage,34);
-                Console.WriteLine("Event " + eventcode + " Zone " + zone + " Address " + address);
+                Console.WriteLine(DateTime.Now + ": " + "Event " + eventcode + " Zone " + zone + " Address " + address);
                 switch ((enmEventType)eventcode)
                 {
                     case enmEventType.Fire:
                         gsTextField = "Fire";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         gAlarmType = enmAlarmType.MAXFire.ToString();
                         break;
 
                     case enmEventType.TestFire:
                         gsTextField = "Test Fire";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         gAlarmType = enmAlarmType.MAXFire.ToString();
                         break;
 
                     case enmEventType.FireDisabled:
                         gsTextField = "Fire Disabled";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         gAlarmType = enmAlarmType.MAXTestModeFire.ToString();
                         break;
 
                     case enmEventType.NoReplyMissing:
                         gAlarmType = enmAlarmType.MAXFault.ToString();
                         gsTextField = "Device Missing";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.TypeMisMatch:
                         gAlarmType = enmAlarmType.MAXFault.ToString();
                         gsTextField = "Type Mismatch";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.PreAlarm:
                         gAlarmType = enmAlarmType.MAXPreAlarm.ToString();
                         gsTextField = "Pre Alarm";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.RemovedDisabled:
                         gAlarmType = enmAlarmType.MAXFault.ToString();
                         gsTextField = "Removed Under Disablement";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.FaultCleared:
                         gAlarmType = enmAlarmType.MAXFault.ToString();
                         gsTextField = "Fault Cleared";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.MissingCleared:
                         gAlarmType = enmAlarmType.MAXFault.ToString();
                         gsTextField = "Missing Cleared";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.SensorModuleFault:
                         gAlarmType = enmAlarmType.MAXFault.ToString();
                         gsTextField = "Sensor Fault";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.Deviceenabled:
-                        Console.WriteLine("Device " + address + " Enabled");
+                        Console.WriteLine(DateTime.Now + ": " + "Device " + address + " Enabled");
                         gAlarmType = enmAlarmType.MAXIsolate.ToString();
                         gsTextField = "Device " + address + " Enabled";
                         on = false;
@@ -188,80 +188,80 @@ namespace DraxTechnology.Panels
                     case enmEventType.Devicedisabled:
                         gAlarmType = enmAlarmType.MAXIsolate.ToString();
                         gsTextField = "Device " + address + " Disabled";
-                        Console.WriteLine("Device " + address + " Disabled");
+                        Console.WriteLine(DateTime.Now + ": " + "Device " + address + " Disabled");
                         break;
 
                     case enmEventType.SystemReset:
                         gsTextField = "Panel Reset";
                         giAddressNumber = 9;
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.ModuleLoadShortCircuit:
                         gAlarmType = enmAlarmType.MAXFault.ToString();
                         gsTextField = "Module Load Short Circuit";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.OutputModuleTestDeActivation:
                         gAlarmType = enmAlarmType.MAXOutputActivate.ToString();
                         gsTextField = "Module Activation";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.OutputModuleTestActivation:
                         gAlarmType = enmAlarmType.MAXOutputActivate.ToString();
                         gsTextField = "Module DeActivation";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.DuplicateAddress:
                         gAlarmType = enmAlarmType.MAXFault.ToString();
                         gsTextField = "Duplicate Address";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.AUXSet:
                         gAlarmType = enmAlarmType.MAXNonFireAlarm.ToString();
                         gsTextField = "AUX Set";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.AuxCleared:
                         gAlarmType = enmAlarmType.MAXNonFireAlarm.ToString();
                         gsTextField = "Aux Cleared";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.TechnicalAlarm:
                         gAlarmType = enmAlarmType.MAXNonFireAlarm.ToString();
                         gsTextField = "Technical Alarm";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.PowerSupplyFault:
                         gAlarmType = enmAlarmType.MAXFault.ToString();
                         gsTextField = "Power Supply Fault";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.LoopBoosterFault:
                         gAlarmType = enmAlarmType.MAXFault.ToString();
                         gsTextField = "Loop Booster Fault";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.ThermalAlarm:
                         gAlarmType = enmAlarmType.MAXNonFireAlarm.ToString();
                         giAddressNumber = 0;
                         gsTextField = "Thermal Alarm";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.EnableZone:
                         gAlarmType = enmAlarmType.MAXDisableZone.ToString();
                         gsTextField = "Entire Zone " + zone + " Enabled";
-                        Console.WriteLine("Entire Zone " + zone + " Enabled");
+                        Console.WriteLine(DateTime.Now + ": " + "Entire Zone " + zone + " Enabled");
                         loop = (int)(zone / 255) + 1;
                         if (giAddressNumber >= 255)
                         {
@@ -276,7 +276,7 @@ namespace DraxTechnology.Panels
 
                     case enmEventType.DisableZone:
                         gAlarmType = enmAlarmType.MAXDisableZone.ToString();
-                        Console.WriteLine("Entire Zone " + zone + " Disabled");
+                        Console.WriteLine(DateTime.Now + ": " + "Entire Zone " + zone + " Disabled");
                         gsTextField = "Entire Zone " + zone + " Disabled";
                         loop = (int)(zone / 255) + 1;
                         if (giAddressNumber >= 255)
@@ -293,294 +293,294 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 41;
                         gsTextField = "LIB Card Loop CPU Fault";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.LIBCardLoopCPUPwrRestart:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 42;
                         gsTextField = "LIB Card Loop CPU Power Restart";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.LIBCardLoopShortCircuit:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 34;
                         gsTextField = "LIB Card Loop Short Circuit";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.LIBCardDeviceZeroPresent:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 44;
                         gsTextField = "LIB Card Device Zero Present";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.LIBCardMissing:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 45;
                         gsTextField = "LIB Card Missing";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.LIBCardLoopEndDriverFault:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 46;
                         gsTextField = "LIB Card Loop End Driver Fault";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.LIBCardLoopSignalDegraded:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 47;
                         gsTextField = "LIB Card Loop Signal Degraded";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.LIBCardROMChkSumErr:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 48;
                         gsTextField = "LIB Card ROM Checksum Error";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.RS232LinkFault:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 49;
                         gsTextField = "RS232 Link Fault";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.PSUChargerFault:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 50;
                         gsTextField = "PSU Charger Fault";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.BatteryLowVoltage:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 51;
                         gsTextField = "Battery Low Voltage";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.BatteryFailure:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 52;
                         gsTextField = "Battery Failure";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.SoftwareFailure:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 36;
                         gsTextField = "Software Failure";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.PanelKeyStuck:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 40;
                         gsTextField = "Panel Key Stuck";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.AuxOutput1Fault:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 37;
                         gsTextField = "Aux Output 1 Fault";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.AuxOutput2Fault:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 38;
                         gsTextField = "Aux Output 2 Fault";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.NetworkZoneAssignIncorrect:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 53;
                         gsTextField = "Network Zone Assign Incorrect";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.NetworkRefAssingIncorrect:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 54;
                         gsTextField = "Network Ref Assign Incorrect";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.ID2NetworkZoneDup:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 55;
                         gsTextField = "ID2 Net Zone Duplication";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.ID2NetworkStartUpFaultNetCardMissing:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 56;
                         gsTextField = "ID2 Net Startup Fault NetCard Missing";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.ID2NetworkStartUpFaultNoACK:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 57;
                         gsTextField = "ID2 Net Startup Fault No Ack";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.ID2NetworkStartUpFaultNoReply:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 58;
                         gsTextField = "ID2 Net Startup Fault No Reply";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.ID2NetworkStartUpFaultJOINFail:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 59;
                         gsTextField = "ID2 Net Startup Fault Join Fail";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.ID2NetworkRunTimeFault:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 60;
                         gsTextField = "ID2 Net Run Time Fault";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.ID2ChannelLink1Fault:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 61;
                         gsTextField = "ID2 Net Channel 1 Link Fault";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.ID2ChannelLink2Fault:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 62;
                         gsTextField = "ID2 Net Channel 2 Link Fault";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.ID2FlashChecksumErr:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 63;
                         gsTextField = "ID2 Net Flash checksum Error";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.ID2NetworkOverLoadTimeOut:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 64;
                         gsTextField = "ID2 Net OverLoad Timeout";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.OverRideSounder:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 65;
                         gsTextField = "Over-Ride Sounder/Investigation delay";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.InvestigateDelayExtended:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 66;
                         gsTextField = "Investigation delay extended";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.RemoteFireOutPutTest:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 67;
                         gsTextField = "Remote Fire Output Test";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.SignalledFaultatPanelInput1:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 99;
                         gsTextField = "Signalled Fault at Panel Input 1";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.SignalledFaultatPanelInput2:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 100;
                         gsTextField = "Signalled Fault at Panel Input 2";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.ExternalPSUFault:
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 102;
                         gsTextField = "External PSU Fault";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.TerminateTest:  // 130
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 96;
                         gsTextField = "End Zone " + zone + " Test";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.SilenceSounder:  // 131
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 10;
                         gsTextField = "Alarms Silenced";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.MuteBuzzer:  // 132
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 18;
                         gsTextField = "Internal Buzzer Muted";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.StartZoneTest:  // 135
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 96;
                         gsTextField = "Start Zone " + zone + " Test";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.Evacuate:  // 138
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 1;
                         gsTextField = "Evacuate";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.SysClockAdjust:  // 139
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 30;
                         gsTextField = "System Clock Adjust";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.EditChangesConfirmed:  // 140
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 31;
                         gsTextField = "Edited Changes Confirmed";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.CommsFail:  // 147
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 32;
                         gsTextField = "Comms Fail";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
 
@@ -588,56 +588,56 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 33;
                         gsTextField = "ID2 Net Duplicate Node";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.PowerFaultID2Booster:  // 204
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 35;
                         gsTextField = "Power Fault ID2 Booster";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.AccessLevel1:  // 205
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 76;
                         gsTextField = "Access Level 1";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.AccessLevel2:  // 206
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 77;
                         gsTextField = "Access Level 2";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.AccessLevel3:  // 207
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 78;
                         gsTextField = "Access Level 3";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.AccessLevel4:  // 208
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 79;
                         gsTextField = "Access Level 4";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.ControlOutputsEnabled1:  // 209
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 101;
                         gsTextField = "Control Outputs Enabled";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.ControlOutputsDisabled1:  // 210
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 101;
                         gsTextField = "Control Outputs Disabled";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.EntireZoneEnable:  // 228
@@ -645,28 +645,28 @@ namespace DraxTechnology.Panels
                         giAddressNumber = 97;
                         gsTextField = "Entire Zone Enable";
                         on = false;
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.EntireZoneDisable:  // 229
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 97;
                         gsTextField = "Entire Zone Disable";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.NetworkEntireZoneEnable:  // 230
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 93;
                         gsTextField = "Network Entire Zone Enable";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
                     case enmEventType.NetworkEntireZoneDisable:  // 231
                         gAlarmType = enmAlarmType.MAXStatusEvent.ToString();
                         giAddressNumber = 93;
                         gsTextField = "Network Entire Zone Enable";
-                        Console.WriteLine(gsTextField);
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
                 }
 
@@ -684,7 +684,7 @@ namespace DraxTechnology.Panels
                 catch (Exception ex)
                 {
                     this.NotifyClient("gAlarmType " + gAlarmType + " " + ex.Message, false);
-                    Console.WriteLine($"Unexpected error: {ex.Message}");
+                    Console.WriteLine(DateTime.Now + ": " + $"Unexpected error: {ex.Message}");
                 }
 
                 p2 = panel;
@@ -718,7 +718,7 @@ namespace DraxTechnology.Panels
                 SendChar(ch);
             }
 
-            Console.WriteLine(stracknowledge.Replace("\r", "") + " Sent to Panel");
+            Console.WriteLine(DateTime.Now + ": " + stracknowledge.Replace("\r", "") + " Sent to Panel");
         }
         public void GetDeviceTypeText(int piDeviceType)
         {
@@ -894,15 +894,15 @@ namespace DraxTechnology.Panels
 
         public override void Evacuate(string passedvalues)
         {
-            Console.WriteLine("GOT EVACUATE PLEASE SEND TO SERIAL PORT TO RAISE ALARM");
+            Console.WriteLine(DateTime.Now + ": " + "GOT EVACUATE PLEASE SEND TO SERIAL PORT TO RAISE ALARM");
         }
         public override void Alert(string passedvalues)
         {
-            Console.WriteLine("GOT ALERT PLEASE SEND TO SERIAL PORT TO RAISE ALARM");
+            Console.WriteLine(DateTime.Now + ": " + "GOT ALERT PLEASE SEND TO SERIAL PORT TO RAISE ALARM");
         }
         public override void EvacuateNetwork(string passedvalues)
         {
-            Console.WriteLine("GOT EVACUATE NETWORK PLEASE SEND TO SERIAL PORT TO RAISE ALARM");
+            Console.WriteLine(DateTime.Now + ": " + "GOT EVACUATE NETWORK PLEASE SEND TO SERIAL PORT TO RAISE ALARM");
         }
         public override void Silence(string passedvalues)
         {
@@ -1074,7 +1074,7 @@ namespace DraxTechnology.Panels
 
             serialsend(">" + message + sChecksum + "\r");
 
-            Console.WriteLine(">" + message + sChecksum + " Sent to panel");
+            Console.WriteLine(DateTime.Now + ": " + ">" + message + sChecksum + " Sent to panel");
         }
 
         public string CreateMAXChecksum(string myString)

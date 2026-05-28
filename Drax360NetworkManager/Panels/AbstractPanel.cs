@@ -168,7 +168,7 @@ namespace DraxTechnology.Panels
         #region Protected Methods
         protected virtual void heartbeat_timer_callback(object sender)
         {
-            Console.WriteLine("Sent Heartbeat");
+            Console.WriteLine(DateTime.Now + ": " + "Sent Heartbeat");
         }
         protected bool serialsend(byte[] toSend)
         {
@@ -204,7 +204,7 @@ namespace DraxTechnology.Panels
             {
                 if (commandQueue.Count == 0)
                 {
-                    Console.WriteLine("No queued commands to process");
+                    Console.WriteLine(DateTime.Now + ": " + "No queued commands to process");
                     return;
                 }
 
@@ -223,7 +223,7 @@ namespace DraxTechnology.Panels
                         {
                             serialport.Write(command, 0, command.Length);
                             string hex = BitConverter.ToString(command);
-                            Console.WriteLine($"Queued command sent (Hex): {hex}");
+                            Console.WriteLine(DateTime.Now + ": " + $"Queued command sent (Hex): {hex}");
 
                             commandQueue.Dequeue(); // Remove from queue after successful send
                             successCount++;
@@ -233,14 +233,14 @@ namespace DraxTechnology.Panels
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"Failed to send queued command: {ex.Message}");
+                            Console.WriteLine(DateTime.Now + ": " + $"Failed to send queued command: {ex.Message}");
                             failCount++;
                             break; // Stop processing if send fails
                         }
                     }
                     else
                     {
-                        Console.WriteLine("Port closed while processing queue");
+                        Console.WriteLine(DateTime.Now + ": " + "Port closed while processing queue");
                         break; // Port closed, stop processing
                     }
                 }
@@ -289,6 +289,12 @@ namespace DraxTechnology.Panels
 
         protected void SendChar(char ch)
         {
+            if (serialport == null)
+            {
+                this.NotifyClient("No serial port configured.", false);
+                return;
+            }
+
             if (serialport?.IsOpen != true)
             {
                 try

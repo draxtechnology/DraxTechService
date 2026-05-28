@@ -18,6 +18,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using CryptoModule;
 using DraxTechnology.Panels;
 
 namespace DraxTechnology
@@ -704,7 +705,7 @@ namespace DraxTechnology
 
         private void ln(string message, EventLogEntryType eventtype = EventLogEntryType.Information)
         {
-            Console.WriteLine("".PadLeft(indent, '\t') + message);
+            Console.WriteLine(DateTime.Now + ": " + "".PadLeft(indent, '\t') + message);
             Console.ResetColor();
             log(message);
             EventLog.WriteEntry(message, EventLogEntryType.Information);
@@ -761,7 +762,7 @@ namespace DraxTechnology
 
         private void pad()
         {
-            Console.WriteLine();
+            Console.WriteLine(DateTime.Now + ": ");
         }
         private void title(string msg)
         {
@@ -1283,7 +1284,7 @@ namespace DraxTechnology
 
                 string strresponse = Encoding.Default.GetString(result);
 
-                Console.WriteLine("Response received from Return server: " + strresponse);
+                Console.WriteLine(DateTime.Now + ": " + "Response received from Return server: " + strresponse);
 
                 return strresponse;
             }
@@ -1603,8 +1604,15 @@ namespace DraxTechnology
             this.DebugLog = true;
             this.args = args;
 
-            // singular for now
-            panel = ConfigurationManager.AppSettings["Panels"].Trim().ToUpper();
+            // singular for
+            //
+            // panel = ConfigurationManager.AppSettings["Panels"].Trim().ToUpper();
+
+            string panelencrypted = ConfigurationManager.AppSettings["Panels"].Trim().ToUpper();   // xxx
+            panel = AesDecryptor.DecryptOpenSSLCtr(panelencrypted, "");
+
+            // panel = AesDecryptor.EncryptOpenSSLCtr(panel, "");  // Use to work out encrypted version
+
 
             // New log file path
             configurationbasefolder = ConfigurationManager.AppSettings["Configuration"].Trim();
@@ -1615,12 +1623,8 @@ namespace DraxTechnology
             }
             if (!firstruncheck()) return;
 
-
-
             // determine if we are in a fake mode
             fakemode = Convert.ToInt32(ConfigurationManager.AppSettings["FakeMode"].Trim());
-
-
 
             string longbar = "".PadRight(48, '-');
 
@@ -1630,9 +1634,6 @@ namespace DraxTechnology
 
             title(shortbar + msg + shortbar);
             title(longbar);
-
-
-
 
             if (args.Length > 0)
             {
@@ -1649,9 +1650,9 @@ namespace DraxTechnology
                 EventLogger.WriteToEventLog("No Command Line Args", EventLogEntryType.Warning);
             }
 
-            kvp("Version", Assembly.GetEntryAssembly().GetCustomAttribute<AssemblyFileVersionAttribute>().Version);
-            kvp("Panel", panel);
-            kvp("Configuration", this.configurationbasefolder);
+            kvp(DateTime.Now + ": Version", Assembly.GetEntryAssembly().GetCustomAttribute<AssemblyFileVersionAttribute>().Version);
+            kvp(DateTime.Now + ": Panel", panel);
+            kvp(DateTime.Now + ": Configuration", this.configurationbasefolder);
             if (!Elements.isService)
             {
                 title("Interactive Session");
@@ -1905,7 +1906,7 @@ namespace DraxTechnology
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Error stopping AMXTransfer: " + ex.Message);
+                Console.WriteLine(DateTime.Now + ": " + "Error stopping AMXTransfer: " + ex.Message);
             }
 
             ln("Stopped Service");
@@ -1917,7 +1918,7 @@ namespace DraxTechnology
                 new WqlEventQuery("SELECT * FROM Win32_DeviceChangeEvent"));
             watcher.EventArrived += (s, e) =>
             {
-                Console.WriteLine("Device change detected. Rescanning ports...");
+                Console.WriteLine(DateTime.Now + ": " + "Device change detected. Rescanning ports...");
                 RescanPorts();
             };
             watcher.Start();

@@ -228,7 +228,7 @@ namespace DraxTechnology.Panels
         }
         public override void EvacuateNetwork(string passedvalues)
         {
-            Console.WriteLine("GOT EVACUATE NETWORK PLEASE SEND TO SERIAL PORT TO SILENCE ALARM");
+            Console.WriteLine(DateTime.Now + ": " + "GOT EVACUATE NETWORK PLEASE SEND TO SERIAL PORT TO SILENCE ALARM");
         }
         public override void Silence(string passedvalues)
         {
@@ -268,7 +268,7 @@ namespace DraxTechnology.Panels
 
         public override void MuteBuzzers(string passedvalues)
         {
-            Console.WriteLine("GOT MUTE BUZZERS PLEASE SEND TO SERIAL PORT TO SILENCE ALARM");
+            Console.WriteLine(DateTime.Now + ": " + "GOT MUTE BUZZERS PLEASE SEND TO SERIAL PORT TO SILENCE ALARM");
         }
 
         public override void Reset(string passedvalues)
@@ -370,7 +370,7 @@ namespace DraxTechnology.Panels
         }
         public override void Analogue(string passedvalues)
         {
-            Console.WriteLine("GOT Analogue");
+            Console.WriteLine(DateTime.Now + ": " + "GOT Analogue");
         }
         #endregion
 
@@ -476,12 +476,12 @@ namespace DraxTechnology.Panels
                 {
                     case 1:  // Acknowledgement
 
-                        Console.WriteLine("Acknowledgement");
+                        Console.WriteLine(DateTime.Now + ": " + "Acknowledgement");
                         break;
 
                     case 10:   // Device Status
 
-                        Console.WriteLine("Device Status");
+                        Console.WriteLine(DateTime.Now + ": " + "Device Status");
                         node = (int)chunk[2];
                         loopnumber = (int)chunk[3];
                         deviceaddress = (int)chunk[4];
@@ -499,7 +499,7 @@ namespace DraxTechnology.Panels
                             devicetext += (char)chunk[i];
                         }
 
-                        Console.WriteLine(strmsg);
+                        Console.WriteLine(DateTime.Now + ": " + strmsg);
 
                         if ((int)chunk[9] == 0)   // Device Enabled
                         {
@@ -715,7 +715,7 @@ namespace DraxTechnology.Panels
 
                     case 15:   // Output Activated by BMS 
 
-                        Console.WriteLine("BMS");
+                        Console.WriteLine(DateTime.Now + ": " + "BMS");
                         node = (int)chunk[2];
                         loopnumber = (int)chunk[3];
                         deviceaddress = (int)chunk[4];
@@ -736,7 +736,7 @@ namespace DraxTechnology.Panels
                         break;
 
                     default:
-                        Console.WriteLine("Unknown Command: " + chunk[0]);
+                        Console.WriteLine(DateTime.Now + ": " + "Unknown Command: " + chunk[0]);
                         this.NotifyClient("Unknown Command: " + chunk[0], false);
 
                         return false;
@@ -801,7 +801,7 @@ namespace DraxTechnology.Panels
 
         protected override void heartbeat_timer_callback(object sender)
         {
-            Console.WriteLine("Sent Heartbeat");
+            Console.WriteLine(DateTime.Now + ": " + "Sent Heartbeat");
 
             Byte[] heartbeat = new Byte[] { 42, 0, HBT_Panel1 };
 

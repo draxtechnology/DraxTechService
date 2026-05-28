@@ -1048,7 +1048,7 @@ namespace DraxTechnology.Panels
                     //_messageSent = true;
                     data = CreateMessageWithSerialNo(12, TakCommands.CMD_EVENT_ACK, serialNoStr);
                     dataString = string.Join(",", data);
-                    Console.WriteLine("Send Event ACK RX: " + dataString);
+                    Console.WriteLine(DateTime.Now + ": " + "Send Event ACK RX: " + dataString);
                     rxTx = TransmissionType.RX;
                     break;
 
@@ -1058,7 +1058,7 @@ namespace DraxTechnology.Panels
                     //_messageSent = true;
                     data = CreateMessageWithSerialNo(12, TakCommands.CMD_EVENT_ACK, serialNoStr);
                     dataString = string.Join(",", data);
-                    Console.WriteLine("Send Event ACK TX: " + dataString);
+                    Console.WriteLine(DateTime.Now + ": " + "Send Event ACK TX: " + dataString);
                     rxTx = TransmissionType.TX;
                     break;
 
@@ -1068,7 +1068,7 @@ namespace DraxTechnology.Panels
                     immediateRxSend = true;
                     data = CreateBasicMessage(8, TakCommands.CMD_ACK);
                     dataString = string.Join(",", data);
-                    Console.WriteLine("Send ACK Immediate: " + dataString);
+                    Console.WriteLine(DateTime.Now + ": " + "Send ACK Immediate: " + dataString);
                     rxTx = TransmissionType.RX;
                     break;
 

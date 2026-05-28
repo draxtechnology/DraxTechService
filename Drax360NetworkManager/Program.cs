@@ -36,9 +36,9 @@ namespace DraxTechnology
         {
             string msg = "Waiting For CR";
             string line = "".PadRight(msg.Length, '-');
-            Console.WriteLine(line);
-            Console.WriteLine(msg);
-            Console.WriteLine(line);
+            Console.WriteLine(DateTime.Now + ": " + line);
+            Console.WriteLine(DateTime.Now + ": " + msg);
+            Console.WriteLine(DateTime.Now + ": " + line);
             Console.ReadLine();
         }
     }
