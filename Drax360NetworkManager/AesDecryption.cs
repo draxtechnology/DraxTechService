@@ -27,9 +27,13 @@ namespace CryptoModule
         {
             // Fix base64 padding before decoding
             string normalized = base64Input.Trim();
+            normalized = normalized.TrimEnd('=');
+
             int padding = normalized.Length % 4;
             if (padding == 2) normalized += "==";
             else if (padding == 3) normalized += "=";
+            // padding == 0: no padding needed
+            // padding == 1: invalid base64, will throw anyway
 
             byte[] data;
             try

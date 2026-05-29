@@ -105,9 +105,9 @@ namespace DraxTechnology.Panels
                 giAddressNumber = address;
 
                 string sTextField = "";
-                if (ourmessage != null && ourmessage.Length > 37)
+                if (ourmessage != null && ourmessage.Length > 38)
                 {
-                    int start = (ourmessage[36] == 254) ? 37 : 36;
+                    int start = (ourmessage[38] == 254) ? 39 : 38;
                     int end = Array.IndexOf(ourmessage, (byte)254, start);
                     if (end < 0) end = ourmessage.Length; // no terminator found, read to end
 
@@ -123,8 +123,10 @@ namespace DraxTechnology.Panels
                 gsTextField = sTextField;
 
                 int iDevicetype = 0;
-                int.TryParse(Encoding.UTF8.GetString(ourmessage, 26 - 1, 2), out iDevicetype);
-
+                if (ourmessage.Length > 26)
+                {
+                    int.TryParse(Encoding.UTF8.GetString(ourmessage, 26 - 1, 2), out iDevicetype);
+                }
                 if (CheckForSectoring(eventcode, loop))
                 {
                     gsSectorNo = loop;
@@ -670,6 +672,19 @@ namespace DraxTechnology.Panels
                         Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
+                    case enmNotEventType.SounderDisabled:  // 159
+                        gAlarmType = enmNotAlarmType.NOTIsolate.ToString();
+                        gsTextField = "Sounder Disabled";
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                        break;
+
+                    case enmNotEventType.SounderEnabled:  // 169
+                        gAlarmType = enmNotAlarmType.NOTIsolate.ToString();
+                        gsTextField = "Sounder Enabled";
+                        on = false;
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                        break;
+
                     case enmNotEventType.OverRideSounder:
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 65;
@@ -920,15 +935,21 @@ namespace DraxTechnology.Panels
                 int p4 = 0;
                 int evnum = 0;
 
-                try
+                // Unknown / unhandled events leave gAlarmType empty; default to
+                // NOTStatusEvent so the AMX side gets a benign status code rather
+                // than a parse exception. Enum.TryParse avoids the throw entirely.
+                if (string.IsNullOrEmpty(gAlarmType))
                 {
-                    enmNotAlarmType enumValue = (enmNotAlarmType)Enum.Parse(typeof(enmNotAlarmType), gAlarmType);
-                    p1 = (int)(enumValue);
+                    gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                 }
-                catch (Exception ex)
+                if (Enum.TryParse(gAlarmType, out enmNotAlarmType enumValue))
                 {
-                    this.NotifyClient("gAlarmType " + gAlarmType + " " + ex.Message, false);
-                    Console.WriteLine(DateTime.Now + ": " + $"Unexpected error: {ex.Message}");
+                    p1 = (int)enumValue;
+                }
+                else
+                {
+                    this.NotifyClient("gAlarmType " + gAlarmType + " not a valid enmNotAlarmType", false);
+                    p1 = (int)enmNotAlarmType.NOTStatusEvent;
                 }
 
                 if (sensor.ToLower() == "m")   // Module: addresses ≥ kModuleAddressMin
