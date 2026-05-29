@@ -649,6 +649,7 @@ namespace DraxTechnology
         private const int NwmMaxNodesELO = 99;
         private const int NwmMaxNodesMAX = 99;
         private const int NwmMaxNodesSYNCCTV = 1;
+        private const int NwmMaxNodesInspire = 127;
 
         private const int AmxLite = 0;        // 0=full AMX1, else value = Lite version  TODO
 
@@ -1101,6 +1102,7 @@ namespace DraxTechnology
                 case "NwmHandleTAK": return NwmMaxNodesTAK;
                 case "NwmHandleMAX": return NwmMaxNodesMAX;
                 case "NwmHandleSYNCCTV": return NwmMaxNodesSYNCCTV;
+                case "NwmHandleInspire": return NwmMaxNodesInspire;
 
                 default:
                     return 0;

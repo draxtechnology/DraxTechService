@@ -105,18 +105,39 @@ namespace DraxTechnology.Panels
                 giAddressNumber = address;
 
                 string sTextField = "";
-                if (ourmessage != null && ourmessage.Length > 38)
+                string gsDeviceText = "";
+                string gsZoneText = "";
+                bool bTextSeparator = false;
+
+                int i = 38; // your starting index
+
+                while (i < ourmessage.Length && ourmessage[i] != (byte)'"')
                 {
-                    int start = (ourmessage[38] == 254) ? 39 : 38;
-                    int end = Array.IndexOf(ourmessage, (byte)254, start);
-                    if (end < 0) end = ourmessage.Length; // no terminator found, read to end
+                    if (ourmessage[i] == (byte)'\\')
+                    {
+                        // Escaped quote - replace \ with " and skip next char
+                        sTextField += '"';
+                        i++;
+                    }
+                    else if (ourmessage[i] == 254)
+                    {
+                        // Separator between device text and zone text
+                        bTextSeparator = true;
+                        gsDeviceText = sTextField;
+                    }
+                    else if (bTextSeparator)
+                    {
+                        // After separator = zone text
+                        gsZoneText += ((char)ourmessage[i]).ToString();
+                    }
+                    else
+                    {
+                        sTextField += (char)ourmessage[i];
+                    }
 
-                    sTextField = Encoding.UTF8.GetString(ourmessage, start, end - start);
-
-                    int quoteIndex = sTextField.IndexOf('"');
-                    if (quoteIndex >= 0)
-                        sTextField = sTextField.Substring(0, quoteIndex).Trim();
+                    i++;
                 }
+
 
                 bool on = true;
 
@@ -874,12 +895,35 @@ namespace DraxTechnology.Panels
                         Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
-                    case enmNotEventType.EntireZoneEnable:  // 228
+                    case enmNotEventType.SystemDayMode:  // 172
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
-                        giAddressNumber = 97;
-                        gsTextField = "Entire Zone Enable";
+                        giAddressNumber = 7;
+                        gsTextField = "System Day Mode";
                         getDeviceText = false;
-                        on = false;
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                        break;
+
+                    case enmNotEventType.SystemNightMode:  // 173
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 71;
+                        gsTextField = "System Night Mode";
+                        getDeviceText = false;
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                        break;
+
+                    case enmNotEventType.NetworkZoneInEnabled:  // 192
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 71;
+                        gsTextField = "Network In Zone " + zone + " Enabled";
+                        getDeviceText = false;
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                        break;
+
+                    case enmNotEventType.NetworkZoneInDisabled:  // 193
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 71;
+                        gsTextField = "Network In Zone " + zone + " Disabled";
+                        getDeviceText = false;
                         Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
@@ -918,6 +962,7 @@ namespace DraxTechnology.Panels
 
                     default:
                         base.NotifyClient("Unknown Event " + ((enmNotEventType)eventcode));
+                        getDeviceText = false;
                         break;
                 }
 
@@ -967,6 +1012,11 @@ namespace DraxTechnology.Panels
                 if (zone > 0)
                 {
                     zonetext = "Zone " + zone;
+                }
+
+                if (gsZoneText.Length > 0)
+                {
+                    zonetext = gsZoneText;
                 }
                 evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, on);
                 if (p1 == (int)enmPRLAlarmType.Isolate)  // If Disable Device neeed to also send another event to AMX to increase the Isolation count

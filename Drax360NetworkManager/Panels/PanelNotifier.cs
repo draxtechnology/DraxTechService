@@ -881,6 +881,37 @@ namespace DraxTechnology.Panels
                         on = false;
                         Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
+                    case enmNotEventType.SystemDayMode:  // 172
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 7;
+                        gsTextField = "System Day Mode";
+                        getDeviceText = false;
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                        break;
+
+                    case enmNotEventType.SystemNightMode:  // 173
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 71;
+                        gsTextField = "System Night Mode";
+                        getDeviceText = false;
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                        break;
+
+                    case enmNotEventType.NetworkZoneInEnabled:  // 192
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 71;
+                        gsTextField = "Network In Zone " + zone + " Enabled";
+                        getDeviceText = false;
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                        break;
+
+                    case enmNotEventType.NetworkZoneInDisabled:  // 193
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 71;
+                        gsTextField = "Network In Zone " + zone + " Disabled";
+                        getDeviceText = false;
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                        break;
 
                     case enmNotEventType.EntireZoneDisable:  // 229
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();

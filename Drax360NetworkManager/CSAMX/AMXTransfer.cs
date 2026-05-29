@@ -264,6 +264,7 @@ namespace DraxTechnology
             if (partsSingle.Length <= 8)
                 return;
             DraxService.OnAmxPipeCommand?.Invoke(partsSingle);
+            Thread.Sleep(500);  // give the panel writer a moment to pick up the file before we send the echo-back
         }
 
         public void NotifyClient(string message)
