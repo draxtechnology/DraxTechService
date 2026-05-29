@@ -1608,10 +1608,10 @@ namespace DraxTechnology
             //
             // panel = ConfigurationManager.AppSettings["Panels"].Trim().ToUpper();
 
-            string panelencrypted = ConfigurationManager.AppSettings["Panels"].Trim().ToUpper();   // xxx
+            string panelencrypted = ConfigurationManager.AppSettings["Panels"].Trim();   // Decrypted in code to avoid casual observation; the value in AppSettings should be opaque ciphertext.
             panel = AesDecryptor.DecryptOpenSSLCtr(panelencrypted, "");
 
-            // panel = AesDecryptor.EncryptOpenSSLCtr(panel, "");  // Use to work out encrypted version
+            //panel = AesDecryptor.EncryptOpenSSLCtr(panel, "");  // Use to work out encrypted version
 
 
             // New log file path

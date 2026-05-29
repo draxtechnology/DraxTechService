@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -25,18 +25,23 @@ namespace CryptoModule
 
         public static string DecryptOpenSSLCtr(string base64Input, string passphrase)
         {
-            byte[] data = Convert.FromBase64String(base64Input.Trim());
+            // Fix base64 padding before decoding
+            string normalized = base64Input.Trim();
+            int padding = normalized.Length % 4;
+            if (padding == 2) normalized += "==";
+            else if (padding == 3) normalized += "=";
+
+            byte[] data;
+            try
+            {
+                data = Convert.FromBase64String(normalized);
+            }
+            catch (FormatException)
+            {
+                return base64Input; // Not valid base64 at all
+            }
 
             if (data.Length < 16)
-                return base64Input;
-
-            // Check magic "Salted__"
-            byte[] magicBytes = Encoding.ASCII.GetBytes("Salted__");
-            bool hasMagic = true;
-            for (int i = 0; i < 8; i++)
-                if (data[i] != magicBytes[i]) { hasMagic = false; break; }
-
-            if (!hasMagic)
                 return base64Input;
 
             byte[] salt = new byte[8];
