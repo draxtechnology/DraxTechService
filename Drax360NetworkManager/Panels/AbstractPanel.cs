@@ -340,7 +340,8 @@ namespace DraxTechnology.Panels
         // char-by-char) — matches how send_message already assembles the frame.
         //
         // OPT-IN + ROLLBACK: only panels that set UseHalfDuplexGatedSend = true use
-        // this path (PanelNotifier / PanelInspire). Every other panel is untouched.
+        // this path (the PanelId3k family: Notifier / Inspire). Every other panel
+        // is untouched.
         // To revert a panel to the old immediate behaviour, set the flag back to false
         // (send_message then falls through to serialsend).
         //
