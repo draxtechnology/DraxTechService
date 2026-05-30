@@ -37,6 +37,11 @@ namespace DraxTechnology.Panels
         }
         public PanelNotifier(string baselogfolder, string identifier) : base(baselogfolder, identifier, "NOTMan", "NOT")
         {
+            // Use the bus-idle-gated, resend-on-no-ack send path (see AbstractPanel
+            // half-duplex region) — fixes the "press twice" collision. Set false to
+            // revert to the old immediate serialsend.
+            UseHalfDuplexGatedSend = true;
+
             if (!String.IsNullOrEmpty(identifier))
             {
                 heartbeat_timer = new Timer(heartbeat_timer_callback, this.Identifier, 1000, kHeartbeatDelaySeconds * 1000);
@@ -60,6 +65,10 @@ namespace DraxTechnology.Panels
             ;
             if (foundat <= 0) return;
             this.buffer.Clear();
+            // Complete inbound frame received — bus is now idle. Releases the
+            // half-duplex send gate and acks any in-flight command (the panel echoes
+            // the command back, which is its acknowledgement).
+            NoteHalfDuplexReceive(true);
             string strmsg = Encoding.UTF8.GetString(ourmessage, 0, foundat);
             if (!strmsg.StartsWith(">")) return;
             string cmd = strmsg.Substring(1, 2);
@@ -1504,9 +1513,16 @@ namespace DraxTechnology.Panels
             string sChecksum = CreateNOTChecksum(message.Substring(1));
             message = message + sChecksum + "\r";
 
-            serialsend(message);
-
-            Console.WriteLine(DateTime.Now + ": " + message.Replace("\r", "") + " Sent to panel");
+            if (UseHalfDuplexGatedSend)
+            {
+                // Bus-idle-gated + resend-on-no-ack (logs "Sent to panel" per attempt).
+                HalfDuplexSend(message);
+            }
+            else
+            {
+                serialsend(message);
+                Console.WriteLine(DateTime.Now + ": " + message.Replace("\r", "") + " Sent to panel");
+            }
         }
 
         public string CreateNOTChecksum(string myString)
