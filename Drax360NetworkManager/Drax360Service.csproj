@@ -38,27 +38,12 @@
     </EmbeddedResource>
   </ItemGroup>
 
-  <ItemGroup>
-    <None Update="ini\AdvMan.ini" CopyToOutputDirectory="PreserveNewest" />
-    <None Update="ini\EMLMan.ini" CopyToOutputDirectory="PreserveNewest" />
-    <None Update="ini\GenMan.ini" CopyToOutputDirectory="PreserveNewest" />
-    <None Update="ini\KsfMan.ini" CopyToOutputDirectory="PreserveNewest" />
-    <None Update="ini\MAXMan.ini" CopyToOutputDirectory="PreserveNewest" />
-    <None Update="ini\MorleyMan.ini" CopyToOutputDirectory="PreserveNewest" />
-    <None Update="ini\NOTMan.ini" CopyToOutputDirectory="PreserveNewest" />
-    <None Update="ini\PRLMan.ini" CopyToOutputDirectory="PreserveNewest" />
-    <None Update="ini\RSMMan.ini" CopyToOutputDirectory="PreserveNewest" />
-    <None Update="ini\Takman.ini" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
-
   <!-- Copy the win-x64 native SQLite to the output root so the WiX harvest
        (DraxServiceSetup\Regenerate-Files.ps1) picks it up alongside the
        managed DLLs. .NET would otherwise probe runtimes\win-x64\native\
        only, but the installer would need to mirror that subtree. -->
   <Target Name="CopyNativeSQLiteToOutputRoot" AfterTargets="Build">
-    <Copy SourceFiles="$(OutputPath)runtimes\win-x64\native\e_sqlite3.dll"
-          DestinationFolder="$(OutputPath)"
-          ContinueOnError="true" />
+    <Copy SourceFiles="$(OutputPath)runtimes\win-x64\native\e_sqlite3.dll" DestinationFolder="$(OutputPath)" ContinueOnError="true" />
   </Target>
 
 </Project>

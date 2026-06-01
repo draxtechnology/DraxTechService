@@ -52,7 +52,7 @@
         attribute below to the new filename, and rebuild.
       -->
       <ExePackage Id="NetDesktopRuntime10"
-                  SourceFile="windowsdesktop-runtime-10.0.7-win-x64.exe"
+                  SourceFile="windowsdesktop-runtime-10.0.8-win-x64.exe"
                   DetectCondition="NetDesktop10Present"
                   InstallArguments="/install /quiet /norestart"
                   RepairArguments="/repair /quiet /norestart"

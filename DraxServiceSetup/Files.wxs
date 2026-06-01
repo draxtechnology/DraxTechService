@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   <Fragment>
     <ComponentGroup Id="DependencyFiles" Directory="INSTALLFOLDER">
@@ -95,21 +95,6 @@
     </ComponentGroup>
 
     <ComponentGroup Id="IniFiles" Directory="IniFolder">
-      <Component Id="cmp_ini_AdvMan_ini" Guid="C4D1EC61-7D2E-17D5-52B4-F1FA3B3C400A">
-        <File Id="fil_ini_AdvMan_ini" Source="$(var.Drax360Service.TargetDir)ini\AdvMan.ini" KeyPath="yes" />
-      </Component>
-      <Component Id="cmp_ini_EMLMan_ini" Guid="D1F10046-C926-C98C-082C-F6FAE5F1F0FD">
-        <File Id="fil_ini_EMLMan_ini" Source="$(var.Drax360Service.TargetDir)ini\EMLMan.ini" KeyPath="yes" />
-      </Component>
-      <Component Id="cmp_ini_GenMan_ini" Guid="591E237D-04D2-1644-9B63-7A86A762D85E">
-        <File Id="fil_ini_GenMan_ini" Source="$(var.Drax360Service.TargetDir)ini\GenMan.ini" KeyPath="yes" />
-      </Component>
-      <Component Id="cmp_ini_MAXMan_ini" Guid="67261917-827B-44EA-F5D0-27F33939B3BA">
-        <File Id="fil_ini_MAXMan_ini" Source="$(var.Drax360Service.TargetDir)ini\MAXMan.ini" KeyPath="yes" />
-      </Component>
-      <Component Id="cmp_ini_Takman_ini" Guid="260E2648-4112-410D-55AB-04EB721E9FA7">
-        <File Id="fil_ini_Takman_ini" Source="$(var.Drax360Service.TargetDir)ini\Takman.ini" KeyPath="yes" />
-      </Component>
     </ComponentGroup>
 
     <ComponentGroup Id="WinRuntimeFiles" Directory="WinRuntimeDir">
