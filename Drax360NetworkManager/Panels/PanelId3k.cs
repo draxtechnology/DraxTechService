@@ -7,15 +7,18 @@ using System.Threading;
 
 namespace DraxTechnology.Panels
 {
-    // Shared driver for the Notifier ID3000 / ID3K protocol family. Notifier,
-    // Inspire and (the near-identical) Pearl are all this same panel with only
-    // their INI name + file extension differing — so they are thin subclasses
-    // that pass those through, and ALL protocol behaviour (parse, send, checksum,
-    // event/device decode) lives here once. This is the de-duplication of what
-    // were three ~93%-identical copies (Richard, 2026-05-30): the body below is
-    // the SUPERSET of the old PanelNotifier and PanelInspire — Inspire's richer
-    // device/zone text parser and extra device types (26/27), plus Notifier's
-    // EntireZoneEnable (228) case, so neither variant loses anything it handled.
+    // Driver for the Notifier ID3000 / ID3K protocol as used by the Inspire
+    // panel. PanelInspire is a thin subclass that just supplies its INI name +
+    // file extension; ALL protocol behaviour (parse, send, checksum, event/device
+    // decode) lives here.
+    //
+    // History: this began (Richard, 2026-05-30) as a shared base also backing
+    // PanelNotifier, since the two were ~93%-identical copies. Notifier was split
+    // back out to its own standalone driver on 2026-06-01 (restored to its known-
+    // good Friday version for real-panel work), so this base is now Inspire-only.
+    // The body remains the SUPERSET of the old copies — Inspire's richer
+    // device/zone text parser and extra device types (26/27), plus the
+    // EntireZoneEnable (228) case.
     internal abstract class PanelId3k : AbstractPanel
     {
         // Device addresses ≥ this are modules rather than physical sensor
