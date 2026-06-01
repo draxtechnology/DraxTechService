@@ -209,6 +209,10 @@ namespace DraxTechnology
 
                         DraxService.OnManualControlFile?.Invoke(filename);
 
+                        // Schedule deletion now — AMX does not send a MAK for the
+                        // MTX echo-back, so the file would otherwise be left on disk.
+                        CSAMXSingleton.CS.ScheduleDelete(filename);
+
                         if (AMXTransfer.Instance.IsConnected)
                         {
                             AMXTransfer.Instance.SendMessage(filename);
@@ -254,7 +258,10 @@ namespace DraxTechnology
                 {
                     string[] parts = ("CTRL|" + block).Split(kpipedelim);
                     if (parts.Length > 8)
+                    {
                         DraxService.OnAmxPipeCommand?.Invoke(parts);
+                        Thread.Sleep(500);  // give the panel writer a moment to pick up the file before we send the echo-back
+                    }
                 }
                 return;
             }

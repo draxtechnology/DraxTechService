@@ -64,7 +64,11 @@ namespace DraxTechnology.Panels
             }
             ;
             if (foundat <= 0) return;
-            this.buffer.Clear();
+            // Remove only the consumed frame; any bytes after the first \r stay in
+            // the buffer and are processed on the next DataReceived rather than being
+            // silently discarded.
+            this.buffer.RemoveRange(0, foundat + 1);
+            ourmessage = ourmessage[..foundat];
             // Complete inbound frame received — bus is now idle. Releases the
             // half-duplex send gate and acks any in-flight command (the panel echoes
             // the command back, which is its acknowledgement).
@@ -89,6 +93,7 @@ namespace DraxTechnology.Panels
 
             if (cmd == "IE")
             {
+                if (ourmessage.Length < 25) return;  // too short to contain all required IE fields
                 bOneShotReset = false;
                 string gsTextField = "";
                 string gAlarmType = "";

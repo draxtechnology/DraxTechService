@@ -29,7 +29,7 @@ namespace DraxTechnology.Panels
 
         public string gsDeviceText = "";
         public EnmDeviceType gDeviceType;
-        public bool gbHalfDuplex = false;
+        public bool gbHalfDuplex = true;
         public bool gbSectoring = false;
         public int gsSectorNo;
         private readonly List<(int zone, int p2, int p3, int p4, int p1)> _disabledZones = new();
@@ -78,7 +78,16 @@ namespace DraxTechnology.Panels
             }
             ;
             if (foundat <= 0) return;
-            this.buffer.Clear();
+            // Remove only the consumed frame; any bytes after the first \r stay in
+            // the buffer and are processed on the next DataReceived rather than being
+            // silently discarded (the old buffer.Clear() would drop a command echo
+            // that arrived in the same 1-second DataReceived sleep window as a status
+            // event, causing one of a bulk-CTRL pair to never reach AMX).
+            this.buffer.RemoveRange(0, foundat + 1);
+            // Trim ourmessage to the first frame only so that IE field extraction
+            // and the text-field scan (index 38 onwards) cannot run past the \r
+            // into bytes belonging to a subsequent frame.
+            ourmessage = ourmessage[..foundat];
             // Complete inbound frame received — bus is now idle. Releases the
             // half-duplex send gate and acks any in-flight command (the panel echoes
             // the command back, which is its acknowledgement).
@@ -117,13 +126,18 @@ namespace DraxTechnology.Panels
                 decimal zone = 0;
                 decimal.TryParse(Encoding.UTF8.GetString(ourmessage, 18 - 1, 5), out zone);
 
-                string sensor = Encoding.UTF8.GetString(ourmessage, 23 - 1, 1);
+                // sensor and address are only present in device events (≥25 bytes);
+                // status events (evacuate, reset, silence etc.) are 24 bytes and omit them.
+                string sensor = ourmessage.Length >= 23 ? Encoding.UTF8.GetString(ourmessage, 23 - 1, 1) : "";
                 int address = 0;
-                int.TryParse(
-                    Encoding.UTF8.GetString(ourmessage, 24 - 1, 2),
-                    System.Globalization.NumberStyles.HexNumber,
-                    System.Globalization.CultureInfo.InvariantCulture,
-                    out address);
+                if (ourmessage.Length >= 25)
+                {
+                    int.TryParse(
+                        Encoding.UTF8.GetString(ourmessage, 24 - 1, 2),
+                        System.Globalization.NumberStyles.HexNumber,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        out address);
+                }
                 giAddressNumber = address;
 
                 string sTextField = "";
@@ -1610,10 +1624,12 @@ namespace DraxTechnology.Panels
 
             try
             {
-                i = 2;
-
                 if (gbHalfDuplex == true)
                 {
+                    // Half-duplex checksum covers the frame body from index 1 (skips
+                    // only the leading '>'), matching CreateNOTChecksum(message.Substring(1))
+                    // on the send side.
+                    i = 1;
                     while (i < paryMessage.Length - 4)
                     {
                         sMessage += Encoding.ASCII.GetString(new byte[] { paryMessage[i] });
@@ -1626,6 +1642,7 @@ namespace DraxTechnology.Panels
                 }
                 else
                 {
+                i = 2;
                     while (i < paryMessage.Length - 2)
                     {
                         // Add byte value directly
