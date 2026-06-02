@@ -6,7 +6,8 @@ using System.Text;
 using System.Threading;
 
 namespace DraxTechnology.Panels
-{    internal class PanelNotifier : AbstractPanel
+{
+    internal class PanelNotifier : AbstractPanel
     {
         // Device addresses ≥ this are modules rather than physical sensor
         // devices. The disable/enable remap below (send_message) uses it as the
@@ -37,11 +38,6 @@ namespace DraxTechnology.Panels
         }
         public PanelNotifier(string baselogfolder, string identifier) : base(baselogfolder, identifier, "NOTMan", "NOT")
         {
-            // Use the bus-idle-gated, resend-on-no-ack send path (see AbstractPanel
-            // half-duplex region) — fixes the "press twice" collision. Set false to
-            // revert to the old immediate serialsend.
-            UseHalfDuplexGatedSend = true;
-
             if (!String.IsNullOrEmpty(identifier))
             {
                 heartbeat_timer = new Timer(heartbeat_timer_callback, this.Identifier, 1000, kHeartbeatDelaySeconds * 1000);
@@ -64,15 +60,7 @@ namespace DraxTechnology.Panels
             }
             ;
             if (foundat <= 0) return;
-            // Remove only the consumed frame; any bytes after the first \r stay in
-            // the buffer and are processed on the next DataReceived rather than being
-            // silently discarded.
-            this.buffer.RemoveRange(0, foundat + 1);
-            ourmessage = ourmessage[..foundat];
-            // Complete inbound frame received — bus is now idle. Releases the
-            // half-duplex send gate and acks any in-flight command (the panel echoes
-            // the command back, which is its acknowledgement).
-            NoteHalfDuplexReceive(true);
+            this.buffer.Clear();
             string strmsg = Encoding.UTF8.GetString(ourmessage, 0, foundat);
             if (!strmsg.StartsWith(">")) return;
             string cmd = strmsg.Substring(1, 2);
@@ -93,7 +81,6 @@ namespace DraxTechnology.Panels
 
             if (cmd == "IE")
             {
-                if (ourmessage.Length < 25) return;  // too short to contain all required IE fields
                 bOneShotReset = false;
                 string gsTextField = "";
                 string gAlarmType = "";
@@ -130,7 +117,7 @@ namespace DraxTechnology.Panels
                     if (quoteIndex >= 0)
                         sTextField = sTextField.Substring(0, quoteIndex).Trim();
                 }
-                
+
                 bool on = true;
 
                 gsTextField = sTextField;
@@ -782,7 +769,7 @@ namespace DraxTechnology.Panels
                         Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
-                     case enmNotEventType.Evacuate:  // 138
+                    case enmNotEventType.Evacuate:  // 138
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 1;
                         gsTextField = "Evacuate";
@@ -1006,7 +993,7 @@ namespace DraxTechnology.Panels
 
                 p3 = loop;
                 p4 = Convert.ToInt32(giAddressNumber);
-       
+
                 string zonetext = "";
                 if (zone > 0)
                 {
@@ -1181,7 +1168,7 @@ namespace DraxTechnology.Panels
                 }
             }
             catch (Exception ex)
-            {}
+            { }
         }
 
         private bool CheckForSectoring(int psEventCode, int psLoopNo)
@@ -1247,7 +1234,7 @@ namespace DraxTechnology.Panels
             serialport.Handshake = Handshake.None;
             serialport.RtsEnable = false;
             serialport.DataReceived += SerialPort_Datareceived;
- 
+
             if (serialport.IsOpen)
             {
                 serialport.Close();
@@ -1349,8 +1336,8 @@ namespace DraxTechnology.Panels
                 action = action switch
                 {
                     ActionType.kDISABLEDEVICE => ActionType.kDISABLEMODULE,
-                    ActionType.kENABLEDEVICE  => ActionType.kENABLEMODULE,
-                    _                          => action,
+                    ActionType.kENABLEDEVICE => ActionType.kENABLEMODULE,
+                    _ => action,
                 };
             }
 
@@ -1518,16 +1505,9 @@ namespace DraxTechnology.Panels
             string sChecksum = CreateNOTChecksum(message.Substring(1));
             message = message + sChecksum + "\r";
 
-            if (UseHalfDuplexGatedSend)
-            {
-                // Bus-idle-gated + resend-on-no-ack (logs "Sent to panel" per attempt).
-                HalfDuplexSend(message);
-            }
-            else
-            {
-                serialsend(message);
-                Console.WriteLine(DateTime.Now + ": " + message.Replace("\r", "") + " Sent to panel");
-            }
+            serialsend(message);
+
+            Console.WriteLine(DateTime.Now + ": " + message.Replace("\r", "") + " Sent to panel");
         }
 
         public string CreateNOTChecksum(string myString)
@@ -1536,7 +1516,7 @@ namespace DraxTechnology.Panels
 
             for (int n = 0; n < myString.Length; n++)
             {
-                int i = (int)myString[n]; 
+                int i = (int)myString[n];
                 i = i ^ (checksum / 256);
                 int j = i / 16;
                 i = i ^ j;

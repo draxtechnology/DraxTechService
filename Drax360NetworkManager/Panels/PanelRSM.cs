@@ -15,6 +15,8 @@ namespace DraxTechnology.Panels
         // Wire-format field separator. VB6: 'Global Const sepCHAR = 199' — that's
         // 'Ç' (0xC7). NOT ';'. Outgoing ACKs must use this byte or the panel rejects.
         const char kSeparator = 'Ç';
+        const string CURRENTNWMDATAFILE = @"c:\AMX1\Temp\Current.Nwm";  //TODO not code c:\AMX1
+
         #endregion
 
         #region message field offsets (mirror VB RSMenum.mField)
@@ -95,6 +97,7 @@ namespace DraxTechnology.Panels
             {
                 heartbeat_timer = new System.Threading.Timer(heartbeat_timer_callback, this.Identifier, 500, kheartbeatdelayseconds * 1000);
                 this.Offset = base.GetSetting<int>(ksettingsetupsection, "giAmx1Offset");
+                PassNWMDataToAMX1();
                 LoadDevices();
             }
         }
@@ -673,5 +676,61 @@ namespace DraxTechnology.Panels
         }
 
         #endregion
+
+        private void PassNWMDataToAMX1()
+        {
+            //Writes data about the NWM to AMX1's temporary data file
+            //Uses the DDEchannel as identifier
+            //This sub is unique to each Network Manager
+
+            // Check file not already been updated
+            if (File.Exists(CURRENTNWMDATAFILE))
+            {
+                List<List<string>> groups = new List<List<string>>();
+                List<string> current = null;
+                bool exists = false;
+                foreach (var line in File.ReadAllLines(CURRENTNWMDATAFILE))
+                {
+                    if (line.Contains("RSM Network Manager") && current == null)
+                        exists = true;
+                }
+                if (!exists)
+                {
+                    using (StreamWriter w = File.AppendText(CURRENTNWMDATAFILE))
+                    {
+                        var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+                        string versionString = version.ToString(); // "1.0.0.0"
+
+                        w.WriteLine("[0]\r\nProgName=RSM Network Manager");
+                        w.WriteLine("Name=RSMNWM\r\nVersion=" + versionString + "\r\nNodeName=RSM Fire Panel");
+
+
+                        w.WriteLine("Offset=0\r\nFirstNode=1\r\nLastNode=255");
+                        w.WriteLine("Startup=" + DateTime.Now);
+
+                        string exePath = Environment.ProcessPath!;
+                        DateTime exeDate = File.GetLastWriteTime(exePath);
+                        string exeDateTime = exeDate.ToString("dd/MM/yyyy HH:mm:ss");
+
+                        w.WriteLine("1A=NWM DLL File Date\r\n1B=" + exeDateTime);
+                        w.WriteLine("2A=\r\n2B=");
+                        w.WriteLine("3A=\r\n3B=");
+                        w.WriteLine("4A=\r\n4B=");
+                        w.WriteLine("5A=\r\n5B=");
+                        w.WriteLine("6A=\r\n6B=");
+                        w.WriteLine("7A=\r\n7B=");
+                        w.WriteLine("8A=\r\n8B=");
+                        w.WriteLine("9A=\r\n9B=");
+                        w.WriteLine("10A=\r\n10B=");
+                        w.WriteLine("11A=\r\n11B=");
+                        w.WriteLine("12A=\r\n12B=");
+                        w.WriteLine("13A\r\n13B=");
+                        w.WriteLine("14A=\r\n14B=");
+                        w.WriteLine("15A=\r\n15B=\r\n16A=\r\n16B=\r\n17A=\r\n17B=\r\n18A=\r\n18B=\r\n19A=\r\n19B=\r\n20A=\r\n20B=\r\n21A=\r\n21B=\r\n22A=\r\n22B=\r\n23A=\r\n23B=\r\n24A=\r\n24B=\r\n25A=\r\n25B=\r\n");
+                        w.Flush();
+                    }
+                }
+            }
+        }
     }
 }

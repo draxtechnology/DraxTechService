@@ -92,6 +92,7 @@ namespace DraxTechnology.Panels
             // half-duplex send gate and acks any in-flight command (the panel echoes
             // the command back, which is its acknowledgement).
             NoteHalfDuplexReceive(true);
+            if (ReceivedFrameWasCommandEcho) return;
             string strmsg = Encoding.UTF8.GetString(ourmessage, 0, foundat);
             if (!strmsg.StartsWith(">")) return;
             string cmd = strmsg.Substring(1, 2);
@@ -218,6 +219,13 @@ namespace DraxTechnology.Panels
                     sChecksum += Encoding.UTF8.GetString(new byte[] { ourmessage[ourmessage.Length - 1] });
                 }
                 bValidChecksum = CheckSumValidation(sChecksum, ourmessage);
+                if (!bValidChecksum)
+                {
+                    NotifyClient("Failed Checksum NAKa");
+                    foreach (char ch in ">INAK\r")
+                        SendChar(ch);
+                    return;
+                }
                 bool getDeviceText = true;
                 bool bDontSendToAMX = false;
                 switch ((enmNotEventType)eventcode)
@@ -1626,10 +1634,7 @@ namespace DraxTechnology.Panels
             {
                 if (gbHalfDuplex == true)
                 {
-                    // Half-duplex checksum covers the frame body from index 1 (skips
-                    // only the leading '>'), matching CreateNOTChecksum(message.Substring(1))
-                    // on the send side.
-                    i = 1;
+                    i = 2;
                     while (i < paryMessage.Length - 4)
                     {
                         sMessage += Encoding.ASCII.GetString(new byte[] { paryMessage[i] });

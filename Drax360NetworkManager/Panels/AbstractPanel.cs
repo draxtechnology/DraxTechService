@@ -369,6 +369,12 @@ namespace DraxTechnology.Panels
         private bool _hdAwaitingAck;           // a write is outstanding; don't re-write until timeout/ack
         private bool _hdReceivingFrame;        // true while a frame is arriving (bus busy)
         private DateTime _hdLastRx = DateTime.MinValue;
+        private bool _hdLastFrameWasEcho;      // set when a complete frame released an in-flight command
+
+        /// <summary>True when the most-recently-completed inbound frame was the panel's echo of a
+        /// service-sent command, not an independently-generated panel event. Parse overrides should
+        /// check this after calling NoteHalfDuplexReceive(true) and skip event processing if true.</summary>
+        protected bool ReceivedFrameWasCommandEcho => _hdLastFrameWasEcho;
         private Timer _hdTimer;                // quiet-gap re-check + ack-timeout, single-shot
 
         /// <summary>
@@ -406,10 +412,12 @@ namespace DraxTechnology.Panels
                 }
 
                 _hdReceivingFrame = false;
+                _hdLastFrameWasEcho = false;
                 // A complete inbound frame is the panel answering — treat it as the ack
                 // for a command we've already written, and clear it.
                 if (_hdInFlight != null && _hdAttempts > 0)
                 {
+                    _hdLastFrameWasEcho = true;
                     _hdInFlight = null;
                     _hdAwaitingAck = false;
                     this.NotifyClient("Half-duplex: command acknowledged by panel", false);
