@@ -634,7 +634,8 @@ namespace DraxTechnology.Panels
             {
                 if (!modules.TryGetValue(targetModule, out state))
                 {
-                    this.NotifyClient($"SendCommand {cmd}: module {targetModule} (from node {node} - offset {Offset}) not known", false);
+                    string known = modules.Count == 0 ? "none" : string.Join(", ", modules.Keys);
+                    this.NotifyClient($"SendCommand {cmd}: module {targetModule} (node {node} - offset {Offset}) not known; registered modules: {known}", false);
                     return;
                 }
                 stream = state.Stream;
