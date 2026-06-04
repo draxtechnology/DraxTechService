@@ -17,7 +17,7 @@ namespace DraxTechnology.Panels
 
         public string gsDeviceText = "";
         public EnmDeviceType gDeviceType;
-        public bool gbHalfDuplex = false;
+        public bool gbHalfDuplex = true;
         public bool gbSectoring = false;
         public int gsSectorNo;
         private readonly List<(int zone, int p2, int p3, int p4, int p1)> _disabledZones = new();
@@ -161,6 +161,13 @@ namespace DraxTechnology.Panels
                     sChecksum += Encoding.UTF8.GetString(new byte[] { ourmessage[ourmessage.Length - 1] });
                 }
                 bValidChecksum = CheckSumValidation(sChecksum, ourmessage);
+                if (!bValidChecksum)
+                {
+                    NotifyClient("Failed Checksum NOTNACK");
+                    foreach (char ch in ">IN\r")
+                        SendChar(ch);
+                    return;
+                }
                 bool getDeviceText = true;
                 bool bDontSendToAMX = false;
                 switch ((enmNotEventType)eventcode)

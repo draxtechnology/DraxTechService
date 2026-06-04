@@ -7,18 +7,6 @@ using System.Threading;
 
 namespace DraxTechnology.Panels
 {
-    // Inspire panel driver — the Notifier ID3000 / ID3K protocol as used by the
-    // Inspire (really the Pearl network manager, itself a near-copy of the ID3K).
-    // A standalone driver: ALL protocol behaviour (parse, send, checksum,
-    // event/device decode) lives here.
-    //
-    // History: briefly (2026-05-30 to 2026-06-01) Inspire and Notifier shared a
-    // PanelId3k base, since they were ~93%-identical copies. They were split back
-    // into independent drivers — Notifier restored to its known-good Friday
-    // version for real-panel work, and PanelId3k folded back into this class — so
-    // the two now evolve separately. This body carries Inspire's richer
-    // device/zone text parser and extra device types (26/27), plus the
-    // EntireZoneEnable (228) case.
     internal class PanelInspire : AbstractPanel
     {
         // Device addresses ≥ this are modules rather than physical sensor
@@ -33,12 +21,14 @@ namespace DraxTechnology.Panels
         public bool gbSectoring = false;
         public int gsSectorNo;
         private readonly List<(int zone, int p2, int p3, int p4, int p1)> _disabledZones = new();
+        private readonly object _pendingLock = new object();
+        private readonly HashSet<int> _pendingDeviceDisables = new HashSet<int>();
         private bool bOneShotReset;
         public override string FakeString
         {
             get =>
 
-                /* ID3K family
+                /* Notifier
             >IS0001C000000000000BE7\r
             >IE0220611450330000000BDD\r
             >IE0220611450330000000BDD\r
@@ -48,14 +38,8 @@ namespace DraxTechnology.Panels
 
                 ">IE0220611450330000000BDD\r";
         }
-        public PanelInspire(string baselogfolder, string identifier)
-            : base(baselogfolder, identifier, "INSMan", "INS")
+        public PanelInspire(string baselogfolder, string identifier) : base(baselogfolder, identifier, "INSMan", "INS")
         {
-            // Use the bus-idle-gated, resend-on-no-ack send path (see AbstractPanel
-            // half-duplex region) — fixes the "press twice" collision. Set false to
-            // revert to the old immediate serialsend.
-            UseHalfDuplexGatedSend = true;
-
             if (!String.IsNullOrEmpty(identifier))
             {
                 heartbeat_timer = new Timer(heartbeat_timer_callback, this.Identifier, 1000, kHeartbeatDelaySeconds * 1000);
@@ -78,21 +62,7 @@ namespace DraxTechnology.Panels
             }
             ;
             if (foundat <= 0) return;
-            // Remove only the consumed frame; any bytes after the first \r stay in
-            // the buffer and are processed on the next DataReceived rather than being
-            // silently discarded (the old buffer.Clear() would drop a command echo
-            // that arrived in the same 1-second DataReceived sleep window as a status
-            // event, causing one of a bulk-CTRL pair to never reach AMX).
-            this.buffer.RemoveRange(0, foundat + 1);
-            // Trim ourmessage to the first frame only so that IE field extraction
-            // and the text-field scan (index 38 onwards) cannot run past the \r
-            // into bytes belonging to a subsequent frame.
-            ourmessage = ourmessage[..foundat];
-            // Complete inbound frame received — bus is now idle. Releases the
-            // half-duplex send gate and acks any in-flight command (the panel echoes
-            // the command back, which is its acknowledgement).
-            NoteHalfDuplexReceive(true);
-            if (ReceivedFrameWasCommandEcho) return;
+            this.buffer.Clear();
             string strmsg = Encoding.UTF8.GetString(ourmessage, 0, foundat);
             if (!strmsg.StartsWith(">")) return;
             string cmd = strmsg.Substring(1, 2);
@@ -127,54 +97,28 @@ namespace DraxTechnology.Panels
                 decimal zone = 0;
                 decimal.TryParse(Encoding.UTF8.GetString(ourmessage, 18 - 1, 5), out zone);
 
-                // sensor and address are only present in device events (≥25 bytes);
-                // status events (evacuate, reset, silence etc.) are 24 bytes and omit them.
-                string sensor = ourmessage.Length >= 23 ? Encoding.UTF8.GetString(ourmessage, 23 - 1, 1) : "";
+                string sensor = Encoding.UTF8.GetString(ourmessage, 23 - 1, 1);
                 int address = 0;
-                if (ourmessage.Length >= 25)
-                {
-                    int.TryParse(
-                        Encoding.UTF8.GetString(ourmessage, 24 - 1, 2),
-                        System.Globalization.NumberStyles.HexNumber,
-                        System.Globalization.CultureInfo.InvariantCulture,
-                        out address);
-                }
+                int.TryParse(
+                    Encoding.UTF8.GetString(ourmessage, 24 - 1, 2),
+                    System.Globalization.NumberStyles.HexNumber,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out address);
                 giAddressNumber = address;
 
                 string sTextField = "";
-                string gsDeviceText = "";
-                string gsZoneText = "";
-                bool bTextSeparator = false;
-
-                int i = 38; // your starting index
-
-                while (i < ourmessage.Length && ourmessage[i] != (byte)'"')
+                if (ourmessage != null && ourmessage.Length > 37)
                 {
-                    if (ourmessage[i] == (byte)'\\')
-                    {
-                        // Escaped quote - replace \ with " and skip next char
-                        sTextField += '"';
-                        i++;
-                    }
-                    else if (ourmessage[i] == 254)
-                    {
-                        // Separator between device text and zone text
-                        bTextSeparator = true;
-                        gsDeviceText = sTextField;
-                    }
-                    else if (bTextSeparator)
-                    {
-                        // After separator = zone text
-                        gsZoneText += ((char)ourmessage[i]).ToString();
-                    }
-                    else
-                    {
-                        sTextField += (char)ourmessage[i];
-                    }
+                    int start = (ourmessage[36] == 254) ? 37 : 36;
+                    int end = Array.IndexOf(ourmessage, (byte)254, start);
+                    if (end < 0) end = ourmessage.Length; // no terminator found, read to end
 
-                    i++;
+                    sTextField = Encoding.UTF8.GetString(ourmessage, start, end - start);
+
+                    int quoteIndex = sTextField.IndexOf('"');
+                    if (quoteIndex >= 0)
+                        sTextField = sTextField.Substring(0, quoteIndex).Trim();
                 }
-
 
                 bool on = true;
 
@@ -208,26 +152,30 @@ namespace DraxTechnology.Panels
                 bool bValidChecksum = false;
                 if (gbHalfDuplex)
                 {
-                    sChecksum = Encoding.UTF8.GetString(new byte[] { ourmessage[ourmessage.Length - 4] });
-                    sChecksum += Encoding.UTF8.GetString(new byte[] { ourmessage[ourmessage.Length - 3] });
-                    sChecksum += Encoding.UTF8.GetString(new byte[] { ourmessage[ourmessage.Length - 2] });
-                    sChecksum += Encoding.UTF8.GetString(new byte[] { ourmessage[ourmessage.Length - 1] });
+                    //sChecksum = Encoding.UTF8.GetString(new byte[] { ourmessage[ourmessage.Length - 4] });
+                    //sChecksum += Encoding.UTF8.GetString(new byte[] { ourmessage[ourmessage.Length - 3] });
+                    //sChecksum += Encoding.UTF8.GetString(new byte[] { ourmessage[ourmessage.Length - 2] });
+                    //sChecksum += Encoding.UTF8.GetString(new byte[] { ourmessage[ourmessage.Length - 1] });
+
+                    bValidChecksum = true; // Checksum not sent in half duplex mode, so just assume valid
                 }
                 else
                 {
                     sChecksum = Encoding.UTF8.GetString(new byte[] { ourmessage[ourmessage.Length - 2] });
                     sChecksum += Encoding.UTF8.GetString(new byte[] { ourmessage[ourmessage.Length - 1] });
+
+                    bValidChecksum = CheckSumValidation(sChecksum, ourmessage);
                 }
-                bValidChecksum = CheckSumValidation(sChecksum, ourmessage);
                 if (!bValidChecksum)
                 {
-                    NotifyClient("Failed Checksum NAKa");
-                    foreach (char ch in ">INAK\r")
+                    NotifyClient("Failed Checksum NOTNACK");
+                    foreach (char ch in ">IN\r")
                         SendChar(ch);
                     return;
                 }
                 bool getDeviceText = true;
                 bool bDontSendToAMX = false;
+                bool bIsEchoResponse = false;
                 switch ((enmNotEventType)eventcode)
                 {
                     case enmNotEventType.Fire:
@@ -315,6 +263,10 @@ namespace DraxTechnology.Panels
                         gsTextField = "Device " + address + " Disabled";
                         gsTextField = sTextField;
                         Console.WriteLine(DateTime.Now + ": " + "Device " + address + " Disabled");
+                        {
+                            int effectiveAddr = sensor.ToLower() == "m" ? address + kModuleAddressMin : address;
+                            lock (_pendingLock) bIsEchoResponse = _pendingDeviceDisables.Remove(effectiveAddr);
+                        }
                         break;
 
                     case enmNotEventType.SystemReset:
@@ -737,6 +689,14 @@ namespace DraxTechnology.Panels
                         Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
+                    case enmNotEventType.OverRideSounder:
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 65;
+                        gsTextField = "Over-Ride Sounder/Investigation delay";
+                        getDeviceText = false;
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                        break;
+
                     case enmNotEventType.SounderDisabled:  // 159
                         gAlarmType = enmNotAlarmType.NOTIsolate.ToString();
                         gsTextField = "Sounder Disabled";
@@ -747,14 +707,6 @@ namespace DraxTechnology.Panels
                         gAlarmType = enmNotAlarmType.NOTIsolate.ToString();
                         gsTextField = "Sounder Enabled";
                         on = false;
-                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
-                        break;
-
-                    case enmNotEventType.OverRideSounder:
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
-                        giAddressNumber = 65;
-                        gsTextField = "Over-Ride Sounder/Investigation delay";
-                        getDeviceText = false;
                         Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
@@ -939,6 +891,14 @@ namespace DraxTechnology.Panels
                         Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
+                    case enmNotEventType.EntireZoneEnable:  // 228
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 97;
+                        gsTextField = "Entire Zone Enable";
+                        getDeviceText = false;
+                        on = false;
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                        break;
                     case enmNotEventType.SystemDayMode:  // 172
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 7;
@@ -968,15 +928,6 @@ namespace DraxTechnology.Panels
                         giAddressNumber = 71;
                         gsTextField = "Network In Zone " + zone + " Disabled";
                         getDeviceText = false;
-                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
-                        break;
-
-                    case enmNotEventType.EntireZoneEnable:  // 228
-                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
-                        giAddressNumber = 97;
-                        gsTextField = "Entire Zone Enable";
-                        getDeviceText = false;
-                        on = false;
                         Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
@@ -1015,7 +966,6 @@ namespace DraxTechnology.Panels
 
                     default:
                         base.NotifyClient("Unknown Event " + ((enmNotEventType)eventcode));
-                        getDeviceText = false;
                         break;
                 }
 
@@ -1066,11 +1016,6 @@ namespace DraxTechnology.Panels
                 {
                     zonetext = "Zone " + zone;
                 }
-
-                if (gsZoneText.Length > 0)
-                {
-                    zonetext = gsZoneText;
-                }
                 evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, on);
                 if (p1 == (int)enmPRLAlarmType.Isolate)  // If Disable Device neeed to also send another event to AMX to increase the Isolation count
                 {
@@ -1098,8 +1043,19 @@ namespace DraxTechnology.Panels
 
                 if (!bDontSendToAMX)
                 {
-                    this.NotifyClient("Sending gsTextField: " + gsTextField + " gsDeviceText: " + gsDeviceText + " zonetext: " + zonetext, false);
-                    send_response_amx_and_serial(evnum, gsTextField, gsDeviceText, zonetext);
+                    if (!bIsEchoResponse)
+                    {
+                        this.NotifyClient("Sending gsTextField: " + gsTextField + " gsDeviceText: " + gsDeviceText + " zonetext: " + zonetext, false);
+                        send_response_amx_and_serial(evnum, gsTextField, gsDeviceText, zonetext);
+                    }
+                    else
+                    {
+                        // Panel echoed our own disable command — isolation count already updated via
+                        // send_response_amx_disable above. Skip AlarmToAMX so AMX doesn't raise a
+                        // new interactive event requiring the user to press Disable a second time.
+                        this.NotifyClient("Echo suppressed (AlarmToAMX skipped): " + gsTextField, false);
+                        foreach (char ch in ">IACK\r") SendChar(ch);
+                    }
                 }
 
                 if (bOneShotReset && evnum != 0)
@@ -1233,14 +1189,6 @@ namespace DraxTechnology.Panels
                         gDeviceType = EnmDeviceType.SMART4Sensor;
                         gsDeviceText = "SMART 4 Sensor";
                         break;
-                    case 26:
-                        gDeviceType = EnmDeviceType.UnmonitoredRelayOutput;
-                        gsDeviceText = "Unmonitored Relay Output";
-                        break;
-                    case 27:
-                        gDeviceType = EnmDeviceType.ViewReferenceSensor;
-                        gsDeviceText = "View Reference Sensor";
-                        break;
                     default:
                         gDeviceType = EnmDeviceType.Unknown;
                         gsDeviceText = "";
@@ -1292,6 +1240,7 @@ namespace DraxTechnology.Panels
 
             if (fakemode > 0)
             {
+
                 return;
             }
 
@@ -1395,11 +1344,16 @@ namespace DraxTechnology.Panels
         {
             ParsePassedValues(passedvalues, out int node, out int loop, out int zone, out int device);
 
+            // Record device in pending set before the module remap so the address
+            // matches what effectiveAddr reconstructs from the panel's echo.
+            if (action == ActionType.kDISABLEDEVICE)
+                lock (_pendingLock) _pendingDeviceDisables.Add(device);
+
             // Diagnostic for the module-disable investigation (Richard, 2026-05-23).
             // If "device < 100" appears in the console when triggering Disable
             // Module from AMX, the gate below correctly skips the remap because
             // the upstream AMX → CTRL → DispatchAmxPipeCommand path isn't passing
-            // the +100 module offset — fix would be there, not in this driver.
+            // the +100 module offset — fix would be there, not in PanelInspire.
             // Remove this line once the module-disable path is verified end-to-end.
             this.NotifyClient($"send_message: action={action} device={device}");
 
@@ -1420,7 +1374,7 @@ namespace DraxTechnology.Panels
                 };
             }
 
-            // Original (Mike, commit 43b1206 — "PanelInspire Module Disable", 2026-05-22):
+            // Original (Mike, commit 43b1206 — "Notifier Module Disable", 2026-05-22):
             // if (action == ActionType.kDISABLEDEVICE & device >= 100)
             // {
             //     action = ActionType.kDISABLEMODULE;
@@ -1584,16 +1538,9 @@ namespace DraxTechnology.Panels
             string sChecksum = CreateNOTChecksum(message.Substring(1));
             message = message + sChecksum + "\r";
 
-            if (UseHalfDuplexGatedSend)
-            {
-                // Bus-idle-gated + resend-on-no-ack (logs "Sent to panel" per attempt).
-                HalfDuplexSend(message);
-            }
-            else
-            {
-                serialsend(message);
-                Console.WriteLine(DateTime.Now + ": " + message.Replace("\r", "") + " Sent to panel");
-            }
+            serialsend(message);
+
+            Console.WriteLine(DateTime.Now + ": " + message.Replace("\r", "") + " Sent to panel");
         }
 
         public string CreateNOTChecksum(string myString)
@@ -1632,9 +1579,10 @@ namespace DraxTechnology.Panels
 
             try
             {
+                i = 2;
+
                 if (gbHalfDuplex == true)
                 {
-                    i = 2;
                     while (i < paryMessage.Length - 4)
                     {
                         sMessage += Encoding.ASCII.GetString(new byte[] { paryMessage[i] });
@@ -1647,7 +1595,6 @@ namespace DraxTechnology.Panels
                 }
                 else
                 {
-                i = 2;
                     while (i < paryMessage.Length - 2)
                     {
                         // Add byte value directly
