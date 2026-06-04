@@ -17,7 +17,7 @@ namespace DraxTechnology.Panels
 
         public string gsDeviceText = "";
         public EnmDeviceType gDeviceType;
-        public bool gbHalfDuplex = true;
+        public bool gbHalfDuplex = false;
         public bool gbSectoring = false;
         public int gsSectorNo;
         private readonly List<(int zone, int p2, int p3, int p4, int p1)> _disabledZones = new();
@@ -63,6 +63,7 @@ namespace DraxTechnology.Panels
             ;
             if (foundat <= 0) return;
             this.buffer.Clear();
+            ourmessage = ourmessage[..(foundat + 1)];
             string strmsg = Encoding.UTF8.GetString(ourmessage, 0, foundat);
             if (!strmsg.StartsWith(">")) return;
             string cmd = strmsg.Substring(1, 2);
@@ -152,19 +153,15 @@ namespace DraxTechnology.Panels
                 bool bValidChecksum = false;
                 if (gbHalfDuplex)
                 {
-                    //sChecksum = Encoding.UTF8.GetString(new byte[] { ourmessage[ourmessage.Length - 4] });
-                    //sChecksum += Encoding.UTF8.GetString(new byte[] { ourmessage[ourmessage.Length - 3] });
-                    //sChecksum += Encoding.UTF8.GetString(new byte[] { ourmessage[ourmessage.Length - 2] });
-                    //sChecksum += Encoding.UTF8.GetString(new byte[] { ourmessage[ourmessage.Length - 1] });
-
-                    bValidChecksum = true; // Checksum not sent in half duplex mode, so just assume valid
+                    sChecksum = Encoding.UTF8.GetString(new byte[] { ourmessage[ourmessage.Length - 5] });
+                    sChecksum += Encoding.UTF8.GetString(new byte[] { ourmessage[ourmessage.Length - 4] });
+                    sChecksum += Encoding.UTF8.GetString(new byte[] { ourmessage[ourmessage.Length - 3] });
+                    sChecksum += Encoding.UTF8.GetString(new byte[] { ourmessage[ourmessage.Length - 2] });
                 }
                 else
                 {
-                    sChecksum = Encoding.UTF8.GetString(new byte[] { ourmessage[ourmessage.Length - 2] });
-                    sChecksum += Encoding.UTF8.GetString(new byte[] { ourmessage[ourmessage.Length - 1] });
-
-                    bValidChecksum = CheckSumValidation(sChecksum, ourmessage);
+                    sChecksum = Encoding.UTF8.GetString(new byte[] { ourmessage[ourmessage.Length - 3] });
+                    sChecksum += Encoding.UTF8.GetString(new byte[] { ourmessage[ourmessage.Length - 2] });
                 }
                 bValidChecksum = CheckSumValidation(sChecksum, ourmessage);
                 if (!bValidChecksum)
@@ -1536,13 +1533,22 @@ namespace DraxTechnology.Panels
                  zone.ToString("D5");
             }
 
-            // VB6 computes checksum over body without the leading ">"
-            string sChecksum = CreateNOTChecksum(message.Substring(1));
+            string sChecksum = gbHalfDuplex
+                ? CreateNOTChecksum(message.Substring(1))
+                : CreateSimpleChecksum(message.Substring(1));
             message = message + sChecksum + "\r";
 
             serialsend(message);
 
             Console.WriteLine(DateTime.Now + ": " + message.Replace("\r", "") + " Sent to panel");
+        }
+
+        private string CreateSimpleChecksum(string body)
+        {
+            int sum = 0;
+            foreach (char c in body)
+                sum += (byte)c;
+            return (sum % 256).ToString("X2");
         }
 
         public string CreateNOTChecksum(string myString)
@@ -1581,11 +1587,11 @@ namespace DraxTechnology.Panels
 
             try
             {
-                i = 2;
+                i = 1;
 
                 if (gbHalfDuplex == true)
                 {
-                    while (i < paryMessage.Length - 4)
+                    while (i < paryMessage.Length - 5)
                     {
                         sMessage += Encoding.ASCII.GetString(new byte[] { paryMessage[i] });
                         i++;
@@ -1597,7 +1603,7 @@ namespace DraxTechnology.Panels
                 }
                 else
                 {
-                    while (i < paryMessage.Length - 2)
+                    while (i < paryMessage.Length - 3)
                     {
                         // Add byte value directly
                         iMsgCheckSum = paryMessage[i] + iMsgCheckSum;
