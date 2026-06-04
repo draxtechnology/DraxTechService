@@ -219,6 +219,53 @@ namespace DraxTechnology.Panels
                     sChecksum += Encoding.UTF8.GetString(new byte[] { ourmessage[ourmessage.Length - 1] });
                 }
                 bValidChecksum = CheckSumValidation(sChecksum, ourmessage);
+
+                // --- Checksum diagnostic (Inspire is Pearl hardware) ---
+                // The Inspire derives from the Notifier driver, so on half-duplex it both
+                // sends and validates a 4-char NOT checksum (CreateNOTChecksum), whereas the
+                // genuine Pearl only ever carries a 2-char arithmetic (sum mod 256) checksum.
+                // The NAK gate just below now enforces bValidChecksum, so if the half-duplex
+                // 4-char assumption is wrong for this panel, every frame NAKs and no events
+                // reach AMX. This dump runs BEFORE the gate so it fires even on NAK'd frames,
+                // showing which form the panel actually trails. Routed notifyui:false so it
+                // lands in the trace log, not the AMX UI.
+                {
+                    int len = ourmessage.Length;
+
+                    // Printable rendering of the raw frame; non-printables shown as <nnn>.
+                    var sbFrame = new StringBuilder();
+                    for (int n = 0; n < len; n++)
+                    {
+                        byte b = ourmessage[n];
+                        if (b >= 32 && b < 127) sbFrame.Append((char)b);
+                        else sbFrame.Append('<').Append(b).Append('>');
+                    }
+
+                    string trailing2 = len >= 2 ? Encoding.ASCII.GetString(ourmessage, len - 2, 2) : "";
+                    string trailing4 = len >= 4 ? Encoding.ASCII.GetString(ourmessage, len - 4, 4) : "";
+
+                    // Pearl / full-duplex form: sum of body bytes [2 .. len-2) mod 256, 2 hex.
+                    int arith = 0;
+                    for (int n = 2; n < len - 2; n++) arith += ourmessage[n];
+                    string arithHex = (arith % 256).ToString("X2");
+
+                    // Notifier half-duplex form: NOT checksum over body [2 .. len-4), 4 hex.
+                    string notBody = len >= 6 ? Encoding.ASCII.GetString(ourmessage, 2, len - 6) : "";
+                    string notHex = CreateNOTChecksum(notBody);
+
+                    string matches =
+                        trailing2 == arithHex ? "arith2" :
+                        trailing4 == notHex ? "not4" :
+                        "NEITHER";
+
+                    NotifyClient(
+                        $"[PanelInspire.Parse checksum] len={len} frame=\"{sbFrame}\" " +
+                        $"trailing2=\"{trailing2}\" trailing4=\"{trailing4}\" " +
+                        $"arith(2)={arithHex} not(4)={notHex} matches={matches} " +
+                        $"(validated={bValidChecksum}, halfDuplex={gbHalfDuplex})",
+                        false);
+                }
+
                 if (!bValidChecksum)
                 {
                     NotifyClient("Failed Checksum NAKa");
@@ -226,6 +273,7 @@ namespace DraxTechnology.Panels
                         SendChar(ch);
                     return;
                 }
+
                 bool getDeviceText = true;
                 bool bDontSendToAMX = false;
                 switch ((enmNotEventType)eventcode)
