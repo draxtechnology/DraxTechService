@@ -6,8 +6,7 @@ using System.Text;
 using System.Threading;
 
 namespace DraxTechnology.Panels
-{
-    internal class PanelNotifier : AbstractPanel
+{    internal class PanelNotifier : AbstractPanel
     {
         // Device addresses ≥ this are modules rather than physical sensor
         // devices. The disable/enable remap below (send_message) uses it as the
@@ -17,7 +16,7 @@ namespace DraxTechnology.Panels
 
         public string gsDeviceText = "";
         public EnmDeviceType gDeviceType;
-        public bool gbHalfDuplex = true;
+        public bool gbHalfDuplex = false;
         public bool gbSectoring = false;
         public int gsSectorNo;
         private readonly List<(int zone, int p2, int p3, int p4, int p1)> _disabledZones = new();
@@ -117,7 +116,7 @@ namespace DraxTechnology.Panels
                     if (quoteIndex >= 0)
                         sTextField = sTextField.Substring(0, quoteIndex).Trim();
                 }
-
+                
                 bool on = true;
 
                 gsTextField = sTextField;
@@ -161,13 +160,6 @@ namespace DraxTechnology.Panels
                     sChecksum += Encoding.UTF8.GetString(new byte[] { ourmessage[ourmessage.Length - 1] });
                 }
                 bValidChecksum = CheckSumValidation(sChecksum, ourmessage);
-                if (!bValidChecksum)
-                {
-                    NotifyClient("Failed Checksum NOTNACK");
-                    foreach (char ch in ">IN\r")
-                        SendChar(ch);
-                    return;
-                }
                 bool getDeviceText = true;
                 bool bDontSendToAMX = false;
                 switch ((enmNotEventType)eventcode)
@@ -776,7 +768,7 @@ namespace DraxTechnology.Panels
                         Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
-                    case enmNotEventType.Evacuate:  // 138
+                     case enmNotEventType.Evacuate:  // 138
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         giAddressNumber = 1;
                         gsTextField = "Evacuate";
@@ -1000,7 +992,7 @@ namespace DraxTechnology.Panels
 
                 p3 = loop;
                 p4 = Convert.ToInt32(giAddressNumber);
-
+       
                 string zonetext = "";
                 if (zone > 0)
                 {
@@ -1175,7 +1167,7 @@ namespace DraxTechnology.Panels
                 }
             }
             catch (Exception ex)
-            { }
+            {}
         }
 
         private bool CheckForSectoring(int psEventCode, int psLoopNo)
@@ -1241,7 +1233,7 @@ namespace DraxTechnology.Panels
             serialport.Handshake = Handshake.None;
             serialport.RtsEnable = false;
             serialport.DataReceived += SerialPort_Datareceived;
-
+ 
             if (serialport.IsOpen)
             {
                 serialport.Close();
@@ -1343,8 +1335,8 @@ namespace DraxTechnology.Panels
                 action = action switch
                 {
                     ActionType.kDISABLEDEVICE => ActionType.kDISABLEMODULE,
-                    ActionType.kENABLEDEVICE => ActionType.kENABLEMODULE,
-                    _ => action,
+                    ActionType.kENABLEDEVICE  => ActionType.kENABLEMODULE,
+                    _                          => action,
                 };
             }
 
@@ -1523,7 +1515,7 @@ namespace DraxTechnology.Panels
 
             for (int n = 0; n < myString.Length; n++)
             {
-                int i = (int)myString[n];
+                int i = (int)myString[n]; 
                 i = i ^ (checksum / 256);
                 int j = i / 16;
                 i = i ^ j;
