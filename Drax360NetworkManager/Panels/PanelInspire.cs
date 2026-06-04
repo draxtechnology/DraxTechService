@@ -166,6 +166,7 @@ namespace DraxTechnology.Panels
 
                     bValidChecksum = CheckSumValidation(sChecksum, ourmessage);
                 }
+                bValidChecksum = CheckSumValidation(sChecksum, ourmessage);
                 if (!bValidChecksum)
                 {
                     NotifyClient("Failed Checksum NOTNACK");
@@ -173,6 +174,7 @@ namespace DraxTechnology.Panels
                         SendChar(ch);
                     return;
                 }
+
                 bool getDeviceText = true;
                 bool bDontSendToAMX = false;
                 bool bIsEchoResponse = false;
