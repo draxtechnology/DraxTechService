@@ -99,6 +99,15 @@ namespace DraxTechnology.Panels
                 this.Offset = base.GetSetting<int>(ksettingsetupsection, "giAmx1Offset");
                 PassNWMDataToAMX1();
                 LoadDevices();
+
+                // Make the resolved AMX offset visible at startup. Inbound EVTs are
+                // reported as (ModuleNumber + Offset) and outbound commands target
+                // (node - Offset), so a wrong Offset shows up as an AMX node mismatch
+                // (events on the wrong node / Reset can't find the module). If this
+                // logs 0 but RSMMan.ini sets giAmx1Offset, the service isn't reading
+                // that ini — see the SettingsSingleton load-path line above.
+                this.NotifyClient(
+                    $"PanelRSM startup: giAmx1Offset={this.Offset} (section [{ksettingsetupsection}]).", false);
             }
         }
 

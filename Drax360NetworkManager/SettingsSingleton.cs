@@ -68,7 +68,20 @@ namespace DraxTechnology
         public void ReLoadSettings()
         {
             settings.Clear();
-            if (!File.Exists(settingsfile)) return;
+
+            // Surface where the ini is actually being read from. settingsfile is a
+            // CWD-relative "ini\<panel>.ini", so the resolved absolute path depends
+            // on the service's working directory — log it so a missing or stale ini
+            // is obvious rather than silently falling back to defaults (e.g.
+            // giAmx1Offset=0, which reads as an AMX node mismatch on a real panel).
+            string resolvedpath = Path.GetFullPath(settingsfile);
+            if (!File.Exists(settingsfile))
+            {
+                Console.WriteLine(DateTime.Now + ": " +
+                    $"SettingsSingleton: ini NOT FOUND at '{resolvedpath}' — every setting will fall back to its default. " +
+                    "Check the ini is deployed alongside the service (or in the Configuration folder).");
+                return;
+            }
             string section = "";
 
             string[] lines = File.ReadAllLines(settingsfile);
@@ -112,6 +125,9 @@ namespace DraxTechnology
 
                 settings.Add(key, value);
             }
+
+            Console.WriteLine(DateTime.Now + ": " +
+                $"SettingsSingleton: loaded {settings.Count} setting(s) from '{resolvedpath}'.");
         }
 
         public void SetSetting(string section, string name, object value)
