@@ -588,8 +588,23 @@ namespace DraxTechnology.Panels
             string value = GetField(parts, F_Text).Trim();
             string mode = GetField(parts, F_Extension);
 
+            // Mirrors VB6 RSMNetManager.bas:968-971: if the device type field starts
+            // with "$" it is already a text label (strip the prefix); otherwise it is
+            // a numeric code resolved via GetDeviceType — same logic as HandleEVT.
             string rawDevType = GetField(parts, F_DeviceType);
-            string sDeviceType = rawDevType.StartsWith("$") ? rawDevType.Substring(1) : rawDevType;
+            string sDeviceType;
+            if (rawDevType.StartsWith("$"))
+            {
+                sDeviceType = rawDevType.Substring(1);
+            }
+            else if (int.TryParse(rawDevType.Trim(), out int devTypeCode))
+            {
+                sDeviceType = RsmLookups.GetDeviceType(devTypeCode, state.ModuleType);
+            }
+            else
+            {
+                sDeviceType = rawDevType;
+            }
 
             int panelAndOffset = state.ModuleNumber + Offset;
             string msg = $"C2M:DEVANALOG|{panelAndOffset}|{loopNum}|{address}|{subAddress}|{value}|{mode}|{sDeviceType}||||";
