@@ -366,6 +366,17 @@ namespace DraxTechnology.Panels
             if (oneShot)
                 CSAMXSingleton.CS.ForceEvmAttribute(evnum, 13, 1);
 
+            // Isolation list — mirrors VB6 RSMNetManager.bas:740-744:
+            //   If giIsolationsList <> 0 Then
+            //     If InputType = 4 And LoopNum <> 0 Then
+            //       WriteNWMData(tStr, 2, EventNumber, ...)
+            // giIsolationsList defaults to 1 (enabled) from the ini. The second
+            // write with eventtype=2 (IsolationToAmx) populates the AMX isolation
+            // list so operators can see which devices are currently isolated.
+            // LoopNum=0 events are panel-wide status messages, not device isolations.
+            if (inputType == 4 && loopNum != 0)
+                CSAMXSingleton.CS.SendAlarmToAMX_disable(evnum, deviceText, sDeviceType, zoneText, on);
+
             CSAMXSingleton.CS.FlushMessages();
 
             this.NotifyClient($"EVT {Label(state)} L{loopNum} A{address} type={inputType} on={on}{(oneShot ? " oneshot" : "")} text='{deviceText}' devtype='{sDeviceType}' zone={zone}", false);
