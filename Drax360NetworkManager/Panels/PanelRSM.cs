@@ -79,6 +79,20 @@ namespace DraxTechnology.Panels
             // Computed from ExpiryDateDays + SerialNumber after each POL (mirrors
             // VB6 clsRSM.UpdateLicenseInfo). Unlicensed until first POL arrives.
             public RsmLicenseStatus LicenseStatus = RsmLicenseStatus.Unlicensed;
+
+            // Fields populated from GAK responses (VB6 clsRSM properties set in
+            // RSMNetManager.bas:881-940). Only fields the service actually uses or
+            // exposes in diagnostics; Properties dialog fields deferred until client UI.
+            public string DHCPName      = "";
+            public string ConfiguredIP  = "";  // setgetIPAddress (not the same as LastKnownIP)
+            public string SubnetMask    = "";
+            public string Gateway       = "";
+            public string SoftwareVersion = "";
+            public string MasterPanelID = "";
+            public string ReportsTo1    = "";
+            public string ReportsTo2    = "";
+            public string ReverseInputs = "";
+            public int    RequestPort   = 0;
             // False until the first PAK exchange completes. VB6 only quarantines
             // expired-licence events once LicenseDataReceived=True so a module
             // doesn't get falsely quarantined during startup (comment in
@@ -222,12 +236,15 @@ namespace DraxTechnology.Panels
                     ack = $"ACK{kSeparator}{moduleNumber}{kSeparator}{messageID}";
                     break;
 
+                case "GAK":
+                    HandleGAK(state, parts);
+                    return new byte[0];
+
                 case "CAK":
                 case "SAK":
-                case "GAK":
                 case "ACK":
                 case "NAK":
-                    // these are responses to commands the manager sent — nothing to ack
+                    // responses to commands the manager sent — nothing to ack
                     return new byte[0];
 
                 default:
@@ -417,6 +434,42 @@ namespace DraxTechnology.Panels
             if (expiryDate.AddDays(-30) < now)
                 return RsmLicenseStatus.Expiring;
             return RsmLicenseStatus.Good;
+        }
+
+        // Mirrors VB6 RSMNetManager.bas:881-940. GAK is the module's reply to a
+        // GET command the manager sent. The message layout (mSetOption enum,
+        // RSMenum.bas:69-78) is:
+        //   parts[0]=GAK  [1]=MsgID  [2]=Node  [3]=Serial  [4]=ModuleType
+        //   parts[5]=OptionNumber (optSetGet enum)  [6]=OptionString (value)
+        // We store the fields that matter for diagnostics and the Properties panel;
+        // unrecognised option numbers are logged and ignored.
+        private void HandleGAK(ModuleState state, string[] parts)
+        {
+            const int G_OptionNumber = 5;
+            const int G_OptionValue  = 6;
+
+            int optionNumber = ParseInt(GetField(parts, G_OptionNumber));
+            string value     = GetField(parts, G_OptionValue);
+
+            // optSetGet enum values from RSMenum.bas:81-115
+            switch (optionNumber)
+            {
+                case 2:  state.DHCPName       = value; break;  // setgetDHCPName
+                case 3:  state.ConfiguredIP   = value; break;  // setgetIPAddress
+                case 4:  state.SubnetMask     = value; break;  // setgetSubnetMask
+                case 5:  state.Gateway        = value; break;  // setgetGateway
+                case 6:  state.ReportsTo1     = value; break;  // setgetReport1
+                case 7:  state.ReportsTo2     = value; break;  // setgetReport2
+                case 14: state.ReverseInputs  = value; break;  // setgetName4 (used for ReverseInputs)
+                case 19: state.MasterPanelID  = value; break;  // setgetPanelNumbers
+                case 16: state.RequestPort    = ParseInt(value); break; // setgetPortlistening
+                case 31: state.SoftwareVersion = value; break; // setgetSoftwareVersion
+                default:
+                    this.NotifyClient($"GAK {Label(state)} option={optionNumber} value='{value}' (unhandled)", false);
+                    return;
+            }
+
+            this.NotifyClient($"GAK {Label(state)} option={optionNumber} value='{value}'", false);
         }
 
         private void HandleZTX(ModuleState state, string[] parts)
