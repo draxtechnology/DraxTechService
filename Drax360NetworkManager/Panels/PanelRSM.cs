@@ -104,6 +104,11 @@ namespace DraxTechnology.Panels
             // null = never reported (first heartbeat determines initial state).
             public bool? LastReportedOnline = null;
 
+            // Set when a kickstart has been attempted for the current silence
+            // episode; cleared on the next successful RX so it fires only once
+            // per gap rather than on every heartbeat tick.
+            public bool KickstartSent = false;
+
             // Set by Parse when bytes arrive on this module's TCP connection,
             // cleared by UnregisterStream when the connection closes. Used for
             // outbound commands (Evacuate/Silence/Reset/etc.).
@@ -559,6 +564,7 @@ namespace DraxTechnology.Panels
                 state.LastKnownIP = ip;
                 state.FriendlyName = friendlyName;
                 state.LastRX = DateTime.Now;
+                state.KickstartSent = false; // new message received — reset for the next silence episode
                 state.RXmessages++;
                 if (!string.IsNullOrEmpty(moduleType)) state.ModuleType = moduleType;
                 if (!string.IsNullOrEmpty(serialNumber)) state.SerialNumber = serialNumber;
@@ -815,7 +821,30 @@ namespace DraxTechnology.Panels
                 if (state.LastRX == DateTime.MinValue)
                     continue;
 
-                bool isOnline = (now - state.LastRX).TotalSeconds <= onlineWindowSeconds;
+                double elapsedSeconds = (now - state.LastRX).TotalSeconds;
+                bool isOnline = elapsedSeconds <= onlineWindowSeconds;
+
+                // Kickstart — mirrors VB6 frmRSMNetworkManager.frm:2018-2046 tmrProcess_Timer.
+                // giKickStart defaults to 1 (enabled) from [Tweaks] Kickstart=1 in the ini.
+                // When a module is approaching its timeout threshold (online window minus 45s),
+                // close the stale TCP stream so the module detects the disconnection and
+                // reconnects, sending a fresh POL that resets LastRX. Fires once per silence
+                // episode (KickstartSent guards against retrying on every heartbeat tick).
+                // VB6 also queues a MuteBuzzer at this point; we omit it as the stream close
+                // alone triggers the reconnect — we have no command queue to send into.
+                const double kickstartThreshold = onlineWindowSeconds - 45.0;
+                if (isOnline
+                    && elapsedSeconds > kickstartThreshold
+                    && !state.KickstartSent
+                    && state.Stream != null)
+                {
+                    state.KickstartSent = true;
+                    int amxNodeK = state.ModuleNumber + Offset;
+                    this.NotifyClient(
+                        $"RSM node {amxNodeK} ({Label(state)}) kickstart — " +
+                        $"closing stale stream after {elapsedSeconds:F0}s silence to provoke reconnect", false);
+                    try { state.Stream.Close(); } catch { }
+                }
 
                 if (state.LastReportedOnline == isOnline)
                     continue;
