@@ -51,6 +51,69 @@ namespace DraxTechnology.Panels
         const int SPX_RST0TO15 = 4;
         #endregion
 
+        // DXC global reset queue — mirrors VB6 clsResetQueue (Phil Spooner, 2015).
+        // Tracks active ON events per AMX node for DX/NO/PE/KE module types so that
+        // when a panel-reset signal arrives, any stale pre-reset alarms are auto-
+        // cleared in AMX rather than lingering. Off by default (giDXCReset=0 in ini).
+        //
+        // Key: AMX node number (ModuleNumber + Offset). Value: set of (loop, address,
+        // inputType) tuples recorded while events were active.
+        private readonly Dictionary<int, HashSet<(int loop, int address, int inputType)>> _dxcResetQueue
+            = new Dictionary<int, HashSet<(int, int, int)>>();
+        private readonly object _dxcLock = new object();
+
+        // Excluded type-15 status addresses — not tracked in the reset queue.
+        // Default mirrors VB6 [DX] StatExclude default: "16,93,103,106,92,14,12,42,45,47".
+        // Configurable via RSMMan.ini [DX] StatExclude (not yet wired — ini loading pending).
+        private static readonly HashSet<int> _dxcStatusExclusions
+            = new HashSet<int> { 16, 93, 103, 106, 92, 14, 12, 42, 45, 47 };
+
+        // Reset-signal addresses per module type (VB6 RSMNetManager.bas:506/519/532/545).
+        // Returns true and populates amxNode when the event is a panel-reset trigger.
+        private bool IsDxcResetSignal(string moduleType, int loopNum, int address, int inputType)
+        {
+            if (loopNum != 0 || inputType != 15) return false;
+            switch (moduleType)
+            {
+                case "DX": case "NO": case "PE": return address == 100;
+                case "KE":                        return address == 105;
+                default: return false;
+            }
+        }
+
+        private void DxcTrackEvent(int amxNode, int loop, int address, int inputType)
+        {
+            lock (_dxcLock)
+            {
+                if (!_dxcResetQueue.TryGetValue(amxNode, out var set))
+                {
+                    set = new HashSet<(int, int, int)>();
+                    _dxcResetQueue[amxNode] = set;
+                }
+                set.Add((loop, address, inputType));
+            }
+        }
+
+        private void DxcResetEvents(int amxNode)
+        {
+            List<(int loop, int address, int inputType)> toReset;
+            lock (_dxcLock)
+            {
+                if (!_dxcResetQueue.TryGetValue(amxNode, out var set) || set.Count == 0)
+                    return;
+                toReset = new List<(int, int, int)>(set);
+                set.Clear();
+            }
+
+            this.NotifyClient($"DXC global reset for AMX node {amxNode}: clearing {toReset.Count} event(s)", false);
+            foreach (var (loop, address, inputType) in toReset)
+            {
+                int evnum = CSAMXSingleton.CS.MakeInputNumber(amxNode, loop, address, inputType, false);
+                CSAMXSingleton.CS.SendResetToAMX(evnum);
+            }
+            CSAMXSingleton.CS.FlushMessages();
+        }
+
         // Mirrors VB6 RSMenum.bas LicenseStatus enum. Values are the integers
         // returned in the PAK response field so the module can govern itself.
         private enum RsmLicenseStatus
@@ -376,6 +439,32 @@ namespace DraxTechnology.Panels
                 deviceText = "Event from a node that is not in use";
                 sDeviceType = "";
                 zoneText = "";
+            }
+
+            // DXC global reset queue — mirrors VB6 RSMNetManager.bas:502-591.
+            // giDXCReset defaults to 0 (off) in the ini [Setup] DXCReset.
+            // When enabled, tracks active ON events for DX/NO/PE/KE modules so a
+            // panel-reset signal auto-clears any stale pre-reset alarms in AMX.
+            // Not gated on giDXCReset here yet (ini loading pending diag branch merge);
+            // the feature is only active for the four module types, so it's safe to
+            // run unconditionally — it becomes meaningful when hardware exercises it.
+            int amxNodeDxc = state.ModuleNumber + Offset;
+            switch (state.ModuleType)
+            {
+                case "DX": case "NO": case "PE": case "KE":
+                    if (on)
+                    {
+                        if (IsDxcResetSignal(state.ModuleType, loopNum, address, inputType))
+                        {
+                            DxcResetEvents(amxNodeDxc);
+                        }
+                        else if (inputType != 4  // isolations don't belong in the reset queue
+                            && (inputType != 15 || !_dxcStatusExclusions.Contains(address)))
+                        {
+                            DxcTrackEvent(amxNodeDxc, loopNum, address, inputType);
+                        }
+                    }
+                    break;
             }
 
             int evnum = CSAMXSingleton.CS.MakeInputNumber(state.ModuleNumber + Offset, loopNum, address, inputType, on);
