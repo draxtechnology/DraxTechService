@@ -307,6 +307,10 @@ namespace DraxTechnology.Panels
                 zoneText = "Contact Your Fire Alarm Maintainer";
             }
 
+            // onOff=2 means ON + one-shot (VB6 RSMNetManager.bas:493-496).
+            // Capture the flag before normalising so ForceEvmAttribute can be
+            // called after the alarm is written (VB6 line 736).
+            bool oneShot = onOff == 2;
             bool on = onOff != 0;
 
             // TODO — licence quarantine gate (VB6 RSMNetManager.bas:462-475):
@@ -354,9 +358,17 @@ namespace DraxTechnology.Panels
 
             int evnum = CSAMXSingleton.CS.MakeInputNumber(state.ModuleNumber + Offset, loopNum, address, inputType, on);
             CSAMXSingleton.CS.SendAlarmToAMX(evnum, deviceText, sDeviceType, zoneText);
+
+            // One-shot: tell AMX to auto-clear this event after display rather than
+            // leaving it as a persistent alarm. Mirrors VB6 RSMNetManager.bas:735-737:
+            //   If bOneShot = True Then NwmForceEvmAttribute(tStr, EventNumber, 13, 1)
+            // Attribute 13 = momentary/one-shot; value 1 = set.
+            if (oneShot)
+                CSAMXSingleton.CS.ForceEvmAttribute(evnum, 13, 1);
+
             CSAMXSingleton.CS.FlushMessages();
 
-            this.NotifyClient($"EVT {Label(state)} L{loopNum} A{address} type={inputType} on={on} text='{deviceText}' devtype='{sDeviceType}' zone={zone}", false);
+            this.NotifyClient($"EVT {Label(state)} L{loopNum} A{address} type={inputType} on={on}{(oneShot ? " oneshot" : "")} text='{deviceText}' devtype='{sDeviceType}' zone={zone}", false);
         }
 
         private void HandlePOL(ModuleState state, string[] parts)
