@@ -1447,6 +1447,16 @@ namespace DraxTechnology
                     ret = panel;
                     break;
 
+                case "RSMNODES":
+                    // Tier-1 read-only node snapshot for the client's RSM "Node
+                    // Configuration and Status" grid. JSON array, ≤255 rows. Empty
+                    // array if no RSM panel is active.
+                    {
+                        PanelRSM rsm = abstractpanels.OfType<PanelRSM>().FirstOrDefault();
+                        ret = rsm != null ? rsm.BuildNodeSnapshot() : "[]";
+                    }
+                    break;
+
                 case "GETCOMMPORTSTATUS":
                     if (partssplit.Length != 1) break;
                     string identifier = partssplit[0];

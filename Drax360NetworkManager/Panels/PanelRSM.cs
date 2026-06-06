@@ -457,6 +457,77 @@ namespace DraxTechnology.Panels
             return v;
         }
 
+        /// <summary>
+        /// Tier-1 node snapshot for the client's RSM "Node Configuration and
+        /// Status" grid (VB6 frmRSMNodes / vsfNodes). Returns the in-memory node
+        /// table (≤ NwmMaxNodesRSM = 255 rows) as a JSON array, ordered by node
+        /// number to match the VB grid. Node-level only — per-node device detail
+        /// is a separate paged call, never bulk-shipped here. Read-only; served
+        /// over the named pipe via the RSMNODES verb.
+        /// </summary>
+        public string BuildNodeSnapshot()
+        {
+            // ONLINE while messages are still arriving — last RX within 2× the
+            // heartbeat period. Mirrors the VB grid's comms-driven ONLINE/OFFLINE.
+            // Threshold pending confirmation with Mike.
+            DateTime now = DateTime.Now;
+            double onlineWindowSeconds = kheartbeatdelayseconds * 2;
+
+            var rows = new List<object>();
+            lock (modulesLock)
+            {
+                var ordered = new List<ModuleState>(modules.Values);
+                ordered.Sort((a, b) => a.ModuleNumber.CompareTo(b.ModuleNumber));
+
+                foreach (ModuleState s in ordered)
+                {
+                    bool online = s.LastRX > DateTime.MinValue
+                        && (now - s.LastRX).TotalSeconds <= onlineWindowSeconds;
+
+                    rows.Add(new
+                    {
+                        node = s.ModuleNumber,
+                        // devices.json carries a single friendly Name, so there is
+                        // no Site/Node split yet — site stays empty until the node
+                        // store gains separate Site + Node names (see contract gap).
+                        site = "",
+                        name = s.FriendlyName ?? "",
+                        type = s.ModuleType ?? "",
+                        typeText = ExpandModuleType(s.ModuleType),
+                        status = online ? "ONLINE" : "OFFLINE",
+                        messages = s.RXmessages,
+                        address = s.LastKnownIP ?? ""
+                    });
+                }
+            }
+
+            return JsonSerializer.Serialize(rows);
+        }
+
+        /// <summary>
+        /// Module type code → display label. Mirrors VB6 ExpandModuleType
+        /// (RSMNetManagerSubs.bas). Unknown non-empty codes render "?" as in the VB.
+        /// </summary>
+        private static string ExpandModuleType(string code)
+        {
+            switch ((code ?? "").Trim().ToUpperInvariant())
+            {
+                case "MZ": return "Morley ZXe";
+                case "4I": return "4 Input";
+                case "12": return "12 Input";
+                case "IO": return "4 I/P, 2 O/P";
+                case "AD": return "Advanced MX";
+                case "KE": return "Kentec";
+                case "DX": return "Morley DX";
+                case "NO": return "Notifier ID3000";
+                case "GE": return "Gent Fire";
+                case "CO": return "Coopers Fire/Easicheck";
+                case "PE": return "Notifier Pearl";
+                case "ZI": return "Ziton";
+                default: return string.IsNullOrEmpty(code) ? "" : "?";
+            }
+        }
+
         #endregion
 
         #region wire-format encoding/decoding
