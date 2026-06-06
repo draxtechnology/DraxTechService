@@ -51,6 +51,16 @@ namespace DraxTechnology.Panels
         const int SPX_RST0TO15 = 4;
         #endregion
 
+        // Mirrors VB6 RSMenum.bas LicenseStatus enum. Values are the integers
+        // returned in the PAK response field so the module can govern itself.
+        private enum RsmLicenseStatus
+        {
+            Unlicensed = 0,  // no serial number or "00000000"
+            Expired    = 1,  // serial present but expiry date is in the past
+            Expiring   = 2,  // expiry within 30 days
+            Good       = 3,  // valid and not near expiry
+        }
+
         #region per-module state (in-memory; no config)
         private class ModuleState
         {
@@ -65,6 +75,15 @@ namespace DraxTechnology.Panels
             public long ExpiryDateDays;
             public int PanelsAllowed;
             public string ModuleOptions = "";
+
+            // Computed from ExpiryDateDays + SerialNumber after each POL (mirrors
+            // VB6 clsRSM.UpdateLicenseInfo). Unlicensed until first POL arrives.
+            public RsmLicenseStatus LicenseStatus = RsmLicenseStatus.Unlicensed;
+            // False until the first PAK exchange completes. VB6 only quarantines
+            // expired-licence events once LicenseDataReceived=True so a module
+            // doesn't get falsely quarantined during startup (comment in
+            // RSMNetManager.bas:323).
+            public bool LicenseDataReceived = false;
 
             // Tracks the last AMX-reported online/offline state so the heartbeat
             // can detect transitions and only fire once per edge — not on every tick.
@@ -182,7 +201,9 @@ namespace DraxTechnology.Panels
 
                 case "POL":
                     HandlePOL(state, parts);
-                    int licenseStatus = 0; // 0 = good
+                    // Return the computed licence status so the module can govern
+                    // its own behaviour (VB6 RSM.UpdateLicenseInfo return value).
+                    int licenseStatus = (int)state.LicenseStatus;
                     ack = $"PAK{kSeparator}{moduleNumber}{kSeparator}{messageID}{kSeparator}{licenseStatus}";
                     break;
 
@@ -288,6 +309,32 @@ namespace DraxTechnology.Panels
 
             bool on = onOff != 0;
 
+            // TODO — licence quarantine gate (VB6 RSMNetManager.bas:462-475):
+            // Once we are confident the licence computation is correct for the
+            // deployed serial numbers and expiry date format, add:
+            //
+            //   if (state.LicenseDataReceived
+            //       && (state.LicenseStatus == RsmLicenseStatus.Expired
+            //           || state.LicenseStatus == RsmLicenseStatus.Unlicensed))
+            //   {
+            //       loopNum = 0; address = 249; inputType = 15;
+            //       deviceText = "Event from a node with expired license";
+            //       sDeviceType = ""; zoneText = "";
+            //   }
+            //
+            // For now, assume licence is current and pass all events through.
+            // Log a warning when the computed status is not Good so the real-panel
+            // trace makes it visible without affecting event routing.
+            if (state.LicenseDataReceived
+                && state.LicenseStatus != RsmLicenseStatus.Good
+                && state.LicenseStatus != RsmLicenseStatus.Expiring)
+            {
+                this.NotifyClient(
+                    $"[LICENCE WARNING] {Label(state)} status={state.LicenseStatus} " +
+                    $"(expiry-days={state.ExpiryDateDays}) — event still routed normally; " +
+                    "enable quarantine gate once licence computation verified.", false);
+            }
+
             // VB NodeInUse override: events from a module whose IP isn't in the
             // configured device list are routed to address 248 with input-type 15
             // ("Event from a node that is not in use") so AMX can flag them.
@@ -315,9 +362,38 @@ namespace DraxTechnology.Panels
         private void HandlePOL(ModuleState state, string[] parts)
         {
             state.ExpiryDateDays = ParseInt(GetField(parts, P_ExpiryDateDays));
-            state.PanelsAllowed = ParseInt(GetField(parts, P_NumberOfPanels));
-            state.ModuleOptions = GetField(parts, P_Options);
-            this.NotifyClient($"POL {Label(state)} type={state.ModuleType} expiry-days={state.ExpiryDateDays} panels={state.PanelsAllowed} options={state.ModuleOptions}", false);
+            state.PanelsAllowed  = ParseInt(GetField(parts, P_NumberOfPanels));
+            state.ModuleOptions  = GetField(parts, P_Options);
+            state.LicenseStatus  = ComputeLicenseStatus(state.SerialNumber, state.ExpiryDateDays);
+            state.LicenseDataReceived = true;
+            this.NotifyClient(
+                $"POL {Label(state)} type={state.ModuleType} expiry-days={state.ExpiryDateDays} " +
+                $"panels={state.PanelsAllowed} options={state.ModuleOptions} " +
+                $"license={state.LicenseStatus}", false);
+        }
+
+        // Mirrors VB6 clsRSM.UpdateLicenseInfo. ExpiryDateDays is days since
+        // 1 Jan 2010 (VB6: DateAdd("d", ExpiryDate, "01/01/2010")).
+        // Enum values match the VB6 LicenseStatus enum wire integers returned
+        // in the PAK response: Unlicensed=0, Expired=1, Expiring=2, Good=3.
+        private static RsmLicenseStatus ComputeLicenseStatus(string serialNumber, long expiryDateDays)
+        {
+            if (string.IsNullOrEmpty(serialNumber)
+                || serialNumber == "0"
+                || serialNumber == "00000000")
+            {
+                return RsmLicenseStatus.Unlicensed;
+            }
+
+            DateTime epoch = new DateTime(2010, 1, 1);
+            DateTime expiryDate = epoch.AddDays(expiryDateDays);
+            DateTime now = DateTime.Now;
+
+            if (expiryDate < now)
+                return RsmLicenseStatus.Expired;
+            if (expiryDate.AddDays(-30) < now)
+                return RsmLicenseStatus.Expiring;
+            return RsmLicenseStatus.Good;
         }
 
         private void HandleZTX(ModuleState state, string[] parts)
@@ -641,6 +717,8 @@ namespace DraxTechnology.Panels
         // VB6 event numbers:
         //   Online/Offline  : MakeInputNumber(node+offset, loop=0, addr=0,  type=0)  ON/OFF
         //   Expired licence : MakeInputNumber(node+offset, loop=0, addr=250, type=15) ON
+        //     → TODO: add the Expired state once licence computation is verified; for
+        //       now a warning is logged (see LICENCE WARNING in HandleEVT).
         // The timeout threshold mirrors giModuleTimeout default (90 s in VB6);
         // using 2× the heartbeat interval (120 s) keeps it consistent with what
         // BuildNodeSnapshot considers online. Adjust via RSMMan.ini giModuleTimeout
