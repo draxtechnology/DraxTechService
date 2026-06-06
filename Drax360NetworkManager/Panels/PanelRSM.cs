@@ -66,6 +66,11 @@ namespace DraxTechnology.Panels
             public int PanelsAllowed;
             public string ModuleOptions = "";
 
+            // Tracks the last AMX-reported online/offline state so the heartbeat
+            // can detect transitions and only fire once per edge — not on every tick.
+            // null = never reported (first heartbeat determines initial state).
+            public bool? LastReportedOnline = null;
+
             // Set by Parse when bytes arrive on this module's TCP connection,
             // cleared by UnregisterStream when the connection closes. Used for
             // outbound commands (Evacuate/Silence/Reset/etc.).
@@ -624,6 +629,60 @@ namespace DraxTechnology.Panels
         protected override void heartbeat_timer_callback(object sender)
         {
             base.heartbeat_timer_callback(sender);
+            CheckNodeOnlineStatus();
+        }
+
+        // Mirrors VB6 clsRSM.UpdateNodeStatus / frmRSMNetworkManager.tmrProcess_Timer.
+        // Runs every kheartbeatdelayseconds (60 s) and fires a state-change event to
+        // AMX on each Online→Offline or Offline→Online edge — once per transition, not
+        // on every tick. Nodes that have never sent a message are skipped; there is no
+        // configured in-use list yet so any module that has phoned in is monitored.
+        //
+        // VB6 event numbers:
+        //   Online/Offline  : MakeInputNumber(node+offset, loop=0, addr=0,  type=0)  ON/OFF
+        //   Expired licence : MakeInputNumber(node+offset, loop=0, addr=250, type=15) ON
+        // The timeout threshold mirrors giModuleTimeout default (90 s in VB6);
+        // using 2× the heartbeat interval (120 s) keeps it consistent with what
+        // BuildNodeSnapshot considers online. Adjust via RSMMan.ini giModuleTimeout
+        // once the ini loading fix (diag/settings-ini-load-logging) is merged.
+        private void CheckNodeOnlineStatus()
+        {
+            const double onlineWindowSeconds = kheartbeatdelayseconds * 2.0;
+            DateTime now = DateTime.Now;
+
+            List<ModuleState> snapshot;
+            lock (modulesLock)
+            {
+                snapshot = new List<ModuleState>(modules.Values);
+            }
+
+            foreach (ModuleState state in snapshot)
+            {
+                if (state.LastRX == DateTime.MinValue)
+                    continue;
+
+                bool isOnline = (now - state.LastRX).TotalSeconds <= onlineWindowSeconds;
+
+                if (state.LastReportedOnline == isOnline)
+                    continue;
+
+                state.LastReportedOnline = isOnline;
+                int amxNode = state.ModuleNumber + Offset;
+                string label = Label(state);
+
+                int evnum = CSAMXSingleton.CS.MakeInputNumber(amxNode, 0, 0, 0, isOnline);
+
+                if (isOnline)
+                {
+                    CSAMXSingleton.CS.SendResetToAMX(evnum, state.FriendlyName, "", "Online");
+                    this.NotifyClient($"RSM node {amxNode} ({label}) → ONLINE", false);
+                }
+                else
+                {
+                    CSAMXSingleton.CS.SendAlarmToAMX(evnum, state.FriendlyName, "", "Offline");
+                    this.NotifyClient($"RSM node {amxNode} ({label}) → OFFLINE", false);
+                }
+            }
         }
 
         public override void StartUp(int fakemode)
