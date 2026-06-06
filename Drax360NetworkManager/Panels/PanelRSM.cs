@@ -984,9 +984,13 @@ namespace DraxTechnology.Panels
 
         // POCO matching the client's devices.json schema
         // (Drax360Client/Panels/RSM/Device.cs — { ID: Guid, Name: string, IP: string })
+        // ID type is Guid on both sides — System.Text.Json serialises Guid as a
+        // quoted string so the file format is compatible. Keep field names in sync
+        // if the client schema ever changes; these are the source of truth for
+        // devices.json.
         private class ClientDevice
         {
-            public string ID { get; set; }
+            public Guid ID { get; set; }
             public string Name { get; set; }
             public string IP { get; set; }
         }
