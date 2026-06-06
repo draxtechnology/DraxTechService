@@ -655,7 +655,7 @@ namespace DraxTechnology.Panels
                 case 18:
                     message2 = "Cancel Buzzer";
                     p1 = 15; p2 = sPanelNumber;
-                    p3 = sLoopNumber; p4 = 12;
+                    p3 = 0; p4 = 12; // VB GENNetManager.bas: giLoopNumber=0 for CancelBuzzer
 
                     p2 = p2 + this.Offset;
 

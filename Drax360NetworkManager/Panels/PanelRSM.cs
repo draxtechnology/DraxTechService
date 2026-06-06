@@ -203,6 +203,10 @@ namespace DraxTechnology.Panels
             {
                 heartbeat_timer = new System.Threading.Timer(heartbeat_timer_callback, this.Identifier, 500, kheartbeatdelayseconds * 1000);
                 this.Offset = base.GetSetting<int>(ksettingsetupsection, "giAmx1Offset");
+                // Log the resolved offset at startup — a wrong offset shows up as
+                // AMX node mismatches (events on wrong node / Reset can't find module).
+                // If this logs 0 but RSMMan.ini sets giAmx1Offset, the ini is not being read.
+                this.NotifyClient($"PanelRSM startup: giAmx1Offset={this.Offset} (section [{ksettingsetupsection}]).", false);
                 PassNWMDataToAMX1();
                 LoadDevices();
             }

@@ -1168,7 +1168,12 @@ namespace DraxTechnology.Panels
         {
             try
             {
-                int i = 2;
+                // VB NOTNetManager.bas CheckSumValidation: loop starts at element 2
+                // of a 1-based array, i.e. the second character (index 1 in 0-based).
+                // The frame is >IE..., so element 1 = '>' (skipped), element 2 = 'I'
+                // (included in the checksum). C# was incorrectly starting at index 2,
+                // skipping both '>' and 'I'.
+                int i = gbHalfDuplex ? 2 : 1;
                 if (gbHalfDuplex)
                 {
                     string sMessage = "";

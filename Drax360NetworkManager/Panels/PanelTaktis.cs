@@ -828,7 +828,12 @@ namespace DraxTechnology.Panels
                     ch.NackCount++;
                     if (ch.NackCount >= 4)
                     {
-                        NotifyClient($"TAKTIS [{ch.Name}] NACK #{ch.NackCount} - connection drop after 5 (ICD §6.5)");
+                        NotifyClient($"TAKTIS [{ch.Name}] NACK #{ch.NackCount} - re-registering connection monitoring (ICD §6.5)");
+                        // VB6 TAKSendStopConnectionMonitoringTX then TAKSendStartConnectionMonitoringTX
+                        // to re-handshake before the panel drops the connection at 5 NACKs.
+                        sendtotaktis(TakSendType.TAKSendStopConnectionMonitoringTX, clientID: _clientID);
+                        sendtotaktis(TakSendType.TAKSendStartConnectionMonitoringTX, clientID: _clientID);
+                        ch.NackCount = 0;
                     }
                     ch.AckGate.Set();
                 }

@@ -68,7 +68,17 @@ namespace DraxTechnology
         public void ReLoadSettings()
         {
             settings.Clear();
-            if (!File.Exists(settingsfile)) return;
+
+            string resolvedPath = Path.GetFullPath(settingsfile);
+            if (!File.Exists(settingsfile))
+            {
+                Console.WriteLine(DateTime.Now + ": " +
+                    $"SettingsSingleton: ini NOT FOUND at '{resolvedPath}' — every setting will " +
+                    "fall back to its default. Check the ini is deployed alongside the service " +
+                    "(or in the Configuration folder).");
+                return;
+            }
+
             string section = "";
 
             string[] lines = File.ReadAllLines(settingsfile);
@@ -112,6 +122,9 @@ namespace DraxTechnology
 
                 settings.Add(key, value);
             }
+
+            Console.WriteLine(DateTime.Now + ": " +
+                $"SettingsSingleton: loaded {settings.Count} setting(s) from '{resolvedPath}'.");
         }
 
         public void SetSetting(string section, string name, object value)
