@@ -748,10 +748,15 @@ namespace DraxTechnology.Panels
         /// </summary>
         private void SendCommand(CmdToPanel cmd, string passedvalues, bool withDeviceParams = false)
         {
+            // passedvalues CSV layout (from DispatchAmxPipeCommand / handlepiperesponse):
+            //   parts[0] = AMX node (= ModuleNumber + Offset)
+            //   parts[1] = loop number
+            //   parts[2] = zone  (0 for device commands; zone number for zone commands)
+            //   parts[3] = device address
             string[] parts = string.IsNullOrEmpty(passedvalues) ? new string[0] : passedvalues.Split(',');
-            int node = parts.Length > 0 ? ParseInt(parts[0]) : 0;
-            int loop = parts.Length > 1 ? ParseInt(parts[1]) : 0;
-            int zone = parts.Length > 2 ? ParseInt(parts[2]) : 0;
+            int node   = parts.Length > 0 ? ParseInt(parts[0]) : 0;
+            int loop   = parts.Length > 1 ? ParseInt(parts[1]) : 0;
+            int zone   = parts.Length > 2 ? ParseInt(parts[2]) : 0;
             int device = parts.Length > 3 ? ParseInt(parts[3]) : 0;
 
             // Inbound EVTs report (Node + Offset) as the module identifier in AMX;
@@ -776,12 +781,30 @@ namespace DraxTechnology.Panels
                 return;
             }
 
-            // Build the DataPacket. Panel-wide verbs need just the cmd value;
-            // device/zone verbs append loop, address, sub-address (zone here).
+            // Build the DataPacket. Wire format from VB6 MakeNewMessage / CmdQ.Add:
+            //   panel-wide  : cmdEnum
+            //   device/zone : cmdEnum|panelID|loopNumber|deviceAddress|subAddress
+            //
+            // panelID for device disable/enable: VB6 forces 1 for SmartWatch-style
+            // addressing (cases 108/109 in frmRSMNetworkManager.frm:1404/1419).
+            // subAddress: always 0 for the disable/enable/zone verbs we handle today.
+            //
+            // Zone disable/enable: VB6 puts the zone number into panelID
+            // (cases 110/111: iPanelID = iLoopNumber) with loop/device/sub = 0.
             string dataPacket = ((int)cmd).ToString();
             if (withDeviceParams)
             {
-                dataPacket += kSeparator + loop + kSeparator + device + kSeparator + zone;
+                bool isZoneCmd = cmd == CmdToPanel.DisableZone || cmd == CmdToPanel.EnableZone;
+                if (isZoneCmd)
+                {
+                    // zone number in panelID field; loop/device/subAddr all 0
+                    dataPacket += kSeparator + zone + kSeparator + 0 + kSeparator + 0 + kSeparator + 0;
+                }
+                else
+                {
+                    // device disable/enable: panelID=1, then loop|device|subAddr=0
+                    dataPacket += kSeparator + 1 + kSeparator + loop + kSeparator + device + kSeparator + 0;
+                }
             }
 
             int messageID = NextMessageID();
