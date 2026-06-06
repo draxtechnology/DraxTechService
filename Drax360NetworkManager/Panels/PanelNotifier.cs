@@ -330,8 +330,8 @@ namespace DraxTechnology.Panels
                         gsTextField = "Power Restart";
                         getDeviceText = false;
                         giAddressNumber = 98;
+                        bOneShotReset = true; // VB NOTNetManager.bas:2074
                         Console.WriteLine(DateTime.Now + ": " + gsTextField);
-
                         break;
                     case enmNotEventType.LoopBoosterFault:
                         gAlarmType = enmNotAlarmType.NOTFault.ToString();
@@ -899,7 +899,8 @@ namespace DraxTechnology.Panels
 
                     case enmNotEventType.NetworkZoneInEnabled:  // 192
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
-                        giAddressNumber = 71;
+                        // VB NOTNetManager.bas:2138: giLoopNumber=15, giAddressNumber=giZoneNumber
+                        loop = 15; giAddressNumber = zone;
                         gsTextField = "Network In Zone " + zone + " Enabled";
                         getDeviceText = false;
                         Console.WriteLine(DateTime.Now + ": " + gsTextField);
@@ -907,7 +908,8 @@ namespace DraxTechnology.Panels
 
                     case enmNotEventType.NetworkZoneInDisabled:  // 193
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
-                        giAddressNumber = 71;
+                        // VB NOTNetManager.bas:2155: giLoopNumber=15, giAddressNumber=giZoneNumber
+                        loop = 15; giAddressNumber = zone;
                         gsTextField = "Network In Zone " + zone + " Disabled";
                         getDeviceText = false;
                         Console.WriteLine(DateTime.Now + ": " + gsTextField);
@@ -945,6 +947,111 @@ namespace DraxTechnology.Panels
                         getDeviceText = false;
                         Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
+
+                    // --- Missing event cases vs VB6 NOTNetManager.bas ---
+                    case enmNotEventType.LossOfLoop:  // 148
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 20 + loop; gsTextField = "Loop Loss";
+                        getDeviceText = false; break;
+
+                    case enmNotEventType.LossPartLoop:  // 149
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 20 + loop; gsTextField = "Loop Part Loss";
+                        getDeviceText = false; break;
+
+                    case enmNotEventType.EndBFaultLoop:  // 150
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 20 + loop; gsTextField = "End B Fault Loop";
+                        getDeviceText = false; break;
+
+                    // ReSoundSounder(157) — already handled at line 804 with bOneShotReset=true.
+
+                    case enmNotEventType.SounderImmediateMode:  // 170
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 70; gsTextField = "Sounder Immediate Mode";
+                        getDeviceText = false; break;
+
+                    case enmNotEventType.SounderDelayMode:  // 171
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 5; gsTextField = "Sounder Delay Mode";
+                        getDeviceText = false; break;
+
+                    case enmNotEventType.NetworkDisabled:  // 156
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 72; gsTextField = "Network Disabled";
+                        getDeviceText = false; break;
+
+                    case enmNotEventType.SounderRelayCircuitDisabled:  // 181
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 73; gsTextField = "Sounder or Relay Circuit Disabled";
+                        getDeviceText = false; break;
+
+                    case enmNotEventType.SounderRelayCircuitEnabled:  // 184
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 73; gsTextField = "Sounder or Relay Circuit Enabled";
+                        getDeviceText = false; break;
+
+                    case enmNotEventType.FireRelayDisabled:  // 182
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 74; gsTextField = "Fire Relay Disabled";
+                        getDeviceText = false; break;
+
+                    case enmNotEventType.FireRelayEnabled:  // 185
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 74; gsTextField = "Fire Relay Enabled";
+                        getDeviceText = false; break;
+
+                    case enmNotEventType.FaultRelayDisabled:  // 183
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 75; gsTextField = "Fault Relay Disabled";
+                        getDeviceText = false; break;
+
+                    case enmNotEventType.FaultRelayEnabled:  // 186
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 75; gsTextField = "Fault Relay Enabled";
+                        getDeviceText = false; break;
+
+                    case enmNotEventType.MainsPSUFault:  // 289
+                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        giAddressNumber = 11; gsTextField = "Mains PSU Fault";
+                        getDeviceText = false; break;
+
+                    case enmNotEventType.EarthFault:  // 312
+                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        giAddressNumber = 17; gsTextField = "Earth Fault";
+                        getDeviceText = false; break;
+
+                    case enmNotEventType.ZoneInFault:  // 200
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 3; gsTextField = "Zone In Fault";
+                        getDeviceText = false; break;
+
+                    case enmNotEventType.NetworkSoundersEnabled:  // 197
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 92; gsTextField = "Network Sounder Zone " + zone + " Enabled";
+                        getDeviceText = false; break;
+
+                    case enmNotEventType.NetworkSoundersDisabled:  // 198
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        giAddressNumber = 92; gsTextField = "Network Sounder Zone " + zone + " Disabled";
+                        getDeviceText = false; break;
+
+                    case enmNotEventType.NetworkEnableZone:  // 195
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        loop = 15; giAddressNumber = zone;
+                        gsTextField = "Network Zone " + zone + " Enabled";
+                        getDeviceText = false; break;
+
+                    case enmNotEventType.NetworkDisableZone:  // 196
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        loop = 15; giAddressNumber = zone;
+                        gsTextField = "Network Zone " + zone + " Disabled";
+                        getDeviceText = false; break;
+
+                    // SounderCircuit1-4 Short/Open faults (306-309, 313-316) — already handled earlier in switch.
+
+                    // NetworkSilenceSounders(154), NetworkZoneInTestMode(191), NetworkZoneInTest(194),
+                    // NetworkZoneInFault(199) — already suppressed via bDontSendToAMX=true earlier in switch.
 
                     default:
                         base.NotifyClient("Unknown Event " + ((enmNotEventType)eventcode));

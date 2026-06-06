@@ -268,6 +268,17 @@ namespace DraxTechnology.Panels
                     {
                         case 0:  // Handshake
                             base.NotifyClient("********* Handshake ************");
+                            // VB GENNetManager.bas:1414: Mid(gsEventParam,1,2) = fire count → addr 54
+                            if (Convert.ToInt32(sEventParam.Substring(0, 2)) > 0)
+                            {
+                                int giNoOfFires = Convert.ToInt32(sEventParam.Substring(0, 2));
+                                message2 = giNoOfFires.ToString() + " Panel(s) in Fire";
+                                p1 = 15; p2 = 1;
+                                p3 = 0; p4 = 54;
+                                p2 = p2 + this.Offset;
+                                evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+                                send_response_amx_and_serial(evnum, "", message2);
+                            }
                             if (Convert.ToInt32(sEventParam.Substring(2, 2)) > 0)
                             {
                                 int giNoOfFaults = Convert.ToInt32(sEventParam.Substring(2, 2));
@@ -427,8 +438,9 @@ namespace DraxTechnology.Panels
                         base.NotifyClient("********* Cancel Buzzer ************");
                         message2 = "Cancel Buzzer";
                         bOneShotReset = true;
-                        p1 = 4; p2 = sPanelNumber;
-                        p3 = 0; p4 = 1;
+                        // VB GENNetManager.bas: iInputType=15, giAddressNumber=12 for CancelBuzzer
+                        p1 = 15; p2 = sPanelNumber;
+                        p3 = 0; p4 = 12;
 
                         p2 = p2 + this.Offset;
 
@@ -578,6 +590,11 @@ namespace DraxTechnology.Panels
                             case 15: p4 = 51; break;
                             case 16: p4 = 52; break;
                         }
+                        // Zone disablement was computing p4 but never calling MakeInputNumber
+                        // or send_response_amx_and_serial — zone disablements were silently dropped.
+                        p2 = sPanelNumber + this.Offset;
+                        evnum = CSAMXSingleton.CS.MakeInputNumber(p2, 0, p4, p1);
+                        send_response_amx_and_serial(evnum, "", message2);
                     }
                     else
                     {

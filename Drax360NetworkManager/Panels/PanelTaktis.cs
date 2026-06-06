@@ -1029,9 +1029,11 @@ namespace DraxTechnology.Panels
                     NotifyClient(_reconnect ? "Send Request Event Log EX - Immediate" : "Send Request Event Log EX");
                     immediateRxSend = true;
                     _requestEventLogEXSent = true;
-                    // ICD 9.1.5: PACKET_TYPE_REQUEST_EVENT_LOG_EX = 0x14E (334).
-                    // Won't fit in a single low byte; use 32-bit BE encoding.
-                    data = CreateMessageWithType32(12, 0x14E);
+                    // VB6 TAKSendRequestEventLogEx (line 2622): gbaryDataToTX(7) = "78" — same
+                    // wire type as REQUEST_EVENT_LOG (0x4E = 78), not 0x14E (334).
+                    // The 0x14E comment in the original ICD note was a misread;
+                    // the panel rejects type 334 as unknown, breaking live event subscription.
+                    data = CreateMessageWithType32(12, 0x4E);
                     if (serialNoStr != null && serialNoStr.Length >= 4)
                     {
                         data[8] = serialNoStr[0];
@@ -1430,7 +1432,7 @@ namespace DraxTechnology.Panels
         //   52..55 timestamp (BE u32)
         //   56..135 location text (ASCII, NUL-padded)
         //   136..167 panel text (ASCII, NUL-padded)
-        //   168..247 zone text (ASCII, NUL-padded)  -- 80 bytes per ICD 9.4
+        //   168..248 zone text (ASCII, NUL-padded)  -- 81 bytes per VB6 DecodeMessage:4240 "Case 168 To 248"
         //
         // The legacy decoder concatenated each byte's decimal string then
         // parsed - silently wrong for any value > 255. This now reads each
@@ -1473,7 +1475,7 @@ namespace DraxTechnology.Panels
 
             string sLocationText = ReadFieldAscii(frame, o + 56, o + 135);
             string sPanelText = ReadFieldAscii(frame, o + 136, o + 167);
-            string sZoneText = ReadFieldAscii(frame, o + 168, o + 247);
+            string sZoneText = ReadFieldAscii(frame, o + 168, o + 248); // VB6: "Case 168 To 248" — 81 bytes
 
             enmTAKMessageType gMessageType = (enmTAKMessageType)iMessageType;
             enmTAKEventType gEventType = (enmTAKEventType)lEventType;

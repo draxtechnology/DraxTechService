@@ -96,6 +96,8 @@ namespace DraxTechnology.Panels
                     out address);
                 giAddressNumber = address;
                 bool on = true;
+                bool bDontSendToAMX = false;
+                bool bOneShotReset = false;
 
                 int iDevicetype = 0;
                 int.TryParse(Encoding.UTF8.GetString(ourmessage, 26 - 1, 2), out iDevicetype);
@@ -674,8 +676,227 @@ namespace DraxTechnology.Panels
                     case enmPRLEventType.NetworkEntireZoneDisable:  // 231
                         gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
                         giAddressNumber = 93;
-                        gsTextField = "Network Entire Zone Enable";
+                        gsTextField = "Network Entire Zone Disable"; // was "Enable" — copy-paste bug
                         Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                        break;
+
+                    // --- Missing event cases vs VB6 PRLNetManager / NOTNetManager ---
+                    // Address/alarm-type values from VB NOTNetManager.bas (Pearl = ID3K protocol).
+                    case enmPRLEventType.LossOfLoop:  // 148
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        giAddressNumber = 20 + loop;
+                        gsTextField = "Loop Loss";
+
+                        break;
+
+                    case enmPRLEventType.LossPartLoop:  // 149
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        giAddressNumber = 20 + loop;
+                        gsTextField = "Loop Part Loss";
+
+                        break;
+
+                    case enmPRLEventType.EndBFaultLoop:  // 150
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        giAddressNumber = 20 + loop;
+                        gsTextField = "End B Fault Loop";
+
+                        break;
+
+                    case enmPRLEventType.SounderEnabled:  // 169
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        giAddressNumber = 6;
+                        gsTextField = "Sounder Enabled";
+
+                        break;
+
+                    case enmPRLEventType.SounderDisabled:  // 159
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        giAddressNumber = 6;
+                        gsTextField = "Sounder Disabled";
+
+                        break;
+
+                    case enmPRLEventType.SounderImmediateMode:  // 170
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        giAddressNumber = 70;
+                        gsTextField = "Sounder Immediate Mode";
+
+                        break;
+
+                    case enmPRLEventType.SounderDelayMode:  // 171
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        giAddressNumber = 5;
+                        gsTextField = "Sounder Delay Mode";
+
+                        break;
+
+                    case enmPRLEventType.PowerRestart:  // 146
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        giAddressNumber = 98;
+                        gsTextField = "Power Restart";
+
+                        bOneShotReset = true;
+                        break;
+
+                    case enmPRLEventType.ReSoundSounder:  // 157
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        giAddressNumber = 29;
+                        gsTextField = "Re-Sound Sounders";
+
+                        bOneShotReset = true;
+                        break;
+
+                    case enmPRLEventType.NetworkDisabled:  // 156
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        giAddressNumber = 72;
+                        gsTextField = "Network Disabled";
+
+                        break;
+
+                    case enmPRLEventType.SounderRelayCircuitDisabled:  // 181
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        giAddressNumber = 73;
+                        gsTextField = "Sounder or Relay Circuit Disabled";
+
+                        break;
+
+                    case enmPRLEventType.SounderRelayCircuitEnabled:  // 184
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        giAddressNumber = 73;
+                        gsTextField = "Sounder or Relay Circuit Enabled";
+
+                        break;
+
+                    case enmPRLEventType.FireRelayDisabled:  // 182
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        giAddressNumber = 74;
+                        gsTextField = "Fire Relay Disabled";
+
+                        break;
+
+                    case enmPRLEventType.FireRelayEnabled:  // 185
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        giAddressNumber = 74;
+                        gsTextField = "Fire Relay Enabled";
+
+                        break;
+
+                    case enmPRLEventType.FaultRelayDisabled:  // 183
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        giAddressNumber = 75;
+                        gsTextField = "Fault Relay Disabled";
+
+                        break;
+
+                    case enmPRLEventType.FaultRelayEnabled:  // 186
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        giAddressNumber = 75;
+                        gsTextField = "Fault Relay Enabled";
+
+                        break;
+
+                    case enmPRLEventType.MainsPSUFault:  // 289
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        giAddressNumber = 11;
+                        gsTextField = "Mains PSU Fault";
+
+                        break;
+
+                    case enmPRLEventType.EarthFault:  // 312
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        giAddressNumber = 17;
+                        gsTextField = "Earth Fault";
+
+                        break;
+
+                    case enmPRLEventType.ZoneInFault:  // 200
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        giAddressNumber = 3;
+                        gsTextField = "Zone In Fault";
+
+                        break;
+
+                    case enmPRLEventType.NetworkSoundersEnabled:  // 197
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        giAddressNumber = 92;
+                        gsTextField = "Network Sounder Zone " + zone + " Enabled";
+
+                        break;
+
+                    case enmPRLEventType.NetworkSoundersDisabled:  // 198
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        giAddressNumber = 92;
+                        gsTextField = "Network Sounder Zone " + zone + " Disabled";
+
+                        break;
+
+                    case enmPRLEventType.NetworkZoneInEnabled:  // 192
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        loop = 15; giAddressNumber = zone;
+                        gsTextField = "Network In Zone " + zone + " Enabled";
+
+                        break;
+
+                    case enmPRLEventType.NetworkZoneInDisabled:  // 193
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        loop = 15; giAddressNumber = zone;
+                        gsTextField = "Network In Zone " + zone + " Disabled";
+
+                        break;
+
+                    case enmPRLEventType.NetworkEnableZone:  // 195
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        loop = 15; giAddressNumber = zone;
+                        gsTextField = "Network Zone " + zone + " Enabled";
+
+                        break;
+
+                    case enmPRLEventType.NetworkDisableZone:  // 196
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        loop = 15; giAddressNumber = zone;
+                        gsTextField = "Network Zone " + zone + " Disabled";
+
+                        break;
+
+                    case enmPRLEventType.SounderCircuit1ShortFault:  // 306
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        giAddressNumber = 13; gsTextField = "Sounder Circuit 1 Short"; break;
+
+                    case enmPRLEventType.SounderCircuit2ShortFault:  // 307
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        giAddressNumber = 14; gsTextField = "Sounder Circuit 2 Short"; break;
+
+                    case enmPRLEventType.SounderCircuit1OpenFault:  // 308
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        giAddressNumber = 82; gsTextField = "Sounder Circuit 1 Open"; break;
+
+                    case enmPRLEventType.SounderCircuit2OpenFault:  // 309
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        giAddressNumber = 83; gsTextField = "Sounder Circuit 2 Open"; break;
+
+                    case enmPRLEventType.SounderCircuit3ShortFault:  // 313
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        giAddressNumber = 86; gsTextField = "Sounder Circuit 3 Short"; break;
+
+                    case enmPRLEventType.SounderCircuit4ShortFault:  // 314
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        giAddressNumber = 87; gsTextField = "Sounder Circuit 4 Short"; break;
+
+                    case enmPRLEventType.SounderCircuit3OpenFault:  // 315
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        giAddressNumber = 88; gsTextField = "Sounder Circuit 3 Open"; break;
+
+                    case enmPRLEventType.SounderCircuit4OpenFault:  // 316
+                        gAlarmType = enmPRLAlarmType.StatusEvent.ToString();
+                        giAddressNumber = 89; gsTextField = "Sounder Circuit 4 Open"; break;
+
+                    // Silently suppress (VB bDontSendToAMX = True)
+                    case enmPRLEventType.NetworkSilenceSounders:   // 154
+                    case enmPRLEventType.NetworkZoneInFault:       // 199
+                    case enmPRLEventType.NetworkZoneInTest:        // 194
+                        bDontSendToAMX = true;
+
                         break;
                 }
 
@@ -717,11 +938,16 @@ namespace DraxTechnology.Panels
                     zonetext = "Zone " + zone;
                 }
                 evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, on);
-                if (p1 == (int)enmPRLAlarmType.Isolate)  // If Disable Device neeed to also send another event to AMX to increase the Isolation count
+                if (!bDontSendToAMX)
                 {
-                    send_response_amx_disable(evnum, gsTextField, gsDeviceText, zonetext, on);
+                    if (p1 == (int)enmPRLAlarmType.Isolate)
+                    {
+                        send_response_amx_disable(evnum, gsTextField, gsDeviceText, zonetext, on);
+                    }
+                    send_response_amx_and_serial(evnum, gsTextField, gsDeviceText, zonetext);
+                    if (bOneShotReset)
+                        CSAMXSingleton.CS.ForceEvmAttribute(evnum, 13, 1);
                 }
-                send_response_amx_and_serial(evnum, gsTextField, gsDeviceText, zonetext);
             }
         }
         private void send_response_amx_and_serial(int evnum, string message1, string message2, string message3 = "")
