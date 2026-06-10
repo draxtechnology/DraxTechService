@@ -1,13 +1,14 @@
-using DraxTechnology.Data;
-using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Ports;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
+using DraxTechnology.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace DraxTechnology.Panels
 {
@@ -25,6 +26,7 @@ namespace DraxTechnology.Panels
         public int giZoneNumber = 0;
         public int giDeviceSubAddress = 0;
         public string gsTextField = "";
+        public string gsTextField2 = "";
         public string gsDeviceText = "";
         public string gsZoneText = "";
         public int giDeviceAddress = 0;
@@ -55,56 +57,52 @@ namespace DraxTechnology.Panels
             get
             {
                 string msg = "Receiving : Poll   ESPA  interface   1<ENQ>" + (char)13 + (char)10;
-                msg += "Receiving : Select pager transmitter 2<ENQ>" + (char)13 + (char)10;
-                msg += "SENDING   : <ACK>" + (char)13 + (char)10;
-                msg += "Receiving : EspaString <SOH>1<STX>1<US>999<RS>2<US>Fire Alarm  Fault -     AutroMaster Switchboard Loss of     communication <RS>3<US>2<RS>4<US>3<RS>5<US>2<RS>6<US>3<ETX>" + (char)13 + (char)10;
-                msg += "   Pager Address : 999" + (char)13 + (char)10;
-                msg += "   Pager Text    : |Fire Alarm  Fault -     AutroMaster Switchboard |" + (char)13 + (char)10;
-                msg += "   Pager Text    : |Loss of     communication                       |" + (char)13 + (char)10;
-                msg += "   Pager Ctrl    : Beeps=2, Type=3, Trans=2, Pri=3, " + (char)13 + (char)10;
-                msg += "   Checksum      : OK" + (char)13 + (char)10;
-                msg += "-----------------: 2026-04-16 12:24:23.750 " + (char)13 + (char)10;
-                msg += "SENDING   : <ACK>" + (char)13 + (char)10;
-                msg += "Receiving : <EOT>" + (char)13 + (char)10;
+
+
+                msg += "Receiving: EspaString < SOH > 1 < STX > 1 < US > 999 < RS > 2 < US > Fire Alarm ZONE 1 - MAINBUILDING #  A1003 -INPUTALARM # <RS>3<US>5<RS>4<US>3<RS>5<US>3<RS>6<US>1<ETX>+";
+                msg += "Pager Address : 999";
+                msg += "Pager Text    : | Fire Alarm ZONE 1 - MAINBUILDING #  A1003 -INPUT|";
+                msg += "Pager Text    : | ALARM #                                         |";
+                msg += "Pager Ctrl    : Beeps = 5, Type = 3, Trans = 3, Pri = 1, ";
+                msg += "Checksum: OK";
+                msg += "---------------- -: 2026 - 06 - 10 13:54:45.193";
                 msg += "" + (char)13 + (char)10;
                 msg += "" + (char)13 + (char)10;
-                msg += "Receiving : Select pager transmitter 2<ENQ>" + (char)13 + (char)10;
-                msg += "SENDING   : <ACK>" + (char)13 + (char)10;
-                msg += "Receiving : EspaString <SOH>1<STX>1<US>999<RS>2<US>Fire Alarm -ZONE 1 -MAINBUILDING    A1003 -INPUTALARM <RS>3<US>5<RS>4<US>3<RS>5<US>3<RS>6<US>1<ETX>&" + (char)13 + (char)10;
-                msg += "   Pager Address : 999" + (char)13 + (char)10;
-                msg += "   Pager Text    : |Fire Alarm -ZONE 1 -MAINBUILDING    A1003 -INPUT|" + (char)13 + (char)10;
-                msg += "   Pager Text    : |ALARM                                           |" + (char)13 + (char)10;
-                msg += "   Pager Ctrl    : Beeps=5, Type=3, Trans=3, Pri=1, " + (char)13 + (char)10;
-                msg += "   Checksum      : OK" + (char)13 + (char)10;
-                msg += "-----------------: 2026-04-16 12:36:07.798 " + (char)13 + (char)10;
-                msg += "SENDING   : <ACK>" + (char)13 + (char)10;
+                msg += "Receiving: EspaString < SOH > 1 < STX > 1 < US > 999 < RS > 2 < US > Fire Alarm Fault #     Autrocom    Serial ESPA -DRAX # Lossof          communication <RS>3<US>2<RS>4<US>3<RS>5<US>2<RS>6<US>3<ETX>B";
+                msg += "Pager Address : 999";
+                msg += "Pager Text    : | Fire Alarm Fault #     Autrocom    Serial ESPA |";
+                msg += "Pager Text    : | -DRAX # Lossof          communication           |";
+                msg += "Pager Ctrl    : Beeps = 2, Type = 3, Trans = 2, Pri = 3, ";
+                msg += "Checksum: OK";
+                msg += "---------------- -: 2026 - 06 - 10 13:54:46.019";
                 msg += "" + (char)13 + (char)10;
                 msg += "" + (char)13 + (char)10;
-                msg += "-----------------: 2026-04-16 13:04:10.512 " + (char)13 + (char)10;
-                msg += "   Pager Address : 999" + (char)13 + (char)10;
-                msg += "   Pager Text    : |Fire Alarm  Fault -     AutroGuard  CO_Sounder  |" + (char)13 + (char)10;
-                msg += "   Pager Text    : |Missing     addon board                         |" + (char)13 + (char)10;
-                msg += "   Pager Ctrl    : Beeps=2, Type=3, Trans=2, Pri=3, " + (char)13 + (char)10;
-                msg += "-----------------: 2026-04-16 13:04:11.319 " + (char)13 + (char)10;
-                msg += "   Pager Address : 999" + (char)13 + (char)10;
-                msg += "   Pager Text    : |Fire Alarm  Fault -ZONE 1 -MAIN     BUILDING    |" + (char)13 + (char)10;
-                msg += "   Pager Text    : |Faulty      point(s) in zone                    |" + (char)13 + (char)10;
-                msg += "   Pager Ctrl    : Beeps=2, Type=3, Trans=2, Pri=3, " + (char)13 + (char)10;
-                msg += "-----------------: 2026-04-16 13:04:12.120 " + (char)13 + (char)10;
+                msg += "Receiving: EspaString < SOH > 1 < STX > 1 < US > 999 < RS > 2 < US > Fire Alarm Fault #     A1005 -     AutroGuard  VAD #       Missing     addon board <RS>3<US>2<RS>4<US>3<RS>5<US>2<RS>6<US>3<ETX>L";
+                msg += "Pager Address : 999";
+                msg += "Pager Text    : | Fire Alarm Fault #     A1005 -     AutroGuard  |";
+                msg += "Pager Text    : | VAD #       Missing     addon board             |";
+                msg += "Pager Ctrl    : Beeps = 2, Type = 3, Trans = 2, Pri = 3, ";
+                msg += "Checksum: OK";
+                msg += "---------------- -: 2026 - 06 - 10 13:56:02.808";
                 msg += "" + (char)13 + (char)10;
                 msg += "" + (char)13 + (char)10;
+                msg += "Receiving: EspaString < SOH > 1 < STX > 1 < US > 999 < RS > 2 < US > Fire Alarm Fault #     AutroGuard  CO_Sounder #Missing     addon board <RS>3<US>2<RS>4<US>3<RS>5<US>2<RS>6<US>3<ETX>P";
+                msg += "Pager Address : 999";
+                msg += "Pager Text    : | Fire Alarm Fault #     AutroGuard  CO_Sounder #|";
+                msg += "Pager Text    : | Missing     addon board                         |";
+                msg += "Pager Ctrl: Beeps = 2, Type = 3, Trans = 2, Pri = 3, ";
+                msg += "Checksum: OK";
+                msg += "---------------- -: 2026 - 06 - 10 15:14:23.953";
                 msg += "" + (char)13 + (char)10;
-                msg += "Receiving : <EOT>" + (char)13 + (char)10;
-                msg += "   Pager Address : 999" + (char)13 + (char)10;
-                msg += "   Pager Text    : |Fire Alarm -ZONE 1 -MAINBUILDING    A1005 -     |" + (char)13 + (char)10;
-                msg += "   Pager Text    : |AutroGuard  SD                                  |" + (char)13 + (char)10;
-                msg += "   Pager Ctrl    : Beeps=5, Type=3, Trans=3, Pri=1, " + (char)13 + (char)10;
-                msg += "-----------------: 2026-04-16 13:34:58.152 " + (char)13 + (char)10;
-                msg += "   Pager Address : 999" + (char)13 + (char)10;
-                msg += "   Pager Text    : |Fire Alarm -ZONE 1 -MAINBUILDING    A1005 -     |" + (char)13 + (char)10;
-                msg += "   Pager Text    : |AutroGuard  SD                                  |" + (char)13 + (char)10;
-                msg += "   Pager Ctrl    : Beeps=5, Type=3, Trans=3, Pri=1, " + (char)13 + (char)10;
-                msg += "-----------------: 2026-04-16 13:35:06.781 " + (char)13 + (char)10;
+                msg += "" + (char)13 + (char)10;
+                msg += "Receiving: EspaString < SOH > 1 < STX > 1 < US > 999 < RS > 2 < US > Fire Alarm Fault #     A1006 -     AutroGuard  CO # Missingdetector <RS>3<US>2<RS>4<US>3<RS>5<US>2<RS>6<US>3<ETX>[0x10]";
+                msg += "Pager Address : 999";
+                msg += "Pager Text    : | Fire Alarm Fault #     A1006 -     AutroGuard  |";
+                msg += "Pager Text    : | CO # Missingdetector                            |";
+                msg += "Pager Ctrl    : Beeps = 2, Type = 3, Trans = 2, Pri = 3, ";
+                msg += "Checksum: OK";
+                msg += "---------------- -: 2026 - 06 - 10 15:14:24.863";
+
                 return msg;
             }
         }
@@ -289,91 +287,153 @@ namespace DraxTechnology.Panels
 
         private bool processmessage(string result)
         {
-            gsDeviceText = "";
-            int giNodeNumber = 1;
+            string[] lines = result.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (string line in lines)
+            {
+                string lineLower = Regex.Replace(line.ToLower(), @"\s+", " ").Trim();
+                if (!lineLower.Contains("pager text")) continue;
+                processEventLine(line);
+            }
+            return true;
+        }
+
+        // Decodes a single pager-text line and routes the event to AMX.
+        // Works for both fake-mode log lines (containing "Pager Text : | ... <RS>...")
+        // and real-frame DisplayText ("Fire Alarm ZONE 1 ... # device #").
+        private void processEventLine(string line)
+        {
             bool on = true;
             int tIpType = 0;
             int p1 = 0;
             int evnum = 0;
-            string gAlarmType = "";
+            string gsLine1 = "";
+            string gsLine2 = "";
 
-            string[] lines = result.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            gsTextField = "";
+            gsTextField2 = "";
+            gsDeviceText = "";
 
-            for (int i = 0; i < lines.Length; i++)
+            string lineLower = Regex.Replace(line.ToLower(), @"\s+", " ").Trim();
+
+            if (lineLower.Contains("fire alarm fault"))
             {
-                string line = lines[i];
-                string lineLower = Regex.Replace(line.ToLower(), @"\s+", " ").Trim();
-                gsDeviceText = "";
+                tIpType = 8;
+                gsTextField = line.Substring(line.ToLower().IndexOf("fire alarm fault"));
+                int rsIdx = gsTextField.ToLower().IndexOf("<rs>");
+                if (rsIdx >= 0) gsTextField = gsTextField.Substring(0, rsIdx);
 
-                if (!lineLower.Contains("pager text")) continue;
+                gsDeviceText = gsTextField.Substring(gsTextField.IndexOf("#") + 1).Trim();
+                gsDeviceText = gsDeviceText.Substring(0, gsDeviceText.IndexOf("#")).Trim();
+                gsDeviceText = Regex.Replace(gsDeviceText, @" {2,}", " ").Trim();
 
-                if (lineLower.Contains("fire alarm fault"))
+                gsTextField = gsTextField.Replace("#", "").Trim();
+                gsTextField = Regex.Replace(gsTextField, @" {2,}", " ").Trim();
+                if (gsTextField.Length > 40)
                 {
-                    tIpType = 8;
-                    gsTextField = line.Substring(19).Replace("-", " - ");
-                    gsTextField = Regex.Replace(gsTextField, @"\s+", " ").Trim().Replace("|", "");
-                    gsTextField = gsTextField.Substring(19).Trim();
-                    if (gsTextField.EndsWith("-"))
-                        gsTextField = gsTextField.Substring(0, gsTextField.Length - 1).Trim();
-                    string nl = (i + 1 < lines.Length) ? lines[i + 1] : null;
-                    if (nl != null)
-                        gsDeviceText = Regex.Replace(nl, @"\s+", " ").Substring(14).Trim().Replace("|", "");
-                }
-                else if (lineLower.Contains("fire pre alarm"))
-                {
-                    tIpType = 2;
-                    gsTextField = line.Substring(19).Replace("-", " - ");
-                    gsTextField = Regex.Replace(gsTextField, @"\s+", " ").Trim().Replace("|", "");
-                    gsTextField = gsTextField.Substring(16).Trim();
-                    if (gsTextField.EndsWith("-"))
-                        gsTextField = gsTextField.Substring(0, gsTextField.Length - 1).Trim();
-                }
-                else if (lineLower.Contains("fire alarm"))
-                {
-                    tIpType = 0;
-                    gsTextField = line.Substring(19).Replace("-", " - ");
-                    gsTextField = Regex.Replace(gsTextField, @"\s+", " ").Trim().Replace("|", "");
-                    gsTextField = gsTextField.Substring(12).Trim();
-                    if (gsTextField.ToLower().EndsWith("input"))
-                        gsTextField = gsTextField.Substring(0, gsTextField.Length - 5).Trim();
-                    if (gsTextField.EndsWith("-"))
-                        gsTextField = gsTextField.Substring(0, gsTextField.Length - 1).Trim();
-                    string nl = (i + 1 < lines.Length) ? lines[i + 1] : null;
-                    if (nl != null)
-                        gsDeviceText = Regex.Replace(nl, @"\s+", " ").Substring(14).Trim().Replace("|", "");
-                }
-
-                if (gsTextField.Length > 0)
-                {
-                    try
+                    int iSplit = gsTextField.LastIndexOfAny(new[] { ' ', '-' }, 40);
+                    if (iSplit > 0)
                     {
-                        p1 = (int)(enmNotAlarmType)Enum.Parse(typeof(enmNotAlarmType), tIpType.ToString());
+                        gsLine1 = gsTextField.Substring(0, iSplit).TrimEnd();
+                        gsLine2 = gsTextField.Substring(iSplit).TrimStart(' ').Trim();
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        this.NotifyClient("gAlarmType " + gAlarmType + " " + ex.Message, false);
+                        gsLine1 = gsTextField.Substring(0, 40);
+                        gsLine2 = gsTextField.Substring(40);
                     }
-
-                    string devicetext = gsTextField.Replace("-", "").Trim()
-                        .Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
-                        .LastOrDefault() ?? "";
-
-                    var addr = AssignOrLookup(devicetext, null, null);
-                    giNodeNumber = addr.Node;
-                    giLoopNumber = addr.Loop;
-                    giDeviceAddress = addr.Device;
-
-                    evnum = CSAMXSingleton.CS.MakeInputNumber(
-                        giNodeNumber, giLoopNumber, giDeviceAddress, p1, on);
-
-                    base.NotifyClient("Send to AMX: Node=" + (giNodeNumber + this.Offset) +
-                                      " Loop=" + giLoopNumber + " Address=" + giDeviceAddress);
-
-                    Thread.Sleep(1000);
-                    send_response_amx_and_serial(evnum, gsTextField, "", gsDeviceText);
+                    gsTextField = gsLine1;
+                    gsTextField2 = gsLine2;
                 }
             }
-            return true;
+            else if (lineLower.Contains("fire pre alarm"))
+            {
+                tIpType = 2;
+                gsTextField = line.Substring(line.ToLower().IndexOf("fire pre alarm"));
+                int rsIdx = gsTextField.ToLower().IndexOf("<rs>");
+                if (rsIdx >= 0) gsTextField = gsTextField.Substring(0, rsIdx);
+
+                gsDeviceText = gsTextField.Substring(gsTextField.IndexOf("#") + 1).Trim();
+                gsDeviceText = gsDeviceText.Substring(0, gsDeviceText.IndexOf("#")).Trim();
+                gsDeviceText = Regex.Replace(gsDeviceText, @" {2,}", " ").Trim();
+
+                gsTextField = gsTextField.Replace("#", "").Trim();
+                gsTextField = Regex.Replace(gsTextField, @" {2,}", " ").Trim();
+                if (gsTextField.Length > 40)
+                {
+                    int iSplit = gsTextField.LastIndexOfAny(new[] { ' ', '-' }, 40);
+                    if (iSplit > 0)
+                    {
+                        gsLine1 = gsTextField.Substring(0, iSplit).TrimEnd();
+                        gsLine2 = gsTextField.Substring(iSplit).TrimStart(' ').Trim();
+                    }
+                    else
+                    {
+                        gsLine1 = gsTextField.Substring(0, 40);
+                        gsLine2 = gsTextField.Substring(40);
+                    }
+                    gsTextField = gsLine1;
+                    gsTextField2 = gsLine2;
+                }
+            }
+            else if (lineLower.Contains("fire alarm"))
+            {
+                tIpType = 0;
+                gsTextField = line.Substring(line.ToLower().IndexOf("fire alarm"));
+                int rsIdx = gsTextField.ToLower().IndexOf("<rs>");
+                if (rsIdx >= 0) gsTextField = gsTextField.Substring(0, rsIdx);
+
+                gsDeviceText = gsTextField.Substring(gsTextField.IndexOf("#") + 1).Trim();
+                gsDeviceText = gsDeviceText.Substring(0, gsDeviceText.IndexOf("#")).Trim();
+                gsDeviceText = Regex.Replace(gsDeviceText, @" {2,}", " ").Trim();
+
+                gsTextField = gsTextField.Replace("#", "").Trim();
+                gsTextField = Regex.Replace(gsTextField, @" {2,}", " ").Trim();
+                if (gsTextField.Length > 40)
+                {
+                    int iSplit = gsTextField.LastIndexOfAny(new[] { ' ', '-' }, 40);
+                    if (iSplit > 0)
+                    {
+                        gsLine1 = gsTextField.Substring(0, iSplit).TrimEnd();
+                        gsLine2 = gsTextField.Substring(iSplit).TrimStart(' ').Trim();
+                    }
+                    else
+                    {
+                        gsLine1 = gsTextField.Substring(0, 40);
+                        gsLine2 = gsTextField.Substring(40);
+                    }
+                    gsTextField = gsLine1;
+                    gsTextField2 = gsLine2;
+                }
+            }
+
+            if (gsTextField.Length > 0)
+            {
+                try
+                {
+                    p1 = (int)(enmNotAlarmType)Enum.Parse(typeof(enmNotAlarmType), tIpType.ToString());
+                }
+                catch (Exception ex)
+                {
+                    this.NotifyClient("tIpType parse error: " + tIpType + " " + ex.Message, false);
+                }
+
+                var addr = AssignOrLookup(gsDeviceText, null, null);
+                giLoopNumber = addr.Loop;
+                giDeviceAddress = addr.Device;
+
+                evnum = CSAMXSingleton.CS.MakeInputNumber(
+                    addr.Node, addr.Loop, addr.Device, p1, on);
+
+                base.NotifyClient("Send to AMX: Node=" + (addr.Node + this.Offset) +
+                                  " Loop=" + addr.Loop + " Address=" + addr.Device);
+
+                Thread.Sleep(500);
+
+                if (gsTextField2.StartsWith("-"))
+                    gsTextField2 = gsTextField2.Substring(1);
+
+                send_response_amx_and_serial(evnum, gsTextField, "", gsTextField2);
+            }
         }
         #endregion
 
@@ -383,56 +443,8 @@ namespace DraxTechnology.Panels
             string text = rec?.DisplayText ?? "";
             if (string.IsNullOrWhiteSpace(text)) return;
 
-            string lower = Regex.Replace(text.ToLowerInvariant(), @"\s+", " ").Trim();
-
-            int p1 = (int)enmNotAlarmType.NOTStatusEvent;
-            bool on = true;
-            string category = "ESPA Event";
-
-            if (lower.Contains("disablement cleared") || lower.Contains("isolation cleared") ||
-                lower.Contains("disablement reset"))
-            { p1 = (int)enmNotAlarmType.NOTIsolate; on = false; category = "Disablement Cleared"; }
-            else if (lower.Contains("disablement") || lower.Contains("isolation") ||
-                     lower.Contains("disabled") || lower.Contains("isolated"))
-            { p1 = (int)enmNotAlarmType.NOTIsolate; category = "Disablement"; }
-            else if (lower.Contains("fault cleared") || lower.Contains("fault reset") ||
-                     lower.Contains("fault restored"))
-            { p1 = (int)enmNotAlarmType.NOTFault; on = false; category = "Fault Cleared"; }
-            else if (lower.Contains("fire alarm fault") || lower.Contains("fault"))
-            { p1 = (int)enmNotAlarmType.NOTFault; category = "Fault"; }
-            else if (lower.Contains("fire pre alarm") || lower.Contains("pre-alarm") ||
-                     lower.Contains("prealarm"))
-            { p1 = (int)enmNotAlarmType.NOTPreAlarm; category = "Pre-Alarm"; }
-            else if (lower.Contains("test mode") || lower.Contains("walk test"))
-            { p1 = (int)enmNotAlarmType.NOTTestModeFire; category = "Test Mode"; }
-            else if (lower.Contains("fire alarm cleared") || lower.Contains("fire reset") ||
-                     lower.Contains("alarm cleared"))
-            { p1 = (int)enmNotAlarmType.NOTFire; on = false; category = "Fire Reset"; }
-            else if (lower.Contains("fire alarm") || lower.Contains("alarm"))
-            { p1 = (int)enmNotAlarmType.NOTFire; category = "Fire"; }
-
-            int? zoneHint = null, devHint = null;
-            var zm = Regex.Match(text, @"\bZONE\s+(\d+)\b", RegexOptions.IgnoreCase);
-            if (zm.Success && int.TryParse(zm.Groups[1].Value, out int zone)) zoneHint = zone;
-            var dm = Regex.Match(text, @"\b[A-Z](\d{3,4})\b");
-            if (dm.Success && int.TryParse(dm.Groups[1].Value, out int dev)) devHint = dev;
-
-            string devicetext = text.Replace("-", "").Trim()
-                .Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
-                .LastOrDefault() ?? "";
-
-            //var addr = AssignOrLookup(devicetext, zoneHint, devHint);
-            var addr = AssignOrLookup(devicetext, null, null);  // Just do a name lookup / assignment for now, since the hints are often unreliable / inconsistent in format
-            int evnum = CSAMXSingleton.CS.MakeInputNumber(addr.Node, addr.Loop, addr.Device, p1, on);
-
-            base.NotifyClient(
-                "ESPA " + category +
-                " (zone=" + (zoneHint?.ToString() ?? "-") +
-                " dev=" + (devHint?.ToString() ?? "-") +
-                "): Send to AMX Node=" + (addr.Node + this.Offset) +
-                " Loop=" + addr.Loop + " Addr=" + addr.Device);
-
-            send_response_amx_and_serial(evnum, text.Trim(), category, devicetext);
+            base.NotifyClient("ESPA Frame received: " + text, false);
+            processEventLine(text);
         }
         #endregion
 
