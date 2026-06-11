@@ -121,6 +121,7 @@ namespace DraxTechnology.Panels
 
                 "FA-03-01-3F-01-00-00-00-00-00-00-44-FD";
         }
+        public override string PanelVersion => "1.0.0.0";
         public PanelMorleyZX(string baselogfolder, string identifier) : base(baselogfolder, identifier, "MorleyMan", "MORLEY")
         {
             if (!String.IsNullOrEmpty(identifier))

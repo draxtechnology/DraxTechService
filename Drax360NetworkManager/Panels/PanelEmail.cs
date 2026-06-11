@@ -51,6 +51,7 @@ namespace DraxTechnology.Panels
         }
 
         public override string FakeString => throw new NotImplementedException();
+        public override string PanelVersion => "1.0.0.0";
 
         public override void Alert(string passedValues) => EnqueueEvent("FIRE", passedValues);
         public override void Evacuate(string passedValues) => EnqueueEvent("EVACUATE", passedValues);

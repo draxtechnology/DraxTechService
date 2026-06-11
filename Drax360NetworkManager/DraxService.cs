@@ -1560,6 +1560,16 @@ namespace DraxTechnology
                 case "GETPANELNUMMESSAGES":
                     ret = abstractpanels.FirstOrDefault()?.NumMessages.ToString() ?? "0";
                     break;
+
+                case "GETVERSIONS":
+                    {
+                        string svcVer = Assembly.GetEntryAssembly()
+                            .GetCustomAttribute<AssemblyFileVersionAttribute>().Version;
+                        string panVer = abstractpanels.FirstOrDefault()?.PanelVersion ?? "1.0.0.0";
+                        ret = svcVer + "|" + panVer;
+                    }
+                    break;
+
                 default:
 
                     ln("Pipe Message Not Handled " + cmd);

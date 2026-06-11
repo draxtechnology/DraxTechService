@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Ports;
 using System.Linq;
-using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -106,6 +105,7 @@ namespace DraxTechnology.Panels
                 return msg;
             }
         }
+        public override string PanelVersion => "1.0.0.0";
         #endregion
 
         #region Constructor

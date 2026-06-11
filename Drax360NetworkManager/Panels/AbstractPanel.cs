@@ -48,6 +48,7 @@ namespace DraxTechnology.Panels
         // Abstract properties
 
         public abstract string FakeString { get; }
+        public abstract string PanelVersion { get; }
         public virtual int NumHeartbeats => 0;
 
         public virtual int NumMessages => 0;

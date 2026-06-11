@@ -196,6 +196,7 @@ namespace DraxTechnology.Panels
         {
             get { return ""; }
         }
+        public override string PanelVersion => "1.0.0.0";
 
         public PanelRSM(string baselogfolder, string identifier) : base(baselogfolder, identifier, "RSMMan", "RSM")
         {

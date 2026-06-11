@@ -1,4 +1,4 @@
-﻿
+
 using System;
 using System.Collections.Generic;
 using System.IO.Ports;
@@ -51,6 +51,7 @@ namespace DraxTechnology.Panels
                 return msg;
             }
         }
+        public override string PanelVersion => "1.0.0.0";
 
         public PanelGent(string baselogfolder, string identifier) : base(baselogfolder, identifier, "GenMan", "GEN")
         {

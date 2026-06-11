@@ -44,6 +44,7 @@ namespace DraxTechnology.Panels
                 return msg;
             }
         }
+        public override string PanelVersion => "1.0.0.0";
 
         public PanelSyncro(string baselogfolder, string identifier) : base(baselogfolder, identifier, "KsfMan", "KSF")
         {

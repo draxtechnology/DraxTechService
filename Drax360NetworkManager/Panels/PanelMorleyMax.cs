@@ -28,6 +28,7 @@ namespace DraxTechnology.Panels
                 ">IE0220611450330000000BDD\r";
 
         }
+        public override string PanelVersion => "1.0.0.0";
 
         public PanelMorleyMax(string baselogfolder, string identifier) : base(baselogfolder, identifier, "MaxMan", "MAX")
         {

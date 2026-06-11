@@ -102,6 +102,7 @@ namespace DraxTechnology.Panels
                 return Encoding.Default.GetString(readbhyte);
             }
         }
+        public override string PanelVersion => "1.0.0.0";
         public override void Parse(byte[] buffer)
         {
             base.Parse(buffer);
