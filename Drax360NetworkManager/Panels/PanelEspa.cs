@@ -121,7 +121,7 @@ namespace DraxTechnology.Panels
                 this.Offset = base.GetSetting<int>(ksettingsetupsection, "giAmx1Offset");
                 KSFUseLoop = base.GetSetting<int>(ksettingsetupsection, "UseLoop");
 
-                string dbPath = Path.Combine(baselogfolder, "events.db");
+                string dbPath = Path.Combine(baselogfolder, "data\\events.db");
                 EspaEventsLegacyMigrator.EnsureMigrated(dbPath, msg => this.NotifyClient(msg));
 
                 _eventsDb = new EspaEventsContext(dbPath);
@@ -318,7 +318,7 @@ namespace DraxTechnology.Panels
             if (lineLower.Contains("fire alarm fault"))
             {
                 tIpType = 8;
-                gsTextField = line.Substring(line.ToLower().IndexOf("fire alarm fault"));
+                gsTextField = line.Substring(line.ToLower().IndexOf("fire alarm fault") + 17);
                 int rsIdx = gsTextField.ToLower().IndexOf("<rs>");
                 if (rsIdx >= 0) gsTextField = gsTextField.Substring(0, rsIdx);
 
@@ -328,6 +328,7 @@ namespace DraxTechnology.Panels
 
                 gsTextField = gsTextField.Replace("#", "").Trim();
                 gsTextField = Regex.Replace(gsTextField, @" {2,}", " ").Trim();
+
                 if (gsTextField.Length > 40)
                 {
                     int iSplit = gsTextField.LastIndexOfAny(new[] { ' ', '-' }, 40);
@@ -344,11 +345,12 @@ namespace DraxTechnology.Panels
                     gsTextField = gsLine1;
                     gsTextField2 = gsLine2;
                 }
+ 
             }
             else if (lineLower.Contains("fire pre alarm"))
             {
                 tIpType = 2;
-                gsTextField = line.Substring(line.ToLower().IndexOf("fire pre alarm"));
+                gsTextField = line.Substring(line.ToLower().IndexOf("fire pre alarm") + 15);
                 int rsIdx = gsTextField.ToLower().IndexOf("<rs>");
                 if (rsIdx >= 0) gsTextField = gsTextField.Substring(0, rsIdx);
 
@@ -378,7 +380,7 @@ namespace DraxTechnology.Panels
             else if (lineLower.Contains("fire alarm"))
             {
                 tIpType = 0;
-                gsTextField = line.Substring(line.ToLower().IndexOf("fire alarm"));
+                gsTextField = line.Substring(line.ToLower().IndexOf("fire alarm") + 10);
                 int rsIdx = gsTextField.ToLower().IndexOf("<rs>");
                 if (rsIdx >= 0) gsTextField = gsTextField.Substring(0, rsIdx);
 
