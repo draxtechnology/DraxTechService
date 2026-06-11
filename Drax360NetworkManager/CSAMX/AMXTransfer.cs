@@ -295,7 +295,7 @@ namespace DraxTechnology
                 // depth (Debug.WriteLine survives in attached debuggers but not
                 // in service mode).
                 SendMessage("?");
-                this.NotifyClient("Sent AMX Heartbeat ?");
+                //this.NotifyClient("Sent AMX Heartbeat ?");
 
             }
         }

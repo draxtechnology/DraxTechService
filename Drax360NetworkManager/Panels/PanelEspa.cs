@@ -318,7 +318,7 @@ namespace DraxTechnology.Panels
             if (lineLower.Contains("fire alarm fault"))
             {
                 tIpType = 8;
-                gsTextField = line.Substring(line.ToLower().IndexOf("fire alarm fault") + 17);
+                gsTextField = line.Substring(line.ToLower().IndexOf("fire alarm fault") + 17);   // remove the "Fire Alarm Fault # " prefix to get to the device text, which is always between two '#' characters
                 int rsIdx = gsTextField.ToLower().IndexOf("<rs>");
                 if (rsIdx >= 0) gsTextField = gsTextField.Substring(0, rsIdx);
 
@@ -350,7 +350,7 @@ namespace DraxTechnology.Panels
             else if (lineLower.Contains("fire pre alarm"))
             {
                 tIpType = 2;
-                gsTextField = line.Substring(line.ToLower().IndexOf("fire pre alarm") + 15);
+                gsTextField = line.Substring(line.ToLower().IndexOf("fire pre alarm") + 15);  // remove the "Fire Pre Alarm # " prefix to get to the device text, which is always between two '#' characters
                 int rsIdx = gsTextField.ToLower().IndexOf("<rs>");
                 if (rsIdx >= 0) gsTextField = gsTextField.Substring(0, rsIdx);
 
@@ -380,7 +380,7 @@ namespace DraxTechnology.Panels
             else if (lineLower.Contains("fire alarm"))
             {
                 tIpType = 0;
-                gsTextField = line.Substring(line.ToLower().IndexOf("fire alarm") + 10);
+                gsTextField = line.Substring(line.ToLower().IndexOf("fire alarm") + 10);  // remove the "Fire Alarm # " prefix to get to the device text, which is always between two '#' characters
                 int rsIdx = gsTextField.ToLower().IndexOf("<rs>");
                 if (rsIdx >= 0) gsTextField = gsTextField.Substring(0, rsIdx);
 
@@ -428,6 +428,8 @@ namespace DraxTechnology.Panels
 
                 base.NotifyClient("Send to AMX: Node=" + (addr.Node + this.Offset) +
                                   " Loop=" + addr.Loop + " Address=" + addr.Device);
+                base.NotifyClient("Send to AMX: gsTextField=" + gsTextField);
+                base.NotifyClient("Send to AMX: gsTextField2=" + gsTextField2);
 
                 Thread.Sleep(500);
 
