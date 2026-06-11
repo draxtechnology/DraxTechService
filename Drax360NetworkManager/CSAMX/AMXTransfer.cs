@@ -296,7 +296,6 @@ namespace DraxTechnology
                 // in service mode).
                 SendMessage("?");
                 //this.NotifyClient("Sent AMX Heartbeat ?");
-
             }
         }
         public void SendMessage(string message)
