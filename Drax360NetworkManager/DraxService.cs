@@ -709,7 +709,7 @@ namespace DraxTechnology
             Console.WriteLine(DateTime.Now + ": " + "".PadLeft(indent, '\t') + message);
             Console.ResetColor();
             log(message);
-            EventLog.WriteEntry(message, EventLogEntryType.Information);
+            //EventLog.WriteEntry(message, EventLogEntryType.Information);
         }
 
         private void kvp(string key, object value)
@@ -743,20 +743,22 @@ namespace DraxTechnology
 
         private void log(string message, EventLogEntryType eventtype = EventLogEntryType.Information)
         {
-            if (this.DebugLog == true)
+            if (this.DebugLog != true) return;
+            filelockmutex.WaitOne();
+            try
             {
-                filelockmutex.WaitOne();
-
-                // changed to new log file path
                 string logdir = Path.Combine(configurationbasefolder, klogfilefolder);
                 if (!Directory.Exists(logdir))
-                {
                     Directory.CreateDirectory(logdir);
-                }
-
                 string workinglogfile = Path.Combine(logdir, DateTime.Now.ToString("yyyy-MM-dd-") + getpanel().GetFileName + ".log");
                 File.AppendAllText(workinglogfile, friendlytimestamp() + " " + message + "\r\n");
-
+            }
+            catch (Exception ex)
+            {
+                EventLog.WriteEntry("Log write failed: " + ex.Message, EventLogEntryType.Warning);
+            }
+            finally
+            {
                 filelockmutex.ReleaseMutex();
             }
         }
@@ -964,81 +966,128 @@ namespace DraxTechnology
             StartDeviceWatcher();
         }
 
-        private void PassNWMDataToAMX1()
+        // Maps NWM handle prefixes in Current.Nwm to panel names.
+        // Add entries here when new handle→panel relationships are identified.
+        private static readonly Dictionary<string, string> NwmHandlePanelMap = new()
         {
-            //Writes data about the NWM to AMX1's temporary data file
-            //Uses the DDEchannel as identifier
-            //This sub is unique to each Network Manager
+            { "1070=", "AUTESPA" },
+            { "200=", "GENT" },
+        };
 
-            // Check file not already been updated
-            if (File.Exists(CURRENTNWMDATAFILE))
+        private string DetectPanelFromCurrentNwm()
+        {
+            if (!File.Exists(CURRENTNWMDATAFILE)) return null;
+            try
             {
-                List<List<string>> groups = new List<List<string>>();
-                List<string> current = null;
-                bool exists = false;
                 foreach (var line in File.ReadAllLines(CURRENTNWMDATAFILE))
+                    foreach (var kv in NwmHandlePanelMap)
+                        if (line.Contains(kv.Key)) return kv.Value;
+            }
+            catch { }
+            return null;
+        }
+
+        private void PersistPanelToConfig(string panelName)
+        {
+            string configPath = Path.Combine(configurationbasefolder, "DraxTechnology.dll.config");
+            if (!File.Exists(configPath)) return;
+            try
+            {
+                string encrypted = AesDecryptor.EncryptOpenSSLCtr(panelName, "");
+                string[] cfgLines = File.ReadAllLines(configPath);
+                for (int i = 0; i < cfgLines.Length; i++)
                 {
-                    if (line.Contains(panel + " Network Manager") && current == null)
-                        exists = true;
-                }
-                int port = 0;
-                if (!exists)
-                {
-                    using (StreamWriter w = File.AppendText(CURRENTNWMDATAFILE))
+                    if (cfgLines[i].Contains("<add key=\"Panels\""))
                     {
-                        AbstractPanel apbase = getpanel();
-
-                        string ext = apbase.Extension.ToUpper();
-                        if (ext == "MORLEY" || ext == "MAX")
-                        {
-                            port = apbase.GetSetting<int>("SETUP", "CommPort");
-                        }
-                        else
-                        {
-                            port = apbase.GetSetting<int>("PANEL1", "CommPort");
-                        }
-                        int baud = apbase.GetSetting<int>("SETUP", "BAUDRATE");
-                        string parity = apbase.GetSetting<string>("SETUP", "PARITY");
-                        if (parity is null || parity.Length == 0)
-                        {
-                            parity = " ";
-                        }
-                        int databits = apbase.GetSetting<int>("SETUP", "DATABITS");
-                        int stopbits = apbase.GetSetting<int>("SETUP", "STOPBITS");
-
-                        var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-                        string versionString = version.ToString(); // "1.0.0.0"
-
-                        w.WriteLine("[0]\r\nProgName=" + panel + " Network Manager");
-                        w.WriteLine("Name=" + panel + "\r\nVersion=" + versionString + "\r\nNodeName=" + panel + " Fire Panel");
-
-                        string result = System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(panel.ToLower());
-
-                        w.WriteLine("Offset=0\r\nFirstNode=1\r\nLastNode=" + GetNwmMaxNodes(0, "NwmHandle" + result));
-                        w.WriteLine("Startup=" + DateTime.Now);
-
-                        string exePath = Environment.ProcessPath!;
-                        DateTime exeDate = File.GetLastWriteTime(exePath);
-                        string exeDateTime = exeDate.ToString("dd/MM/yyyy HH:mm:ss");
-
-                        w.WriteLine("1A=NWM DLL File Date\r\n1B=" + exeDateTime);
-                        w.WriteLine("2A=" + panel + " Panel Timeout\r\n2B=None");
-                        w.WriteLine("3A=Communications Port 1\r\n3B=COM" + port);
-                        w.WriteLine("4A=Communications Port 2\r\n4B=COM1");
-                        w.WriteLine("5A=Communications Port 3\r\n5B=COM1");
-                        w.WriteLine("6A=Communications Port 4\r\n6B=COM1");
-                        w.WriteLine("7A=Communications Port 5\r\n7B=COM1");
-                        w.WriteLine("8A=Communications Port 6\r\n8B=COM1");
-                        w.WriteLine("9A=Comms Port 1 Settings\r\n9B=" + baud + "," + parity.ToLower().Substring(0, 1) + "," + databits + "," + stopbits);
-                        w.WriteLine("10A=Comms Port 2 Settings\r\n10B=9600,e,8,1");
-                        w.WriteLine("11A=Comms Port 3 Settings\r\n11B=9600,e,8,1");
-                        w.WriteLine("12A=Comms Port 4 Settings\r\n12B=9600,e,8,1");
-                        w.WriteLine("13A=Comms Port 5 Settings\r\n13B=9600,e,8,1");
-                        w.WriteLine("14A=Comms Port 6 Settings\r\n14B=9600,e,8,1");
-                        w.WriteLine("15A=\r\n15B=\r\n16A=\r\n16B=\r\n17A=\r\n17B=\r\n18A=\r\n18B=\r\n19A=\r\n19B=\r\n20A=\r\n20B=\r\n21A=\r\n21B=\r\n22A=\r\n22B=\r\n23A=\r\n23B=\r\n24A=\r\n24B=\r\n25A=\r\n25B=\r\n");
-                        w.Flush();
+                        string ind = cfgLines[i].Substring(0, cfgLines[i].Length - cfgLines[i].TrimStart().Length);
+                        cfgLines[i] = $"{ind}<add key=\"Panels\" value=\"{encrypted}\" />";
                     }
                 }
+                File.WriteAllLines(configPath, cfgLines);
+            }
+            catch (Exception ex)
+            {
+                EventLog.WriteEntry("Panel config persist failed: " + ex.Message, EventLogEntryType.Warning);
+            }
+        }
+
+        private void PassNWMDataToAMX1()
+        {
+            if (!File.Exists(CURRENTNWMDATAFILE))
+            {
+                EventLog.WriteEntry("Current.Nwm not found — AMX may not be running yet", EventLogEntryType.Warning);
+                return;
+            }
+
+            try
+            {
+                // Remove stale registration block for this panel, then write a fresh one
+                // so Startup= and version info are always current.
+                var nwmLines = new List<string>(File.ReadAllLines(CURRENTNWMDATAFILE));
+                string marker = "ProgName=" + panel + " Network Manager";
+                int blockStart = -1, blockEnd = nwmLines.Count;
+                for (int i = 0; i < nwmLines.Count; i++)
+                {
+                    if (!nwmLines[i].Contains(marker)) continue;
+                    blockStart = i;
+                    for (int j = i - 1; j >= 0; j--)
+                    {
+                        if (nwmLines[j].TrimStart().StartsWith("[")) { blockStart = j; break; }
+                    }
+                    for (int j = i + 1; j < nwmLines.Count; j++)
+                    {
+                        if (nwmLines[j].TrimStart().StartsWith("[")) { blockEnd = j; break; }
+                    }
+                    break;
+                }
+                if (blockStart >= 0)
+                {
+                    nwmLines.RemoveRange(blockStart, blockEnd - blockStart);
+                    File.WriteAllLines(CURRENTNWMDATAFILE, nwmLines);
+                }
+
+                using (StreamWriter w = File.AppendText(CURRENTNWMDATAFILE))
+                {
+                    AbstractPanel apbase = getpanel();
+                    string ext = apbase.Extension.ToUpper();
+                    int port = (ext == "MORLEY" || ext == "MAX")
+                        ? apbase.GetSetting<int>("SETUP", "CommPort")
+                        : apbase.GetSetting<int>("PANEL1", "CommPort");
+                    int baud = apbase.GetSetting<int>("SETUP", "BAUDRATE");
+                    string parity = apbase.GetSetting<string>("SETUP", "PARITY") ?? " ";
+                    if (parity.Length == 0) parity = " ";
+                    int databits = apbase.GetSetting<int>("SETUP", "DATABITS");
+                    int stopbits = apbase.GetSetting<int>("SETUP", "STOPBITS");
+                    string versionString = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
+                    string result = System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(panel.ToLower());
+                    string exePath = Environment.ProcessPath!;
+                    string exeDateTime = File.GetLastWriteTime(exePath).ToString("dd/MM/yyyy HH:mm:ss");
+
+                    w.WriteLine("[0]\r\nProgName=" + panel + " Network Manager");
+                    w.WriteLine("Name=" + panel + "\r\nVersion=" + versionString + "\r\nNodeName=" + panel + " Fire Panel");
+                    w.WriteLine("Offset=0\r\nFirstNode=1\r\nLastNode=" + GetNwmMaxNodes(0, "NwmHandle" + result));
+                    w.WriteLine("Startup=" + DateTime.Now);
+                    w.WriteLine("1A=NWM DLL File Date\r\n1B=" + exeDateTime);
+                    w.WriteLine("2A=" + panel + " Panel Timeout\r\n2B=None");
+                    w.WriteLine("3A=Communications Port 1\r\n3B=COM" + port);
+                    w.WriteLine("4A=Communications Port 2\r\n4B=COM1");
+                    w.WriteLine("5A=Communications Port 3\r\n5B=COM1");
+                    w.WriteLine("6A=Communications Port 4\r\n6B=COM1");
+                    w.WriteLine("7A=Communications Port 5\r\n7B=COM1");
+                    w.WriteLine("8A=Communications Port 6\r\n8B=COM1");
+                    w.WriteLine("9A=Comms Port 1 Settings\r\n9B=" + baud + "," + parity.ToLower().Substring(0, 1) + "," + databits + "," + stopbits);
+                    w.WriteLine("10A=Comms Port 2 Settings\r\n10B=9600,e,8,1");
+                    w.WriteLine("11A=Comms Port 3 Settings\r\n11B=9600,e,8,1");
+                    w.WriteLine("12A=Comms Port 4 Settings\r\n12B=9600,e,8,1");
+                    w.WriteLine("13A=Comms Port 5 Settings\r\n13B=9600,e,8,1");
+                    w.WriteLine("14A=Comms Port 6 Settings\r\n14B=9600,e,8,1");
+                    w.WriteLine("15A=\r\n15B=\r\n16A=\r\n16B=\r\n17A=\r\n17B=\r\n18A=\r\n18B=\r\n19A=\r\n19B=\r\n20A=\r\n20B=\r\n21A=\r\n21B=\r\n22A=\r\n22B=\r\n23A=\r\n23B=\r\n24A=\r\n24B=\r\n25A=\r\n25B=\r\n");
+                    w.Flush();
+                }
+            }
+            catch (Exception ex)
+            {
+                EventLog.WriteEntry("Current.Nwm update failed: " + ex.Message, EventLogEntryType.Warning);
             }
         }
         public int GetNwmMaxNodes(int nwmHandle, string type)
@@ -1630,16 +1679,30 @@ namespace DraxTechnology
             //
             // panel = ConfigurationManager.AppSettings["Panels"].Trim().ToUpper();
 
-            string panelencrypted = ConfigurationManager.AppSettings["Panels"].Trim();   // Decrypted in code to avoid casual observation; the value in AppSettings should be opaque ciphertext.
-            //panel = AesDecryptor.EncryptOpenSSLCtr(panelencrypted, "");  // Use to work out encrypted version
+            // Base folder must be known before panel detection so PersistPanelToConfig can run.
+            configurationbasefolder = ConfigurationManager.AppSettings["Configuration"].Trim();
+
+            string panelencrypted = ConfigurationManager.AppSettings["Panels"].Trim();
             if (panelencrypted.Length < 20)
             {
-                panelencrypted = "Unknown";
-            } 
-            panel = AesDecryptor.DecryptOpenSSLCtr(panelencrypted, "");
-
-            // New log file path
-            configurationbasefolder = ConfigurationManager.AppSettings["Configuration"].Trim();
+                // Config has no valid panel — try to detect from Current.Nwm written by AMX.
+                string detected = DetectPanelFromCurrentNwm();
+                if (detected != null)
+                {
+                    panel = detected;
+                    PersistPanelToConfig(panel);
+                    EventLog.WriteEntry("Panel auto-detected from Current.Nwm: " + panel, EventLogEntryType.Information);
+                }
+                else
+                {
+                    panel = "Unknown";
+                    EventLog.WriteEntry("Panel not set in config and could not be detected from Current.Nwm — service cannot start.", EventLogEntryType.Error);
+                }
+            }
+            else
+            {
+                panel = AesDecryptor.DecryptOpenSSLCtr(panelencrypted, "");
+            }
 
             if (!Directory.Exists(configurationbasefolder))
             {
