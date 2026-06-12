@@ -6,7 +6,7 @@
     Valid Values =
       Advanced                          U2FsdGVkX1/JJ3QPvEOW5nOGw+zEb4s/
       Email                             U2FsdGVkX1+YN+3YDMt0ebrDTZ2F
-      ESPA                              U2FsdGVkX18z47B3s1yyuMwpyxQ=
+      AUTESPA                           U2FsdGVkX191GGJ/bumkNXbg8/TxbEI=                    1070 Channel
       Gent                              U2FsdGVkX1+HX8ee7Qrcq95XoWk=
       Inspire                           U2FsdGVkX1+f3C+TzSBV52yzgMMjNa8=
       MorleyMax                         U2FsdGVkX18lYZGUa4wybYDH/IvY1JtcgA==

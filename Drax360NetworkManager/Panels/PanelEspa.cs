@@ -110,7 +110,7 @@ namespace DraxTechnology.Panels
 
         #region Constructor
         public PanelEspa(string baselogfolder, string identifier)
-            : base(baselogfolder, identifier, "Espa", "ESPA")
+            : base(baselogfolder, identifier, "AutEspa", "AUTESPA")
         {
             if (!string.IsNullOrEmpty(identifier))
             {

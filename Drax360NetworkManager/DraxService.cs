@@ -1166,7 +1166,7 @@ namespace DraxTechnology
                     ret = new PanelEmail(this.configurationbasefolder, identifier);
                     break;
 
-                case "ESPA":
+                case "AUTESPA":
                     ret = new PanelEspa(this.configurationbasefolder, identifier);
                     break;
 
@@ -1723,7 +1723,7 @@ namespace DraxTechnology
                 case "SYNCRO":
                     this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "CreateLog"));
                     break;
-                case "ESPA":
+                case "AUTESPA":
                     this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "CreateLog"));
                     break;
                 default:
