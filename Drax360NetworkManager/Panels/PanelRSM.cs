@@ -987,12 +987,20 @@ namespace DraxTechnology.Panels
 
         #endregion
 
-        // POCO matching the client's devices.json schema
-        // (Drax360Client/Panels/RSM/Device.cs — { ID: Guid, Name: string, IP: string })
-        // ID type is Guid on both sides — System.Text.Json serialises Guid as a
-        // quoted string so the file format is compatible. Keep field names in sync
-        // if the client schema ever changes; these are the source of truth for
-        // devices.json.
+        // POCO for the fields the service needs from the client's devices.json
+        // (Drax360Client/Panels/RSM/Device.cs). Schema there is
+        // { ID: Guid, Name: string, IP: string, Site: string }.
+        //
+        // The GUID (ID) is the record's single unique identity — Name, IP and Site
+        // are mutable attributes hanging off it, not identities in their own right.
+        // The service binds only ID/Name/IP and matches an incoming node to its
+        // record by the wire-reported IP (the GUID is never sent over the wire, so
+        // it can't be the live-node match key). Site is a client-only display label
+        // (the RSM grid's "Site Name" column) the service has no use for; it's left
+        // unmapped, and System.Text.Json silently ignores it (and any future field),
+        // so it loads without error. Empty/legacy GUIDs are harmless here since the
+        // service never keys on the GUID. Add a field only if the service needs to
+        // consume it.
         private class ClientDevice
         {
             public Guid ID { get; set; }
