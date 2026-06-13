@@ -130,6 +130,7 @@ namespace DraxTechnology.Panels
             public int ModuleNumber;
             public string LastKnownIP = "";
             public string FriendlyName = "";
+            public string Site = "";   // friendly Site label from devices.json (matched by IP)
             public string ModuleType = "";
             public string SerialNumber = "";
             public DateTime LastRX = DateTime.MinValue;
@@ -656,9 +657,11 @@ namespace DraxTechnology.Panels
         private ModuleState TouchModule(int moduleNumber, string ip, string moduleType, string serialNumber, NetworkStream stream)
         {
             string friendlyName = "";
+            string site = "";
             if (!string.IsNullOrEmpty(ip) && devicesByIP.TryGetValue(ip, out ClientDevice known))
             {
                 friendlyName = known.Name ?? "";
+                site = known.Site ?? "";
             }
 
             lock (modulesLock)
@@ -672,6 +675,7 @@ namespace DraxTechnology.Panels
                 }
                 state.LastKnownIP = ip;
                 state.FriendlyName = friendlyName;
+                state.Site = site;
                 state.LastRX = DateTime.Now;
                 state.KickstartSent = false; // new message received — reset for the next silence episode
                 state.RXmessages++;
@@ -759,10 +763,10 @@ namespace DraxTechnology.Panels
                     rows.Add(new
                     {
                         node = s.ModuleNumber,
-                        // devices.json carries a single friendly Name, so there is
-                        // no Site/Node split yet — site stays empty until the node
-                        // store gains separate Site + Node names (see contract gap).
-                        site = "",
+                        // Site + Name both come from the matched devices.json record
+                        // (populated in TouchModule by IP). Site is empty if the node
+                        // has no devices.json entry yet.
+                        site = s.Site ?? "",
                         name = s.FriendlyName ?? "",
                         type = s.ModuleType ?? "",
                         typeText = ExpandModuleType(s.ModuleType),
@@ -987,25 +991,24 @@ namespace DraxTechnology.Panels
 
         #endregion
 
-        // POCO for the fields the service needs from the client's devices.json
-        // (Drax360Client/Panels/RSM/Device.cs). Schema there is
-        // { ID: Guid, Name: string, IP: string, Site: string }.
+        // POCO mirroring the client's devices.json schema
+        // (Drax360Client/Panels/RSM/Device.cs): { ID: Guid, Name: string,
+        // IP: string, Site: string }.
         //
         // The GUID (ID) is the record's single unique identity — Name, IP and Site
         // are mutable attributes hanging off it, not identities in their own right.
-        // The service binds only ID/Name/IP and matches an incoming node to its
-        // record by the wire-reported IP (the GUID is never sent over the wire, so
-        // it can't be the live-node match key). Site is a client-only display label
-        // (the RSM grid's "Site Name" column) the service has no use for; it's left
-        // unmapped, and System.Text.Json silently ignores it (and any future field),
-        // so it loads without error. Empty/legacy GUIDs are harmless here since the
-        // service never keys on the GUID. Add a field only if the service needs to
-        // consume it.
+        // The service matches an incoming node to its record by the wire-reported IP
+        // (the GUID is never sent over the wire, so it can't be the live-node match
+        // key); empty/legacy GUIDs are therefore harmless here. Name and Site are
+        // read and surfaced in the RSM node snapshot (BuildNodeSnapshot, populated in
+        // TouchModule by IP). System.Text.Json ignores any unmapped field, so the
+        // file stays forward-compatible if the client schema grows again.
         private class ClientDevice
         {
             public Guid ID { get; set; }
             public string Name { get; set; }
             public string IP { get; set; }
+            public string Site { get; set; }
         }
 
         #region commands out (TX path — writes scrambled CMD packets to the
