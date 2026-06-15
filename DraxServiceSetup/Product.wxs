@@ -17,7 +17,7 @@
 
     <Media Id="1" Cabinet="files.cab" EmbedCab="yes" CompressionLevel="high" />
 
-    <Icon Id="DraxService.ico" SourceFile="..\Drax360NetworkManager\DT-small.ico" />
+    <Icon Id="DraxService.ico" SourceFile="..\Drax360NetworkManager\DraxLogo.ico" />
     <Property Id="ARPPRODUCTICON" Value="DraxService.ico" />
 
     <!-- The service targets net10.0-windows. The .NET 10 Runtime is not
@@ -32,10 +32,14 @@
       <ComponentGroupRef Id="FolderPermissions" />
     </Feature>
 
-    <!-- Standard wizard with a "change install folder" page. WiX 5 requires
-         the namespaced <ui:WixUI> form; UIRef is rejected for dialog sets.
-         InstallDirectory authors the WIXUI_INSTALLDIR property automatically. -->
-    <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
+    <!-- Minimal UI: single Install button → progress → Finish.
+         No directory or license pages — install path is fixed at C:\AMX1. -->
+    <ui:WixUI Id="WixUI_Minimal" />
+
+    <!-- Logo bitmaps — regenerate with DraxServiceSetup\MakeBitmaps.ps1
+         if DraxLogo.png is updated. -->
+    <WixVariable Id="WixUIBannerBmp" Value="banner.bmp" />
+    <WixVariable Id="WixUIDialogBmp" Value="dialog.bmp" />
 
     <!-- C:\AMX1\ as install location, with ini\ subfolder and the
          runtimes\win\lib\net10.0\ subtree that the .NET runtime expects

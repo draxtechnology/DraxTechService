@@ -7,13 +7,15 @@
           Version="1.0.6"
           Manufacturer="Drax Technology"
           UpgradeCode="A2B9F47C-5E1D-4A6B-9D3C-7F2E8B4D5A6E"
-          IconSourceFile="..\Drax360NetworkManager\DT-small.ico">
+          IconSourceFile="..\Drax360NetworkManager\DraxLogo.ico">
 
     <BootstrapperApplication>
       <bal:WixStandardBootstrapperApplication Theme="hyperlinkLicense"
+                                               ThemeFile="WixTheme.xml"
                                                LicenseUrl=""
-                                               LogoFile="..\Drax360NetworkManager\DT-small.ico"
+                                               LogoFile="..\Drax360NetworkManager\DraxLogo.png"
                                                ShowVersion="yes" />
+      <Payload SourceFile="..\Drax360NetworkManager\DraxLogo.ico" />
     </BootstrapperApplication>
 
     <!--

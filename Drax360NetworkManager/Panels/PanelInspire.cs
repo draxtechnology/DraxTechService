@@ -21,8 +21,6 @@ namespace DraxTechnology.Panels
         public bool gbSectoring = false;
         public int gsSectorNo;
         private readonly List<(int zone, int p2, int p3, int p4, int p1)> _disabledZones = new();
-        private readonly object _pendingLock = new object();
-        private readonly HashSet<int> _pendingDeviceDisables = new HashSet<int>();
         private bool bOneShotReset;
         public override string FakeString
         {
@@ -103,8 +101,6 @@ namespace DraxTechnology.Panels
                 int address = 0;
                 int.TryParse(
                     Encoding.UTF8.GetString(ourmessage, 24 - 1, 2),
-                    System.Globalization.NumberStyles.HexNumber,
-                    System.Globalization.CultureInfo.InvariantCulture,
                     out address);
                 giAddressNumber = address;
 
@@ -175,7 +171,6 @@ namespace DraxTechnology.Panels
 
                 bool getDeviceText = true;
                 bool bDontSendToAMX = false;
-                bool bIsEchoResponse = false;
                 switch ((enmNotEventType)eventcode)
                 {
                     case enmNotEventType.Fire:
@@ -263,10 +258,6 @@ namespace DraxTechnology.Panels
                         gsTextField = "Device " + address + " Disabled";
                         gsTextField = sTextField;
                         Console.WriteLine(DateTime.Now + ": " + "Device " + address + " Disabled");
-                        {
-                            int effectiveAddr = sensor.ToLower() == "m" ? address + kModuleAddressMin : address;
-                            lock (_pendingLock) bIsEchoResponse = _pendingDeviceDisables.Remove(effectiveAddr);
-                        }
                         break;
 
                     case enmNotEventType.SystemReset:
@@ -1043,19 +1034,8 @@ namespace DraxTechnology.Panels
 
                 if (!bDontSendToAMX)
                 {
-                    if (!bIsEchoResponse)
-                    {
-                        this.NotifyClient("Sending gsTextField: " + gsTextField + " gsDeviceText: " + gsDeviceText + " zonetext: " + zonetext, false);
-                        send_response_amx_and_serial(evnum, gsTextField, gsDeviceText, zonetext);
-                    }
-                    else
-                    {
-                        // Panel echoed our own disable command — isolation count already updated via
-                        // send_response_amx_disable above. Skip AlarmToAMX so AMX doesn't raise a
-                        // new interactive event requiring the user to press Disable a second time.
-                        this.NotifyClient("Echo suppressed (AlarmToAMX skipped): " + gsTextField, false);
-                        foreach (char ch in ">IACK\r") SendChar(ch);
-                    }
+                    this.NotifyClient("Sending gsTextField: " + gsTextField + " gsDeviceText: " + gsDeviceText + " zonetext: " + zonetext, false);
+                    send_response_amx_and_serial(evnum, gsTextField, gsDeviceText, zonetext);
                 }
 
                 if (bOneShotReset && evnum != 0)
@@ -1343,11 +1323,6 @@ namespace DraxTechnology.Panels
         public virtual void send_message(ActionType action, string passedvalues)
         {
             ParsePassedValues(passedvalues, out int node, out int loop, out int zone, out int device);
-
-            // Record device in pending set before the module remap so the address
-            // matches what effectiveAddr reconstructs from the panel's echo.
-            if (action == ActionType.kDISABLEDEVICE)
-                lock (_pendingLock) _pendingDeviceDisables.Add(device);
 
             // Diagnostic for the module-disable investigation (Richard, 2026-05-23).
             // If "device < 100" appears in the console when triggering Disable
