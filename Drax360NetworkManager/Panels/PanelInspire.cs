@@ -9,13 +9,7 @@ namespace DraxTechnology.Panels
 {
     internal class PanelInspire : AbstractPanel
     {
-        // Device addresses ≥ this are modules rather than physical sensor
-        // devices. The disable/enable remap below (send_message) uses it as the
-        // gate, and the >IE…M.. wire format subtracts it to get the module
-        // index (DISABLEMODULE / ENABLEMODULE branches further down).
-        private const int kModuleAddressMin = 100;
-
-        public string gsDeviceText = "";
+public string gsDeviceText = "";
         public EnmDeviceType gDeviceType;
         public bool gbHalfDuplex = false;
         public bool gbSectoring = false;
@@ -105,17 +99,34 @@ namespace DraxTechnology.Panels
                 giAddressNumber = address;
 
                 string sTextField = "";
-                if (ourmessage != null && ourmessage.Length > 37)
+                if (ourmessage != null && ourmessage.Length > 38)
                 {
-                    int start = (ourmessage[36] == 254) ? 37 : 36;
-                    int end = Array.IndexOf(ourmessage, (byte)254, start);
-                    if (end < 0) end = ourmessage.Length; // no terminator found, read to end
+                    int start = (ourmessage[36] == 254) ? 39 : 38;
 
-                    sTextField = Encoding.UTF8.GetString(ourmessage, start, end - start);
+                    // VB6 GetTextData always terminates at the closing '"' — 0xFE within
+                    // the text is a device/zone separator, not the end marker. Scan forward
+                    // to find the closing '"' and stop there; don't read into the checksum.
+                    int closeQuote = -1;
+                    for (int j = start; j < ourmessage.Length; j++)
+                    {
+                        if (ourmessage[j] == (byte)'"') { closeQuote = j; break; }
+                        if (ourmessage[j] == '\r') break;
+                    }
 
-                    int quoteIndex = sTextField.IndexOf('"');
-                    if (quoteIndex >= 0)
-                        sTextField = sTextField.Substring(0, quoteIndex).Trim();
+                    if (closeQuote >= 0)
+                    {
+                        // 0xFE splits device text (before) from zone text (after).
+                        // VB6 GetTextData returns the part before 0xFE (or full text if none).
+                        int separator = Array.IndexOf(ourmessage, (byte)254, start);
+                        int textEnd = (separator >= 0 && separator < closeQuote) ? separator : closeQuote;
+                        sTextField = Encoding.UTF8.GetString(ourmessage, start, textEnd - start).Trim();
+                    }
+                    else
+                    {
+                        this.NotifyClient("WARN: no closing quote in text field. Raw[" + (start - 2) + "..]: " +
+                            BitConverter.ToString(ourmessage, Math.Max(0, start - 2),
+                                Math.Min(40, ourmessage.Length - Math.Max(0, start - 2))), false);
+                    }
                 }
 
                 bool on = true;
@@ -727,10 +738,6 @@ namespace DraxTechnology.Panels
 
                     case enmNotEventType.SignalledFaultatPanelInput2:
                         gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
-                        // AMX status-event slot for Panel Input 2 (NOT the
-                        // module-address threshold kModuleAddressMin — the
-                        // 100 here is coincidentally the same value but a
-                        // different concept; don't tidy to the constant).
                         giAddressNumber = 100;
                         gsTextField = "Signalled Fault at Panel Input 2";
                         getDeviceText = false;
@@ -991,9 +998,9 @@ namespace DraxTechnology.Panels
                     p1 = (int)enmNotAlarmType.NOTStatusEvent;
                 }
 
-                if (sensor.ToLower() == "m")   // Module: addresses ≥ kModuleAddressMin
+                if (sensor.ToLower() == "m")
                 {
-                    giAddressNumber += kModuleAddressMin;
+                    loop += 10;
                 }
 
                 p2 = panel;
@@ -1169,6 +1176,43 @@ namespace DraxTechnology.Panels
                         gDeviceType = EnmDeviceType.SMART4Sensor;
                         gsDeviceText = "SMART 4 Sensor";
                         break;
+                    case 26:
+                        gDeviceType = EnmDeviceType.UnmonitoredRelayOutput;
+                        gsDeviceText = "Unmonitored Relay Output";
+                        break;
+                    case 50:
+                    case 51:
+                    case 52:
+                    case 53:
+                    case 54:
+                    case 55:
+                    case 56:
+                    case 57:
+                    case 58:
+                    case 59:
+                    case 60:
+                    case 61:
+                    case 62:
+                    case 63:
+                    case 64:
+                    case 65:
+                    case 66:
+                    case 67:
+                    case 68:
+                    case 69:
+                    case 70:
+                    case 71:
+                    case 72:
+                    case 73:
+                    case 74:
+                    case 75:
+                    case 76:
+                    case 77:
+                    case 78:
+                    case 79:
+                    case 80:
+                    case 81:
+                        break;
                     default:
                         gDeviceType = EnmDeviceType.Unknown;
                         gsDeviceText = "";
@@ -1324,22 +1368,9 @@ namespace DraxTechnology.Panels
         {
             ParsePassedValues(passedvalues, out int node, out int loop, out int zone, out int device);
 
-            // Diagnostic for the module-disable investigation (Richard, 2026-05-23).
-            // If "device < 100" appears in the console when triggering Disable
-            // Module from AMX, the gate below correctly skips the remap because
-            // the upstream AMX → CTRL → DispatchAmxPipeCommand path isn't passing
-            // the +100 module offset — fix would be there, not in PanelInspire.
-            // Remove this line once the module-disable path is verified end-to-end.
-            this.NotifyClient($"send_message: action={action} device={device}");
-
-            // --- Suggested change (Richard, 2026-05-23) — more robust gate ---
-            // Uses && (short-circuit, idiomatic) implicitly via switch expression,
-            // hoists the device check, drops the duplicated if-block structure,
-            // and replaces the magic 100 with kModuleAddressMin (defined top of
-            // class, also referenced in the >IE…M.. message builders below).
-            // Behaviour-equivalent to Mike's original (preserved beneath). Mike:
-            // revert this block to the commented version if you'd rather.
-            if (device >= kModuleAddressMin)
+            // VB6 Pearl: loop >= 11 means module (panel loop + 10 was added on inbound).
+            // Subtract 10 to recover the wire loop; address is sent as-is.
+            if (loop >= 11)
             {
                 action = action switch
                 {
@@ -1347,17 +1378,8 @@ namespace DraxTechnology.Panels
                     ActionType.kENABLEDEVICE => ActionType.kENABLEMODULE,
                     _ => action,
                 };
+                loop -= 10;
             }
-
-            // Original (Mike, commit 43b1206 — "Notifier Module Disable", 2026-05-22):
-            // if (action == ActionType.kDISABLEDEVICE & device >= 100)
-            // {
-            //     action = ActionType.kDISABLEMODULE;
-            // }
-            // if (action == ActionType.kENABLEDEVICE & device >= 100)
-            // {
-            //     action = ActionType.kENABLEMODULE;
-            // }
 
             string loopStr = loop.ToString("D2"); // Pads with leading zeros to 2 digits
             string zoneStr = zone.ToString("D5"); // Pads with leading zeros to 5 digits
@@ -1467,7 +1489,7 @@ namespace DraxTechnology.Panels
                  loop.ToString("D2") +
                  zone.ToString("D5") +
                  "M" +
-                 (device - kModuleAddressMin).ToString("D2");
+                 device.ToString("D2");
             }
 
             if (action == ActionType.kENABLEMODULE)
@@ -1482,7 +1504,7 @@ namespace DraxTechnology.Panels
                  loop.ToString("D2") +
                  zone.ToString("D5") +
                  "M" +
-                 (device - kModuleAddressMin).ToString("D2");
+                 device.ToString("D2");
             }
 
             if (action == ActionType.kDISABLEZONE)
