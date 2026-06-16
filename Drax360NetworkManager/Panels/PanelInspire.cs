@@ -55,7 +55,9 @@ public string gsDeviceText = "";
             }
             ;
             if (foundat <= 0) return;
-            this.buffer.Clear();
+            // Remove only the first complete message; leave any trailing bytes for
+            // the next Parse() call so back-to-back panel notifications aren't dropped.
+            this.buffer.RemoveRange(0, foundat + 1);
             ourmessage = ourmessage[..(foundat + 1)];
             string strmsg = Encoding.UTF8.GetString(ourmessage, 0, foundat);
             if (!strmsg.StartsWith(">")) return;
@@ -133,8 +135,13 @@ public string gsDeviceText = "";
 
                 gsTextField = sTextField;
 
+                // Device type sits at positions 25-26 only in full notifications (length >= 30).
+                // A 28-byte message is an RS-485 echo of our own send_message command; positions
+                // 25-26 there are the checksum, not a device type — parsing them gives 0
+                // ("Device Not Defined") which is wrong.
+                bool hasDeviceTypeField = ourmessage.Length >= 30;
                 int iDevicetype = 0;
-                if (ourmessage.Length > 26)
+                if (hasDeviceTypeField)
                 {
                     int.TryParse(Encoding.UTF8.GetString(ourmessage, 26 - 1, 2), out iDevicetype);
                 }
@@ -259,15 +266,13 @@ public string gsDeviceText = "";
                     case enmNotEventType.Deviceenabled:
                         Console.WriteLine(DateTime.Now + ": " + "Device " + address + " Enabled");
                         gAlarmType = enmNotAlarmType.NOTIsolate.ToString();
-                        gsTextField = "Device " + address + " Enabled";
-                        gsTextField = sTextField;   // xxxx
+                        gsTextField = sTextField.Length > 0 ? sTextField : "Device " + address + " Enabled";
                         on = false;
                         break;
 
                     case enmNotEventType.Devicedisabled:
                         gAlarmType = enmNotAlarmType.NOTIsolate.ToString();
-                        gsTextField = "Device " + address + " Disabled";
-                        gsTextField = sTextField;
+                        gsTextField = sTextField.Length > 0 ? sTextField : "Device " + address + " Disabled";
                         Console.WriteLine(DateTime.Now + ": " + "Device " + address + " Disabled");
                         break;
 
@@ -971,7 +976,7 @@ public string gsDeviceText = "";
 
 
                 gsDeviceText = "";
-                if (getDeviceText && !gbSectoring)
+                if (getDeviceText && !gbSectoring && hasDeviceTypeField)
                 {
                     GetDeviceTypeText(iDevicetype);
                 }
