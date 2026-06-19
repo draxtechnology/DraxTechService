@@ -165,7 +165,7 @@ namespace DraxTechnology
                     // pipe-delimited graphic command is a separate message
                     // type. Use else-if so a "NWM:foo|bar" frame doesn't
                     // double-dispatch.
-                    if (msg.StartsWith("NWM:") || msg.StartsWith("GEN:"))
+                    if (msg.StartsWith("NWM:") || msg.StartsWith("GEN:") || msg.StartsWith("AUT:"))
                     {
                         DraxService drax = new DraxService();
                         drax.sendreturncmd("", msg);
