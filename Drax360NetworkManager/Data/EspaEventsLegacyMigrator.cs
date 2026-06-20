@@ -23,7 +23,7 @@ namespace DraxTechnology.Data
             "    [Node]   INTEGER NOT NULL, " +
             "    [Loop]   INTEGER NOT NULL, " +
             "    [Device] INTEGER NOT NULL, " +
-            "    [Name]   TEXT    NOT NULL UNIQUE" +
+            "    [Name]   TEXT    NOT NULL UNIQUE, " +
             "    [DateCreated] TEXT    NOT NULL DEFAULT (datetime('now', 'localtime'))" +
             ");";
 

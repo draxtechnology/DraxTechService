@@ -159,7 +159,20 @@ namespace DraxTechnology.Panels
             int numberread = serialport.Read(readbytes, 0, bytestoread);
             if (numberread == 0) return;
 
-            Parse(readbytes);
+            // Parse runs on the SerialPort.DataReceived thread and decodes raw panel
+            // bytes (Convert.ToInt32/ToDecimal on field slices, fixed-offset indexing).
+            // A corrupt or partial frame can throw here; an unhandled throw on the
+            // event thread loses the frame and can leave the parser's buffer desynced.
+            // Guard centrally so a single bad frame can never take the read path down —
+            // log it and let the next DataReceived event re-drive parsing.
+            try
+            {
+                Parse(readbytes);
+            }
+            catch (Exception ex)
+            {
+                this.NotifyClient($"Parse error ({this.GetType().Name}): {ex.Message}");
+            }
         }
 
         public Boolean SerialPortIsOpen()

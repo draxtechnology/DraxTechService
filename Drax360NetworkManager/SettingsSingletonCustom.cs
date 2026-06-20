@@ -18,7 +18,11 @@ namespace DraxTechnology
 
         #region private variables
         private static SettingsSingletonCustom file = null;
+        private static readonly object _instanceLock = new object();
         private Dictionary<string, string> settings = new Dictionary<string, string>();
+        // Guards every read/write of `settings` — PanelAdvanced persists zone text
+        // from event-handling threads while other paths read settings concurrently.
+        private readonly object _settingsLock = new object();
         private string settingsfile;
         #endregion
 
@@ -33,7 +37,14 @@ namespace DraxTechnology
         {
             string section = "";
             string buffer = "";
-            foreach (string key in settings.Keys.OrderBy(i => i))
+            List<string> orderedKeys;
+            Dictionary<string, string> snapshot;
+            lock (_settingsLock)
+            {
+                snapshot = new Dictionary<string, string>(settings);
+                orderedKeys = snapshot.Keys.OrderBy(i => i).ToList();
+            }
+            foreach (string key in orderedKeys)
             {
                 string[] splits = key.Split(ksettingdelim);
                 if (splits.Length != 2) continue;
@@ -46,7 +57,7 @@ namespace DraxTechnology
                     Console.WriteLine(DateTime.Now + ": " + "Adding section: " + msgsection);
                 }
 
-                string msgline = splits[1] + ksettingvaluedelim + settings[key];
+                string msgline = splits[1] + ksettingvaluedelim + snapshot[key];
                 buffer += msgline + Environment.NewLine;
                 Console.WriteLine(DateTime.Now + ": " + "\tAdding Line: " + msgline);
             }
@@ -57,10 +68,18 @@ namespace DraxTechnology
 
         public void ReLoadSettings()
         {
-            settings.Clear();
-            if (!File.Exists(settingsfile)) return;
+            if (!File.Exists(settingsfile))
+            {
+                lock (_settingsLock)
+                {
+                    settings.Clear();
+                }
+                return;
+            }
             string section = "";
 
+            // Build then swap in atomically (see SettingsSingleton for rationale).
+            var loaded = new Dictionary<string, string>();
             string[] lines = File.ReadAllLines(settingsfile);
             foreach (string line in lines)
             {
@@ -88,26 +107,34 @@ namespace DraxTechnology
 
                 string value = linesplit[1].Trim();
                 if (String.IsNullOrEmpty(value)) { continue; }
-                if (settings.ContainsKey(key))
+                if (loaded.ContainsKey(key))
                 {
                     continue;
                 }
 
-                settings.Add(key, value);
+                loaded.Add(key, value);
+            }
+
+            lock (_settingsLock)
+            {
+                settings = loaded;
             }
         }
 
         public void SetSetting(string section, string name, object value)
         {
-            RemoveSetting(section, name);
             string key = makekey(section, name);
-            settings.Add(key, value.ToString());
+            lock (_settingsLock)
+            {
+                settings.Remove(key);
+                settings.Add(key, value.ToString());
+            }
         }
 
         public void RemoveSetting(string section, string name)
         {
             string key = makekey(section, name);
-            if (settings.ContainsKey(key))
+            lock (_settingsLock)
             {
                 settings.Remove(key);
             }
@@ -116,20 +143,40 @@ namespace DraxTechnology
         public T GetSetting<T>(string section, string name)
         {
             string key = makekey(section, name);
-            if (settings.ContainsKey(key))
+            string val;
+            lock (_settingsLock)
             {
-                string val = settings[key];
+                if (!settings.TryGetValue(key, out val))
+                {
+                    return default(T);
+                }
+            }
 
+            try
+            {
                 return (T)Convert.ChangeType(val, typeof(T));
             }
-            return default(T);
+            catch (Exception ex)
+            {
+                // Malformed value — log and fall back to the type default rather
+                // than throwing out of a panel event handler.
+                Console.WriteLine(DateTime.Now + ": " +
+                    $"SettingsSingletonCustom: '{key}' value '{val}' not convertible to {typeof(T).Name} " +
+                    $"({ex.Message}) — using default.");
+                return default(T);
+            }
         }
 
         public string GetSettingsKeysInSection(string section)
         {
             string ret = "";
             string findsection = section.Trim().ToUpper();
-            foreach (string key in settings.Keys.OrderBy(i => i))
+            List<string> keys;
+            lock (_settingsLock)
+            {
+                keys = settings.Keys.OrderBy(i => i).ToList();
+            }
+            foreach (string key in keys)
             {
                 string[] splits = key.Split(ksettingdelim);
                 if (splits.Length != 2) continue;
@@ -144,9 +191,16 @@ namespace DraxTechnology
 
         public static SettingsSingletonCustom Filename(string filename)
         {
+            // Double-checked locking — PanelAdvanced can reach this from event threads.
             if (file == null)
             {
-                file = new SettingsSingletonCustom(filename);
+                lock (_instanceLock)
+                {
+                    if (file == null)
+                    {
+                        file = new SettingsSingletonCustom(filename);
+                    }
+                }
             }
             return file;
         }
@@ -155,7 +209,12 @@ namespace DraxTechnology
         {
             string ret = "";
             string section = "";
-            foreach (string key in settings.Keys.OrderBy(i => i))
+            List<string> keys;
+            lock (_settingsLock)
+            {
+                keys = settings.Keys.OrderBy(i => i).ToList();
+            }
+            foreach (string key in keys)
             {
                 string[] splits = key.Split(ksettingdelim);
                 if (splits.Length != 2) continue;

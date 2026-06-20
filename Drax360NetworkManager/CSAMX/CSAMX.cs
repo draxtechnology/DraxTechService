@@ -310,7 +310,13 @@ namespace DraxTechnology
             ournvm.Text2 = dtext2;
             ournvm.Text3 = dtext3;
 
-            nvms.Add(ournvm);
+            // Called from panel parser threads; FlushMessages snapshots/clears nvms
+            // under _nvmsLock, so this add must take the same lock or it can corrupt
+            // the list mid-flush and drop an alarm/reset event.
+            lock (_nvmsLock)
+            {
+                nvms.Add(ournvm);
+            }
         }
 
         public void sendalarmorreset_disable(int eventnumber, string dtext, string dtext2, string dtext3, bool on)
@@ -323,7 +329,11 @@ namespace DraxTechnology
             ournvm.Text2 = dtext2;
             ournvm.Text3 = dtext3;
 
-            nvms.Add(ournvm);
+            // Same _nvmsLock discipline as sendalarmorreset — concurrent add vs flush.
+            lock (_nvmsLock)
+            {
+                nvms.Add(ournvm);
+            }
         }
         #endregion
     }

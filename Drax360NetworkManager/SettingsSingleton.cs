@@ -20,6 +20,11 @@ namespace DraxTechnology
         private static SettingsSingleton instance = null;
         private static readonly object _instanceLock = new object();
         private Dictionary<string, string> settings = new Dictionary<string, string>();
+        // Guards every read/write of `settings`. The IPC pipe handlers can call
+        // ReLoadSettings()/SetSetting() (which Clear()+repopulate the dictionary)
+        // on the same instance that panel threads read via GetSetting() — without
+        // this lock a concurrent read can throw "collection was modified".
+        private readonly object _settingsLock = new object();
         private string settingsfile;
         #endregion
 
@@ -38,7 +43,14 @@ namespace DraxTechnology
             string settingfiletemp = Path.Combine("ini", "temp" + ".ini");
             string section = "";
             string buffer = "";
-            foreach (string key in settings.Keys.OrderBy(i => i))
+            List<string> orderedKeys;
+            Dictionary<string, string> snapshot;
+            lock (_settingsLock)
+            {
+                snapshot = new Dictionary<string, string>(settings);
+                orderedKeys = snapshot.Keys.OrderBy(i => i).ToList();
+            }
+            foreach (string key in orderedKeys)
             {
                 string[] splits = key.Split(ksettingdelim);
                 if (splits.Length != 2) continue;
@@ -51,7 +63,7 @@ namespace DraxTechnology
                     Console.WriteLine(DateTime.Now + ": " + "Adding section: " + msgsection);
                 }
 
-                string msgline = splits[1] + ksettingvaluedelim + settings[key];
+                string msgline = splits[1] + ksettingvaluedelim + snapshot[key];
                 buffer += msgline + Environment.NewLine;
                 Console.WriteLine(DateTime.Now + ": " + "\tAdding Line: " + msgline);
             }
@@ -67,11 +79,13 @@ namespace DraxTechnology
 
         public void ReLoadSettings()
         {
-            settings.Clear();
-
             string resolvedPath = Path.GetFullPath(settingsfile);
             if (!File.Exists(settingsfile))
             {
+                lock (_settingsLock)
+                {
+                    settings.Clear();
+                }
                 Console.WriteLine(DateTime.Now + ": " +
                     $"SettingsSingleton: ini NOT FOUND at '{resolvedPath}' — every setting will " +
                     "fall back to its default. Check the ini is deployed alongside the service " +
@@ -79,6 +93,9 @@ namespace DraxTechnology
                 return;
             }
 
+            // Build into a fresh map, then swap it in atomically under the lock so a
+            // concurrent GetSetting never observes a half-cleared/half-loaded dictionary.
+            var loaded = new Dictionary<string, string>();
             string section = "";
 
             string[] lines = File.ReadAllLines(settingsfile);
@@ -115,30 +132,37 @@ namespace DraxTechnology
                     value += "=";
                 }
 
-                if (settings.ContainsKey(key))
+                if (loaded.ContainsKey(key))
                 {
                     continue;
                 }
 
-                settings.Add(key, value);
+                loaded.Add(key, value);
+            }
+
+            lock (_settingsLock)
+            {
+                settings = loaded;
             }
 
             Console.WriteLine(DateTime.Now + ": " +
-                $"SettingsSingleton: loaded {settings.Count} setting(s) from '{resolvedPath}'.");
+                $"SettingsSingleton: loaded {loaded.Count} setting(s) from '{resolvedPath}'.");
         }
 
         public void SetSetting(string section, string name, object value)
         {
-            RemoveSetting(section, name);
             string key = makekey(section, name);
-            settings.Add(key, value.ToString());
+            lock (_settingsLock)
+            {
+                settings.Remove(key);
+                settings.Add(key, value.ToString());
+            }
         }
 
         public void RemoveSetting(string section, string name)
         {
-
             string key = makekey(section, name);
-            if (settings.ContainsKey(key))
+            lock (_settingsLock)
             {
                 settings.Remove(key);
             }
@@ -146,21 +170,41 @@ namespace DraxTechnology
 
         public T GetSetting<T>(string section, string name)
         {
-
             string key = makekey(section, name);
-            if (settings.ContainsKey(key))
+            string val;
+            lock (_settingsLock)
             {
-                string val = settings[key];
+                if (!settings.TryGetValue(key, out val))
+                {
+                    return default(T);
+                }
+            }
 
+            try
+            {
                 return (T)Convert.ChangeType(val, typeof(T));
             }
-            return default(T);
+            catch (Exception ex)
+            {
+                // Malformed ini value (e.g. empty or non-numeric for a numeric
+                // setting). Don't let one bad line throw out of panel init —
+                // log and fall back to the type default.
+                Console.WriteLine(DateTime.Now + ": " +
+                    $"SettingsSingleton: '{key}' value '{val}' not convertible to {typeof(T).Name} " +
+                    $"({ex.Message}) — using default.");
+                return default(T);
+            }
         }
         public string GetSettingsKeysInSection(string section)
         {
             string ret = "";
             string findsection = section.Trim().ToUpper();
-            foreach (string key in settings.Keys.OrderBy(i => i))
+            List<string> keys;
+            lock (_settingsLock)
+            {
+                keys = settings.Keys.OrderBy(i => i).ToList();
+            }
+            foreach (string key in keys)
             {
                 string[] splits = key.Split(ksettingdelim);
                 if (splits.Length != 2) continue;
@@ -207,7 +251,12 @@ namespace DraxTechnology
         {
             string ret = "";
             string section = "";
-            foreach (string key in settings.Keys.OrderBy(i => i))
+            List<string> keys;
+            lock (_settingsLock)
+            {
+                keys = settings.Keys.OrderBy(i => i).ToList();
+            }
+            foreach (string key in keys)
             {
                 string[] splits = key.Split(ksettingdelim);
                 if (splits.Length != 2) continue;
