@@ -135,6 +135,14 @@ namespace DraxTechnology.Panels
             public string SerialNumber = "";
             public DateTime LastRX = DateTime.MinValue;
             public long RXmessages;
+            // Status-page fields (mirror VB6 frmRSMProperties Status page rows).
+            // OnlineAt   = time the node last transitioned offline→online (set on the
+            //              edge in CheckNodeOnlineStatus); blank until first contact.
+            // TXmessages = count of CMD packets we've written to this module (SendCommand).
+            // LastRestart= timestamp of the most recent module-restart EVT we parsed.
+            public DateTime OnlineAt = DateTime.MinValue;
+            public long TXmessages;
+            public DateTime LastRestart = DateTime.MinValue;
             public readonly Dictionary<int, string> ZoneTexts = new Dictionary<int, string>();
             public long ExpiryDateDays;
             public int PanelsAllowed;
@@ -382,6 +390,8 @@ namespace DraxTechnology.Panels
                     if (RsmLookups.IsModuleRestart(state.ModuleType, address))
                     {
                         sDeviceType = deviceText;
+                        // Status-page "Last Recorded Restart" (VB6 RSM.LastRestartTime).
+                        state.LastRestart = DateTime.Now;
                     }
                     deviceText = statusText;
                 }
@@ -551,19 +561,23 @@ namespace DraxTechnology.Panels
             int optionNumber = ParseInt(GetField(parts, G_OptionNumber));
             string value     = GetField(parts, G_OptionValue);
 
-            // optSetGet enum values from RSMenum.bas:81-115
+            // optSetGet enum values are the authoritative RSMenum.bas integers
+            // (verified against the legacy source). Earlier revisions had three
+            // wrong here — Name4 was 14 (that's setgetPort), Listening Port was
+            // 16 (that's setgetPortUDP) and Software Version was 31 — so those
+            // fields never stored. Corrected to 13 / 15 / 26.
             switch (optionNumber)
             {
-                case 2:  state.DHCPName       = value; break;  // setgetDHCPName
-                case 3:  state.ConfiguredIP   = value; break;  // setgetIPAddress
-                case 4:  state.SubnetMask     = value; break;  // setgetSubnetMask
-                case 5:  state.Gateway        = value; break;  // setgetGateway
-                case 6:  state.ReportsTo1     = value; break;  // setgetReport1
-                case 7:  state.ReportsTo2     = value; break;  // setgetReport2
-                case 14: state.ReverseInputs  = value; break;  // setgetName4 (used for ReverseInputs)
-                case 19: state.MasterPanelID  = value; break;  // setgetPanelNumbers
-                case 16: state.RequestPort    = ParseInt(value); break; // setgetPortlistening
-                case 31: state.SoftwareVersion = value; break; // setgetSoftwareVersion
+                case 2:  state.DHCPName        = value; break;          // setgetDHCPName (2)
+                case 3:  state.ConfiguredIP    = value; break;          // setgetIPAddress (3)
+                case 4:  state.SubnetMask      = value; break;          // setgetSubnetMask (4)
+                case 5:  state.Gateway         = value; break;          // setgetGateway (5)
+                case 6:  state.ReportsTo1      = value; break;          // setgetReport1 (6)
+                case 7:  state.ReportsTo2      = value; break;          // setgetReport2 (7)
+                case 13: state.ReverseInputs   = value; break;          // setgetName4 (13) — carries reverse-inputs / per-type option on read-back
+                case 15: state.RequestPort     = ParseInt(value); break;// setgetPortlistening (15)
+                case 19: state.MasterPanelID   = value; break;          // setgetPanelNumbers (19)
+                case 26: state.SoftwareVersion = value; break;          // setgetSoftwareVersion (26)
                 default:
                     this.NotifyClient($"GAK {Label(state)} option={optionNumber} value='{value}' (unhandled)", false);
                     return;
@@ -781,6 +795,96 @@ namespace DraxTechnology.Panels
         }
 
         /// <summary>
+        /// Per-node properties snapshot for the client's RSM "Node Properties"
+        /// window (VB6 frmRSMProperties — Properties / Status / Module Options
+        /// pages). Returns a single JSON object for the requested node, or "{}"
+        /// if the node is unknown. Read-only; served over the named pipe via the
+        /// RSMNODE verb. Carries the read-only rows of all three legacy pages —
+        /// the editable Module-Options SET path is a later tier.
+        /// </summary>
+        public string BuildNodePropertiesSnapshot(int node)
+        {
+            ModuleState s;
+            lock (modulesLock)
+            {
+                if (!modules.TryGetValue(node, out s))
+                    return "{}";
+            }
+
+            DateTime now = DateTime.Now;
+            double onlineWindowSeconds = kheartbeatdelayseconds * 2;
+            bool online = s.LastRX > DateTime.MinValue
+                && (now - s.LastRX).TotalSeconds <= onlineWindowSeconds;
+
+            // "Number of Panels Allowed" is n/a for the input-module types
+            // (VB6 frmRSMProperties forces "n/a" for 4I / 12 / IO).
+            string typeUpper = (s.ModuleType ?? "").Trim().ToUpperInvariant();
+            bool isInputModule = typeUpper == "4I" || typeUpper == "12" || typeUpper == "IO";
+            string panelsAllowed = isInputModule ? "n/a" : s.PanelsAllowed.ToString();
+
+            var obj = new
+            {
+                // ---- Properties page (all read-only) ----
+                node            = s.ModuleNumber,
+                site            = s.Site ?? "",
+                name            = s.FriendlyName ?? "",
+                type            = s.ModuleType ?? "",        // raw code (client picks the per-type option caption)
+                nodeType        = ExpandModuleType(s.ModuleType),
+                moduleType      = "Smart Watch",     // literal, mirrors VB6 row 4
+                reportedIP      = s.LastKnownIP ?? "",
+                onlineStatus    = online ? "Online" : "Offline",
+                serial          = s.SerialNumber ?? "",
+                licenseExpires  = FormatExpiry(s),
+                panelsAllowed   = panelsAllowed,
+                moduleOptions   = s.ModuleOptions ?? "",
+                softwareVersion = s.SoftwareVersion ?? "",
+                lastKnownIP     = s.LastKnownIP ?? "",
+
+                // ---- Status page (all read-only) ----
+                onlineAt        = FormatTime(s.OnlineAt),
+                lastMessage     = FormatTime(s.LastRX),
+                rxMessages      = s.RXmessages,
+                txMessages      = s.TXmessages,
+                lastRestart     = FormatTime(s.LastRestart),
+
+                // ---- Module Options page (read-only values; SET path is a later tier) ----
+                dhcpName        = s.DHCPName ?? "",
+                ipAddress       = s.ConfiguredIP ?? "",
+                subnetMask      = s.SubnetMask ?? "",
+                gateway         = s.Gateway ?? "",
+                reportsTo1      = s.ReportsTo1 ?? "",
+                reportsTo2      = s.ReportsTo2 ?? "",
+                tcpPort         = "1471",            // literal, mirrors VB6
+                listeningPort   = s.RequestPort > 0 ? s.RequestPort.ToString() : "",
+                masterPanelID   = s.MasterPanelID ?? "",
+                // Per-module-type option (VB6 row 12, always the setgetName4 slot;
+                // caption varies by type — the client picks the label).
+                reverseInputs   = s.ReverseInputs ?? "",
+            };
+
+            return JsonSerializer.Serialize(obj);
+        }
+
+        // "License Expires" string. ExpiryDateDays is days since 2010-01-01
+        // (VB6 clsRSM). Blank for an unlicensed module (no/zero serial) and
+        // until the first POL arrives — matching the Properties page, which
+        // only shows a date once licence data is in.
+        private static string FormatExpiry(ModuleState s)
+        {
+            if (!s.LicenseDataReceived) return "";
+            if (string.IsNullOrEmpty(s.SerialNumber)
+                || s.SerialNumber == "0"
+                || s.SerialNumber == "00000000")
+                return "";
+            return new DateTime(2010, 1, 1).AddDays(s.ExpiryDateDays).ToString("dd/MM/yyyy");
+        }
+
+        private static string FormatTime(DateTime t)
+        {
+            return t == DateTime.MinValue ? "" : t.ToString("dd/MM/yyyy HH:mm:ss");
+        }
+
+        /// <summary>
         /// Module type code → display label. Mirrors VB6 ExpandModuleType
         /// (RSMNetManagerSubs.bas). Unknown non-empty codes render "?" as in the VB.
         /// </summary>
@@ -970,6 +1074,9 @@ namespace DraxTechnology.Panels
 
                 if (isOnline)
                 {
+                    // Record the offline→online edge time for the Status page
+                    // "Online at" row (VB6 RSM.OnlineAtString).
+                    state.OnlineAt = now;
                     CSAMXSingleton.CS.SendResetToAMX(evnum, state.FriendlyName, "", "Online");
                     this.NotifyClient($"RSM node {amxNode} ({label}) → ONLINE", false);
                 }
@@ -1046,6 +1153,83 @@ namespace DraxTechnology.Panels
         public override void DisableZone(string passedvalues) { SendCommand(CmdToPanel.DisableZone, passedvalues, withDeviceParams: true); }
         public override void EnableZone(string passedvalues) { SendCommand(CmdToPanel.EnableZone, passedvalues, withDeviceParams: true); }
         public override void Analogue(string passedvalues) { throw new NotImplementedException(); }
+
+        // optSetGet option numbers to GET when the client opens a node's
+        // properties window — mirrors VB6 frmRSMProperties.GetModuleInfo,
+        // trimmed to the options the C# Module-Options page actually displays.
+        // Values are the authoritative RSMenum.bas optSetGet integers.
+        private static readonly int[] OptionGetList =
+        {
+            2,   // setgetDHCPName
+            3,   // setgetIPAddress
+            4,   // setgetSubnetMask
+            5,   // setgetGateway
+            6,   // setgetReport1
+            7,   // setgetReport2
+            13,  // setgetName4         — reverse-inputs / per-type option read-back
+            15,  // setgetPortlistening — listening port
+            19,  // setgetPanelNumbers  — master panel ID
+            26,  // setgetSoftwareVersion
+        };
+
+        /// <summary>
+        /// Sends the Module-Options GET batch to a node so its GAK replies
+        /// populate the option fields (DHCP / IP / subnet / gateway / reports /
+        /// master-panel ID / software version / reverse-inputs) for the client's
+        /// properties window. Mirrors VB6 frmRSMProperties.GetModuleInfo. No-ops
+        /// with a log line if the node isn't known or isn't connected. Triggered
+        /// by the RSMNODEGET pipe verb. Read-only request path — no SET (that's a
+        /// later tier).
+        /// </summary>
+        public void RequestModuleOptions(int moduleNumber)
+        {
+            ModuleState state;
+            NetworkStream stream;
+            lock (modulesLock)
+            {
+                if (!modules.TryGetValue(moduleNumber, out state))
+                {
+                    this.NotifyClient($"RequestModuleOptions: module {moduleNumber} not known", false);
+                    return;
+                }
+                stream = state.Stream;
+            }
+            if (stream == null)
+            {
+                this.NotifyClient($"RequestModuleOptions {Label(state)}: not currently connected", false);
+                return;
+            }
+
+            int sent = 0;
+            foreach (int option in OptionGetList)
+            {
+                int messageID = NextMessageID();
+                // Wire format mirrors VB6 MakeNewMessage: GET, ID, node, serial,
+                // (empty ModuleType), optionNumber — separator Ç (0xC7), then
+                // scrambled + STX/ETX framed with a trailing checksum.
+                string body = "GET" + kSeparator + messageID + kSeparator + moduleNumber + kSeparator
+                              + (state.SerialNumber ?? "") + kSeparator + kSeparator + option;
+                byte[] bytes = scrambleandencodemessage(body);
+
+                lock (state.WriteLock)
+                {
+                    try
+                    {
+                        stream.Write(bytes, 0, bytes.Length);
+                        stream.Flush();
+                        state.TXmessages++;
+                        sent++;
+                    }
+                    catch (Exception ex)
+                    {
+                        this.NotifyClient($"RequestModuleOptions {Label(state)} option {option} write failed: {ex.Message}", false);
+                        return;
+                    }
+                }
+            }
+
+            this.NotifyClient($"RequestModuleOptions {Label(state)}: sent {sent} GET(s)", false);
+        }
 
         /// <summary>
         /// Resolves the target module from passedvalues' first CSV field
@@ -1125,6 +1309,7 @@ namespace DraxTechnology.Panels
                 {
                     stream.Write(bytes, 0, bytes.Length);
                     stream.Flush();
+                    state.TXmessages++; // Status-page "Transmitted messages" counter
                 }
                 catch (Exception ex)
                 {

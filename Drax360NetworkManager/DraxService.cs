@@ -1506,6 +1506,35 @@ namespace DraxTechnology
                     }
                     break;
 
+                case "RSMNODE":
+                    // Per-node read-only properties for the client's RSM "Node
+                    // Properties" window (VB6 frmRSMProperties). Arg = node number
+                    // ("RSMNODE|5"). JSON object, or "{}" if the node/panel is
+                    // unknown.
+                    {
+                        PanelRSM rsm = abstractpanels.OfType<PanelRSM>().FirstOrDefault();
+                        int node = (partssplit != null && partssplit.Length >= 1)
+                            ? (int.TryParse(partssplit[0].Trim(), out int n) ? n : -1)
+                            : -1;
+                        ret = (rsm != null && node >= 0) ? rsm.BuildNodePropertiesSnapshot(node) : "{}";
+                    }
+                    break;
+
+                case "RSMNODEGET":
+                    // Trigger the Module-Options GET batch for a node so its GAK
+                    // replies populate the option fields the client's properties
+                    // window shows. Arg = node number ("RSMNODEGET|5").
+                    // Fire-and-forget; returns OK.
+                    {
+                        PanelRSM rsm = abstractpanels.OfType<PanelRSM>().FirstOrDefault();
+                        if (rsm != null && partssplit != null && partssplit.Length >= 1
+                            && int.TryParse(partssplit[0].Trim(), out int node))
+                        {
+                            rsm.RequestModuleOptions(node);
+                        }
+                    }
+                    break;
+
                 case "GETCOMMPORTSTATUS":
                     if (partssplit.Length != 1) break;
                     string identifier = partssplit[0];
