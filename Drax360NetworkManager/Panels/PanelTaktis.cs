@@ -417,6 +417,12 @@ namespace DraxTechnology.Panels
 
         private int _heartBeatCount = 0;
         private long _numHeartbeats = 0;
+
+        // Write-only status flags for the connection-monitoring / heartbeat state
+        // machine. The write side is in place (connection handling sets them), but
+        // the read side that acts on them is still TODO — so they read as "assigned
+        // but never used". Suppress CS0414 until the read side is wired up.
+#pragma warning disable CS0414
         private bool _heartBeatSent = false;
 
         private bool _connectionMonitoringSent = false;
@@ -424,6 +430,7 @@ namespace DraxTechnology.Panels
         private bool _connectionStopMonitoringSentRX = false;
         private bool _connectionStopMonitoringSentTX = false;
         private bool _requestEventLogEXSent = false;
+#pragma warning restore CS0414
 
         // Two TCP connections, per ICD section 6.2 / sample sequences:
         // - RX streams the event log (REQUEST_EVENT_LOG_EX -> EVENT_START/CLEAR
@@ -934,7 +941,6 @@ namespace DraxTechnology.Panels
 
                 NotifyClient($"SendToTakTis - Type: {sendType}");
 
-                bool stopSending = false;
                 TransmissionType rxTx = TransmissionType.TX;
                 bool immediateRxSend = false;
                 bool immediateTxSend = false;
@@ -950,7 +956,6 @@ namespace DraxTechnology.Panels
                 // Handle message sent state
                 if (_messageSent)
                 {
-                    stopSending = true;
                     // Timer would be disabled here
                 }
 

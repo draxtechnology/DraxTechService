@@ -307,7 +307,6 @@ namespace DraxTechnology.Panels
             string gAlarmType = "";
             gsZoneText = "";
             int tIpType = 0;
-            bool bColInputFix = false;
 
             // If the node ID was in the third, then there was a location text in the first
             // Also add the devtype text with a ' | ' (ascii 124) separator
@@ -455,7 +454,6 @@ namespace DraxTechnology.Panels
                         break;
 
                     case "USER":
-                        bColInputFix = true;
                         tIpType = 7;
                         break;
 

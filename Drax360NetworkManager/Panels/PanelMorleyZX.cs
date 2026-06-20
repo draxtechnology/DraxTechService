@@ -34,8 +34,12 @@ namespace DraxTechnology.Panels
 
         private List<byte> receiveBuffer = new List<byte>();
         private System.Timers.Timer pollTimer;
+        // Polling-state flags whose read side isn't wired up yet (the polling gate
+        // is a work-in-progress) — suppress CS0414 until they're consumed.
+#pragma warning disable CS0414
         private bool isPollingEnabled = true;
         private bool waitingForDetailedResponse = false;
+#pragma warning restore CS0414
         private byte previousPanelStatusBitset = 0;
         private bool g_booIsolationEcho = true;
         List<int> garyZoneArray = new List<int>();
@@ -521,8 +525,6 @@ namespace DraxTechnology.Panels
         private void SendDeviceStatusToAMX1(MorleyEventPriority eventPriority, MorleyEventNature eventNature, MorleyDetectorType detectorType, ref int p1)
         {
 
-            int amx1StatusIPNumber = 0;     // Used for Panel events only
-
             bool isFireDetector = (detectorType == MorleyDetectorType.CallPoint) ||
                                  (detectorType == MorleyDetectorType.HeatDetector) ||
                                  (detectorType == MorleyDetectorType.IonisationDetector) ||
@@ -843,7 +845,6 @@ namespace DraxTechnology.Panels
                 waitingForDetailedResponse = false;  // No alarms, resume polling
             }
 
-            int p1 = 15;
             int p2 = response[2]; // Source Panel ID
             int p3 = response[7]; // Loop number
             int p4 = response[9]; // Device Address
@@ -853,7 +854,9 @@ namespace DraxTechnology.Panels
 
         // Note: not using AbstractPanel.send_response_amx because Morley ZX swaps
         // message1 and message2 when forwarding to AMX. Confirm against panel before unifying.
-        private void send_response_amx(int evnum, string message1, string message2, string message3 = "")
+        // `new` is deliberate — this intentionally hides the protected base method
+        // (only called internally from MorleyZX, which is private to this class).
+        private new void send_response_amx(int evnum, string message1, string message2, string message3 = "")
         {
             string friendlymessage = message2 + (message3.Length > 0 ? (" " + message3) : "");
             this.NotifyClient(friendlymessage, false);
@@ -1110,7 +1113,6 @@ namespace DraxTechnology.Panels
             int sMonth = int.Parse(now.ToString("MM"));  // Two-digit month
             int sDay = int.Parse(now.ToString("dd"));    // Two-digit day
             int sDayWeek = ((int)now.DayOfWeek + 6) % 7 + 1;// Sunday = 1, Monday = 2, etc.
-            bool on = true;
 
             string text = action.ToString();
 
@@ -1494,7 +1496,7 @@ namespace DraxTechnology.Panels
                     //FlushAMX1Messages();
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
             }
         }

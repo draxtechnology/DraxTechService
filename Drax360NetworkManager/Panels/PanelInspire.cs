@@ -1224,7 +1224,7 @@ public string gsDeviceText = "";
                         break;
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             { }
         }
 
@@ -1310,7 +1310,7 @@ public string gsDeviceText = "";
             {
                 serialport.Open();
             }
-            catch (Exception e)
+            catch (Exception)
 
             {
                 base.NotifyClient("Failed To Open " + serialport.PortName, false);
@@ -1620,7 +1620,7 @@ public string gsDeviceText = "";
                     return iMsgCheckSum == iDecCheckSum;
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return false;
             }

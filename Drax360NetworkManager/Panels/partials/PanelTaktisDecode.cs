@@ -7,8 +7,11 @@ namespace DraxTechnology.Panels
     internal partial class PanelTaktis
     {
         private bool _duplicate;
+        // Write-only flags for the active-events / reset flow; read side still TODO.
+#pragma warning disable CS0414
         private bool _clearedEvent;
         private bool _sendRequestActiveEvents;
+#pragma warning restore CS0414
         private long[] _serialNo = new long[4];
         private long _numMessages;
         private AlarmListManager _alarmList;
@@ -23,8 +26,12 @@ namespace DraxTechnology.Panels
         private readonly bool _ulSettings;
         private readonly string _ioModuleSettings;
         private readonly string _ioModuleSettingsPanels;
+        // Injected abstractions scaffolded for the planned network-manager split
+        // (see the commented-out _networkManager.* calls); not wired up yet.
+#pragma warning disable CS0169
         private readonly IAMX1Writer _amx1Writer;
         private readonly INetworkManager _networkManager;
+#pragma warning restore CS0169
 
         public void ParseTAKMessage(
            enmTAKMessageType messageType,
@@ -288,9 +295,6 @@ namespace DraxTechnology.Panels
            enmTAKEventCode eventCode, ref enmTAKEventType eventType, ref int address,
            ref int loop, int subAddress, int addressType, long eventGroup)
         {
-            string _evacWord = "Evacuate";
-            string _alertWord = "Alert";
-            string _techWord = "Technical Alarm";
             string _faultWord = "Fault";
             string _earthFaultWord = "Earth Fault";
             bool _ulSettings = false;
@@ -1657,8 +1661,6 @@ namespace DraxTechnology.Panels
             string _evacWord = "Evacuate";
             string _alertWord = "Alert";
             string _techWord = "Technical Alarm";
-            string _faultWord = "Fault";
-            string _earthFaultWord = "Earth Fault";
             bool _ulSettings = false;
 
             switch (inputAction)
@@ -2222,7 +2224,9 @@ namespace DraxTechnology.Panels
         {
             // Pack values into a single long
             // Assuming bit layout: [node][loop][address][inputType]
-            long result = ((long)node << 24) | ((long)loop << 16) | ((long)address << 8) | inputType;
+            // (uint) cast zero-extends inputType into the OR rather than sign-extending
+            // a negative int across the high bits (CS0675).
+            long result = ((long)node << 24) | ((long)loop << 16) | ((long)address << 8) | (uint)inputType;
             this.NotifyClient($"MakeInputNumber: Node={node}, Loop={loop}, Address={address}, Type={inputType} => {result}");
             return result;
         }

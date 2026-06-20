@@ -17,10 +17,9 @@ namespace CryptoModule
 
         private static byte[] DeriveKeyPBKDF2(byte[] password, byte[] salt)
         {
-            using (var pbkdf2 = new Rfc2898DeriveBytes(password, salt, 10000, HashAlgorithmName.SHA512))
-            {
-                return pbkdf2.GetBytes(48); // 32 key + 16 IV
-            }
+            // Static Pbkdf2 (same password/salt/iterations/hash/length) replaces the
+            // obsolete Rfc2898DeriveBytes constructor (SYSLIB0060) — output identical.
+            return Rfc2898DeriveBytes.Pbkdf2(password, salt, 10000, HashAlgorithmName.SHA512, 48); // 32 key + 16 IV
         }
 
         public static string DecryptOpenSSLCtr(string base64Input, string passphrase)

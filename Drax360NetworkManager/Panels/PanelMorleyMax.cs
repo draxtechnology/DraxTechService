@@ -819,7 +819,7 @@ namespace DraxTechnology.Panels
                         break;
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             { }
         }
 
@@ -880,7 +880,7 @@ namespace DraxTechnology.Panels
             {
                 serialport.Open();
             }
-            catch (Exception e)
+            catch (Exception)
 
             {
                 base.NotifyClient("Failed To Open " + serialport.PortName, false);

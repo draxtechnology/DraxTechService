@@ -651,7 +651,10 @@ namespace DraxTechnology
         private const int NwmMaxNodesSYNCCTV = 1;
         private const int NwmMaxNodesInspire = 127;
 
-        private const int AmxLite = 0;        // 0=full AMX1, else value = Lite version  TODO
+        // static readonly (not const) so the AmxLite==1 lite-mode branch in
+        // GetNwmMaxNodes isn't compile-time-folded to dead code (CS0162) while
+        // the lite path remains a TODO. Value is still 0 = full AMX1.
+        private static readonly int AmxLite = 0; // 0=full AMX1, else value = Lite version  TODO
 
         // RSM Constants Start
         const int krsmport = 1471;
@@ -841,7 +844,7 @@ namespace DraxTechnology
 
                     Task.Run(() => rsmListenForConnections(rsmcancellationTokenSource.Token));
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     //MessageBox.Show($"Error starting listener: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     rsmStopListener();
@@ -2113,7 +2116,7 @@ namespace DraxTechnology
                 {
                     break;
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     if (rsmisListening)
                     {

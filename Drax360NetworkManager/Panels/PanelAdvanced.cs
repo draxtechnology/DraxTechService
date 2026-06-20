@@ -180,7 +180,7 @@ namespace DraxTechnology.Panels
             {
                 serialport.Open();
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 base.NotifyClient("Failed To Open " + serialport.PortName, false);
             }
