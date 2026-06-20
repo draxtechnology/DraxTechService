@@ -362,6 +362,6 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 
-# Claude Code — per-user local overrides (shared settings live in .claude/settings.json)
-.claude/settings.local.json
-.claude/memory/
+# Claude Code — ignore everything local except the shared settings file
+.claude/
+!.claude/settings.json
