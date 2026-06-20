@@ -13,7 +13,12 @@ namespace DraxTechnology.Panels
         private long _numMessages;
         private AlarmListManager _alarmList;
         private ZoneDisableListManager _zoneDisableList;
-        private FaultListManager _faultList;
+        // Persists for the object lifetime, cleared only on a panel Reset
+        // (HandleReset). Double-fault detection compares a new fault against
+        // faults seen on PRIOR messages, so this must NOT be re-created per
+        // message — see ParseTAKMessage where _alarmList/_zoneDisableList are
+        // still newed each message (same latent issue, left as-is for now).
+        private FaultListManager _faultList = new FaultListManager();
         private readonly int _amx1Offset;
         private readonly bool _ulSettings;
         private readonly string _ioModuleSettings;
@@ -52,7 +57,9 @@ namespace DraxTechnology.Panels
                 bool _ulSettings = false;
                 _alarmList = new AlarmListManager();
                 _zoneDisableList = new ZoneDisableListManager();
-                _faultList = new FaultListManager();
+                // _faultList intentionally NOT re-created here — it persists
+                // across messages so double-fault detection can compare against
+                // faults from earlier messages (cleared on Reset in HandleReset).
 
                 int iFirstAddress = address;
 
@@ -2137,7 +2144,11 @@ namespace DraxTechnology.Panels
                 return;
 
             this.NotifyClient($"Device Fault Detected - {locationText} {eventText}");
-            return; //TODO
+
+            // Double-fault tracking: a repeat fault on the same input promotes
+            // its inputType (FaultListManager.Add increments), which feeds the
+            // evnum computed at the send_response_amx call in ParseTAKMessage.
+            // Enabled 2026-06-20 — NEEDS real-panel confirmation before relied on.
             if (alarmOn)
             {
                 doubleFaultInputType = inputType;
