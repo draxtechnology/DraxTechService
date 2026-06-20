@@ -51,6 +51,18 @@ namespace DraxTechnology.Panels
         const int SPX_RST0TO15 = 4;
         #endregion
 
+        #region Module-Options SET path codes (authoritative RSMenum.bas integers)
+        const int OPT_PanelNumbers  = 19;   // setgetPanelNumbers (master panel ID — Ç-joined list)
+        const int OPT_ReverseInputs = 27;   // setgetReverseInputs (set via CMD, read back as GAK)
+        const int OPT_Restart       = 199;  // setgetRESTART
+        const int CMD_GetReverseInputs = 43;
+        const int CMD_SetReverseInputs = 44;
+        // VB6 frmRSMProperties.Form_Unload sends "554" for the restart param; the
+        // enum comment says "544" but the shipping code always transmits "554",
+        // so the firmware checks for "554".
+        const string RESTART_PARAM = "554";
+        #endregion
+
         // DXC global reset queue — mirrors VB6 clsResetQueue (Phil Spooner, 2015).
         // Tracks active ON events per AMX node for DX/NO/PE/KE module types so that
         // when a panel-reset signal arrives, any stale pre-reset alarms are auto-
@@ -1203,32 +1215,129 @@ namespace DraxTechnology.Panels
             int sent = 0;
             foreach (int option in OptionGetList)
             {
-                int messageID = NextMessageID();
                 // Wire format mirrors VB6 MakeNewMessage: GET, ID, node, serial,
                 // (empty ModuleType), optionNumber — separator Ç (0xC7), then
                 // scrambled + STX/ETX framed with a trailing checksum.
-                string body = "GET" + kSeparator + messageID + kSeparator + moduleNumber + kSeparator
+                string body = "GET" + kSeparator + NextMessageID() + kSeparator + moduleNumber + kSeparator
                               + (state.SerialNumber ?? "") + kSeparator + kSeparator + option;
-                byte[] bytes = scrambleandencodemessage(body);
-
-                lock (state.WriteLock)
-                {
-                    try
-                    {
-                        stream.Write(bytes, 0, bytes.Length);
-                        stream.Flush();
-                        state.TXmessages++;
-                        sent++;
-                    }
-                    catch (Exception ex)
-                    {
-                        this.NotifyClient($"RequestModuleOptions {Label(state)} option {option} write failed: {ex.Message}", false);
-                        return;
-                    }
-                }
+                if (!TryWrite(state, stream, body)) return;
+                sent++;
             }
 
             this.NotifyClient($"RequestModuleOptions {Label(state)}: sent {sent} GET(s)", false);
+        }
+
+        /// <summary>
+        /// Applies a Module-Options change to a node. Mirrors VB6 frmRSMSetOption:
+        /// a normal option is a SET (optionNumber Ç value) followed by a confirming
+        /// GET; Reverse Inputs (setgetReverseInputs) is special-cased to a CMD pair
+        /// (cmdSetReverseInputs Ç value, then cmdGetReverseInputs) because the panel
+        /// sets it via a command but reports it back as a GAK. Panel-number lists
+        /// (setgetPanelNumbers) are comma-joined on the wire as Ç. The client owns
+        /// per-option validation and Name4 padding; the value arrives wire-ready
+        /// apart from the panel-number separator swap. No-ops with a log line if the
+        /// node isn't connected. Triggered by the RSMSETOPT pipe verb.
+        /// </summary>
+        public void SetModuleOption(int moduleNumber, int optionNumber, string value)
+        {
+            ModuleState state;
+            NetworkStream stream;
+            lock (modulesLock)
+            {
+                if (!modules.TryGetValue(moduleNumber, out state))
+                {
+                    this.NotifyClient($"SetModuleOption: module {moduleNumber} not known", false);
+                    return;
+                }
+                stream = state.Stream;
+            }
+            if (stream == null)
+            {
+                this.NotifyClient($"SetModuleOption {Label(state)}: not currently connected", false);
+                return;
+            }
+
+            string serial = state.SerialNumber ?? "";
+            value ??= "";
+
+            if (optionNumber == OPT_ReverseInputs)
+            {
+                // Reverse Inputs — set via CMD, then read back via CMD (VB6 special-case).
+                string setBody = "CMD" + kSeparator + NextMessageID() + kSeparator + moduleNumber + kSeparator
+                                 + serial + kSeparator + kSeparator + CMD_SetReverseInputs + kSeparator + value;
+                string getBody = "CMD" + kSeparator + NextMessageID() + kSeparator + moduleNumber + kSeparator
+                                 + serial + kSeparator + kSeparator + CMD_GetReverseInputs;
+                if (TryWrite(state, stream, setBody)) TryWrite(state, stream, getBody);
+                this.NotifyClient($"SetModuleOption {Label(state)} ReverseInputs='{value}' (CMD {CMD_SetReverseInputs})", false);
+                return;
+            }
+
+            // Panel-number lists go on the wire Ç-separated (VB6 joins with sepCHAR);
+            // a single value has no comma and is unchanged.
+            string wireValue = optionNumber == OPT_PanelNumbers ? value.Replace(',', kSeparator) : value;
+
+            string setMsg = "SET" + kSeparator + NextMessageID() + kSeparator + moduleNumber + kSeparator
+                            + serial + kSeparator + kSeparator + optionNumber + kSeparator + wireValue;
+            string getMsg = "GET" + kSeparator + NextMessageID() + kSeparator + moduleNumber + kSeparator
+                            + serial + kSeparator + kSeparator + optionNumber;
+            if (TryWrite(state, stream, setMsg)) TryWrite(state, stream, getMsg);
+
+            this.NotifyClient($"SetModuleOption {Label(state)} option={optionNumber} value='{value}'", false);
+        }
+
+        /// <summary>
+        /// Restarts a node. VB6 frmRSMProperties.Form_Unload sends SET setgetRESTART
+        /// Ç "554" when an option change needs a reboot; the client's standalone
+        /// Restart Module button uses the same path. Triggered by RSMRESTART.
+        /// </summary>
+        public void RestartModule(int moduleNumber)
+        {
+            ModuleState state;
+            NetworkStream stream;
+            lock (modulesLock)
+            {
+                if (!modules.TryGetValue(moduleNumber, out state))
+                {
+                    this.NotifyClient($"RestartModule: module {moduleNumber} not known", false);
+                    return;
+                }
+                stream = state.Stream;
+            }
+            if (stream == null)
+            {
+                this.NotifyClient($"RestartModule {Label(state)}: not currently connected", false);
+                return;
+            }
+
+            string body = "SET" + kSeparator + NextMessageID() + kSeparator + moduleNumber + kSeparator
+                          + (state.SerialNumber ?? "") + kSeparator + kSeparator + OPT_Restart + kSeparator + RESTART_PARAM;
+            TryWrite(state, stream, body);
+            this.NotifyClient($"RestartModule {Label(state)}: sent restart", false);
+        }
+
+        /// <summary>
+        /// Scrambles + writes a message body to a module's open TCP stream under its
+        /// write lock, bumping the TX counter. Shared by the GET/SET/restart paths.
+        /// Returns false (and logs) on a write error.
+        /// </summary>
+        private bool TryWrite(ModuleState state, NetworkStream stream, string body)
+        {
+            byte[] bytes = scrambleandencodemessage(body);
+            lock (state.WriteLock)
+            {
+                try
+                {
+                    stream.Write(bytes, 0, bytes.Length);
+                    stream.Flush();
+                    state.TXmessages++;
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    this.NotifyClient($"Write to {Label(state)} failed: {ex.Message}", false);
+                    return false;
+                }
+            }
         }
 
         /// <summary>

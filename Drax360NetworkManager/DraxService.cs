@@ -1535,6 +1535,33 @@ namespace DraxTechnology
                     }
                     break;
 
+                case "RSMSETOPT":
+                    // Apply a Module-Options change to a node. Pipe-delimited so the
+                    // value may itself contain commas (panel-number lists):
+                    // RSMSETOPT|node|option|value.
+                    {
+                        PanelRSM rsm = abstractpanels.OfType<PanelRSM>().FirstOrDefault();
+                        if (rsm != null && parts.Length >= 4
+                            && int.TryParse(parts[1].Trim(), out int node)
+                            && int.TryParse(parts[2].Trim(), out int option))
+                        {
+                            rsm.SetModuleOption(node, option, parts[3]);
+                        }
+                    }
+                    break;
+
+                case "RSMRESTART":
+                    // Restart a node ("RSMRESTART|5").
+                    {
+                        PanelRSM rsm = abstractpanels.OfType<PanelRSM>().FirstOrDefault();
+                        if (rsm != null && partssplit != null && partssplit.Length >= 1
+                            && int.TryParse(partssplit[0].Trim(), out int node))
+                        {
+                            rsm.RestartModule(node);
+                        }
+                    }
+                    break;
+
                 case "GETCOMMPORTSTATUS":
                     if (partssplit.Length != 1) break;
                     string identifier = partssplit[0];
