@@ -19,6 +19,10 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.7" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.7" />
+    <!-- Direct ref overrides the SQLitePCLRaw.lib.e_sqlite3 2.1.11 that EF Core 10.0.7
+         pulls in transitively, which carries a known high-severity vuln (NU1903 /
+         GHSA-2m69-gcr7-jv3q). 3.50.3 bundles a patched SQLite native library. -->
+    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="3.50.3" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.7" />
     <PackageReference Include="System.Diagnostics.EventLog" Version="10.0.7" />
     <PackageReference Include="System.IO.Ports" Version="10.0.7" />
