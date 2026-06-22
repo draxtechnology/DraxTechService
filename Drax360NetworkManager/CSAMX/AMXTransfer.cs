@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Configuration;
 using System.IO;
 using System.Net.Sockets;
 using System.Text;
@@ -15,7 +16,13 @@ namespace DraxTechnology
 
         public event EventHandler OutsideEvents;
 
-        private int _port = 3090;
+        // AMX listens on one port per instance: AMX1=3090, AMX2=3091, AMX3=3092,
+        // AMX4=3093. A site can run up to four managers in parallel and the C#
+        // service may occupy any of the four slots, so the port is configured
+        // per install rather than hardcoded. ReadConfiguredPort() resolves it.
+        private const int kDefaultAmxPort = 3090;
+        private const int kAmxInstanceBasePort = 3089; // instance N -> 3089 + N
+        private int _port = kDefaultAmxPort;
         private string _address = "localhost";
         private TcpClient _tcpClient;
         public TcpClient TcpClient => _tcpClient;
@@ -123,6 +130,7 @@ namespace DraxTechnology
         }
         private async Task tcpconnect()
         {
+            NotifyClient("AMX connecting to " + _address + ":" + _port);
             _tcpClient = new TcpClient();
             var cancellationTokenSource = new CancellationTokenSource();
             _tcpClient.Client.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.NoDelay, true);
@@ -475,6 +483,49 @@ namespace DraxTechnology
                 NotifyClient("Exception in ReceiveDataAsync: " + ex.Message);
             }
         }
+        private AMXTransfer()
+        {
+            _port = ReadConfiguredPort();
+        }
+
+        // Resolve the AMX TCP port from config. Precedence:
+        //   1. AmxPort   — explicit port, wins if present and valid.
+        //   2. AmxInstance (1..4) — derived as 3089 + instance (AMX1 -> 3090).
+        //   3. default 3090 (AMX1).
+        // Anything missing or out of range falls through to the default; the
+        // resolved value is reported via NotifyClient so the trace shows which
+        // AMX instance this manager bound to.
+        private int ReadConfiguredPort()
+        {
+            int port = kDefaultAmxPort;
+            try
+            {
+                string portSetting = ConfigurationManager.AppSettings["AmxPort"]?.Trim();
+                string instanceSetting = ConfigurationManager.AppSettings["AmxInstance"]?.Trim();
+
+                if (!string.IsNullOrEmpty(portSetting)
+                    && int.TryParse(portSetting, out int explicitPort)
+                    && explicitPort > 0 && explicitPort <= 65535)
+                {
+                    port = explicitPort;
+                }
+                else if (!string.IsNullOrEmpty(instanceSetting)
+                    && int.TryParse(instanceSetting, out int instance)
+                    && instance >= 1 && instance <= 4)
+                {
+                    port = kAmxInstanceBasePort + instance;
+                }
+            }
+            catch
+            {
+                // Config unavailable (e.g. running outside the service host) —
+                // keep the default. Never let port resolution stop startup.
+                port = kDefaultAmxPort;
+            }
+
+            return port;
+        }
+
         public static AMXTransfer Instance
         {
             get
