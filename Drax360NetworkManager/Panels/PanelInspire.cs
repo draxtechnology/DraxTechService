@@ -16,6 +16,17 @@ public string gsDeviceText = "";
         public int gsSectorNo;
         private readonly List<(int zone, int p2, int p3, int p4, int p1)> _disabledZones = new();
         private bool bOneShotReset;
+
+        // AMX module offset (configured via the client Setup "Inspire Panel" tab,
+        // persisted to INSMan.ini [SETUP]). The amount lands in base.Offset; the
+        // mode chooses which AMX coordinate it shifts:
+        //   Node  (default) — offset added to the node/panel axis  (p2)
+        //   Loop            — offset added to the loop axis         (p3)
+        // Until now Inspire never read an offset at all, so base.Offset was
+        // always 0; Node mode reproduces that prior behaviour when the amount
+        // is 0. NOTE: additive on the chosen axis — confirm against a real panel
+        // whether the panel expects additive or a per-loop multiplier.
+        private bool _offsetByLoop;
         public override string FakeString
         {
             get =>
@@ -1009,9 +1020,15 @@ public string gsDeviceText = "";
                 }
 
                 p2 = panel;
-                p2 = p2 + this.Offset;
-
                 p3 = loop;
+
+                // Apply the configured module offset to the selected axis.
+                // Node mode (default) shifts the panel/node coordinate exactly as
+                // before; Loop mode shifts the loop coordinate instead.
+                if (_offsetByLoop)
+                    p3 = p3 + this.Offset;
+                else
+                    p2 = p2 + this.Offset;
                 p4 = Convert.ToInt32(giAddressNumber);
 
                 string zonetext = "";
@@ -1266,6 +1283,16 @@ public string gsDeviceText = "";
             string settingparity = base.GetSetting<string>(ksettingsetupsection, "Parity");
             int settingdatabits = base.GetSetting<int>(ksettingsetupsection, "DataBits");
             int settingstopbits = base.GetSetting<int>(ksettingsetupsection, "StopBits");
+
+            // AMX module offset — matches the convention used by the other panels
+            // (Gent/RSM/Espa all read giAmx1Offset). ModuleOffsetMode selects the
+            // axis; default (missing/blank/"Node") shifts the node axis, which
+            // preserves the historical Inspire behaviour when the amount is 0.
+            this.Offset = base.GetSetting<int>(ksettingsetupsection, "giAmx1Offset");
+            string offsetmode = base.GetSetting<string>(ksettingsetupsection, "ModuleOffsetMode");
+            _offsetByLoop = string.Equals(offsetmode, "Loop", StringComparison.OrdinalIgnoreCase);
+            base.NotifyClient(
+                $"Inspire module offset: amount={this.Offset} mode={(_offsetByLoop ? "Loop" : "Node")}", false);
 
             if (fakemode > 0)
             {
