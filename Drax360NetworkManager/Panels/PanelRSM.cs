@@ -497,6 +497,14 @@ namespace DraxTechnology.Panels
             int optionNumber = ParseInt(GetField(parts, G_OptionNumber));
             string value     = GetField(parts, G_OptionValue);
 
+            // Raw-frame trace: confirms the panel actually replied to the GET
+            // batch and shows the unparsed option field. If these lines never
+            // appear after a "sent N GET(s)" line the node isn't answering; if
+            // they appear with an optionNumber outside OptionGetList it's a
+            // mapping problem, not a connectivity one.
+            this.NotifyClient(
+                $"GAK frame {Label(state)}: [{string.Join(" | ", parts)}]", false);
+
             // optSetGet enum values are the authoritative RSMenum.bas integers
             // (verified against the legacy source). Earlier revisions had three
             // wrong here — Name4 was 14 (that's setgetPort), Listening Port was
@@ -1123,7 +1131,12 @@ namespace DraxTechnology.Panels
                 sent++;
             }
 
-            this.NotifyClient($"RequestModuleOptions {Label(state)}: sent {sent} GET(s)", false);
+            // Enumerate the option numbers actually sent so the trace can be
+            // paired one-to-one against the GAK replies below. A count alone
+            // can't tell "panel never answered" from "answered the wrong option".
+            this.NotifyClient(
+                $"RequestModuleOptions {Label(state)}: sent {sent} GET(s) options=[{string.Join(",", OptionGetList)}]",
+                false);
         }
 
         /// <summary>
