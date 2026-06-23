@@ -1137,7 +1137,7 @@ public string gsDeviceText = "";
 
             gsDeviceText = "";
 
-            try
+            try 
             {
                 switch (piDeviceType)
                 {
