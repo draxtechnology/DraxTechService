@@ -19,16 +19,6 @@ public string gsDeviceText = "";
         public int moduleoffset;
         public string moduleoffsetmode;
 
-        // AMX module offset (configured via the client Setup "Inspire Panel" tab,
-        // persisted to INSMan.ini [SETUP]). The amount lands in base.Offset; the
-        // mode chooses which AMX coordinate it shifts:
-        //   Node  (default) — offset added to the node/panel axis  (p2)
-        //   Loop            — offset added to the loop axis         (p3)
-        // Until now Inspire never read an offset at all, so base.Offset was
-        // always 0; Node mode reproduces that prior behaviour when the amount
-        // is 0. NOTE: additive on the chosen axis — confirm against a real panel
-        // whether the panel expects additive or a per-loop multiplier.
-        private bool _offsetByLoop;
         public override string FakeString
         {
             get =>
@@ -52,29 +42,63 @@ public string gsDeviceText = "";
                 this.Offset = base.GetSetting<int>(ksettingsetupsection, "giAmx1Offset");
             }
         }
+        public override void SerialPort_Datareceived(object sender, System.IO.Ports.SerialDataReceivedEventArgs e)
+        {
+            // VB6 read byte-by-byte with no sleep. Skip the 1-second sleep in the base
+            // implementation — it is the main cause of slow event delivery on this panel.
+            lastDataReceived = DateTime.Now;
+            NoteHalfDuplexReceive(false);
+            int bytestoread = serialport.BytesToRead;
+            if (bytestoread == 0) return;
+            byte[] readbytes = new byte[bytestoread];
+            int numberread = serialport.Read(readbytes, 0, bytestoread);
+            if (numberread == 0) return;
+            try { Parse(readbytes); }
+            catch (Exception ex) { this.NotifyClient($"Parse error (PanelInspire): {ex.Message}"); }
+        }
+
         public override void Parse(byte[] buffer)
         {
             base.Parse(buffer);
-            int foundat = -1;
-            int bufferlength = this.buffer.Count;
 
-            byte[] ourmessage = this.buffer.ToArray();
-            for (int i = 0; i < ourmessage.Length; i++)
+            // Loop to drain all complete messages from the buffer. Multiple messages
+            // can arrive in a single DataReceived call (e.g. a heartbeat ACK echo
+            // immediately followed by an IE event), so we must not stop at the first one.
+            while (true)
             {
-                if (ourmessage[i] == '\r')
-                {
-                    foundat = i;
-                    break;
-                }
+            int foundat = -1;
+            for (int i = 0; i < this.buffer.Count; i++)
+            {
+                if (this.buffer[i] == '\r') { foundat = i; break; }
             }
-            ;
             if (foundat <= 0) return;
             // Remove only the first complete message; leave any trailing bytes for
             // the next Parse() call so back-to-back panel notifications aren't dropped.
+            byte[] ourmessage = this.buffer.GetRange(0, foundat + 1).ToArray();
             this.buffer.RemoveRange(0, foundat + 1);
-            ourmessage = ourmessage[..(foundat + 1)];
+
+            // VB6 SOMcheck: on half-duplex RS-485 our IACK echo can arrive
+            // without its own \r, glued to the next panel event:
+            //   e.g. buffer = ">IACK>IE0230...\r" or ">?..>IE0230...\r"
+            // Find the LAST occurrence of ">I" before the \r — that is the real
+            // message start. If there is a prefix (IACK echo, noise), skip it.
             string strmsg = Encoding.UTF8.GetString(ourmessage, 0, foundat);
-            if (!strmsg.StartsWith(">")) return;
+            int lastSom = 0;
+            for (int j = 0; j < strmsg.Length - 1; j++)
+            {
+                if (strmsg[j] == '>' && strmsg[j + 1] == 'I')
+                    lastSom = j;
+            }
+            if (lastSom > 0)
+            {
+                // Re-inject from the real SOM so the message is processed correctly.
+                byte[] requeue = Encoding.UTF8.GetBytes(strmsg.Substring(lastSom) + "\r");
+                this.buffer.InsertRange(0, requeue);
+                continue;
+            }
+
+            if (!strmsg.StartsWith(">")) continue;
+            if (strmsg.Length < 3) continue;
             string cmd = strmsg.Substring(1, 2);
 
             this.NotifyClient(DateTime.Now + ": " + strmsg.Replace("\r", "") + " Received from Panel");
@@ -1083,6 +1107,7 @@ public string gsDeviceText = "";
                 // the receive thread for a full second after a dispatch was
                 // just delaying the next inbound parse cycle for no benefit.
             }
+            } // end while(true) — drain all complete messages from buffer
         }
         private void send_response_amx_and_serial(int evnum, string message1, string message2, string message3 = "")
         {
@@ -1344,7 +1369,7 @@ public string gsDeviceText = "";
             moduleoffsetmode = base.GetSetting<string>(ksettingsetupsection, "ModuleOffsetMode").ToLower();
 
             base.NotifyClient(
-                $"Inspire module offset: amount={this.Offset} mode={(_offsetByLoop ? "Loop" : "Node")}", false);
+                $"Inspire module offset: amount={moduleoffset} mode={(moduleoffsetmode == "loop" ? "Loop" : "Node")}", false);
         }
 
         public override void Evacuate(string passedvalues)
