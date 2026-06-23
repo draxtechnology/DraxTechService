@@ -16,6 +16,8 @@ public string gsDeviceText = "";
         public int gsSectorNo;
         private readonly List<(int zone, int p2, int p3, int p4, int p1)> _disabledZones = new();
         private bool bOneShotReset;
+        public int moduleoffset;
+        public string moduleoffsetmode;
 
         // AMX module offset (configured via the client Setup "Inspire Panel" tab,
         // persisted to INSMan.ini [SETUP]). The amount lands in base.Offset; the
@@ -47,6 +49,7 @@ public string gsDeviceText = "";
             if (!String.IsNullOrEmpty(identifier))
             {
                 heartbeat_timer = new Timer(heartbeat_timer_callback, this.Identifier, 1000, kHeartbeatDelaySeconds * 1000);
+                this.Offset = base.GetSetting<int>(ksettingsetupsection, "giAmx1Offset");
             }
         }
         public override void Parse(byte[] buffer)
@@ -74,7 +77,7 @@ public string gsDeviceText = "";
             if (!strmsg.StartsWith(">")) return;
             string cmd = strmsg.Substring(1, 2);
 
-            Console.WriteLine(DateTime.Now + ": " + strmsg.Replace("\r", "") + " Received from Panel");
+            this.NotifyClient(DateTime.Now + ": " + strmsg.Replace("\r", "") + " Received from Panel");
 
             //
             if (cmd == "IS")
@@ -1016,19 +1019,18 @@ public string gsDeviceText = "";
 
                 if (sensor.ToLower() == "m")
                 {
-                    loop += 10;
+                    if (moduleoffsetmode == "loop")
+                    {
+                        loop += moduleoffset;
+                    }
+                    if (moduleoffsetmode == "node")
+                    {
+                        panel += moduleoffset;
+                    }
                 }
 
-                p2 = panel;
+                p2 = panel + this.Offset;
                 p3 = loop;
-
-                // Apply the configured module offset to the selected axis.
-                // Node mode (default) shifts the panel/node coordinate exactly as
-                // before; Loop mode shifts the loop coordinate instead.
-                if (_offsetByLoop)
-                    p3 = p3 + this.Offset;
-                else
-                    p2 = p2 + this.Offset;
                 p4 = Convert.ToInt32(giAddressNumber);
 
                 string zonetext = "";
@@ -1284,19 +1286,8 @@ public string gsDeviceText = "";
             int settingdatabits = base.GetSetting<int>(ksettingsetupsection, "DataBits");
             int settingstopbits = base.GetSetting<int>(ksettingsetupsection, "StopBits");
 
-            // AMX module offset — matches the convention used by the other panels
-            // (Gent/RSM/Espa all read giAmx1Offset). ModuleOffsetMode selects the
-            // axis; default (missing/blank/"Node") shifts the node axis, which
-            // preserves the historical Inspire behaviour when the amount is 0.
-            this.Offset = base.GetSetting<int>(ksettingsetupsection, "giAmx1Offset");
-            string offsetmode = base.GetSetting<string>(ksettingsetupsection, "ModuleOffsetMode");
-            _offsetByLoop = string.Equals(offsetmode, "Loop", StringComparison.OrdinalIgnoreCase);
-            base.NotifyClient(
-                $"Inspire module offset: amount={this.Offset} mode={(_offsetByLoop ? "Loop" : "Node")}", false);
-
             if (fakemode > 0)
             {
-
                 return;
             }
 
@@ -1341,8 +1332,6 @@ public string gsDeviceText = "";
 
             {
                 base.NotifyClient("Failed To Open " + serialport.PortName, false);
-
-
             }
 
             if (serialport.IsOpen)
@@ -1350,6 +1339,12 @@ public string gsDeviceText = "";
                 serialport.DiscardInBuffer();
                 serialport.DiscardOutBuffer();
             }
+
+            moduleoffset = base.GetSetting<int>(ksettingsetupsection, "ModuleOffset");
+            moduleoffsetmode = base.GetSetting<string>(ksettingsetupsection, "ModuleOffsetMode").ToLower();
+
+            base.NotifyClient(
+                $"Inspire module offset: amount={this.Offset} mode={(_offsetByLoop ? "Loop" : "Node")}", false);
         }
 
         public override void Evacuate(string passedvalues)
@@ -1400,17 +1395,32 @@ public string gsDeviceText = "";
         {
             ParsePassedValues(passedvalues, out int node, out int loop, out int zone, out int device);
 
-            // VB6 Pearl: loop >= 11 means module (panel loop + 10 was added on inbound).
-            // Subtract 10 to recover the wire loop; address is sent as-is.
-            if (loop >= 11)
+            if (moduleoffsetmode == "loop")
             {
-                action = action switch
+                if (loop >= moduleoffset)
                 {
-                    ActionType.kDISABLEDEVICE => ActionType.kDISABLEMODULE,
-                    ActionType.kENABLEDEVICE => ActionType.kENABLEMODULE,
-                    _ => action,
-                };
-                loop -= 10;
+                    action = action switch
+                    {
+                        ActionType.kDISABLEDEVICE => ActionType.kDISABLEMODULE,
+                        ActionType.kENABLEDEVICE => ActionType.kENABLEMODULE,
+                        _ => action,
+                    };
+                    loop -= moduleoffset;
+                }
+            }
+
+            if (moduleoffsetmode == "node")
+            {
+                if (node >= moduleoffset)
+                {
+                    action = action switch
+                    {
+                        ActionType.kDISABLEDEVICE => ActionType.kDISABLEMODULE,
+                        ActionType.kENABLEDEVICE => ActionType.kENABLEMODULE,
+                        _ => action,
+                    };
+                    node -= moduleoffset;
+                }
             }
 
             string loopStr = loop.ToString("D2"); // Pads with leading zeros to 2 digits
