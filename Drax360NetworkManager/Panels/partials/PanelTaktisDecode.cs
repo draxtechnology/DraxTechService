@@ -22,6 +22,13 @@ namespace DraxTechnology.Panels
         // message — see ParseTAKMessage where _alarmList/_zoneDisableList are
         // still newed each message (same latent issue, left as-is for now).
         private FaultListManager _faultList = new FaultListManager();
+        // Active events already reported to AMX, keyed on AMX event identity
+        // (node/loop/address/type). The TX channel hands us the full active-event
+        // set again on every reconnect (~every 12s), so the same conditions arrive
+        // repeatedly; without this each repeat is re-sent to AMX as a fresh event.
+        // In real-panel testing 4 faults generated 1,000+ files this way. Persists
+        // across messages; cleared only on a panel Reset (HandleReset), like _faultList.
+        private readonly HashSet<long> _sentActiveEvents = new HashSet<long>();
         private readonly int _amx1Offset;
         private readonly bool _ulSettings;
         private readonly string _ioModuleSettings;
@@ -168,6 +175,26 @@ namespace DraxTechnology.Panels
                 {
                     HandleReset();
                     return;
+                }
+
+                // De-dup the active-events replay. The TX channel re-requests the
+                // full active set on every reconnect, so the same conditions come
+                // round repeatedly. Key on the AMX event identity (node/loop/
+                // address/type) computed above — exactly what AMX itself dedups on.
+                // An active (alarmOn) repeat we've already reported is dropped here,
+                // which also stops double-fault detection re-counting it each cycle.
+                // A clear (alarmOn=false) removes the condition and passes through so
+                // AMX sees the restore; a clear for something never reported active
+                // (a snapshot repeat) is dropped.
+                if (alarmOn)
+                {
+                    if (!_sentActiveEvents.Add(inputNumber))
+                        return;
+                }
+                else
+                {
+                    if (!_sentActiveEvents.Remove(inputNumber))
+                        return;
                 }
 
                 // Add/remove from alarm list
@@ -2210,6 +2237,9 @@ namespace DraxTechnology.Panels
             _duplicate = false;
             _zoneDisableList.Clear();
             _faultList.Clear();
+            // A panel Reset clears all active conditions, so forget what we've
+            // reported — genuinely re-occurring events after a Reset must send again.
+            _sentActiveEvents.Clear();
 
             //_networkManager.StartActiveEventsTimer();
             //_networkManager.StartResetDelayTimer(10000);
