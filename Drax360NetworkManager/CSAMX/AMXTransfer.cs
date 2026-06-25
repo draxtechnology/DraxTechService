@@ -51,6 +51,10 @@ namespace DraxTechnology
         // it leaked _senderCts and _outbound on a programmatic Stop().
         private volatile bool _stopRequested;
 
+        // Reconnect logging gate: announce an outage once, then stay quiet until
+        // AMX is back, so a long outage doesn't write a line every 5s.
+        private bool _reconnectAnnounced;
+
         public event Action<string> isMessageReceive;
 
         private static AMXTransfer _instance;
@@ -82,7 +86,7 @@ namespace DraxTechnology
                 CleanupConnection();
                 if (_stopRequested) break;
 
-                NotifyClient("AMX disconnected; reconnecting in " + (kReconnectDelayMs / 1000) + "s");
+                // Outage is announced once in tcpconnect(); don't log every cycle.
                 await Task.Delay(kReconnectDelayMs);
             }
 
@@ -130,7 +134,6 @@ namespace DraxTechnology
         }
         private async Task tcpconnect()
         {
-            NotifyClient("AMX connecting to " + _address + ":" + _port);
             _tcpClient = new TcpClient();
             var cancellationTokenSource = new CancellationTokenSource();
             _tcpClient.Client.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.NoDelay, true);
@@ -142,16 +145,33 @@ namespace DraxTechnology
                 var timeoutTask = Task.Delay(5000); // 5-second timeout
                                                     // Wait for either the connection to succeed or the timeout to occur
                 var completedTask = await Task.WhenAny(connectTask, timeoutTask);
-                if (completedTask == timeoutTask)
+                if (completedTask == timeoutTask) cancellationTokenSource.Cancel();
+
+                // "completed before the timeout" is NOT the same as "connected":
+                // when AMX isn't listening yet the connect faults fast (connection
+                // refused). Treat a timeout OR a non-successful connect the same —
+                // the socket is unusable, so return to the retry loop WITHOUT
+                // touching the stream (GetStream() on a dead socket throws the
+                // misleading "operation not allowed on non-connected sockets") and
+                // WITHOUT flipping IsConnected true. Announce once, then stay quiet
+                // until AMX is actually back.
+                if (completedTask == timeoutTask || !connectTask.IsCompletedSuccessfully)
                 {
-                    cancellationTokenSource.Cancel();
-                    NotifyClient("AMX Connection timeout");
+                    if (!_reconnectAnnounced)
+                    {
+                        NotifyClient("AMX not reachable at " + _address + ":" + _port +
+                                     "; retrying every " + (kReconnectDelayMs / 1000) + "s until it's back");
+                        _reconnectAnnounced = true;
+                    }
                     return;
                 }
-                _connected = true;
-                IsConnected = true;
+
                 _stream = _tcpClient.GetStream();
                 _writer = new StreamWriter(_stream, Encoding.UTF8) { AutoFlush = true };
+                _connected = true;
+                IsConnected = true;
+                _reconnectAnnounced = false;   // reset so the next outage announces again
+                NotifyClient("AMX connected to " + _address + ":" + _port);
                 StartSender();
                 StartHeartbeatTimer();
 
