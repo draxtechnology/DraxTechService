@@ -6,6 +6,7 @@ using System.Net.Mail;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
+using CryptoModule;
 
 namespace DraxTechnology.Panels
 {
@@ -39,7 +40,12 @@ namespace DraxTechnology.Panels
                 server = base.GetSetting<string>(kemailkey, "SMTPServer");
                 port = base.GetSetting<int>(kemailkey, "SMTPPort");
                 username = base.GetSetting<string>(kemailkey, "LoginName");
-                password = base.GetSetting<string>(kemailkey, "Password");
+                // Client stores the password encrypted (AesDecryptor.EncryptOpenSSLCtr);
+                // decrypt on read so it can be used as the SMTP credential. Empty stays empty.
+                string storedPassword = base.GetSetting<string>(kemailkey, "Password");
+                password = string.IsNullOrEmpty(storedPassword)
+                    ? storedPassword
+                    : AesDecryptor.DecryptOpenSSLCtr(storedPassword, "");
                 smtpauth = base.GetSetting<int>(kemailkey, "SMTPAuthorisation");
                 enablessl = true;
 
@@ -77,6 +83,14 @@ namespace DraxTechnology.Panels
         private void EnqueueEvent(string eventTypeText, string passedValues)
         {
             if (String.IsNullOrEmpty(eventTypeText)) return;
+
+            // new MailAddress(from) below throws on a blank sender; a misconfigured
+            // From should log and skip, not take down the send path.
+            if (String.IsNullOrEmpty(from))
+            {
+                NotifyClient("Email not sent: no From address configured (EMAIL,From).", false);
+                return;
+            }
 
             string[] parts = passedValues?.Split(',') ?? new string[0];
             string node = GetPart(parts, 0);
