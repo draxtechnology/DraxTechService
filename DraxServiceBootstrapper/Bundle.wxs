@@ -29,9 +29,19 @@
       build/maintenance ergonomics. Detection matches: present when the
       Desktop Runtime is installed.
     -->
+    <!--
+      Check for any installed 10.x Desktop Runtime by looking for a named value
+      under the shared-fx key. Result="exists" on the key alone can return false
+      on some machines even when a runtime is present (e.g. installed via a
+      bundle that writes version values but not the parent key first). Checking
+      for the specific patch value is reliable; if a *newer* patch is installed
+      the value name will differ — we fall through to the EXE which then exits
+      1638 (treated as success below).
+    -->
     <util:RegistrySearch Id="SearchNetDesktop10"
                          Root="HKLM"
                          Key="SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.WindowsDesktop.App"
+                         Value="10.0.8"
                          Variable="NetDesktop10Present"
                          Result="exists" />
 
@@ -59,7 +69,10 @@
                   InstallArguments="/install /quiet /norestart"
                   RepairArguments="/repair /quiet /norestart"
                   UninstallArguments="/uninstall /quiet /norestart"
-                  Permanent="yes" />
+                  Permanent="yes">
+        <!-- 1638 = ERROR_PRODUCT_VERSION: a newer version is already installed — treat as success -->
+        <ExitCode Value="1638" Behavior="success" />
+      </ExePackage>
 
       <!-- Drax Service MSI -->
       <MsiPackage SourceFile="$(var.DraxServiceSetup.TargetPath)" />
