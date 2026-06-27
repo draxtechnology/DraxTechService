@@ -47,7 +47,14 @@ namespace DraxTechnology.Panels
                     ? storedPassword
                     : AesDecryptor.DecryptOpenSSLCtr(storedPassword, "");
                 smtpauth = base.GetSetting<int>(kemailkey, "SMTPAuthorisation");
-                enablessl = true;
+                // SSL is on by default (matches the prior always-on behaviour and
+                // most modern relays); the client disables it by writing EnableSSL=0
+                // (or false/no). Absent or blank keeps SSL on so existing deployments
+                // don't regress — a hardcoded true used to break plain port-25 relays.
+                string sslSetting = (base.GetSetting<string>(kemailkey, "EnableSSL") ?? string.Empty).Trim();
+                enablessl = !(sslSetting == "0"
+                    || sslSetting.Equals("false", StringComparison.OrdinalIgnoreCase)
+                    || sslSetting.Equals("no", StringComparison.OrdinalIgnoreCase));
 
                 systemName = base.GetSetting<string>(kemailkey, "SystemName");
                 if (String.IsNullOrEmpty(systemName)) systemName = "Drax360";
@@ -74,6 +81,14 @@ namespace DraxTechnology.Panels
 
         public void TestMessage(string to)
         {
+            // new MailMessage(from, ...) throws on a blank sender; mirror the
+            // EnqueueEvent guard and skip with a log rather than throw.
+            if (String.IsNullOrEmpty(from))
+            {
+                NotifyClient("Test email not sent: no From address configured (EMAIL,From).", false);
+                return;
+            }
+
             string testmessage = base.GetSetting<string>(kemailkey, "TestMessage");
             MailMessage message = new MailMessage(from, to, "Test", testmessage);
             send_message(message);
@@ -118,7 +133,8 @@ namespace DraxTechnology.Panels
 
                 string extras = String.Join(", ", group.Addresses.Skip(1));
                 string subject = $"{systemName} Event: {eventTypeText}";
-                string body = BuildBody(eventTypeText, location, nodeName, reference, time, date, classification);
+                bool html = group.Html;
+                string body = BuildBody(html, eventTypeText, location, nodeName, reference, time, date, classification);
                 string cc = group.Bcc ? "" : extras;
                 string bcc = group.Bcc ? extras : "";
 
@@ -133,7 +149,7 @@ namespace DraxTechnology.Panels
                         if (!String.IsNullOrEmpty(bcc)) msg.Bcc.Add(bcc);
                         msg.Subject = subject;
                         msg.Body = body;
-                        msg.IsBodyHtml = false;
+                        msg.IsBodyHtml = html;
                         send_message(msg);
                     }
                     catch (Exception ex)
@@ -144,8 +160,10 @@ namespace DraxTechnology.Panels
             }
         }
 
-        private string BuildBody(string eventTypeText, string location, string nodeName, string reference, string time, string date, string classification)
+        private string BuildBody(bool html, string eventTypeText, string location, string nodeName, string reference, string time, string date, string classification)
         {
+            if (html) return BuildHtmlBody(eventTypeText, location, nodeName, reference, time, date, classification);
+
             var sb = new StringBuilder();
             sb.AppendLine(eventTypeText);
             sb.AppendLine();
@@ -159,6 +177,30 @@ namespace DraxTechnology.Panels
             sb.AppendLine();
             sb.AppendLine($"This is an event email generated automatically by {systemName}. Replies to this email will not be read.");
             sb.AppendLine($"Please contact the {systemName} administrator if you wish to be removed from this email list.");
+            return sb.ToString();
+        }
+
+        // HTML variant for groups with the Html flag set. Mirrors the plaintext
+        // layout in a <pre> block so the aligned labels survive, with every value
+        // HTML-encoded so an event string containing < & > can't break the markup.
+        private string BuildHtmlBody(string eventTypeText, string location, string nodeName, string reference, string time, string date, string classification)
+        {
+            static string Enc(string s) => System.Net.WebUtility.HtmlEncode(s ?? string.Empty);
+
+            var sb = new StringBuilder();
+            sb.Append("<html><body style=\"font-family:Consolas,'Courier New',monospace\">");
+            sb.Append($"<p><strong>{Enc(eventTypeText)}</strong></p><pre>");
+            sb.Append($"LOCATION  : {Enc(location)}\n");
+            if (!String.IsNullOrEmpty(nodeName))
+                sb.Append($"NODE      : {Enc(nodeName)}\n");
+            sb.Append($"REFERENCE : {Enc(reference)}\n");
+            sb.Append($"DATE/TIME : {Enc(time)} on {Enc(date)}");
+            if (!String.IsNullOrEmpty(classification))
+                sb.Append($"\nCLASSIFICATION : {Enc(classification)}");
+            sb.Append("</pre>");
+            sb.Append($"<p>This is an event email generated automatically by {Enc(systemName)}. Replies to this email will not be read.<br>");
+            sb.Append($"Please contact the {Enc(systemName)} administrator if you wish to be removed from this email list.</p>");
+            sb.Append("</body></html>");
             return sb.ToString();
         }
 
