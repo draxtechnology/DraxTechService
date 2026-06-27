@@ -257,7 +257,16 @@ namespace DraxTechnology
             catch (Exception ex)
             {
                 _connected = false;
-                NotifyClient("AMX Connection failed: " + ex.Message);
+                // Same announce-once latch as the not-reachable path above: a dead
+                // socket throws here every 5s (e.g. "operation not allowed on
+                // non-connected sockets" from GetStream), which otherwise wrote a
+                // line per attempt for the whole outage. Announce once, then stay
+                // quiet until a successful connect resets _reconnectAnnounced.
+                if (!_reconnectAnnounced)
+                {
+                    NotifyClient("AMX Connection failed: " + ex.Message);
+                    _reconnectAnnounced = true;
+                }
             }
         }
 
