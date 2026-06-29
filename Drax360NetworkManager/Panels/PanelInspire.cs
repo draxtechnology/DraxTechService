@@ -1366,10 +1366,20 @@ public string gsDeviceText = "";
             }
 
             moduleoffset = base.GetSetting<int>(ksettingsetupsection, "ModuleOffset");
-            moduleoffsetmode = base.GetSetting<string>(ksettingsetupsection, "ModuleOffsetMode").ToLower();
-
-            base.NotifyClient(
-                $"Inspire module offset: amount={moduleoffset} mode={(moduleoffsetmode == "loop" ? "Loop" : "Node")}", false);
+            moduleoffsetmode = "node";
+            try
+            {
+                var setting = base.GetSetting<string>(ksettingsetupsection, "ModuleOffsetMode");
+                if (setting != null)
+                    moduleoffsetmode = setting.ToLower();
+                else
+                    base.NotifyClient("ModuleOffsetMode not set in config file, defaulting to Node", false);
+            }
+            catch (Exception)
+            {
+                base.NotifyClient("ModuleOffsetMode not set in config file, defaulting to Node", false);
+            }
+            base.NotifyClient($"Inspire module offset: amount={moduleoffset} mode={(moduleoffsetmode == "loop" ? "Loop" : "Node")}", false);
         }
 
         public override void Evacuate(string passedvalues)
