@@ -809,6 +809,7 @@ namespace DraxTechnology
             // Make this instance reachable from AMXTransfer's MTX: handler.
             OnManualControlFile = this.DispatchAmxFile;
             OnAmxPipeCommand = this.DispatchAmxPipeCommand;
+            OnMqttCommand = this.DispatchMqttCommand;
 
             // used to just load our settings from the ini file
             AbstractPanel apbase = getpanel();
@@ -1170,6 +1171,9 @@ namespace DraxTechnology
             if (notifyui)
             {
                 sendreturncmd(msg);
+                // Supplementary human-readable mirror for the open head-end; the
+                // structured event stream is published separately from CSAMX.
+                MqttTransfer.Instance.PublishLog(msg);
             }
         }
 
@@ -1872,6 +1876,12 @@ namespace DraxTechnology
             CSAMXSingleton.CS.Startup(configurationbasefolder, apbase.Extension);
             CSAMXSingleton.CS.OutsideEvents += Sp_Log;
 
+            // Bring up the parallel MQTT mirror (open head-end / Node-RED PoC).
+            // No-op unless MqttEnabled is true; runs its own connect/reconnect loop and
+            // cannot disturb the AMX path. Routes its lifecycle log through Sp_Log.
+            MqttTransfer.Instance.OutsideEvents += Sp_Log;
+            MqttTransfer.Instance.Start(panel);
+
             init_service();    // start the service
         }
 
@@ -1882,6 +1892,31 @@ namespace DraxTechnology
         // Set during init_service so AMXTransfer.ProcessAmxTransfer can dispatch
         // pipe-delimited AMX Graphic commands ("|"-split) into the live instance.
         public static Action<string[]> OnAmxPipeCommand;
+
+        // Set during init_service so MqttTransfer can route controls arriving on
+        // the MQTT command topic into the live instance. (topic, payload).
+        public static Action<string, string> OnMqttCommand;
+
+        /// <summary>
+        /// Control arriving from the open head-end over MQTT. For the PoC the
+        /// payload reuses the existing pipe-delimited control format
+        /// ("ACTION|params", e.g. "SILENCE" or "DISABLEDEVICE|1,2,3"), so it
+        /// drops straight into the same handlepiperesponse switch that serves the
+        /// named-pipe UI and the AMX MTX path — one control routing, three
+        /// transports. Never throws back into the MQTT receive callback.
+        /// </summary>
+        private void DispatchMqttCommand(string topic, string payload)
+        {
+            if (string.IsNullOrWhiteSpace(payload)) return;
+            try
+            {
+                handlepiperesponse(payload.Trim());
+            }
+            catch (Exception ex)
+            {
+                ln("MQTT command handling failed: " + ex.Message, EventLogEntryType.Error);
+            }
+        }
 
         /// <summary>
         /// Pipe-delimited command from AMX Graphic. parts[8] is the command code,
@@ -2053,6 +2088,15 @@ namespace DraxTechnology
             catch (Exception ex)
             {
                 Console.WriteLine(DateTime.Now + ": " + "Error stopping AMXTransfer: " + ex.Message);
+            }
+
+            try
+            {
+                MqttTransfer.Instance.Stop();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(DateTime.Now + ": " + "Error stopping MqttTransfer: " + ex.Message);
             }
 
             ln("Stopped Service");
