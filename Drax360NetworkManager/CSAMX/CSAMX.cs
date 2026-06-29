@@ -66,6 +66,20 @@ namespace DraxTechnology
             _cleanupTimer.Enabled = true;
         }
 
+        // Single enqueue chokepoint for outbound NVMs. Adds under _nvmsLock — the
+        // same lock FlushMessages snapshots/clears under, so a concurrent panel-
+        // thread add can't corrupt the list mid-flush — then mirrors the event to
+        // the MQTT sink. The publish is outside the lock, is a no-op unless
+        // MqttEnabled is true, and can never throw, so it cannot disturb the AMX path.
+        private void AddNvm(NVM ournvm)
+        {
+            lock (_nvmsLock)
+            {
+                nvms.Add(ournvm);
+            }
+            MqttTransfer.Instance.PublishEvent(ournvm, extension);
+        }
+
         public int IncrementInputNumber(int inputNumber)
         {
             return (int)(inputNumber + 0x80000000);
@@ -94,10 +108,7 @@ namespace DraxTechnology
             ournvm.Text2 = textparameter2;
             ournvm.Text3 = textparameter3;
 
-            lock (_nvmsLock)
-            {
-                nvms.Add(ournvm);
-            }
+            AddNvm(ournvm);
         }
 
 
@@ -126,10 +137,7 @@ namespace DraxTechnology
             ournvm.OurEvent = eventnumber;
             ournvm.Value = attributeBit;
             ournvm.On = onOff;
-            lock (_nvmsLock)
-            {
-                nvms.Add(ournvm);
-            }
+            AddNvm(ournvm);
         }
 
         public void LogMessage(int eventtype, int eventnumber, string text, int ophandle)
@@ -139,10 +147,7 @@ namespace DraxTechnology
             ournvm.OurEvent = eventnumber;
             ournvm.Text = text;
             ournvm.Spare[0] = ophandle;
-            lock (_nvmsLock)
-            {
-                nvms.Add(ournvm);
-            }
+            AddNvm(ournvm);
         }
 
         public void ScheduleDelete(string filename)
@@ -310,13 +315,10 @@ namespace DraxTechnology
             ournvm.Text2 = dtext2;
             ournvm.Text3 = dtext3;
 
-            // Called from panel parser threads; FlushMessages snapshots/clears nvms
-            // under _nvmsLock, so this add must take the same lock or it can corrupt
-            // the list mid-flush and drop an alarm/reset event.
-            lock (_nvmsLock)
-            {
-                nvms.Add(ournvm);
-            }
+            // Called from panel parser threads; AddNvm takes _nvmsLock (the lock
+            // FlushMessages snapshots/clears under) so a concurrent add can't
+            // corrupt the list mid-flush and drop an alarm/reset event.
+            AddNvm(ournvm);
         }
 
         public void sendalarmorreset_disable(int eventnumber, string dtext, string dtext2, string dtext3, bool on)
@@ -329,11 +331,8 @@ namespace DraxTechnology
             ournvm.Text2 = dtext2;
             ournvm.Text3 = dtext3;
 
-            // Same _nvmsLock discipline as sendalarmorreset — concurrent add vs flush.
-            lock (_nvmsLock)
-            {
-                nvms.Add(ournvm);
-            }
+            // Same lock discipline as sendalarmorreset (AddNvm) — concurrent add vs flush.
+            AddNvm(ournvm);
         }
         #endregion
     }
