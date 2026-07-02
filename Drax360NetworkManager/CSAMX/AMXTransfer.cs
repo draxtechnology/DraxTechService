@@ -29,6 +29,12 @@ namespace DraxTechnology
         private bool _connected = false;
         public bool IsConnected { get; private set; }
 
+        // Active panel name, set by DraxService at startup, used only to label the
+        // "started" system-history line. Previously that line was hardcoded to
+        // "c# Gent Started" regardless of the configured panel (Mike spotted it
+        // reading "Gent" on an Inspire site).
+        public string PanelName { get; set; } = "";
+
         private NetworkStream _stream;
         private StreamWriter _writer;
         // Receive-side accumulator for partial AMX frames straddling TCP reads.
@@ -178,7 +184,7 @@ namespace DraxTechnology
                 // Log the startup
 
                 int evnum = CSAMXSingleton.CS.MakeInputNumber(1, 1, 1, 1);
-                string text = "c# Gent Started";
+                string text = $"c# {(string.IsNullOrWhiteSpace(PanelName) ? "Service" : PanelName)} Started";
                 CSAMXSingleton.CS.WriteData(NwmData.MessageForSystemHistoryToAmx, evnum, text, "", "");
                 CSAMXSingleton.CS.FlushMessages();
 

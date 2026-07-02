@@ -1861,6 +1861,9 @@ namespace DraxTechnology
             // handler, but Run() drives Instance only, so Sp_Log was silently
             // never invoked. Fixed 2026-05-23.
             AMXTransfer.Instance.OutsideEvents += Sp_Log;
+            // Label the AMX "started" system-history line with the configured panel
+            // (title-cased, e.g. "Inspire") instead of the old hardcoded "Gent".
+            AMXTransfer.Instance.PanelName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase((panel ?? "").ToLower());
             _ = AMXTransfer.Instance.Run(args);   // long-lived reconnect loop; fire-and-forget by design
 
             startpipeserver();
