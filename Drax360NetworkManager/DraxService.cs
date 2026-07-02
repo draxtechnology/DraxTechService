@@ -584,6 +584,11 @@ namespace DraxTechnology
         const string kpipenamesend = "DraxTechnologyPipeSend";
         const string kpipenamereturn = "DraxTechnologyPipeReturn";
         const char kpipedelim = '|';
+        // Sentinel sent in place of an empty response. A genuinely empty payload is a
+        // zero-length message, which PipeTransmissionMode.Message cannot frame reliably;
+        // this token guarantees a real, complete message that the client maps back to "".
+        // Must stay byte-for-byte identical to PipeProtocol.EmptyResult on the client.
+        const string kpipeemptyresult = "\u0001EMPTY\u0001";
         const string kappname = "DraxTechnology Service";
         const int kfaketimertickseconds = 60;
         const int kfakefireinitialwakeseconds = 0;
@@ -1300,27 +1305,56 @@ namespace DraxTechnology
                 var messagebytes = readpipemessage(pipeserversend);
                 string strresponse = Encoding.UTF8.GetString(messagebytes);
                 ln("Message received from client: " + strresponse);
-                string strret = handlepiperesponse(strresponse);
+                string strret = handlepiperesponse(strresponse) ?? "";
+                // An empty result (e.g. a missing SETTINGSGET key) is sent as an explicit
+                // sentinel: a zero-length payload is a zero-length message, which message-mode
+                // pipes cannot frame reliably. The client maps the sentinel back to "".
+                if (strret.Length == 0)
+                    strret = kpipeemptyresult;
                 //prepare some response
-                byte[] response = null;
+                byte[] response;
 
                 try
                 {
                     response = Encoding.UTF8.GetBytes(strret);
                 }
                 catch
-                { }
+                {
+                    response = Array.Empty<byte>();
+                }
 
-                //send response to a client
+                // Send response to the client. A missing SETTINGSGET key (and similar
+                // lookups) legitimately produces an empty result. The old path wrote the
+                // payload and then Disconnect()-ed immediately: for an empty payload that
+                // meant a zero-length write (a no-op in message mode) followed by an
+                // abrupt teardown, which races the client's message-framed read loop and
+                // surfaces intermittently as a stalled read or "pipe is broken". Flushing
+                // and draining before we disconnect guarantees the client has consumed the
+                // (possibly empty) response first; the guarded teardown keeps a failed
+                // write from corrupting the single server instance for later commands.
                 try
                 {
-                    pipeserversend?.Write(response ?? Array.Empty<byte>(), 0, response?.Length ?? 0);
+                    pipeserversend?.Write(response, 0, response.Length);
+                    pipeserversend?.Flush();
 
-                    pipeserversend.Disconnect();
+                    if (pipeserversend?.IsConnected == true)
+                        pipeserversend.WaitForPipeDrain();
                 }
                 catch (Exception ex)
                 {
                     ln("Error sending response: " + ex.Message, EventLogEntryType.Error);
+                }
+                finally
+                {
+                    try
+                    {
+                        if (pipeserversend?.IsConnected == true)
+                            pipeserversend.Disconnect();
+                    }
+                    catch (Exception ex)
+                    {
+                        ln("Error disconnecting pipe: " + ex.Message, EventLogEntryType.Error);
+                    }
                 }
             }
         }
