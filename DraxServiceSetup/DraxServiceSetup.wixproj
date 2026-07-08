@@ -1,7 +1,6 @@
-﻿<Project Sdk="WixToolset.Sdk/7.0.0">
+<Project Sdk="WixToolset.Sdk/5.0.2">
 
   <PropertyGroup>
-    <AcceptEula>wix7</AcceptEula>
     <OutputName>DraxTechnologyServiceSetup</OutputName>
     <OutputType>Package</OutputType>
     <InstallerPlatform>x64</InstallerPlatform>
@@ -9,22 +8,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="WixToolset.UI.wixext" Version="7.0.0" />
-    <PackageReference Include="WixToolset.Util.wixext" Version="7.0.0" />
+    <PackageReference Include="WixToolset.UI.wixext" Version="5.0.2" />
+    <PackageReference Include="WixToolset.Util.wixext" Version="5.0.2" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Drax360NetworkManager\Drax360Service.csproj" />
   </ItemGroup>
-
-  <!-- Keep Files.wxs in sync with the service build output on every installer
-       build, so a new or removed NuGet assembly can never silently miss the
-       MSI (MQTTnet.dll did exactly that — fresh installs failed to start).
-       Runs after the service project reference has built, so bin\Debug is
-       current. The script emits stable GUIDs, so the output is deterministic
-       and Files.wxs only changes when the dependency set actually changes. -->
-  <Target Name="RegenerateFilesWxs" BeforeTargets="CoreCompile">
-    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\Regenerate-Files.ps1&quot;" />
-  </Target>
 
 </Project>

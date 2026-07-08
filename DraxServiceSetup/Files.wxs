@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   <Fragment>
     <ComponentGroup Id="DependencyFiles" Directory="INSTALLFOLDER">
@@ -62,9 +62,6 @@
       <Component Id="cmp_Microsoft_Extensions_Primitives_dll" Guid="8446077E-4E10-5286-9DD3-E84091CE833E">
         <File Id="fil_Microsoft_Extensions_Primitives_dll" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Primitives.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_MQTTnet_dll" Guid="1F0A11EC-0D35-4AF8-4134-F09562E9D495">
-        <File Id="fil_MQTTnet_dll" Source="$(var.Drax360Service.TargetDir)MQTTnet.dll" KeyPath="yes" />
-      </Component>
       <Component Id="cmp_SQLitePCLRaw_batteries_v2_dll" Guid="2CCE773F-FD53-136F-A6F2-259EDB5CBEAA">
         <File Id="fil_SQLitePCLRaw_batteries_v2_dll" Source="$(var.Drax360Service.TargetDir)SQLitePCLRaw.batteries_v2.dll" KeyPath="yes" />
       </Component>
@@ -98,27 +95,6 @@
     </ComponentGroup>
 
     <ComponentGroup Id="IniFiles" Directory="IniFolder">
-      <Component Id="cmp_ini_EMLMan_ini" Guid="D1F10046-C926-C98C-082C-F6FAE5F1F0FD" Permanent="yes" NeverOverwrite="yes">
-        <File Id="fil_ini_EMLMan_ini" Source="$(var.Drax360Service.TargetDir)ini\EMLMan.ini" KeyPath="yes" />
-      </Component>
-      <Component Id="cmp_ini_GenMan_ini" Guid="591E237D-04D2-1644-9B63-7A86A762D85E" Permanent="yes" NeverOverwrite="yes">
-        <File Id="fil_ini_GenMan_ini" Source="$(var.Drax360Service.TargetDir)ini\GenMan.ini" KeyPath="yes" />
-      </Component>
-      <Component Id="cmp_ini_INSMan_ini" Guid="E2EA5D29-633F-84C2-8F7E-08B7B236F49E" Permanent="yes" NeverOverwrite="yes">
-        <File Id="fil_ini_INSMan_ini" Source="$(var.Drax360Service.TargetDir)ini\INSMan.ini" KeyPath="yes" />
-      </Component>
-      <Component Id="cmp_ini_NOTMan_ini" Guid="8458B86F-47CE-B189-1278-A9753195E4D0" Permanent="yes" NeverOverwrite="yes">
-        <File Id="fil_ini_NOTMan_ini" Source="$(var.Drax360Service.TargetDir)ini\NOTMan.ini" KeyPath="yes" />
-      </Component>
-      <Component Id="cmp_ini_PRLMan_ini" Guid="56200D06-0D72-2CE4-9A09-90FD7852BAE0" Permanent="yes" NeverOverwrite="yes">
-        <File Id="fil_ini_PRLMan_ini" Source="$(var.Drax360Service.TargetDir)ini\PRLMan.ini" KeyPath="yes" />
-      </Component>
-      <Component Id="cmp_ini_RSMMan_ini" Guid="BB9F1975-FF37-4C44-FB9F-4B6B75C0069C" Permanent="yes" NeverOverwrite="yes">
-        <File Id="fil_ini_RSMMan_ini" Source="$(var.Drax360Service.TargetDir)ini\RSMMan.ini" KeyPath="yes" />
-      </Component>
-      <Component Id="cmp_ini_TAKMan_ini" Guid="C22B3422-7E78-5A9F-C426-37235D239116" Permanent="yes" NeverOverwrite="yes">
-        <File Id="fil_ini_TAKMan_ini" Source="$(var.Drax360Service.TargetDir)ini\TAKMan.ini" KeyPath="yes" />
-      </Component>
     </ComponentGroup>
 
     <ComponentGroup Id="WinRuntimeFiles" Directory="WinRuntimeDir">

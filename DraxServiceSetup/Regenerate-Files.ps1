@@ -16,11 +16,7 @@ $rootFiles = Get-ChildItem $bin -File | Where-Object {
   $_.Name -ne 'DraxTechnology.pdb'
 } | Sort-Object Name
 
-# Only real .ini files, and never temp.ini — SettingsSingleton writes
-# ini\temp.ini during saves, so a dev machine that has run the service from
-# bin\Debug could otherwise ship its scratch file inside the MSI.
-$iniFiles = Get-ChildItem (Join-Path $bin 'ini') -File -Filter *.ini -ErrorAction SilentlyContinue |
-  Where-Object { $_.Name -ne 'temp.ini' } | Sort-Object Name
+$iniFiles = Get-ChildItem (Join-Path $bin 'ini') -File -ErrorAction SilentlyContinue | Sort-Object Name
 
 # NuGet packages like System.ServiceProcess.ServiceController ship Windows-specific
 # DLLs under runtimes\win\lib\net10.0\. The .NET runtime resolves these via the
@@ -58,10 +54,7 @@ foreach ($f in $rootFiles) {
 foreach ($f in $iniFiles) {
   $safe = Sanitize $f.Name
   $guid = StableGuid("DraxSetup:ini\$($f.Name)")
-  # Inis are site-tuned config: never overwrite an existing one on upgrade,
-  # and leave them behind on uninstall (Permanent) so a MajorUpgrade's
-  # remove-then-reinstall cannot wipe a site's settings.
-  [void]$sb.AppendLine("      <Component Id=`"cmp_ini_$safe`" Guid=`"$guid`" Permanent=`"yes`" NeverOverwrite=`"yes`">")
+  [void]$sb.AppendLine("      <Component Id=`"cmp_ini_$safe`" Guid=`"$guid`">")
   [void]$sb.AppendLine("        <File Id=`"fil_ini_$safe`" Source=`"`$(var.Drax360Service.TargetDir)ini\$($f.Name)`" KeyPath=`"yes`" />")
   [void]$sb.AppendLine('      </Component>')
 }

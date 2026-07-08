@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using MQTTnet;
+using MQTTnet.Client;
 using MQTTnet.Protocol;
 
 namespace DraxTechnology
@@ -120,7 +121,7 @@ namespace DraxTechnology
 
             try
             {
-                var factory = new MqttClientFactory();
+                var factory = new MqttFactory();
                 _client = factory.CreateMqttClient();
                 _options = new MqttClientOptionsBuilder()
                     .WithTcpServer(_broker, _port)
@@ -316,7 +317,7 @@ namespace DraxTechnology
         {
             try
             {
-                string payload = e.ApplicationMessage.ConvertPayloadToString();
+                string payload = Encoding.UTF8.GetString(e.ApplicationMessage.PayloadSegment);
                 string topic = e.ApplicationMessage.Topic;
                 NotifyClient($"MQTT command on {topic}: {payload}");
 
