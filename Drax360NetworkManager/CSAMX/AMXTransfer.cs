@@ -61,6 +61,12 @@ namespace DraxTechnology
         // AMX is back, so a long outage doesn't write a line every 5s.
         private bool _reconnectAnnounced;
 
+        // Optional fallback for AMX builds that close their socket without
+        // sending NWM:END (App.config CloseClientOnAmxLoss). When enabled, a
+        // connected-to-down transition forwards NWM:END to the client so it
+        // exits instead of lingering with the single-instance mutex held.
+        private readonly bool _closeClientOnAmxLoss;
+
         public event Action<string> isMessageReceive;
 
         private static AMXTransfer _instance;
@@ -140,6 +146,7 @@ namespace DraxTechnology
         }
         private async Task tcpconnect()
         {
+            bool wasConnected = false;
             _tcpClient = new TcpClient();
             var cancellationTokenSource = new CancellationTokenSource();
             _tcpClient.Client.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.NoDelay, true);
@@ -175,6 +182,7 @@ namespace DraxTechnology
                 _stream = _tcpClient.GetStream();
                 _writer = new StreamWriter(_stream, Encoding.UTF8) { AutoFlush = true };
                 _connected = true;
+                wasConnected = true;
                 IsConnected = true;
                 _reconnectAnnounced = false;   // reset so the next outage announces again
                 NotifyClient("AMX connected to " + _address + ":" + _port);
@@ -259,10 +267,16 @@ namespace DraxTechnology
                 };
 
                 await ReceiveDataAsync();
+
+                // ReceiveDataAsync returns (rather than throws) on both a
+                // graceful AMX close and a receive error, so this is the one
+                // connected-to-down transition point for the fallback.
+                HandleAmxLinkDown("receive loop ended");
             }
             catch (Exception ex)
             {
                 _connected = false;
+                if (wasConnected) HandleAmxLinkDown(ex.Message);
                 // Same announce-once latch as the not-reachable path above: a dead
                 // socket throws here every 5s (e.g. "operation not allowed on
                 // non-connected sockets" from GetStream), which otherwise wrote a
@@ -320,6 +334,25 @@ namespace DraxTechnology
         public void NotifyClient(string message)
         {
             OutsideEvents?.Invoke(this, new CustomEventArgs(message, false));
+        }
+
+        // The AMX link just went from connected to down (the trace line here,
+        // next to any preceding "Received From AMX:" lines, is what shows
+        // whether AMX sends NWM:END before closing). If the site opted in via
+        // CloseClientOnAmxLoss, forward NWM:END to the client exactly as if
+        // AMX had sent it — the fallback for AMX builds that drop the socket
+        // without saying so. Fires once per outage by construction: each
+        // tcpconnect() call connects at most once. sendreturncmd swallows its
+        // own failures (client already gone returns an error string), so this
+        // cannot take the reconnect loop down.
+        private void HandleAmxLinkDown(string how)
+        {
+            NotifyClient("AMX link down (" + how + ")");
+            if (!_closeClientOnAmxLoss) return;
+
+            NotifyClient("CloseClientOnAmxLoss is enabled — sending the client NWM:END");
+            DraxService drax = new DraxService();
+            drax.sendreturncmd("", "NWM:END");
         }
         private void StartHeartbeatTimer()
         {
@@ -521,6 +554,20 @@ namespace DraxTechnology
         private AMXTransfer()
         {
             _port = ReadConfiguredPort();
+            _closeClientOnAmxLoss = ReadCloseClientOnAmxLoss();
+        }
+
+        private static bool ReadCloseClientOnAmxLoss()
+        {
+            try
+            {
+                string v = ConfigurationManager.AppSettings["CloseClientOnAmxLoss"]?.Trim();
+                return string.Equals(v, "true", StringComparison.OrdinalIgnoreCase) || v == "1";
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         // Resolve the AMX TCP port from config. Precedence:
