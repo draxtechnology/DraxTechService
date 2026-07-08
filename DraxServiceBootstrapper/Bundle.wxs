@@ -41,7 +41,7 @@
     <util:RegistrySearch Id="SearchNetDesktop10"
                          Root="HKLM"
                          Key="SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.WindowsDesktop.App"
-                         Value="10.0.8"
+                         Value="10.0.9"
                          Variable="NetDesktop10Present"
                          Result="exists" />
 
@@ -64,7 +64,7 @@
         attribute below to the new filename, and rebuild.
       -->
       <ExePackage Id="NetDesktopRuntime10"
-                  SourceFile="windowsdesktop-runtime-10.0.8-win-x64.exe"
+                  SourceFile="windowsdesktop-runtime-10.0.9-win-x64.exe"
                   DetectCondition="NetDesktop10Present"
                   InstallArguments="/install /quiet /norestart"
                   RepairArguments="/repair /quiet /norestart"
