@@ -763,7 +763,7 @@ namespace DraxTechnology
             }
             catch (Exception ex)
             {
-                EventLog.WriteEntry("Log write failed: " + ex.Message, EventLogEntryType.Warning);
+                EventLogger.WriteToEventLog("Log write failed: " + ex.Message, EventLogEntryType.Warning);
             }
             finally
             {
@@ -1016,7 +1016,7 @@ namespace DraxTechnology
             }
             catch (Exception ex)
             {
-                EventLog.WriteEntry("Panel config persist failed: " + ex.Message, EventLogEntryType.Warning);
+                EventLogger.WriteToEventLog("Panel config persist failed: " + ex.Message, EventLogEntryType.Warning);
             }
         }
 
@@ -1024,7 +1024,7 @@ namespace DraxTechnology
         {
             if (!File.Exists(CURRENTNWMDATAFILE))
             {
-                EventLog.WriteEntry("Current.Nwm not found — AMX may not be running yet", EventLogEntryType.Warning);
+                EventLogger.WriteToEventLog("Current.Nwm not found — AMX may not be running yet", EventLogEntryType.Warning);
                 return;
             }
 
@@ -1096,7 +1096,7 @@ namespace DraxTechnology
             }
             catch (Exception ex)
             {
-                EventLog.WriteEntry("Current.Nwm update failed: " + ex.Message, EventLogEntryType.Warning);
+                EventLogger.WriteToEventLog("Current.Nwm update failed: " + ex.Message, EventLogEntryType.Warning);
             }
         }
         public int GetNwmMaxNodes(int nwmHandle, string type)
@@ -1291,7 +1291,7 @@ namespace DraxTechnology
             catch (Exception ex)
             {
                 // Log exception to Event Viewer
-                EventLog.WriteEntry("Service failed to start: " + ex.Message, EventLogEntryType.Error);
+                EventLogger.WriteToEventLog("Service failed to start: " + ex.Message, EventLogEntryType.Error);
                 throw; // optional: Windows will still show 1064
             }
         }
@@ -1788,12 +1788,12 @@ namespace DraxTechnology
                 {
                     panel = detected;
                     PersistPanelToConfig(panel);
-                    EventLog.WriteEntry("Panel auto-detected from Current.Nwm: " + panel, EventLogEntryType.Information);
+                    EventLogger.WriteToEventLog("Panel auto-detected from Current.Nwm: " + panel, EventLogEntryType.Information);
                 }
                 else
                 {
                     panel = "Unknown";
-                    EventLog.WriteEntry("Panel not set in config and could not be detected from Current.Nwm — service cannot start.", EventLogEntryType.Error);
+                    EventLogger.WriteToEventLog("Panel not set in config and could not be detected from Current.Nwm — service cannot start.", EventLogEntryType.Error);
                 }
             }
             else
