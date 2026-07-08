@@ -60,11 +60,17 @@
     </StandardDirectory>
 
     <!-- Grant the service account full control of the install folder so
-         DraxService can write log files, NWM temp files, and Current.Nwm. -->
+         DraxService can write log files, NWM temp files, and Current.Nwm.
+         The MSI registers the service as LocalSystem (SYSTEM), but sites and
+         dev machines exist where it runs as LocalService instead — those
+         needed a manual icacls grant before this, with writes (ESPA DB,
+         logs) failing silently until it was applied. Granting both accounts
+         here makes a fresh install work whichever way the service runs. -->
     <ComponentGroup Id="FolderPermissions" Directory="INSTALLFOLDER">
       <Component Id="AmxFolderPermission" Guid="B2C6D3E4-5F6A-7B8C-9D0E-1F2A3B4C5D6E">
         <CreateFolder>
           <util:PermissionEx User="SYSTEM" GenericAll="yes" />
+          <util:PermissionEx Domain="NT AUTHORITY" User="LocalService" GenericAll="yes" />
         </CreateFolder>
       </Component>
     </ComponentGroup>
