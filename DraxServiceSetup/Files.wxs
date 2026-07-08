@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   <Fragment>
     <ComponentGroup Id="DependencyFiles" Directory="INSTALLFOLDER">
@@ -61,6 +61,9 @@
       </Component>
       <Component Id="cmp_Microsoft_Extensions_Primitives_dll" Guid="8446077E-4E10-5286-9DD3-E84091CE833E">
         <File Id="fil_Microsoft_Extensions_Primitives_dll" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Primitives.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_MQTTnet_dll" Guid="1F0A11EC-0D35-4AF8-4134-F09562E9D495">
+        <File Id="fil_MQTTnet_dll" Source="$(var.Drax360Service.TargetDir)MQTTnet.dll" KeyPath="yes" />
       </Component>
       <Component Id="cmp_SQLitePCLRaw_batteries_v2_dll" Guid="2CCE773F-FD53-136F-A6F2-259EDB5CBEAA">
         <File Id="fil_SQLitePCLRaw_batteries_v2_dll" Source="$(var.Drax360Service.TargetDir)SQLitePCLRaw.batteries_v2.dll" KeyPath="yes" />
