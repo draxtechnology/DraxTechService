@@ -21,7 +21,7 @@
     <!-- MQTT publisher (MqttTransfer.cs) — mirrors the normalised event stream to a
          local broker for the open head-end / Node-RED PoC. Off unless MqttEnabled=true;
          the live AMX path is untouched either way. -->
-    <PackageReference Include="MQTTnet" Version="4.3.7.1207" />
+    <PackageReference Include="MQTTnet" Version="5.2.0.1603" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.9" />
     <!-- Direct ref overrides the SQLitePCLRaw.lib.e_sqlite3 2.1.11 that EF Core 10.0.7
          pulls in transitively, which carries a known high-severity vuln (NU1903 /

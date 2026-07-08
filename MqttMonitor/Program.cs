@@ -1,7 +1,6 @@
 using System.Text;
 using System.Text.Json;
 using MQTTnet;
-using MQTTnet.Client;
 using MQTTnet.Protocol;
 
 
@@ -22,7 +21,7 @@ Console.OutputEncoding = Encoding.UTF8;
 Banner();
 
 int count = 0;
-var factory = new MqttFactory();
+var factory = new MqttClientFactory();
 IMqttClient client = factory.CreateMqttClient();
 
 var options = new MqttClientOptionsBuilder()
@@ -34,7 +33,7 @@ var options = new MqttClientOptionsBuilder()
 client.ApplicationMessageReceivedAsync += e =>
 {
     string topic = e.ApplicationMessage.Topic;
-    string payload = Encoding.UTF8.GetString(e.ApplicationMessage.PayloadSegment);
+    string payload = e.ApplicationMessage.ConvertPayloadToString();
     count++;
     if (topic.EndsWith("/event", StringComparison.OrdinalIgnoreCase))
         PrintEvent(topic, payload);

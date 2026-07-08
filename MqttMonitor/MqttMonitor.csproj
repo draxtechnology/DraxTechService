@@ -11,7 +11,7 @@
 
   <ItemGroup>
     <!-- Same MQTT client the service publishes with (see Drax360Service.csproj). -->
-    <PackageReference Include="MQTTnet" Version="4.3.7.1207" />
+    <PackageReference Include="MQTTnet" Version="5.2.0.1603" />
   </ItemGroup>
 
 </Project>
