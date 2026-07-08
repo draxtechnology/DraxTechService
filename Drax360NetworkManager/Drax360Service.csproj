@@ -40,6 +40,16 @@
     </Compile>
   </ItemGroup>
 
+  <!-- Default per-panel inis. Copied to bin\Debug\ini so the WiX harvest
+       (DraxServiceSetup\Regenerate-Files.ps1) ships them to C:\AMX1\ini —
+       previously the MSI installed no inis at all, so every setting read
+       fell back to defaults (the RSM giAmx1Offset issue). Site machines
+       keep their tuned copies: the installer components are marked
+       NeverOverwrite + Permanent. -->
+  <ItemGroup>
+    <None Update="ini\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <EmbeddedResource Update="DraxService.resx">
       <DependentUpon>DraxService.cs</DependentUpon>

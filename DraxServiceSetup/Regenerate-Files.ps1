@@ -54,7 +54,10 @@ foreach ($f in $rootFiles) {
 foreach ($f in $iniFiles) {
   $safe = Sanitize $f.Name
   $guid = StableGuid("DraxSetup:ini\$($f.Name)")
-  [void]$sb.AppendLine("      <Component Id=`"cmp_ini_$safe`" Guid=`"$guid`">")
+  # Inis are site-tuned config: never overwrite an existing one on upgrade,
+  # and leave them behind on uninstall (Permanent) so a MajorUpgrade's
+  # remove-then-reinstall cannot wipe a site's settings.
+  [void]$sb.AppendLine("      <Component Id=`"cmp_ini_$safe`" Guid=`"$guid`" Permanent=`"yes`" NeverOverwrite=`"yes`">")
   [void]$sb.AppendLine("        <File Id=`"fil_ini_$safe`" Source=`"`$(var.Drax360Service.TargetDir)ini\$($f.Name)`" KeyPath=`"yes`" />")
   [void]$sb.AppendLine('      </Component>')
 }
