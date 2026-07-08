@@ -95,7 +95,15 @@
                         Start="demand"
                         ErrorControl="normal"
                         Account="LocalSystem"
-                        Vital="yes" />
+                        Vital="yes">
+          <!-- Allow any local user to start/stop/query the service without elevation,
+               so the VB6 client does not need to run as administrator. -->
+          <util:PermissionEx User="Users"
+                             ServiceQueryStatus="yes"
+                             ServiceStart="yes"
+                             ServiceStop="yes"
+                             ServiceInterrogate="yes" />
+        </ServiceInstall>
         <ServiceControl Id="DraxTechnologyServiceControl"
                         Name="DraxTechnology"
                         Stop="both"

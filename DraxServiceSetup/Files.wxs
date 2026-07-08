@@ -1,7 +1,13 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   <Fragment>
     <ComponentGroup Id="DependencyFiles" Directory="INSTALLFOLDER">
+      <Component Id="cmp_1" Guid="0F4EFDBC-3419-8A32-A32C-ABAF35206E0E">
+        <File Id="fil_1" Source="$(var.Drax360Service.TargetDir)1" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_drax360service_InstallLog" Guid="0466DF68-6593-55D3-0410-A79CBB56B442">
+        <File Id="fil_drax360service_InstallLog" Source="$(var.Drax360Service.TargetDir)drax360service.InstallLog" KeyPath="yes" />
+      </Component>
       <Component Id="cmp_DraxTechnology_deps_json" Guid="F91FFF1A-1250-B428-8072-3F876BD74DA6">
         <File Id="fil_DraxTechnology_deps_json" Source="$(var.Drax360Service.TargetDir)DraxTechnology.deps.json" KeyPath="yes" />
       </Component>
@@ -16,6 +22,9 @@
       </Component>
       <Component Id="cmp_e_sqlite3_dll" Guid="D5E1A5E2-76EA-DFB5-7B1B-1EEDD1D7660E">
         <File Id="fil_e_sqlite3_dll" Source="$(var.Drax360Service.TargetDir)e_sqlite3.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_events_db" Guid="8AD39818-BC71-B109-9DCD-7E8C5101E0C1">
+        <File Id="fil_events_db" Source="$(var.Drax360Service.TargetDir)events.db" KeyPath="yes" />
       </Component>
       <Component Id="cmp_Microsoft_Data_Sqlite_dll" Guid="4BC0A4DC-1DAE-EDA2-F6AE-7EF8019E06E7">
         <File Id="fil_Microsoft_Data_Sqlite_dll" Source="$(var.Drax360Service.TargetDir)Microsoft.Data.Sqlite.dll" KeyPath="yes" />
@@ -62,6 +71,9 @@
       <Component Id="cmp_Microsoft_Extensions_Primitives_dll" Guid="8446077E-4E10-5286-9DD3-E84091CE833E">
         <File Id="fil_Microsoft_Extensions_Primitives_dll" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Primitives.dll" KeyPath="yes" />
       </Component>
+      <Component Id="cmp_MQTTnet_dll" Guid="1F0A11EC-0D35-4AF8-4134-F09562E9D495">
+        <File Id="fil_MQTTnet_dll" Source="$(var.Drax360Service.TargetDir)MQTTnet.dll" KeyPath="yes" />
+      </Component>
       <Component Id="cmp_SQLitePCLRaw_batteries_v2_dll" Guid="2CCE773F-FD53-136F-A6F2-259EDB5CBEAA">
         <File Id="fil_SQLitePCLRaw_batteries_v2_dll" Source="$(var.Drax360Service.TargetDir)SQLitePCLRaw.batteries_v2.dll" KeyPath="yes" />
       </Component>
@@ -95,6 +107,9 @@
     </ComponentGroup>
 
     <ComponentGroup Id="IniFiles" Directory="IniFolder">
+      <Component Id="cmp_ini_temp_ini" Guid="EB41919D-F84B-08AC-D45D-239F1656492B">
+        <File Id="fil_ini_temp_ini" Source="$(var.Drax360Service.TargetDir)ini\temp.ini" KeyPath="yes" />
+      </Component>
     </ComponentGroup>
 
     <ComponentGroup Id="WinRuntimeFiles" Directory="WinRuntimeDir">
