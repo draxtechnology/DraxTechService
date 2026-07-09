@@ -1,10 +1,12 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.IO.Ports;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
+using DraxTechnology.Data;
 
 namespace DraxTechnology.Panels
 {
@@ -33,6 +35,7 @@ namespace DraxTechnology.Panels
         public int giAnalogRequestLoop = 0;
         private int miMsgID = 0;
         private List<string> garyzoneDisableList = new List<string>();
+        private AnalogueEventsContext _analogueDb;
 
         public override string FakeString
         {
@@ -53,6 +56,10 @@ namespace DraxTechnology.Panels
                 heartbeat_timer = new System.Threading.Timer(heartbeat_timer_callback, this.Identifier, 500, kheartbeatdelayseconds * 1000);
                 this.Offset = base.GetSetting<int>(ksettingsetupsection, "giAmx1Offset");
                 KSFUseLoop = base.GetSetting<int>(ksettingsetupsection, "UseLoop");
+
+                string dbPath = Path.Combine(baselogfolder, "data\\analogue.db");
+                _analogueDb = new AnalogueEventsContext(dbPath);
+                _analogueDb.Database.EnsureCreated();
             }
         }
 
@@ -2002,6 +2009,11 @@ namespace DraxTechnology.Panels
                         base.NotifyClient("Analogue Address Received: " + _buffer[6], false);
                         base.NotifyClient("Analogue Value Received: " + DeviceAnalogueValue, false);
                         string sLavFileName = GetAnalogStoreName(deviceNode, DeviceLoop);
+
+                        // add to Analogue Database
+
+                        addtoanalogue(deviceNode, _buffer[6].ToString(), DeviceAnalogueValue);
+
                     }
                     else
                     {
@@ -2014,6 +2026,10 @@ namespace DraxTechnology.Panels
                             base.NotifyClient("Analogue Address Received: " + _buffer[7], false);
                             base.NotifyClient("Analogue Value Received: " + DeviceAnalogueValue, false);
                             string sLavFileName = GetAnalogStoreName(deviceNode, DeviceLoop);
+
+                            // add to Analogue Database
+
+                            addtoanalogue(deviceNode, _buffer[6].ToString(), DeviceAnalogueValue);
                         }
                         else
                         {
@@ -2028,6 +2044,19 @@ namespace DraxTechnology.Panels
                 _buffer.RemoveRange(0, end);
                 Parse(message);
             }
+        }
+
+        private void addtoanalogue(int deviceNode, string address, int value)
+        {
+            if (_analogueDb == null) return;
+
+            _analogueDb.AnalogueEvents.Add(new AnalogueEvent
+            {
+                Node = deviceNode,
+                Address = address,
+                Value = value
+            });
+            _analogueDb.SaveChanges();
         }
 
         private int FindPattern(List<byte> buffer, byte[] pattern)
