@@ -66,7 +66,7 @@ namespace DraxTechnology.Panels
                     // "unable to open database file" and takes the service down.
                     Directory.CreateDirectory(Path.GetDirectoryName(dbPath));
                     _analogueDb = new AnalogueEventsContext(dbPath);
-                    _analogueDb.Database.EnsureCreated();
+                    _analogueDb.EnsureReady();
                 }
                 catch (Exception ex)
                 {
@@ -2041,11 +2041,14 @@ namespace DraxTechnology.Panels
             int deviceNode = _buffer[offset + 2];
             int deviceAddress = _buffer[offset + 6];
             int deviceAnalogueValue = _buffer[offset + 7];
+            // The response carries no loop byte we trust yet, so tag it with the
+            // loop of the outstanding request (1-based, as the client shows it).
+            int deviceLoop = giAnalogRequestLoop + 1;
             base.NotifyClient("Analogue Node Received: " + deviceNode, false);
             base.NotifyClient("Analogue Address Received: " + deviceAddress, false);
             base.NotifyClient("Analogue Value Received: " + deviceAnalogueValue, false);
 
-            addtoanalogue(deviceNode, deviceAddress.ToString(), deviceAnalogueValue);
+            addtoanalogue(deviceNode, deviceLoop, deviceAddress.ToString(), deviceAnalogueValue);
 
             // Consume through the value byte, then resync on the next 219 start
             // byte so any trailing checksum can't shift the indices of the next
@@ -2058,7 +2061,7 @@ namespace DraxTechnology.Panels
             return true;
         }
 
-        private void addtoanalogue(int deviceNode, string address, int value)
+        private void addtoanalogue(int deviceNode, int deviceLoop, string address, int value)
         {
             if (_analogueDb == null) return;
 
@@ -2067,6 +2070,7 @@ namespace DraxTechnology.Panels
                 _analogueDb.AnalogueEvents.Add(new AnalogueEvent
                 {
                     Node = deviceNode,
+                    Loop = deviceLoop,
                     Address = address,
                     Value = value
                 });
