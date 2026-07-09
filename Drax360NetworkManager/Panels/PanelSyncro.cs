@@ -1,6 +1,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Ports;
 using System.Linq;
@@ -58,8 +59,21 @@ namespace DraxTechnology.Panels
                 KSFUseLoop = base.GetSetting<int>(ksettingsetupsection, "UseLoop");
 
                 string dbPath = Path.Combine(baselogfolder, "data\\analogue.db");
-                _analogueDb = new AnalogueEventsContext(dbPath);
-                _analogueDb.Database.EnsureCreated();
+                try
+                {
+                    // EnsureCreated creates the database but not its folder — on a
+                    // machine that has never had c:\AMX1\data, SQLite throws
+                    // "unable to open database file" and takes the service down.
+                    Directory.CreateDirectory(Path.GetDirectoryName(dbPath));
+                    _analogueDb = new AnalogueEventsContext(dbPath);
+                    _analogueDb.Database.EnsureCreated();
+                }
+                catch (Exception ex)
+                {
+                    // Run without the analogue store rather than fail the service.
+                    _analogueDb = null;
+                    EventLogger.WriteToEventLog("Analogue DB unavailable at " + dbPath + ": " + ex.Message, EventLogEntryType.Warning);
+                }
             }
         }
 
@@ -1999,43 +2013,11 @@ namespace DraxTechnology.Panels
                 int pos = FindPattern(_buffer, _terminator);
                 if (pos == -1)
                 {
-                    // Now deal with specific message types
-                    if (_buffer.Count >= 4 && _buffer[3].ToString() == "68")
-                    {
-                        int DeviceAnalogueValue = _buffer[7];
-                        int deviceNode = _buffer[2];
-                        int DeviceLoop = giAnalogRequestLoop + 1;
-                        base.NotifyClient("Analogue Node Received: " + deviceNode, false);
-                        base.NotifyClient("Analogue Address Received: " + _buffer[6], false);
-                        base.NotifyClient("Analogue Value Received: " + DeviceAnalogueValue, false);
-                        string sLavFileName = GetAnalogStoreName(deviceNode, DeviceLoop);
+                    // Analogue query responses (command 68) carry no \r\n\r\n
+                    // terminator, so they are decoded here instead of Parse().
+                    if (TryHandleAnalogueResponse()) continue;
 
-                        // add to Analogue Database
-
-                        addtoanalogue(deviceNode, _buffer[6].ToString(), DeviceAnalogueValue);
-
-                    }
-                    else
-                    {
-                        if (_buffer.Count >= 5 && _buffer[4].ToString() == "68")
-                        {
-                            int DeviceAnalogueValue = _buffer[8];
-                            int deviceNode = _buffer[2];
-                            int DeviceLoop = giAnalogRequestLoop + 1;
-                            base.NotifyClient("Analogue Node Received: " + _buffer[3], false);
-                            base.NotifyClient("Analogue Address Received: " + _buffer[7], false);
-                            base.NotifyClient("Analogue Value Received: " + DeviceAnalogueValue, false);
-                            string sLavFileName = GetAnalogStoreName(deviceNode, DeviceLoop);
-
-                            // add to Analogue Database
-
-                            addtoanalogue(deviceNode, _buffer[6].ToString(), DeviceAnalogueValue);
-                        }
-                        else
-                        {
-                            return;  // no complete message yet
-                        }
-                    }
+                    return;  // no complete message yet
                 }
 
                 int end = pos + _terminator.Length;
@@ -2046,17 +2028,58 @@ namespace DraxTechnology.Panels
             }
         }
 
+        // The response arrives either aligned on the 219 start byte or shifted
+        // one byte (leading stray byte): node/address/value sit at the same
+        // positions relative to the command byte in both cases.
+        private bool TryHandleAnalogueResponse()
+        {
+            int offset;
+            if (_buffer.Count >= 8 && _buffer[3] == 68) offset = 0;
+            else if (_buffer.Count >= 9 && _buffer[4] == 68) offset = 1;
+            else return false;
+
+            int deviceNode = _buffer[offset + 2];
+            int deviceAddress = _buffer[offset + 6];
+            int deviceAnalogueValue = _buffer[offset + 7];
+            base.NotifyClient("Analogue Node Received: " + deviceNode, false);
+            base.NotifyClient("Analogue Address Received: " + deviceAddress, false);
+            base.NotifyClient("Analogue Value Received: " + deviceAnalogueValue, false);
+
+            addtoanalogue(deviceNode, deviceAddress.ToString(), deviceAnalogueValue);
+
+            // Consume through the value byte, then resync on the next 219 start
+            // byte so any trailing checksum can't shift the indices of the next
+            // response — previously the leftover bytes stayed in the buffer and
+            // every response after the first was dropped or mis-decoded.
+            int consumed = offset + 8;
+            int next = _buffer.IndexOf(219, consumed);
+            if (next == -1) _buffer.Clear();
+            else _buffer.RemoveRange(0, next);
+            return true;
+        }
+
         private void addtoanalogue(int deviceNode, string address, int value)
         {
             if (_analogueDb == null) return;
 
-            _analogueDb.AnalogueEvents.Add(new AnalogueEvent
+            try
             {
-                Node = deviceNode,
-                Address = address,
-                Value = value
-            });
-            _analogueDb.SaveChanges();
+                _analogueDb.AnalogueEvents.Add(new AnalogueEvent
+                {
+                    Node = deviceNode,
+                    Address = address,
+                    Value = value
+                });
+                _analogueDb.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                // A store failure must not throw back into the serial receive
+                // thread; the reading itself has already been notified above.
+                // Drop the failed entity so it isn't retried on the next write.
+                _analogueDb.ChangeTracker.Clear();
+                base.NotifyClient("Analogue DB write failed: " + ex.Message, false);
+            }
         }
 
         private int FindPattern(List<byte> buffer, byte[] pattern)
