@@ -1999,6 +1999,11 @@ namespace DraxTechnology.Panels
             int read = serialport.Read(incoming, 0, bytesToRead);
             if (read <= 0) return;
 
+            // Raw dump of everything off the wire: without this the log cannot
+            // distinguish "panel never replied" from "replied in a frame shape
+            // we don't decode" (2026-07-10 scan: 255 sends, silence, empty db).
+            base.NotifyClient("Serial RX (" + read + " bytes): " + string.Join(", ", incoming.Take(read)), false);
+
             lock (_buffer)
             {
                 _buffer.AddRange(incoming);
