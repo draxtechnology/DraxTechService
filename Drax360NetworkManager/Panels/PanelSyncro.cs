@@ -2033,36 +2033,58 @@ namespace DraxTechnology.Panels
             }
         }
 
-        // The response arrives either aligned on the 219 start byte or shifted
-        // one byte (leading stray byte): node/address/value sit at the same
-        // positions relative to the command byte in both cases.
+        // Analogue-path frames, from the real trace of 2026-07-10:
+        //   data frame  219, msgid, node, 68, len(=7), type, address, value, 0, 0, 0, address, checksum
+        //   no device   219, msgid, node, 0, 0, checksum      (an empty address answers instantly)
+        //   checksum = sum of every byte after the 219, mod 256
+        // The panel also sends standalone ACK bytes (0x05) around frames — the
+        // 255-device scan opened with four of them, which wedged the old
+        // fixed-offset matching and dropped every response.
         private bool TryHandleAnalogueResponse()
         {
-            int offset;
-            if (_buffer.Count >= 8 && _buffer[3] == 68) offset = 0;
-            else if (_buffer.Count >= 9 && _buffer[4] == 68) offset = 1;
-            else return false;
+            int acks = 0;
+            while (acks < _buffer.Count && _buffer[acks] == 5) acks++;
+            if (acks > 0) _buffer.RemoveRange(0, acks);
+            if (_buffer.Count == 0) return false;
 
-            int deviceNode = _buffer[offset + 2];
-            int deviceAddress = _buffer[offset + 6];
-            int deviceAnalogueValue = _buffer[offset + 7];
-            // The response carries no loop byte we trust yet, so tag it with the
-            // loop of the outstanding request (1-based, as the client shows it).
-            int deviceLoop = giAnalogRequestLoop + 1;
-            base.NotifyClient("Analogue Node Received: " + deviceNode, false);
-            base.NotifyClient("Analogue Address Received: " + deviceAddress, false);
-            base.NotifyClient("Analogue Value Received: " + deviceAnalogueValue, false);
+            // Not at a frame start: drop to the next 219 so a stray byte can't
+            // wedge the receive path for good.
+            if (_buffer[0] != 219)
+            {
+                int next = _buffer.IndexOf(219, 1);
+                _buffer.RemoveRange(0, next == -1 ? _buffer.Count : next);
+                return _buffer.Count > 0;
+            }
 
-            addtoanalogue(deviceNode, deviceLoop, deviceAddress.ToString(), deviceAnalogueValue);
+            if (_buffer.Count < 6) return false;   // shortest frame: 219, id, node, cmd, len, checksum
 
-            // Consume through the value byte, then resync on the next 219 start
-            // byte so any trailing checksum can't shift the indices of the next
-            // response — previously the leftover bytes stayed in the buffer and
-            // every response after the first was dropped or mis-decoded.
-            int consumed = offset + 8;
-            int next = _buffer.IndexOf(219, consumed);
-            if (next == -1) _buffer.Clear();
-            else _buffer.RemoveRange(0, next);
+            int cmd = _buffer[3];
+            int len = _buffer[4];
+            // Only consume frame shapes we know; anything else waits for the
+            // \r\n\r\n-terminated path.
+            if (cmd != 68 && !(cmd == 0 && len == 0)) return false;
+
+            int frameLen = 6 + len;
+            if (_buffer.Count < frameLen) return false;   // frame still arriving
+
+            if (cmd == 68 && len >= 3)
+            {
+                int deviceNode = _buffer[2];
+                int deviceAddress = _buffer[6];
+                int deviceAnalogueValue = _buffer[7];
+                // The response's loop isn't carried in a byte we trust yet, so
+                // tag it with the loop of the outstanding request (1-based, as
+                // the client shows it).
+                int deviceLoop = giAnalogRequestLoop + 1;
+                base.NotifyClient("Analogue Node Received: " + deviceNode, false);
+                base.NotifyClient("Analogue Address Received: " + deviceAddress, false);
+                base.NotifyClient("Analogue Value Received: " + deviceAnalogueValue, false);
+
+                addtoanalogue(deviceNode, deviceLoop, deviceAddress.ToString(), deviceAnalogueValue);
+            }
+            // cmd == 0: no device at the queried address — consume and move on.
+
+            _buffer.RemoveRange(0, frameLen);
             return true;
         }
 
