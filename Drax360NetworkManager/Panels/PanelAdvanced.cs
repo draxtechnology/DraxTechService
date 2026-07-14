@@ -107,6 +107,11 @@ namespace DraxTechnology.Panels
         {
             base.Parse(buffer);
 
+            // Raw dump of everything off the wire while the analogue response
+            // format is unconfirmed — the chunker below silently drops bytes
+            // outside 254…255 frames, and the reply may not use that framing.
+            base.NotifyClient("Serial RX (" + buffer.Length + " bytes): " + string.Join(", ", buffer), false);
+
             int removebytes = 0;
             List<byte[]> chunks = Elements.Chunker(buffer, 254, 255, out removebytes);
 
@@ -371,7 +376,19 @@ namespace DraxTechnology.Panels
         }
         public override void Analogue(string passedvalues)
         {
-            Console.WriteLine(DateTime.Now + ": " + "GOT Analogue");
+            ParsePassedValues(passedvalues, out int node, out int loop, out int zone, out int device);
+
+            // Request side from Phil Spooner's ADVNetManager.bas (GetLoopAnalogValues /
+            // the DEVANALOGREQ handler): command 43 asks a device for its analogue
+            // value. The legacy source carries no response decode, so the reply
+            // format is unconfirmed on a live panel — the raw RX dump in Parse
+            // captures whatever comes back, same approach that cracked the Syncro.
+            Byte[] analogue = new Byte[] { 43, 0, (byte)node, (byte)loop, (byte)device, 0 };
+
+            Byte[] analoguenew = definecontrol(analogue);
+
+            base.NotifyClient("Send Analogue to Advanced Node " + node + " Loop " + loop + " Device " + device, false);
+            serialsend(analoguenew);
         }
         #endregion
 
