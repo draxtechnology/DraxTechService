@@ -598,8 +598,10 @@ namespace DraxTechnology
         const string ksettingpanelsection = "PANEL";
         const string ksettingmainsection = "MAIN";
 
-        const string CURRENTNWMDATAFILE = @"c:\AMX1\Temp\Current.Nwm";  //TODO not code c:\AMX1
-        // private static readonly string CURRENTNWMDATAFILE = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Temp", "Current.Nwm");
+        // Follows the configured base folder (default c:\AMX1); safe as a computed
+        // property because configurationbasefolder is set at the top of Run(),
+        // before anything reads or writes the file.
+        string CURRENTNWMDATAFILE => Path.Combine(configurationbasefolder, "Temp", "Current.Nwm");
 
         private const int NwmMaxNodesKsf = 64;   // Kentec Signifire NWM Maximum nodes in Lite versions
         private const int NwmMaxNodesZx = 255;  // Zetaplex NWM Maximum nodes in Lite versions
@@ -904,7 +906,7 @@ namespace DraxTechnology
             // If any old transfer files were found, put them in the transfer queue
 
             var mytMaxNWMBuffers = 64;
-            var tempPath = @"C:\AMX1\Temp\";
+            var tempPath = Path.Combine(configurationbasefolder, "Temp");
             var files = Directory.GetFiles(tempPath, "*." + ext)
                                  .Select(Path.GetFileName)
                                  .OrderBy(f => f)
@@ -968,7 +970,7 @@ namespace DraxTechnology
                 {
                     AMXTransfer.Instance.SendMessage("NTX:" + Path.Combine(tempPath, files[n - 1]));
                     Thread.Sleep(100);
-                    File.Delete(tempPath + files[n - 1]);
+                    File.Delete(Path.Combine(tempPath, files[n - 1]));
                 }
             }
             PassNWMDataToAMX1();

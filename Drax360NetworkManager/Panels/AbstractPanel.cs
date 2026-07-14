@@ -41,6 +41,9 @@ namespace DraxTechnology.Panels
         public string Identifier { get; private set; }
         public string GetFileName { get; private set; }
         public string FullFilePath { get; private set; }
+        // The configured base folder (default c:\AMX1) — panels build their
+        // file paths from this rather than hardcoding the drive.
+        protected string BaseFolder { get; private set; }
         public int Offset { get; set; }
 
         public DateTime lastDataReceived = DateTime.MinValue;
@@ -58,6 +61,7 @@ namespace DraxTechnology.Panels
         public AbstractPanel(string basesettingsfolder, string identifier, string inifile, string extension)
         {
             Identifier = identifier;
+            BaseFolder = basesettingsfolder;
             string inifolder = Path.Combine(basesettingsfolder, kinifolder);
             if (!Directory.Exists(inifolder))
             {
