@@ -1212,6 +1212,10 @@ namespace DraxTechnology
 
             byte[] bytes = Encoding.ASCII.GetBytes(read);
 
+            // fake_timer feeds the panel directly and never goes through
+            // SerialPort_Datareceived, so stamp lastDataReceived here — this is
+            // the only "message received" signal GETCOMMPORTSTATUS has in fake mode.
+            ourabstractpanel.lastDataReceived = DateTime.Now;
 
             ourabstractpanel.Parse(bytes);
         }
@@ -1622,7 +1626,11 @@ namespace DraxTechnology
                     }
                     if (ourabstractpanel == null) return "ERROR";
                     ret = ourabstractpanel.SerialPortIsOpen() ? "CONNECTED" : "DISCONNECTED";
-                    if (ret == "CONNECTED")
+                    // Fake mode never opens a real serial port, so SerialPortIsOpen()
+                    // stays false forever — but fake_timer still stamps lastDataReceived
+                    // once a minute. Surface that here too so fake-mode testing (no
+                    // panel hardware attached) still proves the "last message" path.
+                    if (ret == "CONNECTED" || this.fakemode > 0)
                     {
                         if (lastSeen > DateTime.MinValue)
                         {
