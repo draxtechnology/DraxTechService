@@ -79,6 +79,18 @@
         <File Id="DraxTechnology.exe"
               Source="$(var.Drax360Service.TargetDir)DraxTechnology.exe"
               KeyPath="yes" />
+        <!-- Stamp the chosen install folder into the service's config so every
+             path (inis, logs, temp, analogue database) follows a non-default
+             install drive. The AMX installer passes its destination as:
+               msiexec /i DraxTechnologyServiceSetup.msi INSTALLFOLDER="D:\AMX1" /qn
+             On a default install this rewrites the value to C:\AMX1\ — the same
+             folder the config already names. -->
+        <util:XmlFile Id="StampConfigurationBase"
+                      File="[INSTALLFOLDER]DraxTechnology.dll.config"
+                      Action="setValue"
+                      ElementPath="//configuration/appSettings/add[\[]@key='Configuration'[\]]"
+                      Name="value"
+                      Value="[INSTALLFOLDER]" />
         <!-- Register the event source while the MSI is elevated. -->
         <util:EventSource Name="Drax360"
                           Log="Service"
