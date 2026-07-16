@@ -155,9 +155,16 @@ namespace DraxTechnology
             if (!string.IsNullOrEmpty(filename))
             {
                 _pendingDelete[filename] = DateTime.UtcNow;
+                _lastMakAt = DateTime.UtcNow;
                 Notify("MAK received, scheduled delete: " + Path.GetFileName(filename));
             }
         }
+
+        // When the last MAK arrived. A slow AMX still acknowledges — just late —
+        // and re-sending files it merely hasn't reached yet doubles its workload
+        // exactly when it is struggling (seen live 2026-07-16: 20–60s MAK lag,
+        // orphan re-sends compounding the backlog).
+        private DateTime _lastMakAt = DateTime.MinValue;
 
         // Diagnostic surface for the delete/orphan-resend paths. Routes through
         // the same OutsideEvents channel AMXTransfer.NotifyClient uses so the
@@ -194,6 +201,11 @@ namespace DraxTechnology
             // we don't flood the sender queue on a prolonged outage.
             if (!AMXTransfer.Instance.IsConnected) return;
             if (string.IsNullOrEmpty(logfiles) || string.IsNullOrEmpty(extension)) return;
+
+            // If AMX has acknowledged anything recently it is alive and working
+            // through its queue — hold the re-sends rather than double its load.
+            // Re-sends resume only after a genuine silence.
+            if ((DateTime.UtcNow - _lastMakAt).TotalSeconds < 60) return;
 
             try
             {
