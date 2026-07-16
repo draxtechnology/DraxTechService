@@ -250,7 +250,9 @@ namespace DraxTechnology.Panels
                         {
                             serialport.Write(command, 0, command.Length);
                             string hex = BitConverter.ToString(command);
-                            Console.WriteLine(DateTime.Now + ": " + $"Queued command sent (Hex): {hex}");
+                            // File log, not console — the sent bytes are the evidence
+                            // needed when a panel ignores a command (2026-07-16).
+                            this.NotifyClient($"Queued command sent (Hex): {hex}", false);
 
                             commandQueue.Dequeue(); // Remove from queue after successful send
                             successCount++;
@@ -260,7 +262,7 @@ namespace DraxTechnology.Panels
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine(DateTime.Now + ": " + $"Failed to send queued command: {ex.Message}");
+                            this.NotifyClient($"Failed to send queued command: {ex.Message}", false);
                             failCount++;
                             break; // Stop processing if send fails
                         }

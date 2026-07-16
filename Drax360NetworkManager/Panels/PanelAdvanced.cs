@@ -298,7 +298,11 @@ namespace DraxTechnology.Panels
         {
             ParsePassedValues(passedvalues, out int node, out int loop, out int zone, out int device);
 
-            Byte[] devicedisable = new Byte[] { 70, 0, 0x85, 1, (byte)node, (byte)device, 0, 1 };
+            // Field order from the production VB (frmADVNetworkManager.frm:1256):
+            // command 70, len, 0x85, PANEL, ZONE, input, input type, on.
+            // Previously the panel was hardcoded to 1 and the node sat in the
+            // zone slot, so any device outside zone==node was politely ignored.
+            Byte[] devicedisable = new Byte[] { 70, 0, 0x85, (byte)node, (byte)zone, (byte)device, 0, 1 };
 
             Byte[] devicedisablenew = definecontrol(devicedisable);
 
@@ -318,7 +322,8 @@ namespace DraxTechnology.Panels
         {
             ParsePassedValues(passedvalues, out int node, out int loop, out int zone, out int device);
 
-            Byte[] enabledevice = new Byte[] { 70, 0, 0x85, 1, (byte)node, (byte)device, 0, 0 };
+            // Same field order as DisableDevice: panel, zone, input, input type, off.
+            Byte[] enabledevice = new Byte[] { 70, 0, 0x85, (byte)node, (byte)zone, (byte)device, 0, 0 };
 
             Byte[] enabledevicenew = definecontrol(enabledevice);
 
