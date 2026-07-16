@@ -15,7 +15,11 @@ namespace DraxTechnology.Panels
         private const byte kheartbeatdelayseconds = 5;
         private const byte kAdvancedStart = 254;
         private const byte kAdvancedEnd = 255;
-        private const string AdvancedZoneTextFile = "Temp\\AdvZones";
+        // Zone text store that AMX reads (legacy: App.Path + "\Temp\AdvZones.Txt").
+        // Was a relative "Temp\AdvZones", which resolved against the process
+        // working directory — console runs and the Windows service land in
+        // different folders, so the file never reliably reached AMX1\Temp.
+        private string AdvancedZoneTextFile => Path.Combine(BaseFolder, "Temp", "AdvZones");
 
         private const string adtUNKNOWNDEVICE = "Unknown Device";
         private const string adtAPOLLOIONISATION = "Ionisation Smoke";
