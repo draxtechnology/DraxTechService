@@ -59,6 +59,7 @@ namespace DraxTechnology.Panels
 
         #region private variables
         private bool AcknowledgeMessage = false;
+        private byte lastprocessedsequence = 255;
         private int AdvancedDestinationAddress = 0;
         private int AdvancedSourceAddress = 0;
         private int ControlPacketSequence = 0;
@@ -112,6 +113,43 @@ namespace DraxTechnology.Panels
             }
         }
         public override string PanelVersion => "1.0.0.0";
+
+        public override void SerialPort_Datareceived(object sender, SerialDataReceivedEventArgs e)
+        {
+            lastDataReceived = DateTime.Now;
+            NoteHalfDuplexReceive(false);
+
+            // Bounded poll-until-stable instead of the base handler's fixed
+            // 1-second sleep: at 38400 a frame lands in milliseconds, and that
+            // fixed wait was the main cost of the ~3s-per-device scan seen live
+            // (2026-07-16). Proceed once the buffer has stopped growing for two
+            // consecutive 25ms samples, capped at 500ms.
+            int lastcount = -1, stable = 0;
+            for (int i = 0; i < 20 && stable < 2; i++)
+            {
+                int now = serialport.BytesToRead;
+                if (now == lastcount) stable++;
+                else { stable = 0; lastcount = now; }
+                Thread.Sleep(25);
+            }
+
+            int bytestoread = serialport.BytesToRead;
+            if (bytestoread == 0) return;
+
+            byte[] readbytes = new byte[bytestoread];
+            int numberread = serialport.Read(readbytes, 0, bytestoread);
+            if (numberread == 0) return;
+
+            try
+            {
+                Parse(readbytes);
+            }
+            catch (Exception ex)
+            {
+                this.NotifyClient($"Parse error ({this.GetType().Name}): {ex.Message}");
+            }
+        }
+
         public override void Parse(byte[] buffer)
         {
             base.Parse(buffer);
@@ -489,12 +527,32 @@ namespace DraxTechnology.Panels
                            + " - " + messageText;
             File.AppendAllText(filePath, logLine + Environment.NewLine);
 
+            // The panel re-sends a sequenced packet every second until acked;
+            // the VB skipped consecutive repeats ("Repeated packet with same
+            // seq"). Re-ack but do not re-process, or a re-sent analogue or
+            // event packet lands twice (duplicate rows seen live 2026-07-16).
+            byte incomingseq = ourmessage.Length > 3 ? ourmessage[3] : (byte)0;
+            if (incomingseq != 0 && incomingseq == lastprocessedsequence)
+            {
+                AcknowledgeMessage = true;
+                Byte[] repeatack = definecontrol(new Byte[] { 1, 0, incomingseq, 1 });
+                serialsend(repeatack);
+                AcknowledgeMessage = false;
+                return true;
+            }
+            if (incomingseq != 0) lastprocessedsequence = incomingseq;
+
             int removebytes = 0;
 
             List<byte[]> chunks = advancedchunker(1, ourmessage.Skip(3).ToArray(), 240, out removebytes);
 
             foreach (var chunk in chunks)
             {
+                // Chunks shorter than any real packet are the CRC bytes left
+                // over after the 240 terminator — the source of the "Unknown
+                // Command" log noise (2026-07-16). Nothing to process or ack.
+                if (chunk.Length < 3) continue;
+
                 int node = 0;
                 int loopnumber = 0;
                 int deviceaddress = 0;
@@ -754,7 +812,11 @@ namespace DraxTechnology.Panels
                         base.NotifyClient("Analogue Address Received: " + analogueaddress, false);
                         base.NotifyClient("Analogue Value Received: " + DeviceAnalogueValue, false);
 
-                        if (int.TryParse(DeviceAnalogueValue, out int analoguevalue))
+                        // The text can carry a mode suffix ("23 M3" = value 23,
+                        // mode 3, seen live on the optical) — store the leading
+                        // number; the log line above keeps the full text.
+                        string leadingdigits = new string(DeviceAnalogueValue.Trim().TakeWhile(char.IsDigit).ToArray());
+                        if (int.TryParse(leadingdigits, out int analoguevalue))
                         {
                             addtoanalogue(analoguenode, analogueloop, analogueaddress.ToString(), analoguevalue);
                         }
