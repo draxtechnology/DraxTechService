@@ -2063,7 +2063,7 @@ namespace DraxTechnology.Panels
                 base.NotifyClient("Analogue Address Received: " + deviceAddress, false);
                 base.NotifyClient("Analogue Value Received: " + deviceAnalogueValue, false);
 
-                addtoanalogue(deviceNode, deviceLoop, deviceAddress.ToString(), deviceAnalogueValue);
+                addtoanalogue("Syncro",deviceNode, deviceLoop, deviceAddress.ToString(), deviceAnalogueValue);
             }
             // cmd == 0: no device at the queried address — consume and move on.
 

@@ -118,7 +118,7 @@ namespace DraxTechnology.Panels
             }
         }
 
-        protected void addtoanalogue(int deviceNode, int deviceLoop, string address, int value)
+        protected void addtoanalogue(string panel, int deviceNode, int deviceLoop, string address, int value)
         {
             if (_analogueDb == null) return;
 
@@ -126,6 +126,7 @@ namespace DraxTechnology.Panels
             {
                 _analogueDb.AnalogueEvents.Add(new AnalogueEvent
                 {
+                    Panel = panel,
                     Node = deviceNode,
                     Loop = deviceLoop,
                     Address = address,

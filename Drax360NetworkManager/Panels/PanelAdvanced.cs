@@ -818,7 +818,7 @@ namespace DraxTechnology.Panels
                         string leadingdigits = new string(DeviceAnalogueValue.Trim().TakeWhile(char.IsDigit).ToArray());
                         if (int.TryParse(leadingdigits, out int analoguevalue))
                         {
-                            addtoanalogue(analoguenode, analogueloop, analogueaddress.ToString(), analoguevalue);
+                            addtoanalogue("Advanced",analoguenode, analogueloop, analogueaddress.ToString(), analoguevalue);
                         }
                         break;
 
