@@ -82,7 +82,11 @@ namespace DraxTechnology.Panels
         {
             if (!String.IsNullOrEmpty(identifier))
             {
-                heartbeat_timer = new Timer(heartbeat_timer_callback, this.Identifier, 500, kHeartbeatDelaySeconds * 1000);
+                // The Advanced is polled: the VB sent its poll every second and
+                // events ride on the exchange. The shared 60s heartbeat left
+                // minute-long windows where the panel had no conversation to
+                // deliver events into — use the Advanced-local 5s cadence.
+                heartbeat_timer = new Timer(heartbeat_timer_callback, this.Identifier, 500, kheartbeatdelayseconds * 1000);
                 this.Offset = base.GetSetting<int>(ksettingsetupsection, "Amx1Offset");
             }
         }
@@ -769,7 +773,13 @@ namespace DraxTechnology.Panels
                         return false;
                 }
 
-                byte packetsequence = ourmessage[0];
+                // Echo the incoming packet's sequence number (frame is
+                // [0x80, dest, src, SEQ, …]; VB clsAdvancedControl writes it at
+                // position 4). This previously echoed ourmessage[0] — the 0x80
+                // start marker — so every ack said sequence 128, the panel never
+                // considered its packets delivered, and its event queue never
+                // advanced: events reached the VB but not us (2026-07-16).
+                byte packetsequence = ourmessage.Length > 3 ? ourmessage[3] : (byte)0;
 
                 // send acknowledge
                 AcknowledgeMessage = true;
