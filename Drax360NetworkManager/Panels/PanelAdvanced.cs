@@ -88,6 +88,7 @@ namespace DraxTechnology.Panels
                 // deliver events into — use the Advanced-local 5s cadence.
                 heartbeat_timer = new Timer(heartbeat_timer_callback, this.Identifier, 500, kheartbeatdelayseconds * 1000);
                 this.Offset = base.GetSetting<int>(ksettingsetupsection, "Amx1Offset");
+                InitAnalogueStore();
             }
         }
         #endregion
@@ -728,19 +729,34 @@ namespace DraxTechnology.Panels
                         }
                         break;
 
-                    case 14:   // Analogue Value
+                    case 14:   // Analogue Value (response to the command 43 request)
 
-                        this.NotifyClient("Analogue Values", false);
-
+                        // Live frame, 2026-07-16: chunk = [14, len, panel, loop,
+                        // address, subaddress, valueLen, ASCII value…, 0] — the
+                        // value arrives as text ("16" for the call point, the
+                        // Apollo normal).
                         string DeviceAnalogueValue = "";
 
-                        for (int n = 0; n <= 7; n++)
+                        for (int n = 0; n <= 7 && 7 + n < chunk.Length; n++)
                         {
                             char c = (char)chunk[7 + n];
                             if (c == '\0')  // Chr(0)
                                 break;
 
                             DeviceAnalogueValue += c;
+                        }
+
+                        int analoguenode = chunk.Length > 4 ? chunk[2] : 0;
+                        int analogueloop = chunk.Length > 4 ? chunk[3] : 0;
+                        int analogueaddress = chunk.Length > 4 ? chunk[4] : 0;
+
+                        base.NotifyClient("Analogue Node Received: " + analoguenode, false);
+                        base.NotifyClient("Analogue Address Received: " + analogueaddress, false);
+                        base.NotifyClient("Analogue Value Received: " + DeviceAnalogueValue, false);
+
+                        if (int.TryParse(DeviceAnalogueValue, out int analoguevalue))
+                        {
+                            addtoanalogue(analoguenode, analogueloop, analogueaddress.ToString(), analoguevalue);
                         }
                         break;
 

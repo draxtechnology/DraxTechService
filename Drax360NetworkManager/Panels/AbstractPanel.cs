@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Ports;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using DraxTechnology.Data;
 
 namespace DraxTechnology.Panels
 {
@@ -91,6 +93,53 @@ namespace DraxTechnology.Panels
         public void NotifyClient(string message, bool notifyui = false)
         {
             OutsideEvents?.Invoke(this, new CustomEventArgs(message, notifyui));
+        }
+
+        // Shared analogue readings store (data\analogue.db under the configured
+        // base). Panels that support analogue readback call InitAnalogueStore()
+        // once at construction; a store failure downgrades to running without
+        // the database rather than failing the service.
+        protected AnalogueEventsContext _analogueDb;
+
+        protected void InitAnalogueStore()
+        {
+            string dbPath = Path.Combine(BaseFolder, "data", "analogue.db");
+            try
+            {
+                // EnsureReady creates the database but not its folder.
+                Directory.CreateDirectory(Path.GetDirectoryName(dbPath));
+                _analogueDb = new AnalogueEventsContext(dbPath);
+                _analogueDb.EnsureReady();
+            }
+            catch (Exception ex)
+            {
+                _analogueDb = null;
+                EventLogger.WriteToEventLog("Analogue DB unavailable at " + dbPath + ": " + ex.Message, EventLogEntryType.Warning);
+            }
+        }
+
+        protected void addtoanalogue(int deviceNode, int deviceLoop, string address, int value)
+        {
+            if (_analogueDb == null) return;
+
+            try
+            {
+                _analogueDb.AnalogueEvents.Add(new AnalogueEvent
+                {
+                    Node = deviceNode,
+                    Loop = deviceLoop,
+                    Address = address,
+                    Value = value
+                });
+                _analogueDb.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                // A store failure must not throw back into the serial receive
+                // thread; drop the failed entity so it isn't retried next write.
+                _analogueDb.ChangeTracker.Clear();
+                NotifyClient("Analogue DB write failed: " + ex.Message, false);
+            }
         }
 
         public void SendEvent(string panel, NwmData type, int inputtype, string text, bool on, int node = 0, int loop = 0, int device = 0)

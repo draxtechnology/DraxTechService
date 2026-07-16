@@ -36,8 +36,6 @@ namespace DraxTechnology.Panels
         public int giAnalogRequestLoop = 0;
         private int miMsgID = 0;
         private List<string> garyzoneDisableList = new List<string>();
-        private AnalogueEventsContext _analogueDb;
-
         public override string FakeString
         {
             get
@@ -58,22 +56,7 @@ namespace DraxTechnology.Panels
                 this.Offset = base.GetSetting<int>(ksettingsetupsection, "giAmx1Offset");
                 KSFUseLoop = base.GetSetting<int>(ksettingsetupsection, "UseLoop");
 
-                string dbPath = Path.Combine(baselogfolder, "data\\analogue.db");
-                try
-                {
-                    // EnsureCreated creates the database but not its folder — on a
-                    // machine that has never had c:\AMX1\data, SQLite throws
-                    // "unable to open database file" and takes the service down.
-                    Directory.CreateDirectory(Path.GetDirectoryName(dbPath));
-                    _analogueDb = new AnalogueEventsContext(dbPath);
-                    _analogueDb.EnsureReady();
-                }
-                catch (Exception ex)
-                {
-                    // Run without the analogue store rather than fail the service.
-                    _analogueDb = null;
-                    EventLogger.WriteToEventLog("Analogue DB unavailable at " + dbPath + ": " + ex.Message, EventLogEntryType.Warning);
-                }
+                InitAnalogueStore();
             }
         }
 
@@ -2086,31 +2069,6 @@ namespace DraxTechnology.Panels
 
             _buffer.RemoveRange(0, frameLen);
             return true;
-        }
-
-        private void addtoanalogue(int deviceNode, int deviceLoop, string address, int value)
-        {
-            if (_analogueDb == null) return;
-
-            try
-            {
-                _analogueDb.AnalogueEvents.Add(new AnalogueEvent
-                {
-                    Node = deviceNode,
-                    Loop = deviceLoop,
-                    Address = address,
-                    Value = value
-                });
-                _analogueDb.SaveChanges();
-            }
-            catch (Exception ex)
-            {
-                // A store failure must not throw back into the serial receive
-                // thread; the reading itself has already been notified above.
-                // Drop the failed entity so it isn't retried on the next write.
-                _analogueDb.ChangeTracker.Clear();
-                base.NotifyClient("Analogue DB write failed: " + ex.Message, false);
-            }
         }
 
         private int FindPattern(List<byte> buffer, byte[] pattern)
