@@ -70,6 +70,7 @@ namespace DraxTechnology.Panels
         private bool gbUseSubAddressOffset = false;
         private int giSubAddressOffset = 0;
         private int UseClassicIsolations = 0;
+        private int giDisableHasPriority = 0;
         int p1 = 0;
         int p2 = 0;
         int p3 = 0;
@@ -190,6 +191,7 @@ namespace DraxTechnology.Panels
             gbUseSubAddressOffset = base.GetSetting<bool>(ksettingsetupsection, "UseSubAddressOffset");
             giSubAddressOffset = base.GetSetting<int>(ksettingsetupsection, "SubAddressOffset");
             UseClassicIsolations = base.GetSetting<int>(ksettingsetupsection, "UseClassicIsolations");
+            giDisableHasPriority = base.GetSetting<int>(ksettingsetupsection, "DisablePriority");
 
             string x = GetZoneText(1.ToString());
             if (fakemode > 0)
@@ -581,7 +583,6 @@ namespace DraxTechnology.Panels
                         string devicetype = getadvanceddevicetype((int)chunk[10]);
                         string devicetext = string.Empty;
                         int iNodeOffset = this.Offset;
-                        bool bSubAddressTest = false;
                         string devicetypetext = string.Empty;
 
                         for (int i = 11; i < 12 + 12 && i < chunk.Length; i++)
@@ -591,38 +592,31 @@ namespace DraxTechnology.Panels
 
                         Console.WriteLine(DateTime.Now + ": " + strmsg);
 
-                        if ((int)chunk[9] == 0)   // Device Enabled
-                        {
+                        // Return-to-normal trigger: Reset always clears; a Normal
+                        // report clears unless the disabled bit is still set and
+                        // DisablePriority isn't overriding it (ADVNetManager.bas
+                        // ~2676, ~4559 — DeviceState arbitrated against the
+                        // disabled bit via DisablePriority, not just chunk[9]==0).
+                        bool disabledBit = ((int)chunk[9] & 4) != 0;
+                        bool returnToNormal = devicestate == 28
+                            || (devicestate == 1 && (giDisableHasPriority != 0 || !disabledBit));
 
-                            if (giSubAddressOffset == 1 && (ElementsExtensions.In(devicetype, "Switch", "Relay", "Zone Monitor")))
-                            // if (giSubAddressOffset == 1 && (devicetype == "Switch" || devicetype == "Relay" || devicetype == "Zone Monitor"))
-                            {
-                                iNodeOffset = giSubAddressOffset;
-                            }
+                        if (returnToNormal)
+                        {
                             inputtype = 4;
                             on = false;
+                            if (!TryApplySubAddressInputType(devicesubaddress, devicetype, ref iNodeOffset, ref inputtype))
+                            {
+                                if (gbUseSubAddressOffset && ElementsExtensions.In(devicetype, "Switch", "Relay", "Zone Monitor"))
+                                {
+                                    iNodeOffset = giSubAddressOffset;
+                                }
+                            }
                         }
-
-                        if ((int)chunk[9] == 4)   // Device Disabled
+                        else if (disabledBit)   // Device Disabled
                         {
                             this.NotifyClient("Device Disabled", false);
                             this.NotifyClient("Device Type: " + devicetype, false);
-                            if (UseClassicIsolations == 0)
-                            {
-                                if (devicesubaddress == 0)
-                                {
-                                    if (giSubAddressOffset == 1 && (ElementsExtensions.In(devicetype, "Relay", "Zone Monitor")))
-                                    // if (devicetype == "Switch" || devicetype == "Relay" || devicetype == "Zone Monitor")
-                                    {
-                                        iNodeOffset = giSubAddressOffset;
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                this.NotifyClient("*** Use Classic Isolations ***", false);
-                                bSubAddressTest = false;
-                            }
                             inputtype = 4;
                             on = true;
 
@@ -632,34 +626,16 @@ namespace DraxTechnology.Panels
                                 {
                                     loopnumber = 1;
                                 }
-                                bSubAddressTest = false;
                             }
 
-                            if (!ElementsExtensions.In(devicetype, "Sounder", "Beacon"))
-                            //if (devicetype != "Sounder" & devicetype != "Beacon")
+                            if (TryApplySubAddressInputType(devicesubaddress, devicetype, ref iNodeOffset, ref inputtype))
                             {
-                                if (loopnumber != 0 & !bSubAddressTest)
-                                {
-                                    if (devicetype == "Zone Monitor")
-                                    {
-                                        loopnumber = 0;
-                                    }
-
-                                    this.NotifyClient("************* Disable Module ************ " + devicetype + " - Sub Address : " + devicesubaddress, false);
-                                    if (devicesubaddress == 1)
-                                    {
-                                        this.NotifyClient("*****************  Sub Address 1 Disable ***************** " + node + this.Offset + " - " + loopnumber + " - " + deviceaddress, false);
-                                        devicetypetext = devicetype + " " + deviceaddress + ".1 Disabled";
-                                        if (gbUseSubAddressOffset)
-                                        {
-                                            inputtype = 1;
-                                        }
-                                        else
-                                        {
-                                            inputtype = 11;
-                                        }
-                                    }
-                                }
+                                this.NotifyClient("************* Disable Module ************ " + devicetype + " - Sub Address : " + devicesubaddress, false);
+                                devicetypetext = devicetype + " " + deviceaddress + "." + devicesubaddress + " Disabled";
+                            }
+                            else if (UseClassicIsolations != 0)
+                            {
+                                this.NotifyClient("*** Use Classic Isolations ***", false);
                             }
                         }
 
@@ -869,6 +845,20 @@ namespace DraxTechnology.Panels
                 string result = BitConverter.ToString(stracknowledge);
                 this.NotifyClient("Sent " + result, false);
             }
+            return true;
+        }
+
+        // SA1..SA7 each get one dedicated "Disable SAn" AMX input, InputType =
+        // 2n-1 (ADVNetManager.bas:1542 legend). Sounder/Beacon and Classic
+        // Isolations use their own separate handling and are excluded here.
+        private bool TryApplySubAddressInputType(int devicesubaddress, string devicetype, ref int iNodeOffset, ref int inputtype)
+        {
+            if (!gbUseSubAddressOffset || UseClassicIsolations != 0) return false;
+            if (devicesubaddress < 1 || devicesubaddress > 7) return false;
+            if (ElementsExtensions.In(devicetype, "Sounder", "Beacon")) return false;
+
+            iNodeOffset = giSubAddressOffset;
+            inputtype = (2 * devicesubaddress) - 1;
             return true;
         }
 
