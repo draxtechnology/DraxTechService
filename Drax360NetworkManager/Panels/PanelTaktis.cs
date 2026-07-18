@@ -895,6 +895,7 @@ namespace DraxTechnology.Panels
 
                 _amx1Offset = base.GetSetting<int>(ksettingsetupsection, "giAmx1Offset");
                 this.Offset = _amx1Offset;
+                InitAnalogueStore();
 
                 _ulSettings = base.GetSetting<int>(ksettingsetupsection, "ULSettings") != 0;
                 _ioModuleSettings = base.GetSetting<string>(ksettingsetupsection, "IOModuleSettings") ?? "";
@@ -1510,6 +1511,27 @@ namespace DraxTechnology.Panels
                     ParseTAKMessage(gMessageType, glSerialNo, lEventGroup, gEventType, gEventCode,
                         iNode, iAddressType, iAddress, iSubAddress, iLoop, iZone, iInputAction,
                         lTimeStamp, sLocationText, sPanelText, sZoneText, "", false);
+                    break;
+                case 68:  // TAKMsgQueryAnalogDetail response
+                    {
+                        // Different field layout from the standard event frame —
+                        // TAKNetManager.bas:5204 ("Decode Analog Value") re-decodes:
+                        // node o+8, loop o+12 (0-based on the wire, +1 for display),
+                        // address o+16, subaddress o+20, device type o+24,
+                        // analogue value o+28, zone o+40. The standard-frame reads
+                        // above (serial number, event group…) do not apply here.
+                        int aNode = (int)ReadFieldU32(frame, o + 8);
+                        if (aNode == 254) aNode = 1;   // legacy panels report 254 for the local panel
+                        int aLoop = (int)ReadFieldU32(frame, o + 12) + 1;
+                        int aAddress = (int)ReadFieldU32(frame, o + 16);
+                        int aValue = (int)ReadFieldU32(frame, o + 28);
+
+                        NotifyClient("Analogue Node Received: " + aNode, false);
+                        NotifyClient("Analogue Address Received: " + aAddress, false);
+                        NotifyClient("Analogue Value Received: " + aValue, false);
+
+                        addtoanalogue("Taktis", aNode, aLoop, aAddress.ToString(), aValue);
+                    }
                     break;
             }
         }
