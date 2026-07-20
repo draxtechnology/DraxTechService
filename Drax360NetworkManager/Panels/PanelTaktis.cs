@@ -449,10 +449,11 @@ namespace DraxTechnology.Panels
             public readonly List<byte> Assembly = new List<byte>();
             // Send queue + ACK gate: enforces ICD §6.4 ("client needs to wait
             // for this response before sending the next query/command"). Only
-            // the TX channel uses GateOnSend = true; RX writes (EVENT_ACK and
-            // the one-shot REQUEST_EVENT_LOG_EX) are not gated since events
-            // are server-initiated and EVENT_ACKs don't get their own reply.
-            public readonly Queue<byte[]> SendQueue = new Queue<byte[]>();
+            // the TX channel uses GateOnSend = true, and per-frame Gate=false
+            // exempts EVENT_ACKs on either channel - they don't get their own
+            // reply, so gating on one would stall the pump for the full ACK
+            // timeout per acked event.
+            public readonly Queue<(byte[] Data, bool Gate)> SendQueue = new Queue<(byte[], bool)>();
             public readonly object QueueLock = new object();
             public readonly System.Threading.ManualResetEventSlim AckGate
                 = new System.Threading.ManualResetEventSlim(true);
@@ -629,12 +630,12 @@ namespace DraxTechnology.Panels
         // channel's PumpLoop will drain the queue, doing the actual socket
         // write and (on TX) waiting for ACK/NACK between sends. Callers never
         // block on the wire - heartbeat/control commands queue and return.
-        private void WriteFrame(byte[] data, TransmissionType rxTx)
+        private void WriteFrame(byte[] data, TransmissionType rxTx, bool gate = true)
         {
             Channel ch = (rxTx == TransmissionType.RX) ? _rxCh : _txCh;
             lock (ch.QueueLock)
             {
-                ch.SendQueue.Enqueue(data);
+                ch.SendQueue.Enqueue((data, gate));
             }
         }
 
@@ -676,9 +677,10 @@ namespace DraxTechnology.Panels
             while (!token.IsCancellationRequested)
             {
                 byte[] data = null;
+                bool gate = false;
                 lock (ch.QueueLock)
                 {
-                    if (ch.SendQueue.Count > 0) data = ch.SendQueue.Dequeue();
+                    if (ch.SendQueue.Count > 0) (data, gate) = ch.SendQueue.Dequeue();
                 }
                 if (data == null)
                 {
@@ -686,14 +688,15 @@ namespace DraxTechnology.Panels
                     continue;
                 }
 
-                if (ch.GateOnSend) ch.AckGate.Reset();
+                bool gateThisFrame = ch.GateOnSend && gate;
+                if (gateThisFrame) ch.AckGate.Reset();
                 bool sent = WriteFrameRaw(ch, data);
                 if (!sent)
                 {
-                    if (ch.GateOnSend) ch.AckGate.Set();
+                    if (gateThisFrame) ch.AckGate.Set();
                     continue;
                 }
-                if (ch.GateOnSend)
+                if (gateThisFrame)
                 {
                     try
                     {
@@ -850,12 +853,17 @@ namespace DraxTechnology.Panels
             string responseHex = BitConverter.ToString(frame);
             DecodeMessage(responseHex);
 
-            // EVENT_ACK is only required for EVENT_START/EVENT_CLEAR frames on
-            // the RX (event-log) channel. Every other inbound frame (ACK/NACK,
-            // EVENT_ID, heartbeat-ACK, control responses) is terminal.
-            if (ch == _rxCh && (mt == 133 /* EVENT_START */ || mt == 135 /* EVENT_CLEAR */))
+            // EVENT_START/EVENT_CLEAR must be EVENT_ACKed on the channel they
+            // arrived on. The panel streams its active-events snapshot on TX
+            // after REQUEST_ACTIVE_EVENTS_TX and waits for each ack; leaving
+            // those unacked stalls the handshake - the panel then ignores
+            // heartbeats, NACKs controls, and drops the TX connection ~12s
+            // after connect (VB6 TAKNetManager.bas:5458 acks both sides).
+            if (mt == 133 /* EVENT_START */ || mt == 135 /* EVENT_CLEAR */)
             {
-                sendtotaktis(TakSendType.TAKSendEventACKRX, glSerialNo);
+                sendtotaktis(ch == _rxCh
+                    ? TakSendType.TAKSendEventACKRX
+                    : TakSendType.TAKSendEventACKTX, glSerialNo);
             }
         }
 
@@ -913,10 +921,11 @@ namespace DraxTechnology.Panels
                 NotifyClient($"PanelTaktis settings load failed: {ex.Message}");
             }
 
-            // ICD 10.2.1: heartbeat must be sent every 20 seconds (5s grace).
-            // Faster than the AbstractPanel default (60s) so we can't reuse
-            // kHeartbeatDelaySeconds; use a Taktis-local 20s period.
-            const int kTaktisHeartbeatMs = 20 * 1000;
+            // ICD 10.2.1 says a 20-second heartbeat, but a real panel drops an
+            // unattended TX connection after ~12.6s (observed 2026-07-20) and
+            // the VB6 tmrHeartbeat ran at 10s - match the VB. Faster than the
+            // AbstractPanel default (60s) so we can't reuse kHeartbeatDelaySeconds.
+            const int kTaktisHeartbeatMs = 10 * 1000;
             heartbeat_timer = new System.Threading.Timer(
                 heartbeat_timer_callback,
                 this.Identifier,
@@ -983,8 +992,11 @@ namespace DraxTechnology.Panels
 
                 // Writes routed by TransmissionType: TX channel for control/
                 // heartbeat, RX channel for event-log requests + EVENT_ACK.
+                // EVENT_ACKs never gate - the panel doesn't reply to them.
                 byte[] bytes = convertstringarraytobytearray(dataToSend);
-                WriteFrame(bytes, rxTx);
+                bool gate = sendType != TakSendType.TAKSendEventACKRX
+                         && sendType != TakSendType.TAKSendEventACKTX;
+                WriteFrame(bytes, rxTx, gate);
             }
             catch (Exception ex)
             {
