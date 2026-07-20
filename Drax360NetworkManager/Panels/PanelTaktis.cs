@@ -552,6 +552,12 @@ namespace DraxTechnology.Panels
         {
             base.heartbeat_timer_callback(sender);
             sendtotaktis(TakSendType.TAKSendHeartBeatTX, clientID: _clientID);
+            // VB6 tmrSendActiveEvents re-requested the active-event set every
+            // 10s alongside the heartbeat. On the test panel this is the one
+            // frame that is reliably ACKed (heartbeats get NACKed), so it
+            // doubles as the keepalive that actually resets the panel's idle
+            // timer. The _sentActiveEvents de-dup swallows the replays.
+            sendtotaktis(TakSendType.TAKSendRequestActEventsTX);
         }
 
         // Populated from Takman.ini in the constructor; no hardcoded fallbacks.
@@ -561,6 +567,7 @@ namespace DraxTechnology.Panels
         private readonly string _baselogfolder;
 
         private CancellationTokenSource _readerCts;
+        private volatile bool _rxResubscribePending;
         private Task _txReaderTask;
         private Task _rxReaderTask;
         private Task _txPumpTask;
@@ -568,8 +575,10 @@ namespace DraxTechnology.Panels
         private string _txLogPath;
         // ACK-gate timeout: how long the pump waits for the server's ACK/NACK
         // before giving up on a sent frame and moving to the next. ICD doesn't
-        // pin this; 5s matches the heartbeat grace period mentioned in 10.2.1.
-        private const int kAckTimeoutMs = 5000;
+        // pin this; on the wire the panel answers in ~0.3-1.2s when it answers
+        // at all, and the 2026-07-20 test showed 5s here freezes the pump long
+        // enough that queued client commands feel like a lock-up.
+        private const int kAckTimeoutMs = 2000;
 
         public override void StartUp(int fakemode)
         {
@@ -823,6 +832,28 @@ namespace DraxTechnology.Panels
             }
 
             long mt = frame.Length >= 8 ? ReadFieldU32(frame, 4) : -1;
+
+            // A NACK on RX means the panel rejected our event-log subscription
+            // (observed when it still holds an unacked event for this client).
+            // The request is only sent at connect, so a single NACK would leave
+            // live events dead for the whole session - Mike's 2026-07-20 run
+            // saw exactly one fault and then silence. VB6 re-requested on a
+            // timer; retry here after a short delay, one retry in flight at a
+            // time.
+            if (ch == _rxCh && mt == 0 /* NACK */)
+            {
+                if (!_rxResubscribePending)
+                {
+                    _rxResubscribePending = true;
+                    NotifyClient("TAKTIS [RX] subscription NACKed - retrying event-log request in 2s");
+                    Task.Run(async () =>
+                    {
+                        await Task.Delay(2000);
+                        _rxResubscribePending = false;
+                        sendtotaktis(TakSendType.TAKSendRequestEventLogEx, glSerialNo);
+                    });
+                }
+            }
 
             // ACK/NACK on TX releases the pump's gate so the next queued frame
             // can be sent. ICD §6.5: 5 NACKs in a row drops the connection -
