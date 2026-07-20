@@ -91,7 +91,7 @@ namespace DraxTechnology.Panels
                 enmTAKEventType parsedEventType = eventInfo.EventType;
 
                 // Handle event group
-                parsedEventType = ProcessEventGroup(eventGroup, parsedEventType, inputAction, ref eventText);
+                parsedEventType = ProcessEventGroup(eventGroup, parsedEventType, inputAction, eventCode, ref eventText);
 
                 // Handle input action
                 parsedEventType = ProcessInputAction(inputAction, parsedEventType, ref eventText,
@@ -1650,7 +1650,7 @@ namespace DraxTechnology.Panels
             return (eventText, parsedType);
         }
 
-        private enmTAKEventType ProcessEventGroup(long eventGroup, enmTAKEventType eventType, int inputAction, ref string eventText)
+        private enmTAKEventType ProcessEventGroup(long eventGroup, enmTAKEventType eventType, int inputAction, enmTAKEventCode eventCode, ref string eventText)
         {
             switch (eventGroup)
             {
@@ -1667,6 +1667,13 @@ namespace DraxTechnology.Panels
                     break;
 
                 case 11: // Calibration
+                    // Disabling the last device in a zone makes the panel emit
+                    // the zone-disable with event group 11 and input action 1,
+                    // which read here as a fire. Leave the type alone so it
+                    // flows through as Status -> zone disable (input type 11).
+                    // VB6: "MH Change 15042026" in the plEventGroup Case 11.
+                    if (eventCode == enmTAKEventCode.TAKDisableZone)
+                        break;
                     if (inputAction == 1)
                     {
                         this.NotifyClient("***** FIRE DURING CALIBRATION ******");
