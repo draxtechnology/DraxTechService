@@ -628,6 +628,184 @@ namespace DraxTechnology.Panels
                     }
                     break;
 
+                // Codes 49-77: this contiguous block was skipped in the
+                // original port (surfaced as "Unknown Event Code 77" on AMX,
+                // real-panel testing 2026-07-20). Texts verbatim from the VB6
+                // Select Case plEventCode; all Status type, address = code.
+                case enmTAKEventCode.TAKOpticalElementFault:      // 49
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = $"Optical Element {_faultWord}";
+                    address = 49;
+                    break;
+
+                case enmTAKEventCode.TAKHeatElementFault:         // 50
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = $"Heat Element {_faultWord}";
+                    address = 50;
+                    break;
+
+                case enmTAKEventCode.TAKBothElementFault:         // 51
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = $"Both Element {_faultWord}";
+                    address = 51;
+                    break;
+
+                case enmTAKEventCode.TAKSelfTestFailedFault:      // 52
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = $"Self Test Failed {_faultWord}";
+                    address = 52;
+                    break;
+
+                case enmTAKEventCode.TAKCeActive:                 // 53
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "CE Active";
+                    address = 53;
+                    break;
+
+                case enmTAKEventCode.TAKLoopProtocolFault:        // 54
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = $"Loop Protocol {_faultWord}";
+                    address = 54;
+                    break;
+
+                case enmTAKEventCode.TAKLoopMissing:              // 55
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Loop Missing";
+                    address = 55;
+                    break;
+
+                case enmTAKEventCode.TAKLoopUnexpected:           // 56
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Loop Unexpected";
+                    address = 56;
+                    break;
+
+                case enmTAKEventCode.TAKSubAddressLimit:          // 57
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Sub Address Limit";
+                    address = 57;
+                    break;
+
+                case enmTAKEventCode.TAKIoModMissing:             // 58
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "IO MOD Missing";
+                    address = 58;
+                    break;
+
+                case enmTAKEventCode.TAKIoModUnexpected:          // 59
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "IO Mod Unexpected";
+                    address = 59;
+                    break;
+
+                case enmTAKEventCode.TAKSerialInput:              // 60
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Serial Input";
+                    address = 60;
+                    break;
+
+                case enmTAKEventCode.TAKNetUnexpectedNode:        // 61
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Unexpected Node";
+                    address = 61;
+                    break;
+
+                case enmTAKEventCode.TAKNetUnknownType:           // 62
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Unknown Type";
+                    address = 62;
+                    break;
+
+                case enmTAKEventCode.TAKNetMissingNode:           // 63
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Net Missing Node";
+                    address = 63;
+                    break;
+
+                case enmTAKEventCode.TAKNetUnexpectedCard:        // 64
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Net Unexpected Card";
+                    address = 64;
+                    break;
+
+                case enmTAKEventCode.TAKNetMissingCard:           // 65
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Net Missing Card";
+                    address = 65;
+                    break;
+
+                case enmTAKEventCode.TAKNetWrongAddress:          // 66
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Net Wrong Address";
+                    address = 66;
+                    break;
+
+                case enmTAKEventCode.TAKNetBroken:                // 67
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Net Broken";
+                    address = 67;
+                    break;
+
+                case enmTAKEventCode.TAKNetCommsFault:            // 68
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = $"Comms {_faultWord}";
+                    address = 68;
+                    break;
+
+                case enmTAKEventCode.TAKNetCommsTimeout:          // 69
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Comms Timeout";
+                    address = 69;
+                    break;
+
+                case enmTAKEventCode.TAKNetInvalidAddress:        // 70
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Net Invalid Address";
+                    address = 70;
+                    break;
+
+                case enmTAKEventCode.TAKSounderBoardUnexpected:   // 71
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Sounder Board Unexpected";
+                    address = 71;
+                    break;
+
+                case enmTAKEventCode.TAKRelayBoardUnexpected:     // 72
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Relay Board Unexpected";
+                    address = 72;
+                    break;
+
+                case enmTAKEventCode.TAKSounderBoardMissing:      // 73
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Sounder Board Missing";
+                    address = 73;
+                    break;
+
+                case enmTAKEventCode.TAKRelayBoardMissing:        // 74
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Relay Board Missing";
+                    address = 74;
+                    break;
+
+                case enmTAKEventCode.TAKZoneIoUnexpected:         // 75
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Zone IO Unexpected";
+                    address = 75;
+                    break;
+
+                case enmTAKEventCode.TAKZoneIoMissing:            // 76
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = "Zone IO Missing";
+                    address = 76;
+                    break;
+
+                case enmTAKEventCode.TAKSystemFault:              // 77
+                    parsedType = enmTAKEventType.TAKEventStatus;
+                    eventText = $"System {_faultWord}";
+                    address = 77;
+                    break;
+
                 case enmTAKEventCode.TAKDisableDevice:    // 78
                     parsedType = enmTAKEventType.TAKEventDisablement;
                     eventText = "Device Disabled";
