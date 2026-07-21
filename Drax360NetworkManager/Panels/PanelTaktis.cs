@@ -568,7 +568,17 @@ namespace DraxTechnology.Panels
 
         private CancellationTokenSource _readerCts;
         private volatile bool _rxResubscribePending;
+        // Set when RX connected before any panel serial was known; the
+        // event-log subscription is sent from ProcessFrame as soon as an
+        // inbound frame (typically the TX snapshot's EVENT_ID) supplies one.
+        private volatile bool _rxSubscribeWhenSerialKnown;
         private Task _txReaderTask;
+
+        private bool HaveSerial()
+        {
+            return glSerialNo[0] != 0 || glSerialNo[1] != 0
+                || glSerialNo[2] != 0 || glSerialNo[3] != 0;
+        }
         private Task _rxReaderTask;
         private Task _txPumpTask;
         private Task _rxPumpTask;
@@ -779,9 +789,22 @@ namespace DraxTechnology.Panels
             {
                 // RX is the event-log stream. Per ICD: once a connection is
                 // streaming the event log it cannot be used for anything else.
-                // We don't issue REQUEST_ACTIVE_EVENTS here because EVENT_LOG_EX
-                // delivers historic + live events from the given serial number.
-                sendtotaktis(TakSendType.TAKSendRequestEventLogEx, glSerialNo);
+                // EVENT_LOG_EX means "events AFTER this serial number" - sent
+                // with serial 0 the panel replays its ENTIRE history (old
+                // logins, cleared faults...) which all forwarded to AMX as
+                // live events. The VB6 gates the request on a non-zero serial
+                // (frmTAKNetworkManager tmrSendReqActiveEventsDelay, MH change
+                // 30012024); mirror that - hold the subscription until the TX
+                // snapshot's EVENT_ID frame has told us the current serial.
+                if (HaveSerial())
+                {
+                    sendtotaktis(TakSendType.TAKSendRequestEventLogEx, glSerialNo);
+                }
+                else
+                {
+                    _rxSubscribeWhenSerialKnown = true;
+                    NotifyClient("TAKTIS [RX] holding event-log subscription until the panel serial is known");
+                }
             }
             else // TX
             {
@@ -829,6 +852,16 @@ namespace DraxTechnology.Panels
                 glSerialNo[1] = frame[9];
                 glSerialNo[2] = frame[10];
                 glSerialNo[3] = frame[11];
+            }
+
+            // RX connected before we knew the panel's serial - now that a
+            // frame has supplied one, subscribe to the event log from here
+            // forward (see SendChannelStartOfDay for why not from zero).
+            if (_rxSubscribeWhenSerialKnown && HaveSerial())
+            {
+                _rxSubscribeWhenSerialKnown = false;
+                NotifyClient("TAKTIS [RX] panel serial known - subscribing to the event log from here");
+                sendtotaktis(TakSendType.TAKSendRequestEventLogEx, glSerialNo);
             }
 
             long mt = frame.Length >= 8 ? ReadFieldU32(frame, 4) : -1;
