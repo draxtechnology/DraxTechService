@@ -628,10 +628,6 @@ namespace DraxTechnology.Panels
                     }
                     break;
 
-                // Codes 49-77: this contiguous block was skipped in the
-                // original port (surfaced as "Unknown Event Code 77" on AMX,
-                // real-panel testing 2026-07-20). Texts verbatim from the VB6
-                // Select Case plEventCode; all Status type, address = code.
                 case enmTAKEventCode.TAKOpticalElementFault:      // 49
                     parsedType = enmTAKEventType.TAKEventStatus;
                     eventText = $"Optical Element {_faultWord}";
