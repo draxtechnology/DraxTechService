@@ -217,8 +217,11 @@ namespace DraxTechnology.Panels
                     node, loop, address, ref inputType, ref inputNumber,
                     ref doubleFaultInputType);
 
-                // Send to AMX
-                int evnum = CSAMXSingleton.CS.MakeInputNumber(Convert.ToInt32(node), Convert.ToInt32(loop), Convert.ToInt32(address), inputType, alarmOn);
+                // Send to AMX. The offset is applied here, same as every
+                // internal MakeInputNumber above - without it an offset site
+                // reports panel 1 instead of (1 + giAmx1Offset) to AMX
+                // (VB6: MakeInputNumber(piNode + giAmx1Offset, ...)).
+                int evnum = CSAMXSingleton.CS.MakeInputNumber(Convert.ToInt32(node + _amx1Offset), Convert.ToInt32(loop), Convert.ToInt32(address), inputType, alarmOn);
                 send_response_amx(evnum, locationText, deviceType, textSummary);
 
             }

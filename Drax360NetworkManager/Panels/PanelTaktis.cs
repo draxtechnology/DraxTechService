@@ -482,28 +482,40 @@ namespace DraxTechnology.Panels
         // AMX dispatches these as CSV "node,loop,zone,device". Each override
         // parses the CSV via the base helper and routes to the matching
         // TakSendType so buildmessage() emits the correct wire frame.
+
+        // AMX identifies an offset site's panels as (node + giAmx1Offset), so
+        // inbound commands carry the offset number and the wire frame needs
+        // the raw node back (VB6 frmTAKNetworkManager: Dat(13) - giAmx1Offset;
+        // same convention as PanelRSM.SendCommand). The raw fallback keeps the
+        // client test tool working - it sends un-offset node numbers.
+        private int DeOffsetNode(int node)
+        {
+            int raw = node - _amx1Offset;
+            return raw > 0 ? raw : node;
+        }
+
         public override void Alert(string passedValues)
         {
             ParsePassedValues(passedValues, out int node, out _, out _, out _);
-            sendtotaktis(TakSendType.TAKSendControlStartAlert, node: node);
+            sendtotaktis(TakSendType.TAKSendControlStartAlert, node: DeOffsetNode(node));
         }
 
         public override void Reset(string passedValues)
         {
             ParsePassedValues(passedValues, out int node, out _, out _, out _);
-            sendtotaktis(TakSendType.TAKSendControlReset, node: node);
+            sendtotaktis(TakSendType.TAKSendControlReset, node: DeOffsetNode(node));
         }
 
         public override void Silence(string passedValues)
         {
             ParsePassedValues(passedValues, out int node, out _, out _, out _);
-            sendtotaktis(TakSendType.TAKSendControlSilence, node: node);
+            sendtotaktis(TakSendType.TAKSendControlSilence, node: DeOffsetNode(node));
         }
 
         public override void Evacuate(string passedValues)
         {
             ParsePassedValues(passedValues, out int node, out _, out _, out _);
-            sendtotaktis(TakSendType.TAKSendControlStartEVAC, node: node);
+            sendtotaktis(TakSendType.TAKSendControlStartEVAC, node: DeOffsetNode(node));
         }
 
         public override void EvacuateNetwork(string passedValues)
@@ -516,19 +528,19 @@ namespace DraxTechnology.Panels
         public override void MuteBuzzers(string passedValues)
         {
             ParsePassedValues(passedValues, out int node, out _, out _, out _);
-            sendtotaktis(TakSendType.TAKSendControlSilenceBuzzer, node: node);
+            sendtotaktis(TakSendType.TAKSendControlSilenceBuzzer, node: DeOffsetNode(node));
         }
 
         public override void DisableDevice(string passedValues)
         {
             ParsePassedValues(passedValues, out int node, out int loop, out _, out int device);
-            sendtotaktis(TakSendType.TAKSendControlDisableDevice, node: node, loop: loop, address: device);
+            sendtotaktis(TakSendType.TAKSendControlDisableDevice, node: DeOffsetNode(node), loop: loop, address: device);
         }
 
         public override void EnableDevice(string passedValues)
         {
             ParsePassedValues(passedValues, out int node, out int loop, out _, out int device);
-            sendtotaktis(TakSendType.TAKSendControlEnableDevice, node: node, loop: loop, address: device);
+            sendtotaktis(TakSendType.TAKSendControlEnableDevice, node: DeOffsetNode(node), loop: loop, address: device);
         }
 
         public override void DisableZone(string passedValues)
@@ -546,7 +558,7 @@ namespace DraxTechnology.Panels
         public override void Analogue(string passedvalues)
         {
             ParsePassedValues(passedvalues, out int node, out int loop, out _, out int device);
-            sendtotaktis(TakSendType.TAKSendQueryANALDetails, node: node, loop: loop, address: device);
+            sendtotaktis(TakSendType.TAKSendQueryANALDetails, node: DeOffsetNode(node), loop: loop, address: device);
         }
         protected override void heartbeat_timer_callback(object sender)
         {
