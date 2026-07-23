@@ -1366,8 +1366,11 @@ namespace DraxTechnology.Panels
                 {
                     using (StreamWriter w = File.AppendText(CURRENTNWMDATAFILE))
                     {
-                        var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-                        string versionString = version.ToString(); // "1.0.0.0"
+                        // AssemblyFileVersion (1.0.0.N), not the pinned AssemblyVersion -
+                        // this is the version AMX displays for the NWM.
+                        string versionString = System.Reflection.CustomAttributeExtensions
+                            .GetCustomAttribute<System.Reflection.AssemblyFileVersionAttribute>(
+                                System.Reflection.Assembly.GetExecutingAssembly()).Version;
 
                         w.WriteLine("[0]\r\nProgName=RSM Network Manager");
                         w.WriteLine("Name=RSMNWM\r\nVersion=" + versionString + "\r\nNodeName=RSM Fire Panel");

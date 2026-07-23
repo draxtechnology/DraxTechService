@@ -1069,7 +1069,11 @@ namespace DraxTechnology
                     if (parity.Length == 0) parity = " ";
                     int databits = apbase.GetSetting<int>("SETUP", "DATABITS");
                     int stopbits = apbase.GetSetting<int>("SETUP", "STOPBITS");
-                    string versionString = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
+                    // AssemblyFileVersion (1.0.0.N) - the release number. GetName().Version
+                    // is the pinned AssemblyVersion and wrote 1.0.0.0 into Current.Nwm,
+                    // which is the version AMX displays for the NWM (Mike, 2026-07-23).
+                    string versionString = System.Reflection.Assembly.GetExecutingAssembly()
+                        .GetCustomAttribute<System.Reflection.AssemblyFileVersionAttribute>().Version;
                     string result = System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(panel.ToLower());
                     string exePath = Environment.ProcessPath!;
                     string exeDateTime = File.GetLastWriteTime(exePath).ToString("dd/MM/yyyy HH:mm:ss");
