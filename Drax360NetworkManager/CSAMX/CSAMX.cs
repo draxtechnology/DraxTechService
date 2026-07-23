@@ -31,6 +31,17 @@ namespace DraxTechnology
         // Tracks when each orphaned file was last re-sent to prevent queue flooding.
         private readonly ConcurrentDictionary<string, DateTime> _resentAt =
             new ConcurrentDictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+        // Re-send attempts per orphaned file. AMX can get into a state where it
+        // processes every NTX it is sent but stops MAKing (seen live 2026-07-22,
+        // Autronica site: the same fire re-raised on AMX once a minute for 15+
+        // minutes until AMX was restarted). Cap the re-sends so a stuck file
+        // repeats at most kMaxResendAttempts times, then park it; an AMX
+        // reconnect makes parked files eligible again - the same recovery the
+        // manual AMX restart provided, without the endless duplicates.
+        private const int kMaxResendAttempts = 3;
+        private readonly ConcurrentDictionary<string, int> _resendAttempts =
+            new ConcurrentDictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        private bool _lastAmxConnected;
         private System.Timers.Timer _cleanupTimer;
         #endregion
 
@@ -155,6 +166,7 @@ namespace DraxTechnology
             if (!string.IsNullOrEmpty(filename))
             {
                 _pendingDelete[filename] = DateTime.UtcNow;
+                _resendAttempts.TryRemove(filename, out _);
                 _lastMakAt = DateTime.UtcNow;
                 Notify("MAK received, scheduled delete: " + Path.GetFileName(filename));
             }
@@ -199,7 +211,15 @@ namespace DraxTechnology
             // or whose MAK timed out). Any file older than 30 s that isn't already
             // pending deletion is orphaned. Throttle to once per 60 s per file so
             // we don't flood the sender queue on a prolonged outage.
-            if (!AMXTransfer.Instance.IsConnected) return;
+            bool amxConnected = AMXTransfer.Instance.IsConnected;
+            if (amxConnected && !_lastAmxConnected && !_resendAttempts.IsEmpty)
+            {
+                // Fresh AMX session - give parked files their bounded retries back.
+                _resendAttempts.Clear();
+                Notify("AMX reconnected - parked orphan files eligible for re-send again");
+            }
+            _lastAmxConnected = amxConnected;
+            if (!amxConnected) return;
             if (string.IsNullOrEmpty(logfiles) || string.IsNullOrEmpty(extension)) return;
 
             // If AMX has acknowledged anything recently it is alive and working
@@ -219,15 +239,33 @@ namespace DraxTechnology
                     if (_resentAt.TryGetValue(file, out DateTime lastSent) &&
                         (DateTime.UtcNow - lastSent).TotalSeconds < 60) continue;
 
+                    int attempts = _resendAttempts.TryGetValue(file, out int a) ? a : 0;
+                    if (attempts >= kMaxResendAttempts)
+                    {
+                        if (attempts == kMaxResendAttempts)
+                        {
+                            // Log the parking exactly once, then stay quiet.
+                            _resendAttempts[file] = attempts + 1;
+                            Notify($"Orphan parked after {kMaxResendAttempts} unacknowledged re-sends: "
+                                + Path.GetFileName(file) + " - eligible again after an AMX reconnect");
+                        }
+                        continue;
+                    }
+                    _resendAttempts[file] = attempts + 1;
+
                     _resentAt[file] = DateTime.UtcNow;
                     AMXTransfer.Instance.SendMessage("NTX:" + file);
-                    Notify($"Orphan re-send (age {(int)age.TotalSeconds}s): " + Path.GetFileName(file));
+                    Notify($"Orphan re-send (age {(int)age.TotalSeconds}s, attempt {attempts + 1}/{kMaxResendAttempts}): " + Path.GetFileName(file));
                 }
 
-                // Prune _resentAt for files that have already been deleted.
+                // Prune the trackers for files that have already been deleted.
                 foreach (var key in _resentAt.Keys.ToList())
                 {
                     if (!File.Exists(key)) _resentAt.TryRemove(key, out _);
+                }
+                foreach (var key in _resendAttempts.Keys.ToList())
+                {
+                    if (!File.Exists(key)) _resendAttempts.TryRemove(key, out _);
                 }
             }
             catch { }
