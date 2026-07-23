@@ -3,8 +3,12 @@
      xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal"
      xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
 
+  <!-- The bundle registers the Programs and Features entry when installing
+       via this EXE, so its Version is the one users see. Bound to the MSI's
+       ProductVersion (Product.wxs) at build time - bumping the MSI bumps
+       this automatically; never hand-edit a number here. -->
   <Bundle Name="Drax Technology Service"
-          Version="1.0.6"
+          Version="!(bind.packageVersion.DraxServiceMsi)"
           Manufacturer="Drax Technology"
           UpgradeCode="A2B9F47C-5E1D-4A6B-9D3C-7F2E8B4D5A6E"
           IconSourceFile="..\Drax360NetworkManager\DraxLogo.ico">
@@ -75,7 +79,7 @@
       </ExePackage>
 
       <!-- Drax Service MSI -->
-      <MsiPackage SourceFile="$(var.DraxServiceSetup.TargetPath)" />
+      <MsiPackage Id="DraxServiceMsi" SourceFile="$(var.DraxServiceSetup.TargetPath)" />
     </Chain>
   </Bundle>
 
