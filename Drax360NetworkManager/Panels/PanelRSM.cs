@@ -1042,8 +1042,13 @@ namespace DraxTechnology.Panels
         // module's open TCP connection. Wire format mirrors VB6 MakeNewMessage:
         //   STX + Scramble("CMD;{ID};{Node};{Serial};;{cmdToPanel};{params}") + ETX
 
-        // Mirror of VB6 cmdToPanel enum (RSMenum.bas). Position-sensitive — the
-        // numeric values are the wire protocol. Don't reorder.
+        // Mirror of VB6 cmdToPanel enum (RSMenum.bas) - COMPLETE, all 47 values,
+        // so position can never drift. The numeric values are the wire protocol;
+        // the VB notes it must also tie up with the RSM GLOBAL.TBH firmware enum.
+        // The earlier partial copy skipped 9..36 with a miscounted comment and
+        // had the four network commands one LOW (37..40 instead of 38..41) -
+        // SilenceNetworkAlarms would have transmitted as EvacuateNetwork.
+        // Found by two independent counts (Mike's Excel compare + ours), 2026-07-23.
         private enum CmdToPanel
         {
             MuteBuzzer = 0,
@@ -1055,11 +1060,43 @@ namespace DraxTechnology.Panels
             EnableDevice = 6,
             DisableZone = 7,
             EnableZone = 8,
-            // 9..36 omitted — add as needed; values must still match VB enum order
-            EvacuateNetwork = 37,
-            SilenceNetworkAlarms = 38,
-            MuteNetworkBuzzers = 39,
-            ResetNetwork = 40,
+            CreateEventTransient = 9,
+            RemoveEventTransient = 10,
+            CreateEvent = 11,
+            RemoveEvent = 12,
+            DisablePanelSounders = 13,
+            EnablePanelSounders = 14,
+            DisablePanelRelays = 15,
+            EnablePanelRelays = 16,
+            Off = 17,
+            On = 18,
+            ShortPulse = 19,
+            MediumPulse = 20,
+            LongPulse = 21,
+            ShortFlash = 22,
+            MediumFlash = 23,
+            LongFlash = 24,
+            ExternalAcknowledgement = 25,
+            ExternalFireInitiate = 26,
+            ExternalAlarmInitiate = 27,
+            ExternalFireCancel = 28,
+            ExternalAlarmCancel = 29,
+            AlertNetwork = 30,
+            ResoundNetworkAlarms = 31,
+            DisableGroup = 32,
+            EnableGroup = 33,
+            AlertPanel = 34,
+            ResoundPanelAlarms = 35,
+            ActivateLoopOutput = 36,
+            DeActivateLoopOutput = 37,
+            EvacuateNetwork = 38,
+            SilenceNetworkAlarms = 39,
+            MuteNetworkBuzzers = 40,
+            ResetNetwork = 41,
+            NetworkEvacuate = 42,
+            GetReverseInputs = 43,
+            SetReverseInputs = 44,
+            InitInputs = 45,
             GetDeviceAnalogue = 46,
         }
 
