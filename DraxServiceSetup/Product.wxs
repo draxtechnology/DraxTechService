@@ -3,9 +3,14 @@
      xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
      xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
 
+  <!-- Version convention: tracks the service's AssemblyFileVersion with the
+       third field dropped - file 1.0.0.N installs as MSI 1.0.N, so Programs
+       and Features and the service log banner read as the same release.
+       Bump BOTH together (AssemblyInfo.cs + here); MSI won't upgrade over
+       an equal version. -->
   <Package Name="Drax Technology Service"
            Manufacturer="Drax Technology"
-           Version="1.0.2"
+           Version="1.0.26"
            UpgradeCode="B5758DCA-6BC5-4E2C-BF55-7FA118631F65"
            Scope="perMachine"
            InstallerVersion="500">
