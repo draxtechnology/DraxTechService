@@ -1060,6 +1060,7 @@ namespace DraxTechnology.Panels
             SilenceNetworkAlarms = 38,
             MuteNetworkBuzzers = 39,
             ResetNetwork = 40,
+            GetDeviceAnalogue = 46,
         }
 
         public override void Evacuate(string passedvalues) { SendCommand(CmdToPanel.Evacuate, passedvalues); }
@@ -1072,7 +1073,7 @@ namespace DraxTechnology.Panels
         public override void EnableDevice(string passedvalues) { SendCommand(CmdToPanel.EnableDevice, passedvalues, withDeviceParams: true); }
         public override void DisableZone(string passedvalues) { SendCommand(CmdToPanel.DisableZone, passedvalues, withDeviceParams: true); }
         public override void EnableZone(string passedvalues) { SendCommand(CmdToPanel.EnableZone, passedvalues, withDeviceParams: true); }
-        public override void Analogue(string passedvalues) { throw new NotImplementedException(); }
+        public override void Analogue(string passedvalues) { SendCommand(CmdToPanel.GetDeviceAnalogue, passedvalues, withDeviceParams: true); }
 
         // optSetGet option numbers to GET when the client opens a node's
         // properties window — mirrors VB6 frmRSMProperties.GetModuleInfo,
