@@ -668,7 +668,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.RepeaterCommsFail:  // 201
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "Repeater Comms Fail";
                     st.giAddressNumber  = 128;
                     st.getDeviceText    = false;
@@ -701,7 +701,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.SectorAssignmentError:  // 236
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "Sector Assignment Error";
                     st.giAddressNumber  = 131;
                     st.getDeviceText    = false;
@@ -726,7 +726,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.MainCPUWatchdogOperated:  // 296
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "Main CPU Watchdog Operated";
                     st.giAddressNumber  = 133;
                     st.getDeviceText    = false;
@@ -734,7 +734,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.CPUEPROMChecksumError:  // 297
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "CPU EPROM Checksum Error";
                     st.giAddressNumber  = 134;
                     st.getDeviceText    = false;
@@ -742,7 +742,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.CPUE2PROMMemoryWriteError:  // 298
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "CPU E2PROM Memory Write Error";
                     st.giAddressNumber  = 135;
                     st.getDeviceText    = false;
@@ -750,7 +750,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.CPUFlashMemoryChecksumError:  // 299
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "CPU FLASH Memory Checksum Error";
                     st.giAddressNumber  = 136;
                     st.getDeviceText    = false;
@@ -758,7 +758,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.PrinterFault:  // 300
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "Printer Fault";
                     st.giAddressNumber  = 137;
                     st.getDeviceText    = false;
@@ -766,7 +766,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.CPUFlashMemoryWriteError:  // 301
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "CPU FLASH Memory Write Error";
                     st.giAddressNumber  = 138;
                     st.getDeviceText    = false;
@@ -774,7 +774,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.CPUDisplayHardwareFault:  // 303
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "CPU/Display Hardware Fault";
                     st.giAddressNumber  = 139;
                     st.getDeviceText    = false;
@@ -782,7 +782,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.BaseboardExpansionHardwareFault:  // 304
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "Baseboard/Expansion Hardware Fault";
                     st.giAddressNumber  = 140;
                     st.getDeviceText    = false;
@@ -790,7 +790,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.CPUWatchdogTimerFault:  // 305
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "CPU Watchdog Timer Fault";
                     st.giAddressNumber  = 141;
                     st.getDeviceText    = false;
@@ -798,7 +798,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.CPUWatchdogNotEnabled:  // 320
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "CPU Watchdog Not Enabled";
                     st.giAddressNumber  = 142;
                     st.getDeviceText    = false;
@@ -806,7 +806,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.ClockSetToAfterAD2099:  // 321
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "Clock Set to After AD2099";
                     st.giAddressNumber  = 143;
                     st.getDeviceText    = false;
@@ -814,7 +814,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.CPUClockMonitorFailure:  // 322
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "CPU Clock Monitor Failure";
                     st.giAddressNumber  = 144;
                     st.getDeviceText    = false;
@@ -822,7 +822,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.CPUIllegalInstruction:  // 323
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "CPU Illegal Instruction";
                     st.giAddressNumber  = 145;
                     st.getDeviceText    = false;
@@ -830,7 +830,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.PSUFaultCrowbarActive:  // 326
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "PSU Fault: Crowbar Active";
                     st.giAddressNumber  = 146;
                     st.getDeviceText    = false;
@@ -838,7 +838,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.ConfigurationNeedsExpansionCard:  // 327
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "Configuration Needs Expansion Card";
                     st.giAddressNumber  = 147;
                     st.getDeviceText    = false;
@@ -846,7 +846,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.ConfigurationNeedsRS485Card:  // 328
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "Configuration Needs RS485 Card";
                     st.giAddressNumber  = 148;
                     st.getDeviceText    = false;
@@ -854,7 +854,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.ConfigurationNeedsRS232Card:  // 329
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "Configuration Needs RS232 Card";
                     st.giAddressNumber  = 149;
                     st.getDeviceText    = false;
@@ -862,7 +862,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.CommsCardDisplaced:  // 330
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "RS232/RS485/Printer Card Displaced";
                     st.giAddressNumber  = 150;
                     st.getDeviceText    = false;
@@ -870,7 +870,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.PoweredOffDueToLowBattery:  // 331
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "Powered Off Due to Low Battery";
                     st.giAddressNumber  = 151;
                     st.getDeviceText    = false;
@@ -878,7 +878,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.ExternalPSUDualTXPathFault:  // 333
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "External PSU Dual TX Path Fault";
                     st.giAddressNumber  = 152;
                     st.getDeviceText    = false;
@@ -886,7 +886,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.ExternalPSULowSystemVoltage:  // 334
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "External PSU Low System Voltage";
                     st.giAddressNumber  = 153;
                     st.getDeviceText    = false;
@@ -894,7 +894,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.ELIBCardMissingOrFault:  // 335
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "ELIB Card Missing or Fault, Loop " + st.loop;
                     st.giAddressNumber  = 154;
                     st.getDeviceText    = false;
@@ -902,7 +902,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.ELIBFlashMemoryWriteFail:  // 339
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "ELIB FLASH Memory Write Fail, Loop " + st.loop;
                     st.giAddressNumber  = 155;
                     st.getDeviceText    = false;
@@ -910,7 +910,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.ELIBDataDownloadFailed:  // 343
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "ELIB Data Download Failed, Loop " + st.loop;
                     st.giAddressNumber  = 156;
                     st.getDeviceText    = false;
@@ -918,7 +918,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.MainCPUWatchdogOperatedCOP:  // 349
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "Main CPU Watchdog Operated (COP)";
                     st.giAddressNumber  = 157;
                     st.getDeviceText    = false;
@@ -926,7 +926,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.IncompatibleLIBCardInstalled:  // 351
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "Incompatible LIB Card Installed, Loop " + st.loop;
                     st.giAddressNumber  = 158;
                     st.getDeviceText    = false;
@@ -934,7 +934,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.IncompatibleLoopDeviceAndLIB:  // 366
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "Incompatible Loop Device and LIB, Loop " + st.loop;
                     st.giAddressNumber  = 159;
                     st.getDeviceText    = false;
@@ -942,7 +942,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.PowerSupplySecondaryBackupFault:  // 369
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "Power-Supply Secondary Backup Fault";
                     st.giAddressNumber  = 160;
                     st.getDeviceText    = false;
@@ -950,7 +950,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.IncompatiblePanelNetworkZones:  // 370
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "Incompatible Panel/Network Zones Combination";
                     st.giAddressNumber  = 161;
                     st.getDeviceText    = false;
@@ -958,7 +958,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.ID2netPrimaryCPUFault:  // 371
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "ID2net Primary CPU Fault";
                     st.giAddressNumber  = 162;
                     st.getDeviceText    = false;
@@ -966,7 +966,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.ID2netSecondaryCPUFault:  // 372
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "ID2net Secondary CPU Fault";
                     st.giAddressNumber  = 163;
                     st.getDeviceText    = false;
@@ -974,7 +974,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.ID2netPartialOpenShortCircuitFault:  // 373
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "ID2net Partial Open/Short Circuit Fault";
                     st.giAddressNumber  = 164;
                     st.getDeviceText    = false;
@@ -982,7 +982,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.ID2netPhaseReversalFault:  // 374
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "ID2net Phase Reversal Fault";
                     st.giAddressNumber  = 165;
                     st.getDeviceText    = false;
@@ -990,7 +990,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.ID2netChannelInversionFault:  // 375
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "ID2net Channel Inversion Fault";
                     st.giAddressNumber  = 166;
                     st.getDeviceText    = false;
@@ -998,7 +998,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.IncompatibleBaudRateCombination:  // 376
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "Incompatible Baud Rate Combination";
                     st.giAddressNumber  = 167;
                     st.getDeviceText    = false;
@@ -1006,7 +1006,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.SounderCircuitsCPUFault:  // 377
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "Sounder Circuits CPU Fault";
                     st.giAddressNumber  = 168;
                     st.getDeviceText    = false;
@@ -1014,7 +1014,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.ExtinguishingSystemExternalFault:  // 378
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "Extinguishing System External Fault";
                     st.giAddressNumber  = 169;
                     st.getDeviceText    = false;
@@ -1022,7 +1022,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.ExtinguishingSystemTXPathFault:  // 379
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "Extinguishing System TX Path Fault";
                     st.giAddressNumber  = 170;
                     st.getDeviceText    = false;
@@ -1030,7 +1030,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.TooManyCLIPAddresses:  // 380
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "Too Many CLIP Addresses";
                     st.giAddressNumber  = 171;
                     st.getDeviceText    = false;
@@ -1038,7 +1038,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.OPALAutoConfigIncomplete:  // 381
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "OPAL Auto-config Incomplete";
                     st.giAddressNumber  = 172;
                     st.getDeviceText    = false;
@@ -1046,7 +1046,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.SensorAtAddressOutOfRange:  // 382
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "Sensor at Address Out-of-Range, Loop " + st.loop;
                     st.giAddressNumber  = 173;
                     st.getDeviceText    = false;
@@ -1054,7 +1054,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.ModuleAtAddressOutOfRange:  // 386
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "Module at Address Out-of-Range, Loop " + st.loop;
                     st.giAddressNumber  = 174;
                     st.getDeviceText    = false;
@@ -1104,7 +1104,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.MainsBrownOut:  // 405
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "Mains Brown-out";
                     st.giAddressNumber  = 177;
                     st.getDeviceText    = false;
@@ -1112,7 +1112,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.PSUModuleFault:  // 406
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "PSU Module Fault";
                     st.giAddressNumber  = 178;
                     st.getDeviceText    = false;
@@ -1120,7 +1120,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.AuxSupplyFault:  // 407
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "Auxiliary Supply Fault";
                     st.giAddressNumber  = 179;
                     st.getDeviceText    = false;
@@ -1217,7 +1217,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.BatteryWiringFault:  // 419
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "Battery Wiring Fault";
                     st.giAddressNumber  = 190;
                     st.getDeviceText    = false;
@@ -1225,7 +1225,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.PerformanceCardReadFault:  // 420
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "Performance Card Read Fault";
                     st.giAddressNumber  = 191;
                     st.getDeviceText    = false;
@@ -1233,7 +1233,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.AuxillarySupplyDisconnected:  // 421
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "Auxiliary Supply Disconnected";
                     st.giAddressNumber  = 192;
                     st.getDeviceText    = false;
@@ -1241,7 +1241,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.LEDCardMissingFFault:  // 422
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "LED Card Missing Fault";
                     st.giAddressNumber  = 193;
                     st.getDeviceText    = false;
@@ -1249,7 +1249,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.NetworkPanelMissing:  // 423
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "Network Panel Missing";
                     st.giAddressNumber  = 194;
                     st.getDeviceText    = false;
@@ -1257,7 +1257,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.MaximumLoopsExceeded:  // 424
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "Maximum Loops Exceeded";
                     st.giAddressNumber  = 195;
                     st.getDeviceText    = false;
@@ -1265,7 +1265,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.LEDCardAddedFault:  // 425
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "LED Card Added Fault";
                     st.giAddressNumber  = 196;
                     st.getDeviceText    = false;
@@ -1273,7 +1273,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.RemoteLinkNoReply:  // 426
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "Remote Link No Reply";
                     st.giAddressNumber  = 197;
                     st.getDeviceText    = false;
@@ -1281,7 +1281,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.PanelStatusMismatch:  // 427
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "Panel Status Mismatch";
                     st.giAddressNumber  = 198;
                     st.getDeviceText    = false;
@@ -1289,7 +1289,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.ConfigStatusMismatch:  // 428
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "Config Status Mismatch";
                     st.giAddressNumber  = 199;
                     st.getDeviceText    = false;
@@ -1297,7 +1297,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.GeneralNonDeviceFaultatRemotePanel:  // 429
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "General Fault at Remote Panel";
                     st.giAddressNumber  = 200;
                     st.loop             = 0;
@@ -1306,7 +1306,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.NewAuxillarySUpply:  // 430
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "New Auxiliary Supply";
                     st.giAddressNumber  = 192;
                     on                  = false;
@@ -1340,7 +1340,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.SystemIOCardMissingFault:  // 434
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "System IO Card Missing Fault";
                     st.giAddressNumber  = 203;
                     st.getDeviceText    = false;
@@ -1348,7 +1348,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.SystemIOCardAddedFault:  // 435
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "System IO Card Added Fault";
                     st.giAddressNumber  = 204;
                     st.getDeviceText    = false;
@@ -1356,7 +1356,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.SystemIOCardVersionMismatch:  // 436
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "System IO Card Version Mismatch";
                     st.giAddressNumber  = 205;
                     st.getDeviceText    = false;
@@ -1364,7 +1364,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.SystemIOCardRestart:  // 437
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "System IO Card Restart";
                     st.giAddressNumber  = 206;
                     st.getDeviceText    = false;
@@ -1372,7 +1372,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.SystemIOCardCommsFaul:  // 438
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "System IO Card Comms Fault";
                     st.giAddressNumber  = 207;
                     st.getDeviceText    = false;
@@ -1380,7 +1380,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.FATFBFCommsFailureFault:  // 439
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "FAT/FBF Comms Failure Fault";
                     st.giAddressNumber  = 208;
                     st.getDeviceText    = false;
@@ -1388,7 +1388,7 @@ namespace DraxTechnology.Panels
                     return true;
 
                 case enmNotEventType.FATFBFMissingFault:  // 440
-                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.gsTextField      = "FAT/FBF Missing Fault";
                     st.giAddressNumber  = 209;
                     st.getDeviceText    = false;

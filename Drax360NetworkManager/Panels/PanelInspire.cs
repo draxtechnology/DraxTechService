@@ -1230,7 +1230,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.RepeaterCommsFail:  // 201
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Repeater Comms Fail";
                         giAddressNumber = 128;
                         getDeviceText = false;
@@ -1263,7 +1263,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.SectorAssignmentError:  // 236
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Sector Assignment Error";
                         giAddressNumber = 131;
                         getDeviceText = false;
@@ -1288,7 +1288,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.MainCPUWatchdogOperated:  // 296
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Main CPU Watchdog Operated";
                         giAddressNumber = 133;
                         getDeviceText = false;
@@ -1296,7 +1296,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.CPUEPROMChecksumError:  // 297
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "CPU EPROM Checksum Error";
                         giAddressNumber = 134;
                         getDeviceText = false;
@@ -1304,7 +1304,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.CPUE2PROMMemoryWriteError:  // 298
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "CPU E2PROM Memory Write Error";
                         giAddressNumber = 135;
                         getDeviceText = false;
@@ -1312,7 +1312,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.CPUFlashMemoryChecksumError:  // 299
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "CPU FLASH Memory Checksum Error";
                         giAddressNumber = 136;
                         getDeviceText = false;
@@ -1320,7 +1320,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.PrinterFault:  // 300
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Printer Fault";
                         giAddressNumber = 137;
                         getDeviceText = false;
@@ -1328,7 +1328,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.CPUFlashMemoryWriteError:  // 301
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "CPU FLASH Memory Write Error";
                         giAddressNumber = 138;
                         getDeviceText = false;
@@ -1336,7 +1336,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.CPUDisplayHardwareFault:  // 303
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "CPU/Display Hardware Fault";
                         giAddressNumber = 139;
                         getDeviceText = false;
@@ -1344,7 +1344,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.BaseboardExpansionHardwareFault:  // 304
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Baseboard/Expansion Hardware Fault";
                         giAddressNumber = 140;
                         getDeviceText = false;
@@ -1352,7 +1352,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.CPUWatchdogTimerFault:  // 305
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "CPU Watchdog Timer Fault";
                         giAddressNumber = 141;
                         getDeviceText = false;
@@ -1360,7 +1360,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.CPUWatchdogNotEnabled:  // 320
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "CPU Watchdog Not Enabled";
                         giAddressNumber = 142;
                         getDeviceText = false;
@@ -1368,7 +1368,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.ClockSetToAfterAD2099:  // 321
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Clock Set to After AD2099";
                         giAddressNumber = 143;
                         getDeviceText = false;
@@ -1376,7 +1376,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.CPUClockMonitorFailure:  // 322
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "CPU Clock Monitor Failure";
                         giAddressNumber = 144;
                         getDeviceText = false;
@@ -1384,7 +1384,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.CPUIllegalInstruction:  // 323
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "CPU Illegal Instruction";
                         giAddressNumber = 145;
                         getDeviceText = false;
@@ -1392,7 +1392,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.PSUFaultCrowbarActive:  // 326
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "PSU Fault: Crowbar Active";
                         giAddressNumber = 146;
                         getDeviceText = false;
@@ -1400,7 +1400,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.ConfigurationNeedsExpansionCard:  // 327
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Configuration Needs Expansion Card";
                         giAddressNumber = 147;
                         getDeviceText = false;
@@ -1408,7 +1408,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.ConfigurationNeedsRS485Card:  // 328
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Configuration Needs RS485 Card";
                         giAddressNumber = 148;
                         getDeviceText = false;
@@ -1416,7 +1416,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.ConfigurationNeedsRS232Card:  // 329
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Configuration Needs RS232 Card";
                         giAddressNumber = 149;
                         getDeviceText = false;
@@ -1424,7 +1424,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.CommsCardDisplaced:  // 330
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "RS232/RS485/Printer Card Displaced";
                         giAddressNumber = 150;
                         getDeviceText = false;
@@ -1432,7 +1432,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.PoweredOffDueToLowBattery:  // 331
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Powered Off Due to Low Battery";
                         giAddressNumber = 151;
                         getDeviceText = false;
@@ -1440,7 +1440,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.ExternalPSUDualTXPathFault:  // 333
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "External PSU Dual TX Path Fault";
                         giAddressNumber = 152;
                         getDeviceText = false;
@@ -1448,7 +1448,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.ExternalPSULowSystemVoltage:  // 334
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "External PSU Low System Voltage";
                         giAddressNumber = 153;
                         getDeviceText = false;
@@ -1456,7 +1456,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.ELIBCardMissingOrFault:  // 335
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "ELIB Card Missing or Fault, Loop " + loop;
                         giAddressNumber = 154;
                         getDeviceText = false;
@@ -1464,7 +1464,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.ELIBFlashMemoryWriteFail:  // 339
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "ELIB FLASH Memory Write Fail, Loop " + loop;
                         giAddressNumber = 155;
                         getDeviceText = false;
@@ -1472,7 +1472,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.ELIBDataDownloadFailed:  // 343
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "ELIB Data Download Failed, Loop " + loop;
                         giAddressNumber = 156;
                         getDeviceText = false;
@@ -1480,7 +1480,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.MainCPUWatchdogOperatedCOP:  // 349
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Main CPU Watchdog Operated (COP)";
                         giAddressNumber = 157;
                         getDeviceText = false;
@@ -1488,7 +1488,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.IncompatibleLIBCardInstalled:  // 351
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Incompatible LIB Card Installed, Loop " + loop;
                         giAddressNumber = 158;
                         getDeviceText = false;
@@ -1496,7 +1496,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.IncompatibleLoopDeviceAndLIB:  // 366
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Incompatible Loop Device and LIB, Loop " + loop;
                         giAddressNumber = 159;
                         getDeviceText = false;
@@ -1504,7 +1504,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.PowerSupplySecondaryBackupFault:  // 369
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Power-Supply Secondary Backup Fault";
                         giAddressNumber = 160;
                         getDeviceText = false;
@@ -1512,7 +1512,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.IncompatiblePanelNetworkZones:  // 370
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Incompatible Panel/Network Zones Combination";
                         giAddressNumber = 161;
                         getDeviceText = false;
@@ -1520,7 +1520,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.ID2netPrimaryCPUFault:  // 371
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "ID2net Primary CPU Fault";
                         giAddressNumber = 162;
                         getDeviceText = false;
@@ -1528,7 +1528,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.ID2netSecondaryCPUFault:  // 372
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "ID2net Secondary CPU Fault";
                         giAddressNumber = 163;
                         getDeviceText = false;
@@ -1536,7 +1536,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.ID2netPartialOpenShortCircuitFault:  // 373
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "ID2net Partial Open/Short Circuit Fault";
                         giAddressNumber = 164;
                         getDeviceText = false;
@@ -1544,7 +1544,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.ID2netPhaseReversalFault:  // 374
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "ID2net Phase Reversal Fault";
                         giAddressNumber = 165;
                         getDeviceText = false;
@@ -1552,7 +1552,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.ID2netChannelInversionFault:  // 375
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "ID2net Channel Inversion Fault";
                         giAddressNumber = 166;
                         getDeviceText = false;
@@ -1560,7 +1560,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.IncompatibleBaudRateCombination:  // 376
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Incompatible Baud Rate Combination";
                         giAddressNumber = 167;
                         getDeviceText = false;
@@ -1568,7 +1568,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.SounderCircuitsCPUFault:  // 377
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Sounder Circuits CPU Fault";
                         giAddressNumber = 168;
                         getDeviceText = false;
@@ -1576,7 +1576,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.ExtinguishingSystemExternalFault:  // 378
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Extinguishing System External Fault";
                         giAddressNumber = 169;
                         getDeviceText = false;
@@ -1584,7 +1584,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.ExtinguishingSystemTXPathFault:  // 379
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Extinguishing System TX Path Fault";
                         giAddressNumber = 170;
                         getDeviceText = false;
@@ -1592,7 +1592,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.TooManyCLIPAddresses:  // 380
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Too Many CLIP Addresses";
                         giAddressNumber = 171;
                         getDeviceText = false;
@@ -1600,7 +1600,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.OPALAutoConfigIncomplete:  // 381
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "OPAL Auto-config Incomplete";
                         giAddressNumber = 172;
                         getDeviceText = false;
@@ -1608,7 +1608,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.SensorAtAddressOutOfRange:  // 382
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Sensor at Address Out-of-Range, Loop " + loop;
                         giAddressNumber = 173;
                         getDeviceText = false;
@@ -1616,7 +1616,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.ModuleAtAddressOutOfRange:  // 386
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Module at Address Out-of-Range, Loop " + loop;
                         giAddressNumber = 174;
                         getDeviceText = false;
@@ -1803,7 +1803,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.LEDCardMissingFFault:  // 422
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "LED Card Missing Fault";
                         giAddressNumber = 193;
                         getDeviceText = false;
@@ -1934,7 +1934,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.SystemIOCardCommsFaul:  // 438
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "System IO Card Comms Fault";
                         giAddressNumber = 207;
                         getDeviceText = false;
