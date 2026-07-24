@@ -369,6 +369,11 @@ namespace DraxTechnology
         BatteryLowVoltage = 291,
         BatteryFailure = 292,
         SoftwareFailure = 302,
+        // 099-048 3.5.2 lists 306-311 with circuits 2-then-1, opposite to the
+        // ordering here. NOTNetManager.bas and PRLNetManager.bas both use
+        // 1-then-2, and the document contradicts its own circuit 3/4 block
+        // (313-318, natural order) - the document is taken as the typo. Checked
+        // 2026-07-24; do not "fix" these against the document.
         SounderCircuit1ShortFault = 306,
         SounderCircuit2ShortFault = 307,
         SounderCircuit1OpenFault = 308,

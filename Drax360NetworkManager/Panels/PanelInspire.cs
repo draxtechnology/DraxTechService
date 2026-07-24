@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO.Ports;
 using System.Linq;
+using System.Net.NetworkInformation;
 using System.Text;
 using System.Threading;
 
@@ -1665,7 +1666,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.MainsBrownOut:  // 405
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Mains Brown-out";
                         giAddressNumber = 177;
                         getDeviceText = false;
@@ -1673,7 +1674,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.PSUModuleFault:  // 406
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "PSU Module Fault";
                         giAddressNumber = 178;
                         getDeviceText = false;
@@ -1681,7 +1682,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.AuxSupplyFault:  // 407
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Auxiliary Supply Fault";
                         giAddressNumber = 179;
                         getDeviceText = false;
@@ -1778,7 +1779,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.BatteryWiringFault:  // 419
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Battery Wiring Fault";
                         giAddressNumber = 190;
                         getDeviceText = false;
@@ -1786,7 +1787,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.PerformanceCardReadFault:  // 420
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Performance Card Read Fault";
                         giAddressNumber = 191;
                         getDeviceText = false;
@@ -1794,7 +1795,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.AuxillarySupplyDisconnected:  // 421
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Auxiliary Supply Disconnected";
                         giAddressNumber = 192;
                         getDeviceText = false;
@@ -1810,7 +1811,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.NetworkPanelMissing:  // 423
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Network Panel Missing";
                         giAddressNumber = 194;
                         getDeviceText = false;
@@ -1818,7 +1819,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.MaximumLoopsExceeded:  // 424
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Maximum Loops Exceeded";
                         giAddressNumber = 195;
                         getDeviceText = false;
@@ -1826,7 +1827,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.LEDCardAddedFault:  // 425
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "LED Card Added Fault";
                         giAddressNumber = 196;
                         getDeviceText = false;
@@ -1834,7 +1835,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.RemoteLinkNoReply:  // 426
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Remote Link No Reply";
                         giAddressNumber = 197;
                         getDeviceText = false;
@@ -1842,7 +1843,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.PanelStatusMismatch:  // 427
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Panel Status Mismatch";
                         giAddressNumber = 198;
                         getDeviceText = false;
@@ -1850,7 +1851,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.ConfigStatusMismatch:  // 428
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "Config Status Mismatch";
                         giAddressNumber = 199;
                         getDeviceText = false;
@@ -1858,8 +1859,8 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.GeneralNonDeviceFaultatRemotePanel:  // 429
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
-                        gsTextField = "General Fault at Remote Panel";
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                        gsTextField = "General Fault at Remote Panel " + panel;
                         giAddressNumber = 200;
                         loop = 0;
                         getDeviceText = false;
@@ -1867,7 +1868,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.NewAuxillarySUpply:  // 430
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "New Auxiliary Supply";
                         giAddressNumber = 192;
                         on = false;
@@ -1901,7 +1902,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.SystemIOCardMissingFault:  // 434
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "System IO Card Missing Fault";
                         giAddressNumber = 203;
                         getDeviceText = false;
@@ -1909,7 +1910,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.SystemIOCardAddedFault:  // 435
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "System IO Card Added Fault";
                         giAddressNumber = 204;
                         getDeviceText = false;
@@ -1917,7 +1918,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.SystemIOCardVersionMismatch:  // 436
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "System IO Card Version Mismatch";
                         giAddressNumber = 205;
                         getDeviceText = false;
@@ -1925,7 +1926,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.SystemIOCardRestart:  // 437
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "System IO Card Restart";
                         giAddressNumber = 206;
                         getDeviceText = false;
@@ -1941,7 +1942,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.FATFBFCommsFailureFault:  // 439
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "FAT/FBF Comms Failure Fault";
                         giAddressNumber = 208;
                         getDeviceText = false;
@@ -1949,7 +1950,7 @@ public string gsDeviceText = "";
                         break;
 
                     case enmNotEventType.FATFBFMissingFault:  // 440
-                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                         gsTextField = "FAT/FBF Missing Fault";
                         giAddressNumber = 209;
                         getDeviceText = false;
