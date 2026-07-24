@@ -455,13 +455,1001 @@ namespace DraxTechnology.Panels
                     Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
                     return true;
 
+                // 099-048 3.5.2 panel/system events (added 2026-07-24).
+                // Each event owns a unique AMX pseudo-address (110-213, clear
+                // of the 0-102 legacy band); enable/disable style pairs share
+                // one address, the clearing side sending on = false. 441
+                // shares 67 with the existing Remote Fire Output Test (176).
+                case enmNotEventType.AllViewSensorsReplacedOnLoop:  // 133
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "All VIEW Sensors Replaced, Loop " + st.loop;
+                    st.giAddressNumber  = 110;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.PasscodeWarning:  // 134
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Passcode Warning";
+                    st.giAddressNumber  = 111;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.ControlMatrixEntryCreated:  // 141
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Control Matrix Entry Created";
+                    st.giAddressNumber  = 112;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.ControlMatrixEntryDeleted:  // 142
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Control Matrix Entry Deleted";
+                    st.giAddressNumber  = 113;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.EditedChangesCancelled:  // 144
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Edited Changes Cancelled";
+                    st.giAddressNumber  = 114;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.TestActivationSounderRelayCircuit:  // 145
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Test Activation Sounder or Relay Circuit";
+                    st.giAddressNumber  = 115;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.NetworkStationNameChanged:  // 151
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Network Station Name Changed";
+                    st.giAddressNumber  = 116;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.NetworkConfigurationChanged:  // 152
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Network Configuration Changed";
+                    st.giAddressNumber  = 117;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.RemoteInitiatedTestZone:  // 158
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Remote Initiated Test Zone " + st.zone;
+                    st.giAddressNumber  = 118;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.RemoteFireOutputDisabled:  // 160
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Remote Fire Output Disabled";
+                    st.giAddressNumber  = 119;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.MuteInternalBuzzer:  // 161
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Mute Internal Buzzer";
+                    st.giAddressNumber  = 120;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.ControlOutputsDisabled:  // 162
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Control Outputs Disabled";
+                    st.giAddressNumber  = 121;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.InvestigationDelayExtendedCircuit:  // 164
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Investigation Delay Extended";
+                    st.giAddressNumber  = 122;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.RemoteFireOutputActivated:  // 165
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Remote Fire Output Activated";
+                    st.giAddressNumber  = 123;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.ControlOutputsEnabled:  // 166
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Control Outputs Enabled";
+                    st.giAddressNumber  = 121;
+                    on                  = false;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.RemoteFireOutputEnabled:  // 168
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Remote Fire Output Enabled";
+                    st.giAddressNumber  = 119;
+                    on                  = false;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.PanelMainCoverRemoved:  // 174
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Panel Main Cover Removed";
+                    st.giAddressNumber  = 124;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.PanelMainCoverReplaced:  // 175
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Panel Main Cover Replaced";
+                    st.giAddressNumber  = 124;
+                    on                  = false;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.RemoteFireOutputDeactivated:  // 177
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Remote Fire Output Deactivated";
+                    st.giAddressNumber  = 123;
+                    on                  = false;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.FireControlDevicesDisabled:  // 179
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Fire Control Devices Disabled";
+                    st.giAddressNumber  = 125;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.FireControlDevicesEnabled:  // 180
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Fire Control Devices Enabled";
+                    st.giAddressNumber  = 125;
+                    on                  = false;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.SSTDevicesDisabled:  // 187
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "SST Devices Disabled";
+                    st.giAddressNumber  = 126;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.SSTDevicesEnabled:  // 188
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "SST Devices Enabled";
+                    st.giAddressNumber  = 126;
+                    on                  = false;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.PanelExpansionCoverRemoved:  // 189
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Panel Expansion Cover Removed";
+                    st.giAddressNumber  = 127;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.PanelExpansionCoverReplaced:  // 190
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Panel Expansion Cover Replaced";
+                    st.giAddressNumber  = 127;
+                    on                  = false;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.RepeaterCommsFail:  // 201
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "Repeater Comms Fail";
+                    st.giAddressNumber  = 128;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.TestDeactivationSounderRelayCircuit:  // 202
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Test De-activation Sounder or Relay Circuit";
+                    st.giAddressNumber  = 115;
+                    on                  = false;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.AllSoundersTestedOnLoop:  // 215
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "All Sounders Tested, Loop " + st.loop;
+                    st.giAddressNumber  = 129;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.BackupFireLineActivated:  // 235
+                    st.gAlarmType       = enmNotAlarmType.NOTFire.ToString();
+                    st.gsTextField      = "Backup Fire Line Activated";
+                    st.giAddressNumber  = 130;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.SectorAssignmentError:  // 236
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "Sector Assignment Error";
+                    st.giAddressNumber  = 131;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.PanelAskedToSuspendUnsolicited:  // 246
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Panel Asked to Suspend Unsolicited Messages";
+                    st.giAddressNumber  = 132;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.PanelAskedToResumeUnsolicited:  // 247
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Panel Asked to Resume Unsolicited Messages";
+                    st.giAddressNumber  = 132;
+                    on                  = false;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.MainCPUWatchdogOperated:  // 296
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "Main CPU Watchdog Operated";
+                    st.giAddressNumber  = 133;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.CPUEPROMChecksumError:  // 297
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "CPU EPROM Checksum Error";
+                    st.giAddressNumber  = 134;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.CPUE2PROMMemoryWriteError:  // 298
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "CPU E2PROM Memory Write Error";
+                    st.giAddressNumber  = 135;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.CPUFlashMemoryChecksumError:  // 299
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "CPU FLASH Memory Checksum Error";
+                    st.giAddressNumber  = 136;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.PrinterFault:  // 300
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "Printer Fault";
+                    st.giAddressNumber  = 137;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.CPUFlashMemoryWriteError:  // 301
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "CPU FLASH Memory Write Error";
+                    st.giAddressNumber  = 138;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.CPUDisplayHardwareFault:  // 303
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "CPU/Display Hardware Fault";
+                    st.giAddressNumber  = 139;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.BaseboardExpansionHardwareFault:  // 304
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "Baseboard/Expansion Hardware Fault";
+                    st.giAddressNumber  = 140;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.CPUWatchdogTimerFault:  // 305
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "CPU Watchdog Timer Fault";
+                    st.giAddressNumber  = 141;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.CPUWatchdogNotEnabled:  // 320
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "CPU Watchdog Not Enabled";
+                    st.giAddressNumber  = 142;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.ClockSetToAfterAD2099:  // 321
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "Clock Set to After AD2099";
+                    st.giAddressNumber  = 143;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.CPUClockMonitorFailure:  // 322
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "CPU Clock Monitor Failure";
+                    st.giAddressNumber  = 144;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.CPUIllegalInstruction:  // 323
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "CPU Illegal Instruction";
+                    st.giAddressNumber  = 145;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.PSUFaultCrowbarActive:  // 326
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "PSU Fault: Crowbar Active";
+                    st.giAddressNumber  = 146;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.ConfigurationNeedsExpansionCard:  // 327
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "Configuration Needs Expansion Card";
+                    st.giAddressNumber  = 147;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.ConfigurationNeedsRS485Card:  // 328
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "Configuration Needs RS485 Card";
+                    st.giAddressNumber  = 148;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.ConfigurationNeedsRS232Card:  // 329
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "Configuration Needs RS232 Card";
+                    st.giAddressNumber  = 149;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.CommsCardDisplaced:  // 330
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "RS232/RS485/Printer Card Displaced";
+                    st.giAddressNumber  = 150;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.PoweredOffDueToLowBattery:  // 331
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "Powered Off Due to Low Battery";
+                    st.giAddressNumber  = 151;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.ExternalPSUDualTXPathFault:  // 333
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "External PSU Dual TX Path Fault";
+                    st.giAddressNumber  = 152;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.ExternalPSULowSystemVoltage:  // 334
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "External PSU Low System Voltage";
+                    st.giAddressNumber  = 153;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.ELIBCardMissingOrFault:  // 335
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "ELIB Card Missing or Fault, Loop " + st.loop;
+                    st.giAddressNumber  = 154;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.ELIBFlashMemoryWriteFail:  // 339
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "ELIB FLASH Memory Write Fail, Loop " + st.loop;
+                    st.giAddressNumber  = 155;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.ELIBDataDownloadFailed:  // 343
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "ELIB Data Download Failed, Loop " + st.loop;
+                    st.giAddressNumber  = 156;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.MainCPUWatchdogOperatedCOP:  // 349
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "Main CPU Watchdog Operated (COP)";
+                    st.giAddressNumber  = 157;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.IncompatibleLIBCardInstalled:  // 351
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "Incompatible LIB Card Installed, Loop " + st.loop;
+                    st.giAddressNumber  = 158;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.IncompatibleLoopDeviceAndLIB:  // 366
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "Incompatible Loop Device and LIB, Loop " + st.loop;
+                    st.giAddressNumber  = 159;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.PowerSupplySecondaryBackupFault:  // 369
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "Power-Supply Secondary Backup Fault";
+                    st.giAddressNumber  = 160;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.IncompatiblePanelNetworkZones:  // 370
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "Incompatible Panel/Network Zones Combination";
+                    st.giAddressNumber  = 161;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.ID2netPrimaryCPUFault:  // 371
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "ID2net Primary CPU Fault";
+                    st.giAddressNumber  = 162;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.ID2netSecondaryCPUFault:  // 372
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "ID2net Secondary CPU Fault";
+                    st.giAddressNumber  = 163;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.ID2netPartialOpenShortCircuitFault:  // 373
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "ID2net Partial Open/Short Circuit Fault";
+                    st.giAddressNumber  = 164;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.ID2netPhaseReversalFault:  // 374
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "ID2net Phase Reversal Fault";
+                    st.giAddressNumber  = 165;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.ID2netChannelInversionFault:  // 375
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "ID2net Channel Inversion Fault";
+                    st.giAddressNumber  = 166;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.IncompatibleBaudRateCombination:  // 376
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "Incompatible Baud Rate Combination";
+                    st.giAddressNumber  = 167;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.SounderCircuitsCPUFault:  // 377
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "Sounder Circuits CPU Fault";
+                    st.giAddressNumber  = 168;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.ExtinguishingSystemExternalFault:  // 378
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "Extinguishing System External Fault";
+                    st.giAddressNumber  = 169;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.ExtinguishingSystemTXPathFault:  // 379
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "Extinguishing System TX Path Fault";
+                    st.giAddressNumber  = 170;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.TooManyCLIPAddresses:  // 380
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "Too Many CLIP Addresses";
+                    st.giAddressNumber  = 171;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.OPALAutoConfigIncomplete:  // 381
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "OPAL Auto-config Incomplete";
+                    st.giAddressNumber  = 172;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.SensorAtAddressOutOfRange:  // 382
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "Sensor at Address Out-of-Range, Loop " + st.loop;
+                    st.giAddressNumber  = 173;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.ModuleAtAddressOutOfRange:  // 386
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "Module at Address Out-of-Range, Loop " + st.loop;
+                    st.giAddressNumber  = 174;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.ID2netMessageDeliverFailure:  // 400
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "ID2net Message Delivery Failure";
+                    st.giAddressNumber  = 175;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.WalkTestSoundersStart:  // 401
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Walk Test Sounders Start";
+                    st.giAddressNumber  = 176;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.WalkTestNoSoundersStart:  // 402
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Walk Test No Sounders Start";
+                    st.giAddressNumber  = 176;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.WalkTestAutoReset:  // 403
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Walk Test Auto Reset";
+                    st.giAddressNumber  = 176;
+                    on                  = false;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.WalkTestEnd:  // 404
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Walk Test End";
+                    st.giAddressNumber  = 176;
+                    on                  = false;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.MainsBrownOut:  // 405
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "Mains Brown-out";
+                    st.giAddressNumber  = 177;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.PSUModuleFault:  // 406
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "PSU Module Fault";
+                    st.giAddressNumber  = 178;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.AuxSupplyFault:  // 407
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "Auxiliary Supply Fault";
+                    st.giAddressNumber  = 179;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.MemoryLockOpen:  // 408
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Memory Lock Open";
+                    st.giAddressNumber  = 180;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.DisableLocalInputs:  // 409
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Disable Local Inputs";
+                    st.giAddressNumber  = 181;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.EnableLocalInputs:  // 410
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Enable Local Inputs";
+                    st.giAddressNumber  = 181;
+                    on                  = false;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.PCEvent1:  // 411
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "PC Event 1";
+                    st.giAddressNumber  = 182;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.PCEvent2:  // 412
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "PC Event 2";
+                    st.giAddressNumber  = 183;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.PCEvent3:  // 413
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "PC Event 3";
+                    st.giAddressNumber  = 184;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.PCEvent4:  // 414
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "PC Event 4";
+                    st.giAddressNumber  = 185;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.PCEvent5:  // 415
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "PC Event 5";
+                    st.giAddressNumber  = 186;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.PCEvent6:  // 416
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "PC Event 6";
+                    st.giAddressNumber  = 187;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.PCEvent7:  // 417
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "PC Event 7";
+                    st.giAddressNumber  = 188;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.PCEvent8:  // 418
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "PC Event 8";
+                    st.giAddressNumber  = 189;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.BatteryWiringFault:  // 419
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "Battery Wiring Fault";
+                    st.giAddressNumber  = 190;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.PerformanceCardReadFault:  // 420
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "Performance Card Read Fault";
+                    st.giAddressNumber  = 191;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.AuxillarySupplyDisconnected:  // 421
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "Auxiliary Supply Disconnected";
+                    st.giAddressNumber  = 192;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.LEDCardMissingFFault:  // 422
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "LED Card Missing Fault";
+                    st.giAddressNumber  = 193;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.NetworkPanelMissing:  // 423
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "Network Panel Missing";
+                    st.giAddressNumber  = 194;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.MaximumLoopsExceeded:  // 424
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "Maximum Loops Exceeded";
+                    st.giAddressNumber  = 195;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.LEDCardAddedFault:  // 425
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "LED Card Added Fault";
+                    st.giAddressNumber  = 196;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.RemoteLinkNoReply:  // 426
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "Remote Link No Reply";
+                    st.giAddressNumber  = 197;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.PanelStatusMismatch:  // 427
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "Panel Status Mismatch";
+                    st.giAddressNumber  = 198;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.ConfigStatusMismatch:  // 428
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "Config Status Mismatch";
+                    st.giAddressNumber  = 199;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
                 case enmNotEventType.GeneralNonDeviceFaultatRemotePanel:  // 429
-                    // 099-048 3.5.2: category F, "placeholder for otherwise
-                    // unspecified fault". Loop/zone fields not applicable —
-                    // the panel fills the loop byte anyway, so zero it.
                     st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
                     st.gsTextField      = "General Fault at Remote Panel";
+                    st.giAddressNumber  = 200;
                     st.loop             = 0;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.NewAuxillarySUpply:  // 430
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "New Auxiliary Supply";
+                    st.giAddressNumber  = 192;
+                    on                  = false;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.AllClearMessage:  // 431
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "All Clear Message";
+                    st.giAddressNumber  = 201;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.StartSystemTest:  // 432
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Start System Test";
+                    st.giAddressNumber  = 202;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.StopSystemTest:  // 433
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Stop System Test";
+                    st.giAddressNumber  = 202;
+                    on                  = false;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.SystemIOCardMissingFault:  // 434
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "System IO Card Missing Fault";
+                    st.giAddressNumber  = 203;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.SystemIOCardAddedFault:  // 435
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "System IO Card Added Fault";
+                    st.giAddressNumber  = 204;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.SystemIOCardVersionMismatch:  // 436
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "System IO Card Version Mismatch";
+                    st.giAddressNumber  = 205;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.SystemIOCardRestart:  // 437
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "System IO Card Restart";
+                    st.giAddressNumber  = 206;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.SystemIOCardCommsFaul:  // 438
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "System IO Card Comms Fault";
+                    st.giAddressNumber  = 207;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.FATFBFCommsFailureFault:  // 439
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "FAT/FBF Comms Failure Fault";
+                    st.giAddressNumber  = 208;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.FATFBFMissingFault:  // 440
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "FAT/FBF Missing Fault";
+                    st.giAddressNumber  = 209;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.RemoteFireOutputTestEnd:  // 441
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Remote Fire Output Test End";
+                    st.giAddressNumber  = 67;
+                    on                  = false;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.SSTDeviceTestStart:  // 442
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "SST Device Test Start";
+                    st.giAddressNumber  = 210;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.SSTDeviceTestEnd:  // 443
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "SST Device Test End";
+                    st.giAddressNumber  = 210;
+                    on                  = false;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.ActivateRemoteFireOutput:  // 444
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Activate Remote Fire Outputs";
+                    st.giAddressNumber  = 211;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.ActivateSSTDevices:  // 445
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Activate SST Devices";
+                    st.giAddressNumber  = 212;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.SuppressInternalBuzzer:  // 446
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Suppress Internal Buzzer";
+                    st.giAddressNumber  = 213;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
+                case enmNotEventType.EnableInternalBuzzer:  // 447
+                    st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
+                    st.gsTextField      = "Enable Internal Buzzer";
+                    st.giAddressNumber  = 213;
+                    on                  = false;
                     st.getDeviceText    = false;
                     Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
                     return true;
