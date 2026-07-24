@@ -40,6 +40,7 @@ public string gsDeviceText = "";
             {
                 heartbeat_timer = new Timer(heartbeat_timer_callback, this.Identifier, 1000, kHeartbeatDelaySeconds * 1000);
                 this.Offset = base.GetSetting<int>(ksettingsetupsection, "giAmx1Offset");
+                InitAnalogueStore();
             }
         }
         public override void SerialPort_Datareceived(object sender, System.IO.Ports.SerialDataReceivedEventArgs e)
@@ -113,6 +114,17 @@ public string gsDeviceText = "";
                     SendChar(ch);
                 }
                 Console.WriteLine(DateTime.Now + ": " + stracknowledge.Replace("\r", "") + " Sent to Panel");
+            }
+
+            // Extended Device Status response (099-048 section 3.3.4.3), the
+            // answer to an Analogue() request. Its ">IS" prefix means the IACK
+            // branch above has already answered it. Mirrors
+            // AbstractPanelId3k.HandleExtendedDeviceStatus — this driver is
+            // deliberately standalone.
+            if (strmsg.StartsWith(">ISE") && Id3kExtendedDeviceStatus.TryParse(strmsg, out Id3kExtendedDeviceStatus extStatus))
+            {
+                HandleExtendedDeviceStatus(extStatus);
+                continue;
             }
 
             if (cmd == "IE")
@@ -1422,9 +1434,20 @@ public string gsDeviceText = "";
         {
             send_message(ActionType.kENABLEZONE, passedvalues);
         }
+        // Extended Device Status Request (099-048 section 3.3.4.1). The panel
+        // answers asynchronously with ">ISE", handled in Parse. Request tail
+        // per the document: half duplex carries the 4-char NOT checksum, full
+        // duplex terminates straight after the body (unlike this driver's event
+        // acks, which append a 2-char sum in full duplex).
         public override void Analogue(string passedvalues)
         {
-            throw new NotImplementedException();
+            ParsePassedValues(passedvalues, out int node, out int loop, out _, out int device);
+            string body = Id3kExtendedDeviceStatus.BuildStatusRequestBody(node, loop, device);
+            string frame = (gbHalfDuplex ? body + CreateNOTChecksum(body.Substring(1)) : body) + "\r";
+
+            serialsend(frame);
+
+            Console.WriteLine(DateTime.Now + ": " + frame.Replace("\r", "") + " Sent to panel");
         }
         public virtual void send_message(ActionType action, string passedvalues)
         {
@@ -1616,6 +1639,31 @@ public string gsDeviceText = "";
             serialsend(message);
 
             Console.WriteLine(DateTime.Now + ": " + message.Replace("\r", "") + " Sent to panel");
+        }
+
+        // Mirrors AbstractPanelId3k.HandleExtendedDeviceStatus: one row per
+        // value, the device's primary value (CLIP PW1 / S200 sub-address 0 /
+        // gas) under the plain address, extras as "addr/PWn" or "addr.n".
+        private void HandleExtendedDeviceStatus(Id3kExtendedDeviceStatus status)
+        {
+            NotifyClient($"Extended status: panel {status.Panel} loop {status.Loop} "
+                + $"{(status.IsSensor ? "sensor" : "module")} {status.Address} "
+                + $"type {status.DeviceTypeCode} status {status.StatusWord} \"{status.Text}\"", false);
+
+            if (status.GasAnalogueValue.HasValue)
+            {
+                addtoanalogue(Identifier, status.Panel, status.Loop, status.Address.ToString(), status.GasAnalogueValue.Value);
+            }
+            else if (status.Analogue != null)
+            {
+                foreach (Id3kAnalogueReading r in status.Analogue.Readings)
+                {
+                    string addr = status.Analogue.Protocol == Id3kDeviceProtocol.Clip
+                        ? (r.Index == 1 ? status.Address.ToString() : $"{status.Address}/PW{r.Index}")
+                        : (r.Index == 0 ? status.Address.ToString() : $"{status.Address}.{r.Index}");
+                    addtoanalogue(Identifier, status.Panel, status.Loop, addr, r.Value);
+                }
+            }
         }
 
         private string CreateSimpleChecksum(string body)

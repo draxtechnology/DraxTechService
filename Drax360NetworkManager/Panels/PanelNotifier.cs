@@ -287,5 +287,23 @@ namespace DraxTechnology.Panels
 
             Console.WriteLine(DateTime.Now + ": " + frame.Replace("\r", "") + " Sent to panel");
         }
+
+        // Extended Device Status Request (099-048 section 3.3.4.1). The panel
+        // answers asynchronously with ">ISE", decoded in AbstractPanelId3k.
+        // Per the document the feature is protocol version 0013 / Pearl only,
+        // so an older ID3000 may not respond — the request is harmless.
+        public override void Analogue(string passedvalues)
+        {
+            ParsePassedValues(passedvalues, out int node, out int loop, out _, out int device);
+            string body = Id3kExtendedDeviceStatus.BuildStatusRequestBody(node, loop, device);
+            string frame = body + CreateNOTChecksum(body.Substring(1)) + "\r";
+
+            if (UseHalfDuplexGatedSend)
+                HalfDuplexSend(frame);
+            else
+                serialsend(frame);
+
+            Console.WriteLine(DateTime.Now + ": " + frame.Replace("\r", "") + " Sent to panel");
+        }
     }
 }

@@ -42,6 +42,8 @@ namespace DraxTechnology.Panels
         protected AbstractPanelId3k(string baselogfolder, string identifier, string inifile, string extension)
             : base(baselogfolder, identifier, inifile, extension)
         {
+            if (!string.IsNullOrEmpty(identifier))
+                InitAnalogueStore();
         }
 
         // ----------------------------------------------------------------
@@ -72,6 +74,13 @@ namespace DraxTechnology.Panels
                 foreach (char ch in ack) SendChar(ch);
                 Console.WriteLine(DateTime.Now + ": " + ">IACK Sent to Panel");
             }
+
+            // Extended Device Status response (099-048 section 3.3.4.3). Its
+            // ">IS" prefix means the IACK branch above has already answered it.
+            // Per the document this arrives on Pearl / protocol version 0013
+            // panels only.
+            if (strmsg.StartsWith(">ISE") && Id3kExtendedDeviceStatus.TryParse(strmsg, out Id3kExtendedDeviceStatus extStatus))
+                HandleExtendedDeviceStatus(extStatus);
 
             if (cmd != "IE") return;
 
@@ -1269,7 +1278,32 @@ namespace DraxTechnology.Panels
         public override void EnableDevice(string passedvalues)     => send_message(ActionType.kENABLEDEVICE,     passedvalues);
         public override void DisableZone(string passedvalues)      => send_message(ActionType.kDISABLEZONE,      passedvalues);
         public override void EnableZone(string passedvalues)       => send_message(ActionType.kENABLEZONE,       passedvalues);
-        public override void Analogue(string passedvalues)         => throw new NotImplementedException();
+        // Analogue readback (099-048 section 3.3.4): subclasses implement
+        // Analogue() because the request's checksum tail differs by wire format;
+        // the response lands here from Parse. Readings store as one row per
+        // value: the device's primary value (CLIP PW1 / S200 sub-address 0 /
+        // gas) under the plain address, extras as "addr/PWn" or "addr.n".
+        protected void HandleExtendedDeviceStatus(Id3kExtendedDeviceStatus status)
+        {
+            NotifyClient($"Extended status: panel {status.Panel} loop {status.Loop} "
+                + $"{(status.IsSensor ? "sensor" : "module")} {status.Address} "
+                + $"type {status.DeviceTypeCode} status {status.StatusWord} \"{status.Text}\"", false);
+
+            if (status.GasAnalogueValue.HasValue)
+            {
+                addtoanalogue(Identifier, status.Panel, status.Loop, status.Address.ToString(), status.GasAnalogueValue.Value);
+            }
+            else if (status.Analogue != null)
+            {
+                foreach (Id3kAnalogueReading r in status.Analogue.Readings)
+                {
+                    string addr = status.Analogue.Protocol == Id3kDeviceProtocol.Clip
+                        ? (r.Index == 1 ? status.Address.ToString() : $"{status.Address}/PW{r.Index}")
+                        : (r.Index == 0 ? status.Address.ToString() : $"{status.Address}.{r.Index}");
+                    addtoanalogue(Identifier, status.Panel, status.Loop, addr, r.Value);
+                }
+            }
+        }
 
         // Subclasses provide the panel-specific wire-format send
         public abstract void send_message(ActionType action, string passedvalues);

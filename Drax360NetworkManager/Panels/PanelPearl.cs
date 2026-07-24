@@ -189,5 +189,19 @@ namespace DraxTechnology.Panels
 
             Console.WriteLine(DateTime.Now + ": " + frame.Replace("\r", "") + " Sent to panel");
         }
+
+        // Extended Device Status Request (099-048 section 3.3.4.1). The panel
+        // answers asynchronously with ">ISE", decoded in AbstractPanelId3k.
+        // Full-duplex request format: no checksum, just the \r terminator.
+        public override void Analogue(string passedvalues)
+        {
+            ParsePassedValues(passedvalues, out int node, out int loop, out _, out int device);
+            string frame = Id3kExtendedDeviceStatus.BuildStatusRequestBody(node, loop, device) + "\r";
+
+            foreach (char ch in frame)
+                SendChar(ch);
+
+            Console.WriteLine(DateTime.Now + ": " + frame.Replace("\r", "") + " Sent to panel");
+        }
     }
 }
