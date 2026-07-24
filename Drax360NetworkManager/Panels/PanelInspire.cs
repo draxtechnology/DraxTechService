@@ -1017,6 +1017,17 @@ public string gsDeviceText = "";
                         Console.WriteLine(DateTime.Now + ": " + gsTextField);
                         break;
 
+                    case enmNotEventType.GeneralNonDeviceFaultatRemotePanel:  // 429
+                        // 099-048 3.5.2: category F, "placeholder for otherwise
+                        // unspecified fault". Loop/zone fields not applicable —
+                        // the panel fills the loop byte anyway, so zero it.
+                        gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                        gsTextField = "General Fault at Remote Panel";
+                        loop = 0;
+                        getDeviceText = false;
+                        Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                        break;
+
                     default:
                         base.NotifyClient("Unknown Event " + ((enmNotEventType)eventcode));
                         break;
@@ -1652,7 +1663,7 @@ public string gsDeviceText = "";
 
             if (status.GasAnalogueValue.HasValue)
             {
-                addtoanalogue(Identifier, status.Panel, status.Loop, status.Address.ToString(), status.GasAnalogueValue.Value);
+                addtoanalogue("Inspire", status.Panel, status.Loop, status.Address.ToString(), status.GasAnalogueValue.Value);
             }
             else if (status.Analogue != null)
             {
@@ -1661,7 +1672,7 @@ public string gsDeviceText = "";
                     string addr = status.Analogue.Protocol == Id3kDeviceProtocol.Clip
                         ? (r.Index == 1 ? status.Address.ToString() : $"{status.Address}/PW{r.Index}")
                         : (r.Index == 0 ? status.Address.ToString() : $"{status.Address}.{r.Index}");
-                    addtoanalogue(Identifier, status.Panel, status.Loop, addr, r.Value);
+                    addtoanalogue("Inspire", status.Panel, status.Loop, addr, r.Value);
                 }
             }
         }

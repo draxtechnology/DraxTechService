@@ -14,6 +14,7 @@ namespace DraxTechnology.Panels
             >IE0102411527000100001S01030000000000"OFFICE P1?DEV ROOM ZONE 1"1A7\r */
             ">IE0220611450330000000BDD\r";
         public override string PanelVersion => "1.0.0.0";
+        protected override string AnaloguePanelName => "Pearl";
 
         public PanelPearl(string baselogfolder, string identifier)
             : base(baselogfolder, identifier, "PRLMan", "PRL")

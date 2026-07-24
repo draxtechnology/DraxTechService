@@ -455,6 +455,17 @@ namespace DraxTechnology.Panels
                     Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
                     return true;
 
+                case enmNotEventType.GeneralNonDeviceFaultatRemotePanel:  // 429
+                    // 099-048 3.5.2: category F, "placeholder for otherwise
+                    // unspecified fault". Loop/zone fields not applicable —
+                    // the panel fills the loop byte anyway, so zero it.
+                    st.gAlarmType       = enmNotAlarmType.NOTFault.ToString();
+                    st.gsTextField      = "General Fault at Remote Panel";
+                    st.loop             = 0;
+                    st.getDeviceText    = false;
+                    Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
+                    return true;
+
                 case enmNotEventType.LossOfLoop:            // 148
                     st.gAlarmType       = enmNotAlarmType.NOTStatusEvent.ToString();
                     st.giAddressNumber  = 20 + st.loop;
@@ -1278,6 +1289,10 @@ namespace DraxTechnology.Panels
         public override void EnableDevice(string passedvalues)     => send_message(ActionType.kENABLEDEVICE,     passedvalues);
         public override void DisableZone(string passedvalues)      => send_message(ActionType.kDISABLEZONE,      passedvalues);
         public override void EnableZone(string passedvalues)       => send_message(ActionType.kENABLEZONE,       passedvalues);
+        // Friendly name for the analogue store's Panel column — Identifier can
+        // be a COM port (e.g. "COM3"), matching the Syncro/Taktis literals.
+        protected virtual string AnaloguePanelName => "Notifier";
+
         // Analogue readback (099-048 section 3.3.4): subclasses implement
         // Analogue() because the request's checksum tail differs by wire format;
         // the response lands here from Parse. Readings store as one row per
@@ -1291,7 +1306,7 @@ namespace DraxTechnology.Panels
 
             if (status.GasAnalogueValue.HasValue)
             {
-                addtoanalogue(Identifier, status.Panel, status.Loop, status.Address.ToString(), status.GasAnalogueValue.Value);
+                addtoanalogue(AnaloguePanelName, status.Panel, status.Loop, status.Address.ToString(), status.GasAnalogueValue.Value);
             }
             else if (status.Analogue != null)
             {
@@ -1300,7 +1315,7 @@ namespace DraxTechnology.Panels
                     string addr = status.Analogue.Protocol == Id3kDeviceProtocol.Clip
                         ? (r.Index == 1 ? status.Address.ToString() : $"{status.Address}/PW{r.Index}")
                         : (r.Index == 0 ? status.Address.ToString() : $"{status.Address}.{r.Index}");
-                    addtoanalogue(Identifier, status.Panel, status.Loop, addr, r.Value);
+                    addtoanalogue(AnaloguePanelName, status.Panel, status.Loop, addr, r.Value);
                 }
             }
         }
