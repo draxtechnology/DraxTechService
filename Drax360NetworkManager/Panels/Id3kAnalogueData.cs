@@ -178,13 +178,17 @@ namespace DraxTechnology.Panels
                 parsed.Analogue = analogue;
             }
 
-            // Text sits between the quote at byte 56 and the next quote; the
-            // checksum/CR that follow are hex digits so can't false-match.
-            if (frame[56 - 1] == '"')
-            {
-                int close = frame.IndexOf('"', 56);
-                if (close > 56) parsed.Text = frame.Substring(56, close - 56);
-            }
+            // The document puts the text quote at byte 56, but a real Inspire
+            // extends the data block by ten bytes (quote at byte 66, trace of
+            // 2026-07-24), so locate the first quote after the fixed header
+            // instead of trusting the position. Everything between the header
+            // and the text is digits, so the first quote is the text start.
+            // A real device's text can carry a numeric prefix before the label
+            // (e.g. "87674353Entrance reception") - kept verbatim.
+            int open = frame.IndexOf('"', 21);
+            int close = open >= 0 ? frame.IndexOf('"', open + 1) : -1;
+            if (open > 0 && close > open)
+                parsed.Text = frame.Substring(open + 1, close - open - 1);
 
             status = parsed;
             return true;
