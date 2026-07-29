@@ -20,6 +20,7 @@ namespace DraxTechnology.Panels
         protected int gsSectorNo;
         protected string gsDeviceText = "";
         protected EnmDeviceType gDeviceType;
+        protected int panelzeroaddress = 1;
 
         // ----------------------------------------------------------------
         // Parse-state bag — populated during Parse, read by post-switch dispatch
@@ -70,9 +71,7 @@ namespace DraxTechnology.Panels
 
             if (cmd == "IS")
             {
-                string ack = ">IACK\r";
-                foreach (char ch in ack) SendChar(ch);
-                Console.WriteLine(DateTime.Now + ": " + ">IACK Sent to Panel");
+                SendFrame(">IACK\r");
             }
 
             // Extended Device Status response (099-048 section 3.3.4.3). Its
@@ -194,6 +193,15 @@ namespace DraxTechnology.Panels
             // Module-address inbound offset (sensor == 'M')
             if (sensor.ToLower() == "m")
                 st.giAddressNumber += GetModuleAddressOffset();
+
+            // Panel 00 means "local panel" on the wire — our own zone
+            // enable/disable commands go out as >IE00136/>IE00137 and echo
+            // straight back, so without this the event reaches AMX addressed
+            // to panel 0 and displays as NON-PROGRAMMED. The VB
+            // (NOTNetManager.bas, before MakeInputNumber) substitutes
+            // giPanelZeroAddress from ini [SetUp] PanelZeroAddress, default 1.
+            if (panel == 0)
+                panel = panelzeroaddress;
 
             int p2 = panel + this.Offset;
             int p3 = loop;
@@ -2090,9 +2098,7 @@ namespace DraxTechnology.Panels
             CSAMXSingleton.CS.SendAlarmToAMX(evnum, message1, message2, message3);
             CSAMXSingleton.CS.FlushMessages();
 
-            string stracknowledge = ">IACK\r";
-            foreach (char ch in stracknowledge) SendChar(ch);
-            Console.WriteLine(DateTime.Now + ": >IACK Sent to Panel");
+            SendFrame(">IACK\r");
         }
 
         // ----------------------------------------------------------------
@@ -2106,7 +2112,11 @@ namespace DraxTechnology.Panels
             {
                 switch (piDeviceType)
                 {
-                    case 0:  gDeviceType = EnmDeviceType.DeviceNotDefined;              gsDeviceText = "Device Not Defined"; break;
+                    // Type 00 = nothing programmed at the address; the panel also
+                    // stamps 00 on its own disablement re-broadcasts, so the VB's
+                    // "Device Not Defined" text put a misleading line under real
+                    // devices on AMX (Inspire trace 2026-07-29). Say nothing.
+                    case 0:  gDeviceType = EnmDeviceType.DeviceNotDefined;              gsDeviceText = ""; break;
                     case 1:  gDeviceType = EnmDeviceType.HeatThermal;                  gsDeviceText = "Heat Thermal"; break;
                     case 2:  gDeviceType = EnmDeviceType.Ionisation;                   gsDeviceText = "Ionisation"; break;
                     case 3:  gDeviceType = EnmDeviceType.Optical;                      gsDeviceText = "Optical"; break;
@@ -2212,8 +2222,7 @@ namespace DraxTechnology.Panels
         protected override void heartbeat_timer_callback(object sender)
         {
             base.heartbeat_timer_callback(sender);
-            string strheartbeat = ">IQS\r";
-            foreach (char ch in strheartbeat) SendChar(ch);
+            SendFrame(">IQS\r");
         }
 
         // ----------------------------------------------------------------
@@ -2225,6 +2234,15 @@ namespace DraxTechnology.Panels
             string settingparity  = base.GetSetting<string>(ksettingsetupsection, "Parity");
             int settingdatabits   = base.GetSetting<int>(ksettingsetupsection, "DataBits");
             int settingstopbits   = base.GetSetting<int>(ksettingsetupsection, "StopBits");
+
+            // GetSetting returns default(T) when the key is absent, so read as
+            // string to tell "missing" apart from a configured 0.
+            string settingpanelzero = base.GetSetting<string>(ksettingsetupsection, "PanelZeroAddress");
+            if (!int.TryParse(settingpanelzero, out panelzeroaddress) || panelzeroaddress < 1)
+            {
+                panelzeroaddress = 1;
+                base.NotifyClient("PanelZeroAddress not set in config file, defaulting to 1", false);
+            }
 
             if (fakemode > 0) return;
 
@@ -2291,6 +2309,14 @@ namespace DraxTechnology.Panels
             NotifyClient($"Extended status: panel {status.Panel} loop {status.Loop} "
                 + $"{(status.IsSensor ? "sensor" : "module")} {status.Address} "
                 + $"type {status.DeviceTypeCode} status {status.StatusWord} \"{status.Text}\"", false);
+
+            // Type 00 = nothing programmed at this address, so the analogue
+            // block is padding, not data.  A full 1-255 address sweep
+            // (Inspire, 2026-07-29) filled the store with junk /PW rows from
+            // every "No Reply" answer — record nothing for unprogrammed
+            // addresses.
+            if (status.DeviceTypeCode == 0)
+                return;
 
             if (status.GasAnalogueValue.HasValue)
             {

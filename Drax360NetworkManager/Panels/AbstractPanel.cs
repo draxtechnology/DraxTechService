@@ -366,6 +366,43 @@ namespace DraxTechnology.Panels
             return false;
         }
 
+        // Writes a complete frame in one serial write, under the same lock as
+        // the queued-command writer. The short panel-facing frames (>IACK, >IN,
+        // >IQS) used to be clocked out char-by-char via SendChar with no lock,
+        // so the heartbeat timer, the parse thread and the command queue could
+        // interleave characters inside each other's frames — the 2026-07-29
+        // Inspire trace shows ">IACK" and ">IQS" merged into one garbage frame
+        // on the wire. One write + one lock makes the frame atomic.
+        protected void SendFrame(string frame)
+        {
+            if (serialport == null)
+            {
+                this.NotifyClient("No serial port configured.", false);
+                return;
+            }
+
+            if (serialport?.IsOpen != true)
+            {
+                try
+                {
+                    serialport.Open();
+                }
+                catch (Exception ex)
+                {
+                    this.NotifyClient("Failed to open " + serialport.PortName +
+                                      ": " + ex.Message, false);
+                    return;
+                }
+            }
+
+            byte[] b = Encoding.ASCII.GetBytes(frame);
+            lock (queueLock)
+            {
+                serialport.Write(b, 0, b.Length);
+            }
+            this.NotifyClient("Sent to Panel: " + frame.Replace("\r", ""), false);
+        }
+
         protected void SendChar(char ch)
         {
             if (serialport == null)

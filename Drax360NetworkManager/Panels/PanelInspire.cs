@@ -19,6 +19,7 @@ public string gsDeviceText = "";
         private bool bOneShotReset;
         public int moduleoffset;
         public string moduleoffsetmode;
+        public int panelzeroaddress = 1;
 
         public override string FakeString
         {
@@ -107,13 +108,7 @@ public string gsDeviceText = "";
                 //
                 if (cmd == "IS")
                 {
-                    string stracknowledge = ">IACK\r";
-
-                    foreach (char ch in stracknowledge)
-                    {
-                        SendChar(ch);
-                    }
-                    Console.WriteLine(DateTime.Now + ": " + stracknowledge.Replace("\r", "") + " Sent to Panel");
+                    SendFrame(">IACK\r");
                 }
 
                 // Extended Device Status response (099-048 section 3.3.4.3), the
@@ -228,8 +223,7 @@ public string gsDeviceText = "";
                     if (!bValidChecksum)
                     {
                         NotifyClient("Failed Checksum NOTNACK");
-                        foreach (char ch in ">IN\r")
-                            SendChar(ch);
+                        SendFrame(">IN\r");
                         return;
                     }
 
@@ -2052,6 +2046,17 @@ public string gsDeviceText = "";
                         }
                     }
 
+                    // Panel 00 means "local panel" on the wire — our own zone
+                    // enable/disable commands go out as >IE00136/>IE00137 and come
+                    // straight back as an echo, so without this the event reaches
+                    // AMX addressed to panel 0 and displays as NON-PROGRAMMED.
+                    // The VB (NOTNetManager.bas, before MakeInputNumber) substitutes
+                    // giPanelZeroAddress from ini [SetUp] PanelZeroAddress, default 1.
+                    if (panel == 0)
+                    {
+                        panel = panelzeroaddress;
+                    }
+
                     p2 = panel + this.Offset;
                     p3 = loop;
                     p4 = Convert.ToInt32(giAddressNumber);
@@ -2114,15 +2119,7 @@ public string gsDeviceText = "";
             CSAMXSingleton.CS.SendAlarmToAMX(evnum, message1, message2, message3);
             CSAMXSingleton.CS.FlushMessages();
 
-            string stracknowledge = ">IACK\r";
-
-            foreach (char ch in stracknowledge)
-            {
-                SendChar(ch);
-            }
-
-            Console.WriteLine(DateTime.Now + ": " + stracknowledge.Replace("\r", "") + " Sent to Panel");
-
+            SendFrame(">IACK\r");
         }
         public void GetDeviceTypeText(int piDeviceType)
         {
@@ -2137,8 +2134,13 @@ public string gsDeviceText = "";
                 switch (piDeviceType)
                 {
                     case 0:
+                        // Type 00 = nothing programmed at the address. The panel
+                        // also stamps 00 on its own disablement re-broadcasts
+                        // (seen after a zone disable, 2026-07-29), so echoing the
+                        // VB's "Device Not Defined" put a misleading extra line
+                        // under real devices on AMX. Say nothing instead.
                         gDeviceType = EnmDeviceType.DeviceNotDefined;
-                        gsDeviceText = "Device Not Defined";
+                        gsDeviceText = "";
                         break;
                     case 1:
                         gDeviceType = EnmDeviceType.HeatThermal;
@@ -2291,12 +2293,7 @@ public string gsDeviceText = "";
         {
             base.heartbeat_timer_callback(sender);
 
-            string strheartbeat = ">IQS\r";
-
-            foreach (char ch in strheartbeat)
-            {
-                SendChar(ch);
-            }
+            SendFrame(">IQS\r");
         }
 
         public override void StartUp(int fakemode)
@@ -2379,6 +2376,15 @@ public string gsDeviceText = "";
                 base.NotifyClient("ModuleOffsetMode not set in config file, defaulting to Node", false);
             }
             base.NotifyClient($"Inspire module offset: amount={moduleoffset} mode={(moduleoffsetmode == "loop" ? "Loop" : "Node")}", false);
+
+            // GetSetting returns default(T) when the key is absent, so read as
+            // string to tell "missing" apart from a configured 0.
+            string settingpanelzero = base.GetSetting<string>(ksettingsetupsection, "PanelZeroAddress");
+            if (!int.TryParse(settingpanelzero, out panelzeroaddress) || panelzeroaddress < 1)
+            {
+                panelzeroaddress = 1;
+                base.NotifyClient("PanelZeroAddress not set in config file, defaulting to 1", false);
+            }
         }
 
         public override void Evacuate(string passedvalues)
@@ -2636,6 +2642,15 @@ public string gsDeviceText = "";
             NotifyClient($"Extended status: panel {status.Panel} loop {status.Loop} "
                 + $"{(status.IsSensor ? "sensor" : "module")} {status.Address} "
                 + $"type {status.DeviceTypeCode} status {status.StatusWord} \"{status.Text}\"", false);
+
+            // Type 00 = nothing programmed at this address, so the analogue
+            // block is padding, not data.  A full 1-255 address sweep
+            // (2026-07-29) filled the store with junk /PW rows from every
+            // "No Reply" answer — record nothing for unprogrammed addresses.
+            if (status.DeviceTypeCode == 0)
+            {
+                return;
+            }
 
             if (status.GasAnalogueValue.HasValue)
             {
