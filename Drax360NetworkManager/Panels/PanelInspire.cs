@@ -2446,6 +2446,14 @@ public string gsDeviceText = "";
         {
             ParsePassedValues(passedvalues, out int node, out int loop, out int zone, out int device);
 
+            // AMX identifies an offset site's panels as (node + giAmx1Offset), so
+            // strip the offset before the node reaches the wire — mirrors the
+            // Taktis fix (VB frmTAKNetworkManager: Dat(13) - giAmx1Offset).
+            // Client-originated commands carry the raw node and pass untouched.
+            // Must run before the moduleoffset remap below, which keys on node.
+            if (this.Offset > 0 && node > this.Offset)
+                node -= this.Offset;
+
             if (moduleoffsetmode == "loop")
             {
                 if (loop >= moduleoffset)
