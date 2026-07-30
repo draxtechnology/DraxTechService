@@ -194,6 +194,57 @@ namespace DraxTechnology.Panels
         public virtual void Parse(byte[] buffer)
         {
             this.buffer.AddRange(buffer);
+            NoteCommsRestored();
+        }
+
+        // ---- Comms monitoring (VB CommsMonitor, default on) -----------------
+        // The VB polled the panel every 20s and raised "Panel Communications
+        // Failure" to AMX after giPollTimeOut unanswered heartbeats
+        // (NOTNetManager.bas SendComError: panel 1 + offset, loop 0, address 0,
+        // input type 0), clearing it when data resumed. Panels opt in by
+        // calling CheckCommsMonitor() from their heartbeat callback; the
+        // restore fires from Parse on any received data.
+        private bool commsFailed = false;
+        protected virtual int CommsFailAfterMissedHeartbeats => 2;
+
+        protected void CheckCommsMonitor()
+        {
+            if (lastDataReceived == DateTime.MinValue)
+                return; // nothing ever received — startup, not a comms drop
+            double silentSeconds = (DateTime.Now - lastDataReceived).TotalSeconds;
+            if (!commsFailed && silentSeconds > kHeartbeatDelaySeconds * CommsFailAfterMissedHeartbeats)
+            {
+                commsFailed = true;
+                this.NotifyClient($"No panel data for {(int)silentSeconds}s — Panel Communications Failure sent to AMX");
+                SendCommsFail(true);
+            }
+        }
+
+        protected void NoteCommsRestored()
+        {
+            if (commsFailed)
+            {
+                commsFailed = false;
+                this.NotifyClient("Panel data resumed — Panel Communications Failure cleared on AMX");
+                SendCommsFail(false);
+            }
+        }
+
+        private void SendCommsFail(bool on)
+        {
+            try
+            {
+                int evnum = CSAMXSingleton.CS.MakeInputNumber(1 + this.Offset, 0, 0, 0, on);
+                if (on)
+                    CSAMXSingleton.CS.SendAlarmToAMX(evnum, "Panel Communications Failure", "", "");
+                else
+                    CSAMXSingleton.CS.SendResetToAMX(evnum, "Panel Communications Failure", "", "");
+                CSAMXSingleton.CS.FlushMessages();
+            }
+            catch (Exception ex)
+            {
+                this.NotifyClient("Comms-fail send to AMX failed: " + ex.Message, false);
+            }
         }
 
         public virtual void SerialPort_Datareceived(object sender, SerialDataReceivedEventArgs e)

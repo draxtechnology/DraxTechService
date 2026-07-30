@@ -2245,6 +2245,7 @@ namespace DraxTechnology.Panels
         {
             base.heartbeat_timer_callback(sender);
             SendFrame(">IQS\r");
+            CheckCommsMonitor();
         }
 
         // ----------------------------------------------------------------

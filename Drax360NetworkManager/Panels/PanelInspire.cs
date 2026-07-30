@@ -2328,6 +2328,7 @@ public string gsDeviceText = "";
             base.heartbeat_timer_callback(sender);
 
             SendFrame(">IQS\r");
+            CheckCommsMonitor();
         }
 
         public override void StartUp(int fakemode)
