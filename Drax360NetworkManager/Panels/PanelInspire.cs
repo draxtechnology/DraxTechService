@@ -42,11 +42,16 @@ public string gsDeviceText = "";
         {
             if (!String.IsNullOrEmpty(identifier))
             {
-                heartbeat_timer = new Timer(heartbeat_timer_callback, this.Identifier, 1000, kHeartbeatDelaySeconds * 1000);
+                heartbeat_timer = new Timer(heartbeat_timer_callback, this.Identifier, 1000, HeartbeatIntervalSeconds * 1000);
                 this.Offset = base.GetSetting<int>(ksettingsetupsection, "giAmx1Offset");
                 InitAnalogueStore();
             }
         }
+
+        // VB Notifier heartbeat cadence (tmrHeartbeat 20000ms) — with two
+        // missed polls raising the comms fault, detection lands within
+        // 40-60s of silence like the legacy.
+        protected override int HeartbeatIntervalSeconds => 20;
         public override void SerialPort_Datareceived(object sender, System.IO.Ports.SerialDataReceivedEventArgs e)
         {
             // VB6 read byte-by-byte with no sleep. Skip the 1-second sleep in the base

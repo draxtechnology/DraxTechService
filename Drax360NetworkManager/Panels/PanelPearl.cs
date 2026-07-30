@@ -24,7 +24,7 @@ namespace DraxTechnology.Panels
 
             if (!String.IsNullOrEmpty(identifier))
             {
-                heartbeat_timer = new Timer(heartbeat_timer_callback, this.Identifier, 1000, kHeartbeatDelaySeconds * 1000);
+                heartbeat_timer = new Timer(heartbeat_timer_callback, this.Identifier, 1000, HeartbeatIntervalSeconds * 1000);
                 // Same key every other panel driver reads (Taktis precedent,
                 // offset 2000 site) — the VB read [Panel1] Amx1Offset, but the
                 // client settings form writes the service's key.

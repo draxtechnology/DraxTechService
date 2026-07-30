@@ -206,13 +206,17 @@ namespace DraxTechnology.Panels
         // restore fires from Parse on any received data.
         private bool commsFailed = false;
         protected virtual int CommsFailAfterMissedHeartbeats => 2;
+        // Heartbeat cadence for the comms check and the panel timers. The VB
+        // Notifier polled every 20s (tmrHeartbeat 20000ms) — the ID3K family
+        // overrides to match; other panels keep the shared 60s default.
+        protected virtual int HeartbeatIntervalSeconds => kHeartbeatDelaySeconds;
 
         protected void CheckCommsMonitor()
         {
             if (lastDataReceived == DateTime.MinValue)
                 return; // nothing ever received — startup, not a comms drop
             double silentSeconds = (DateTime.Now - lastDataReceived).TotalSeconds;
-            if (!commsFailed && silentSeconds > kHeartbeatDelaySeconds * CommsFailAfterMissedHeartbeats)
+            if (!commsFailed && silentSeconds > HeartbeatIntervalSeconds * CommsFailAfterMissedHeartbeats)
             {
                 commsFailed = true;
                 this.NotifyClient($"No panel data for {(int)silentSeconds}s — Panel Communications Failure sent to AMX");
