@@ -58,10 +58,24 @@ public string gsDeviceText = "";
             // implementation — it is the main cause of slow event delivery on this panel.
             lastDataReceived = DateTime.Now;
             NoteHalfDuplexReceive(false);
-            int bytestoread = serialport.BytesToRead;
-            if (bytestoread == 0) return;
-            byte[] readbytes = new byte[bytestoread];
-            int numberread = serialport.Read(readbytes, 0, bytestoread);
+            byte[] readbytes;
+            int numberread;
+            try
+            {
+                int bytestoread = serialport.BytesToRead;
+                if (bytestoread == 0) return;
+                readbytes = new byte[bytestoread];
+                numberread = serialport.Read(readbytes, 0, bytestoread);
+            }
+            catch (Exception ex)
+            {
+                // Removed USB adaptor kills the handle mid-event (VB error
+                // 8021); never throw on the SerialPort event thread. Close so
+                // the next send re-Opens once the port re-enumerates.
+                this.NotifyClient("Serial read failed (adaptor removed?): " + ex.Message, false);
+                try { serialport.Close(); } catch { }
+                return;
+            }
             if (numberread == 0) return;
             try { Parse(readbytes); }
             catch (Exception ex) { this.NotifyClient($"Parse error (PanelInspire): {ex.Message}"); }

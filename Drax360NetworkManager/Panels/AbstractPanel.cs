@@ -276,11 +276,27 @@ namespace DraxTechnology.Panels
             // (Notifier, MorleyZX, MorleyMax, Pearl, RSM) before swapping in
             // the bounded version.
             System.Threading.Thread.Sleep(1000);
-            int bytestoread = serialport.BytesToRead;
-            if (bytestoread == 0) return;
-
-            byte[] readbytes = new byte[bytestoread];
-            int numberread = serialport.Read(readbytes, 0, bytestoread);
+            int bytestoread;
+            byte[] readbytes;
+            int numberread;
+            try
+            {
+                bytestoread = serialport.BytesToRead;
+                if (bytestoread == 0) return;
+                readbytes = new byte[bytestoread];
+                numberread = serialport.Read(readbytes, 0, bytestoread);
+            }
+            catch (Exception ex)
+            {
+                // A removed USB adaptor kills the handle mid-event (VB error
+                // 8021) — an unhandled throw here is on the SerialPort event
+                // thread and would take the service down. Close so the next
+                // send attempts a fresh Open once the port re-enumerates; the
+                // comms monitor raises the AMX failure in the meantime.
+                this.NotifyClient("Serial read failed (adaptor removed?): " + ex.Message, false);
+                try { serialport.Close(); } catch { }
+                return;
+            }
             if (numberread == 0) return;
 
             // Parse runs on the SerialPort.DataReceived thread and decodes raw panel
@@ -526,9 +542,21 @@ namespace DraxTechnology.Panels
             }
 
             byte[] b = Encoding.ASCII.GetBytes(frame);
-            lock (queueLock)
+            try
             {
-                serialport.Write(b, 0, b.Length);
+                lock (queueLock)
+                {
+                    serialport.Write(b, 0, b.Length);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Dead handle (USB adaptor removed) — close so the next send
+                // re-Opens once the port re-enumerates. Never throw: this runs
+                // on the heartbeat timer and parse threads.
+                this.NotifyClient("Serial write failed (adaptor removed?): " + ex.Message, false);
+                try { serialport.Close(); } catch { }
+                return;
             }
             this.NotifyClient("Sent to Panel: " + frame.Replace("\r", ""), false);
         }
@@ -557,7 +585,16 @@ namespace DraxTechnology.Panels
 
             // Send a single character as ASCII byte
             byte[] b = Encoding.ASCII.GetBytes(new char[] { ch });
-            serialport.Write(b, 0, b.Length);
+            try
+            {
+                serialport.Write(b, 0, b.Length);
+            }
+            catch (Exception ex)
+            {
+                this.NotifyClient("Serial write failed (adaptor removed?): " + ex.Message, false);
+                try { serialport.Close(); } catch { }
+                return;
+            }
 
             this.NotifyClient("Sent Char: " + ch + " (" + ((int)ch) + ")", false);
         }
