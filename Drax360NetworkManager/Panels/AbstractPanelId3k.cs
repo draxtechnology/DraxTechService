@@ -2303,7 +2303,7 @@ namespace DraxTechnology.Panels
         // Analogue() because the request's checksum tail differs by wire format;
         // the response lands here from Parse. Readings store as one row per
         // value: the device's primary value (CLIP PW1 / S200 sub-address 0 /
-        // gas) under the plain address, extras as "addr/PWn" or "addr.n".
+        // gas) under the plain address; S200 extras as "addr.n".
         protected void HandleExtendedDeviceStatus(Id3kExtendedDeviceStatus status)
         {
             NotifyClient($"Extended status: panel {status.Panel} loop {status.Loop} "
@@ -2326,8 +2326,14 @@ namespace DraxTechnology.Panels
             {
                 foreach (Id3kAnalogueReading r in status.Analogue.Readings)
                 {
+                    // CLIP: PW1 is the device's analogue value; PW2-PW5 are
+                    // static device-internal figures 099-048 never explains,
+                    // and the "addr/PWn" rows only cluttered the client grid
+                    // (real-Inspire scan, 2026-07-30) — store PW1 only.
+                    if (status.Analogue.Protocol == Id3kDeviceProtocol.Clip && r.Index != 1)
+                        continue;
                     string addr = status.Analogue.Protocol == Id3kDeviceProtocol.Clip
-                        ? (r.Index == 1 ? status.Address.ToString() : $"{status.Address}/PW{r.Index}")
+                        ? status.Address.ToString()
                         : (r.Index == 0 ? status.Address.ToString() : $"{status.Address}.{r.Index}");
                     addtoanalogue(AnaloguePanelName, status.Panel, status.Loop, addr, r.Value);
                 }
