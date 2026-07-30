@@ -210,10 +210,7 @@ namespace DraxTechnology.Panels
             ParsePassedValues(passedvalues, out int node, out int loop, out _, out int device);
             string frame = Id3kExtendedDeviceStatus.BuildStatusRequestBody(node, loop, device) + "\r";
 
-            foreach (char ch in frame)
-                SendChar(ch);
-
-            Console.WriteLine(DateTime.Now + ": " + frame.Replace("\r", "") + " Sent to panel");
+            EnqueueAnalogueRequest(frame);
         }
     }
 }

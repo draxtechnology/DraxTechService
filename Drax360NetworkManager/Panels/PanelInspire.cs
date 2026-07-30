@@ -116,9 +116,17 @@ public string gsDeviceText = "";
                 // branch above has already answered it. Mirrors
                 // AbstractPanelId3k.HandleExtendedDeviceStatus — this driver is
                 // deliberately standalone.
-                if (strmsg.StartsWith(">ISE") && Id3kExtendedDeviceStatus.TryParse(strmsg, out Id3kExtendedDeviceStatus extStatus))
+                if (strmsg.StartsWith(">ISE"))
                 {
-                    HandleExtendedDeviceStatus(extStatus);
+                    // Release the response gate even when the frame doesn't
+                    // parse — a malformed answer (seen from a flooded panel,
+                    // 2026-07-30) still means the panel is done with the
+                    // request and the next one can go.
+                    NoteAnalogueResponse();
+                    if (Id3kExtendedDeviceStatus.TryParse(strmsg, out Id3kExtendedDeviceStatus extStatus))
+                    {
+                        HandleExtendedDeviceStatus(extStatus);
+                    }
                     continue;
                 }
 
@@ -2438,9 +2446,7 @@ public string gsDeviceText = "";
             string body = Id3kExtendedDeviceStatus.BuildStatusRequestBody(node, loop, device);
             string frame = (gbHalfDuplex ? body + CreateNOTChecksum(body.Substring(1)) : body) + "\r";
 
-            serialsend(frame);
-
-            Console.WriteLine(DateTime.Now + ": " + frame.Replace("\r", "") + " Sent to panel");
+            EnqueueAnalogueRequest(frame);
         }
         public virtual void send_message(ActionType action, string passedvalues)
         {

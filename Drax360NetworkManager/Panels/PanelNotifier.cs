@@ -309,12 +309,10 @@ namespace DraxTechnology.Panels
             string body = Id3kExtendedDeviceStatus.BuildStatusRequestBody(node, loop, device);
             string frame = body + CreateNOTChecksum(body.Substring(1)) + "\r";
 
-            if (UseHalfDuplexGatedSend)
-                HalfDuplexSend(frame);
-            else
-                serialsend(frame);
-
-            Console.WriteLine(DateTime.Now + ": " + frame.Replace("\r", "") + " Sent to panel");
+            // Response-gated: one outstanding request at a time also keeps the
+            // half-duplex bus quiet while the panel is answering, so this
+            // replaces the HalfDuplexSend path for analogue requests.
+            EnqueueAnalogueRequest(frame);
         }
     }
 }

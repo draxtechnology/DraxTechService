@@ -77,9 +77,15 @@ namespace DraxTechnology.Panels
             // Extended Device Status response (099-048 section 3.3.4.3). Its
             // ">IS" prefix means the IACK branch above has already answered it.
             // Per the document this arrives on Pearl / protocol version 0013
-            // panels only.
-            if (strmsg.StartsWith(">ISE") && Id3kExtendedDeviceStatus.TryParse(strmsg, out Id3kExtendedDeviceStatus extStatus))
-                HandleExtendedDeviceStatus(extStatus);
+            // panels only. The gate releases even when the frame doesn't parse
+            // — a malformed answer still means the panel is done with the
+            // request and the next one can go.
+            if (strmsg.StartsWith(">ISE"))
+            {
+                NoteAnalogueResponse();
+                if (Id3kExtendedDeviceStatus.TryParse(strmsg, out Id3kExtendedDeviceStatus extStatus))
+                    HandleExtendedDeviceStatus(extStatus);
+            }
 
             if (cmd != "IE") return;
 

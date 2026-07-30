@@ -25,6 +25,21 @@ namespace DraxTechnology.Panels
         private Queue<byte[]> commandQueue = new Queue<byte[]>();
         private object queueLock = new object();
 
+        // ---- Response-gated analogue request queue --------------------------
+        // A panel answers one Extended Device Status request at a time, and a
+        // networked panel has to fetch the data over the inter-panel link. The
+        // client's scan loop fires blind (~2.5 req/s observed), which drove a
+        // two-panel Inspire network into a "Software Failure" comms fault
+        // (event 302, real-panel test 2026-07-30). Same philosophy as the AMX
+        // writer's MAK gate: hold each request until the previous response
+        // arrives (NoteAnalogueResponse from Parse) or the timeout passes.
+        private readonly Queue<string> analogueRequestQueue = new Queue<string>();
+        private readonly object analogueGateLock = new object();
+        private bool analogueRequestInFlight = false;
+        private DateTime analogueRequestSentAt = DateTime.MinValue;
+        private Timer analoguePumpTimer;
+        protected virtual int AnalogueResponseTimeoutMs => 3000;
+
         #endregion
 
         #region private fields
@@ -364,6 +379,66 @@ namespace DraxTechnology.Panels
                 return true;
             }
             return false;
+        }
+
+        // Queues an analogue request behind the response gate. The frame goes
+        // to the wire immediately if nothing is outstanding; otherwise it waits
+        // for NoteAnalogueResponse (the >ISE arriving) or the timeout. Panels
+        // call this from Analogue() instead of writing the frame directly.
+        protected void EnqueueAnalogueRequest(string frame)
+        {
+            lock (analogueGateLock)
+            {
+                analogueRequestQueue.Enqueue(frame);
+                if (analogueRequestQueue.Count > 1)
+                    this.NotifyClient($"Analogue request queued behind response gate (depth {analogueRequestQueue.Count})", false);
+                if (analoguePumpTimer == null)
+                    analoguePumpTimer = new Timer(_ => PumpAnalogueQueue(), null, Timeout.Infinite, Timeout.Infinite);
+            }
+            PumpAnalogueQueue();
+        }
+
+        // Called from Parse when an analogue response (>ISE) arrives — releases
+        // the gate so the next queued request can go out. Safe to call on every
+        // response frame, parsed or not: an unparseable answer still means the
+        // panel finished with the request.
+        protected void NoteAnalogueResponse()
+        {
+            bool release;
+            lock (analogueGateLock)
+            {
+                release = analogueRequestInFlight;
+                analogueRequestInFlight = false;
+            }
+            if (release)
+                PumpAnalogueQueue();
+        }
+
+        private void PumpAnalogueQueue()
+        {
+            string frame;
+            lock (analogueGateLock)
+            {
+                if (analogueRequestInFlight)
+                {
+                    double waitedMs = (DateTime.Now - analogueRequestSentAt).TotalMilliseconds;
+                    if (waitedMs < AnalogueResponseTimeoutMs)
+                        return;
+                    this.NotifyClient($"Analogue response gate timed out after {(int)waitedMs}ms — sending next request", false);
+                }
+                if (analogueRequestQueue.Count == 0)
+                {
+                    analogueRequestInFlight = false;
+                    return;
+                }
+                frame = analogueRequestQueue.Dequeue();
+                analogueRequestInFlight = true;
+                analogueRequestSentAt = DateTime.Now;
+                // Re-pump shortly after the timeout in case no response ever
+                // arrives and no new enqueue comes along to drive the queue.
+                analoguePumpTimer?.Change(AnalogueResponseTimeoutMs + 100, Timeout.Infinite);
+            }
+            SendFrame(frame);
         }
 
         // Writes a complete frame in one serial write, under the same lock as
