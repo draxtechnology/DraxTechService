@@ -16,6 +16,9 @@ public string gsDeviceText = "";
         public bool gbSectoring = false;
         public int gsSectorNo;
         private readonly List<(int zone, int p2, int p3, int p4, int p1)> _disabledZones = new();
+        // Points whose extra AMX isolation event is currently on — the gate
+        // that keeps the AMX isolation count straight (see the Isolate block).
+        private readonly HashSet<(int p2, int p3, int p4)> _activeIsolations = new();
         private bool bOneShotReset;
         public int moduleoffset;
         public string moduleoffsetmode;
@@ -966,17 +969,27 @@ public string gsDeviceText = "";
                             Console.WriteLine(DateTime.Now + ": " + gsTextField);
                             break;
 
+                        // 192/193 route to the same AMX point as Entire Zone
+                        // Disable — loop 15, address = zone — with 192 clearing
+                        // it (VB NOTNetManager.bas: giLoopNumber = 15,
+                        // giAddressNumber = giZoneNumber, gbClearedEvent =
+                        // True). The previous address 71 with the frame's loop
+                        // meant the disabled row could never clear on AMX
+                        // (zone test, 2026-07-30).
                         case enmNotEventType.NetworkZoneInEnabled:  // 192
                             gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
-                            giAddressNumber = 71;
+                            loop = 15;
+                            giAddressNumber = zone;
                             gsTextField = "Network In Zone " + zone + " Enabled";
                             getDeviceText = false;
+                            on = false;
                             Console.WriteLine(DateTime.Now + ": " + gsTextField);
                             break;
 
                         case enmNotEventType.NetworkZoneInDisabled:  // 193
                             gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
-                            giAddressNumber = 71;
+                            loop = 15;
+                            giAddressNumber = zone;
                             gsTextField = "Network In Zone " + zone + " Disabled";
                             getDeviceText = false;
                             Console.WriteLine(DateTime.Now + ": " + gsTextField);
@@ -2079,7 +2092,20 @@ public string gsDeviceText = "";
                     {
                         if (!bDontSendToAMX)
                         {
-                            send_response_amx_disable(evnum, gsTextField, zonetext, gsDeviceText, on);
+                            // The panel re-broadcasts disablements asymmetrically
+                            // — a zone enable re-lists still-disabled devices
+                            // before enabling them — and AMX counts these extra
+                            // events with a floor at zero, so raw forwarding
+                            // drifts the isolation count (stuck "1 Isolation",
+                            // zone test 2026-07-30). Send the extra only on a
+                            // genuine per-point transition.
+                            bool transition = on
+                                ? _activeIsolations.Add((p2, p3, p4))
+                                : _activeIsolations.Remove((p2, p3, p4));
+                            if (transition)
+                            {
+                                send_response_amx_disable(evnum, gsTextField, zonetext, gsDeviceText, on);
+                            }
                         }
                     }
 

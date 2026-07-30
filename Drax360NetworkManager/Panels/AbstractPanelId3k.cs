@@ -21,6 +21,9 @@ namespace DraxTechnology.Panels
         protected string gsDeviceText = "";
         protected EnmDeviceType gDeviceType;
         protected int panelzeroaddress = 1;
+        // Points whose extra AMX isolation event is currently on — the gate
+        // that keeps the AMX isolation count straight (HandlePostSwitchDispatch).
+        private readonly HashSet<(int p2, int p3, int p4)> _activeIsolations = new HashSet<(int, int, int)>();
 
         // ----------------------------------------------------------------
         // Parse-state bag — populated during Parse, read by post-switch dispatch
@@ -1591,6 +1594,9 @@ namespace DraxTechnology.Panels
                     st.giAddressNumber  = st.zone;
                     st.gsTextField      = "Network In Zone " + st.zone + " Enabled";
                     st.getDeviceText    = false;
+                    // Clearing event (VB: gbClearedEvent = True) — without it
+                    // the 193 disabled row never clears on AMX.
+                    on = false;
                     Console.WriteLine(DateTime.Now + ": " + st.gsTextField);
                     return true;
 
@@ -2089,7 +2095,17 @@ namespace DraxTechnology.Panels
         {
             if (p1 == (int)enmPRLAlarmType.Isolate)
             {
-                send_response_amx_disable(evnum, st.gsTextField, gsDeviceText, zonetext, on);
+                // The panel re-broadcasts disablements asymmetrically — a zone
+                // enable re-lists still-disabled devices before enabling them —
+                // and AMX counts these extra events with a floor at zero, so
+                // raw forwarding drifts the isolation count (stuck
+                // "1 Isolation", Inspire zone test 2026-07-30). Send the extra
+                // only on a genuine per-point transition.
+                bool transition = on
+                    ? _activeIsolations.Add((p2, p3, p4))
+                    : _activeIsolations.Remove((p2, p3, p4));
+                if (transition)
+                    send_response_amx_disable(evnum, st.gsTextField, gsDeviceText, zonetext, on);
             }
         }
 
