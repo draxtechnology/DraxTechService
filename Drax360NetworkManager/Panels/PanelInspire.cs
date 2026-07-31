@@ -125,6 +125,7 @@ public string gsDeviceText = "";
                 if (strmsg.Length < 3) continue;
                 string cmd = strmsg.Substring(1, 2);
 
+                CountMessage();
                 this.NotifyClient(DateTime.Now + ": " + strmsg.Replace("\r", "") + " Received from Panel");
 
                 //

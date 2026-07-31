@@ -75,6 +75,7 @@ namespace DraxTechnology.Panels
             if (!strmsg.StartsWith(">")) return;
             string cmd = strmsg.Substring(1, 2);
 
+            CountMessage();
             Console.WriteLine(DateTime.Now + ": " + strmsg.Replace("\r", "") + " Received from Panel");
 
             if (cmd == "IS")

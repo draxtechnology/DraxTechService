@@ -69,9 +69,26 @@ namespace DraxTechnology.Panels
 
         public abstract string FakeString { get; }
         public abstract string PanelVersion { get; }
-        public virtual int NumHeartbeats => 0;
+        // Shared counters behind the client's "Heart Beats: N - Messages: N"
+        // display (GetPanelHandShake / GetPanelNumMessages). Panels count via
+        // CountHeartbeat/CountMessage; Gent and Taktis keep their own overrides.
+        private int numHeartbeats = 0;
+        private int numMessages = 0;
+        public virtual int NumHeartbeats => numHeartbeats;
 
-        public virtual int NumMessages => 0;
+        public virtual int NumMessages => numMessages;
+
+        protected void CountHeartbeat()
+        {
+            numHeartbeats++;
+            if (numHeartbeats > 1000000) numHeartbeats = 0;
+        }
+
+        protected void CountMessage()
+        {
+            numMessages++;
+            if (numMessages > 1000000) numMessages = 0;
+        }
         #endregion
 
         #region Constructors
@@ -332,6 +349,7 @@ namespace DraxTechnology.Panels
         protected virtual void heartbeat_timer_callback(object sender)
         {
             Console.WriteLine(DateTime.Now + ": " + "Sent Heartbeat");
+            CountHeartbeat();
         }
         protected bool serialsend(byte[] toSend)
         {
