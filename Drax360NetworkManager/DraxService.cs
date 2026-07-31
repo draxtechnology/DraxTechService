@@ -2043,6 +2043,17 @@ namespace DraxTechnology
             pad();
 
             AbstractPanel apbase = getpanel();
+            // SETUP/DataLogging is the standard key — the client's settings
+            // form writes it for every serial panel. The per-panel legacy keys
+            // below are honoured only when the standard key is absent, so a
+            // deployed ini keeps its setting until the first save migrates it.
+            string dataLogging = apbase.GetSetting<string>(ksettingsetupsection, "DataLogging");
+            if (!string.IsNullOrEmpty(dataLogging))
+            {
+                this.DebugLog = dataLogging == "1" ||
+                    dataLogging.Equals("true", StringComparison.OrdinalIgnoreCase);
+            }
+            else
             switch (panel)
 
             {
