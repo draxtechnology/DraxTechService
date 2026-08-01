@@ -40,7 +40,6 @@ namespace DraxTechnology.Panels
             base.GetDeviceTypeText(piDeviceType);
             if (piDeviceType == 26)
             {
-                gDeviceType  = EnmDeviceType.UnmonitoredRelayOutput;
                 gsDeviceText = "Unmonitored Relay Output";
             }
         }
