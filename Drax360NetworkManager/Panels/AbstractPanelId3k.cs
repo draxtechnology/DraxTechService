@@ -19,7 +19,6 @@ namespace DraxTechnology.Panels
         protected bool gbSectoring = false;
         protected int gsSectorNo;
         protected string gsDeviceText = "";
-        protected EnmDeviceType gDeviceType;
         protected int panelzeroaddress = 1;
         // Points whose extra AMX isolation event is currently on — the gate
         // that keeps the AMX isolation count straight (HandlePostSwitchDispatch).
@@ -72,6 +71,13 @@ namespace DraxTechnology.Panels
             this.buffer.Clear();
 
             string strmsg = Encoding.UTF8.GetString(ourmessage, 0, foundat);
+
+            // Frame complete — the bus is idle again, so release the half-duplex
+            // send gate. If this frame matched the in-flight command it is our own
+            // echo, not a panel event: drop it like the VB's echo-removal did.
+            NoteHalfDuplexReceive(true, strmsg);
+            if (ReceivedFrameWasCommandEcho) return;
+
             if (!strmsg.StartsWith(">")) return;
             string cmd = strmsg.Substring(1, 2);
 
@@ -2144,28 +2150,28 @@ namespace DraxTechnology.Panels
                     // stamps 00 on its own disablement re-broadcasts, so the VB's
                     // "Device Not Defined" text put a misleading line under real
                     // devices on AMX (Inspire trace 2026-07-29). Say nothing.
-                    case 0:  gDeviceType = EnmDeviceType.DeviceNotDefined;              gsDeviceText = ""; break;
-                    case 1:  gDeviceType = EnmDeviceType.HeatThermal;                  gsDeviceText = "Heat Thermal"; break;
-                    case 2:  gDeviceType = EnmDeviceType.Ionisation;                   gsDeviceText = "Ionisation"; break;
-                    case 3:  gDeviceType = EnmDeviceType.Optical;                      gsDeviceText = "Optical"; break;
-                    case 4:  gDeviceType = EnmDeviceType.Reserved1;                    gsDeviceText = "4 Reserved"; break;
-                    case 5:  gDeviceType = EnmDeviceType.CallPointManual;              gsDeviceText = "Call Point Manual"; break;
-                    case 6:  gDeviceType = EnmDeviceType.GeneralControlOutput;         gsDeviceText = "General Control Output"; break;
-                    case 7:  gDeviceType = EnmDeviceType.GeneralMonitoredInput;        gsDeviceText = "General Monitored Input"; break;
-                    case 8:  gDeviceType = EnmDeviceType.SprinklerSystemMonitor;       gsDeviceText = "Sprinkler System Monitor"; break;
-                    case 9:  gDeviceType = EnmDeviceType.VIEWSensor;                  gsDeviceText = "View Sensor"; break;
-                    case 10: gDeviceType = EnmDeviceType.ConventionalZoneMonitorCDI;   gsDeviceText = "Conventional Zone Monitor CDI"; break;
-                    case 11: gDeviceType = EnmDeviceType.SounderOutput;               gsDeviceText = "Sounder Output"; break;
-                    case 12: gDeviceType = EnmDeviceType.AUXILIARYModule;             gsDeviceText = "Auxiliary Module"; break;
-                    case 13: gDeviceType = EnmDeviceType.ConventionalZoneMonitorZMXM512; gsDeviceText = "Conventional Zone Monitor ZMX/M512"; break;
-                    case 14: gDeviceType = EnmDeviceType.AdvancedMULTISensor;         gsDeviceText = "Advanced Multi Sensor"; break;
-                    case 15: gDeviceType = EnmDeviceType.Reserved2;                   gsDeviceText = "15 Reserved"; break;
-                    case 16: gDeviceType = EnmDeviceType.Reserved3;                   gsDeviceText = "16 Reserved"; break;
-                    case 17: gDeviceType = EnmDeviceType.GASSensorInterface;          gsDeviceText = "Gas Sensor Interface"; break;
-                    case 18: gDeviceType = EnmDeviceType.LoopBoosterModule;           gsDeviceText = "Loop Booster Module"; break;
-                    case 19: gDeviceType = EnmDeviceType.SMART3Sensor;               gsDeviceText = "SMART 3 Sensor"; break;
-                    case 20: gDeviceType = EnmDeviceType.SMART4Sensor;               gsDeviceText = "SMART 4 Sensor"; break;
-                    default: gDeviceType = EnmDeviceType.Unknown;                     gsDeviceText = ""; break;
+                    case 0:  gsDeviceText = ""; break;
+                    case 1:  gsDeviceText = "Heat Thermal"; break;
+                    case 2:  gsDeviceText = "Ionisation"; break;
+                    case 3:  gsDeviceText = "Optical"; break;
+                    case 4:  gsDeviceText = "4 Reserved"; break;
+                    case 5:  gsDeviceText = "Call Point Manual"; break;
+                    case 6:  gsDeviceText = "General Control Output"; break;
+                    case 7:  gsDeviceText = "General Monitored Input"; break;
+                    case 8:  gsDeviceText = "Sprinkler System Monitor"; break;
+                    case 9:  gsDeviceText = "View Sensor"; break;
+                    case 10: gsDeviceText = "Conventional Zone Monitor CDI"; break;
+                    case 11: gsDeviceText = "Sounder Output"; break;
+                    case 12: gsDeviceText = "Auxiliary Module"; break;
+                    case 13: gsDeviceText = "Conventional Zone Monitor ZMX/M512"; break;
+                    case 14: gsDeviceText = "Advanced Multi Sensor"; break;
+                    case 15: gsDeviceText = "15 Reserved"; break;
+                    case 16: gsDeviceText = "16 Reserved"; break;
+                    case 17: gsDeviceText = "Gas Sensor Interface"; break;
+                    case 18: gsDeviceText = "Loop Booster Module"; break;
+                    case 19: gsDeviceText = "SMART 3 Sensor"; break;
+                    case 20: gsDeviceText = "SMART 4 Sensor"; break;
+                    default: gsDeviceText = ""; break;
                 }
             }
             catch (Exception) { }

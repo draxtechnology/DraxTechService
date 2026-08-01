@@ -10,19 +10,18 @@ namespace DraxTechnology.Panels
 {
     internal class PanelInspire : AbstractPanel
     {
-public string gsDeviceText = "";
-        public EnmDeviceType gDeviceType;
-        public bool gbHalfDuplex = false;
-        public bool gbSectoring = false;
-        public int gsSectorNo;
+        private string gsDeviceText = "";
+        private bool gbHalfDuplex = false;
+        private bool gbSectoring = false;
+        private int gsSectorNo;
         private readonly List<(int zone, int p2, int p3, int p4, int p1)> _disabledZones = new();
         // Points whose extra AMX isolation event is currently on — the gate
         // that keeps the AMX isolation count straight (see the Isolate block).
         private readonly HashSet<(int p2, int p3, int p4)> _activeIsolations = new();
         private bool bOneShotReset;
-        public int moduleoffset;
-        public string moduleoffsetmode;
-        public int panelzeroaddress = 1;
+        private int moduleoffset;
+        private string moduleoffsetmode;
+        private int panelzeroaddress = 1;
 
         public override string FakeString
         {
@@ -120,6 +119,12 @@ public string gsDeviceText = "";
                     this.buffer.InsertRange(0, requeue);
                     continue;
                 }
+
+                // Frame complete — release the half-duplex send gate (no-op while
+                // UseHalfDuplexGatedSend is off for this driver) and drop the echo
+                // of an in-flight command rather than processing it as an event.
+                NoteHalfDuplexReceive(true, strmsg);
+                if (ReceivedFrameWasCommandEcho) continue;
 
                 if (!strmsg.StartsWith(">")) continue;
                 if (strmsg.Length < 3) continue;
@@ -2193,91 +2198,69 @@ public string gsDeviceText = "";
                         // (seen after a zone disable, 2026-07-29), so echoing the
                         // VB's "Device Not Defined" put a misleading extra line
                         // under real devices on AMX. Say nothing instead.
-                        gDeviceType = EnmDeviceType.DeviceNotDefined;
                         gsDeviceText = "";
                         break;
                     case 1:
-                        gDeviceType = EnmDeviceType.HeatThermal;
                         gsDeviceText = "Heat Thermal";
                         break;
                     case 2:
-                        gDeviceType = EnmDeviceType.Ionisation;
                         gsDeviceText = "Ionisation";
                         break;
                     case 3:
-                        gDeviceType = EnmDeviceType.Optical;
                         gsDeviceText = "Optical";
                         break;
                     case 4:
-                        gDeviceType = EnmDeviceType.Reserved1;
                         gsDeviceText = "4 Reserved";
                         break;
                     case 5:
-                        gDeviceType = EnmDeviceType.CallPointManual;
                         gsDeviceText = "Call Point Manual";
                         break;
                     case 6:
-                        gDeviceType = EnmDeviceType.GeneralControlOutput;
                         gsDeviceText = "General Control Output";
                         break;
                     case 7:
-                        gDeviceType = EnmDeviceType.GeneralMonitoredInput;
                         gsDeviceText = "General Monitored Input";
                         break;
                     case 8:
-                        gDeviceType = EnmDeviceType.SprinklerSystemMonitor;
                         gsDeviceText = "Sprinkler System Monitor";
                         break;
                     case 9:
-                        gDeviceType = EnmDeviceType.VIEWSensor;
                         gsDeviceText = "View Sensor";
                         break;
                     case 10:
-                        gDeviceType = EnmDeviceType.ConventionalZoneMonitorCDI;
                         gsDeviceText = "Conventional Zone Monitor CDI";
                         break;
                     case 11:
-                        gDeviceType = EnmDeviceType.SounderOutput;
                         gsDeviceText = "Sounder Output";
                         break;
                     case 12:
-                        gDeviceType = EnmDeviceType.AUXILIARYModule;
                         gsDeviceText = "Auxiliary Module";
                         break;
                     case 13:
-                        gDeviceType = EnmDeviceType.ConventionalZoneMonitorZMXM512;
                         gsDeviceText = "Conventional Zone Monitor ZMX/M512";
                         break;
                     case 14:
-                        gDeviceType = EnmDeviceType.AdvancedMULTISensor;
                         gsDeviceText = "Advanced Multi Sensor";
                         break;
                     case 15:
-                        gDeviceType = EnmDeviceType.Reserved2;
                         gsDeviceText = "15 Reserved";
                         break;
                     case 16:
-                        gDeviceType = EnmDeviceType.Reserved3;
                         gsDeviceText = "16 Reserved";
                         break;
                     case 17:
-                        gDeviceType = EnmDeviceType.GASSensorInterface;
                         gsDeviceText = "Gas Sensor Interface";
                         break;
                     case 18:
-                        gDeviceType = EnmDeviceType.LoopBoosterModule;
                         gsDeviceText = "Loop Booster Module";
                         break;
                     case 19:
-                        gDeviceType = EnmDeviceType.SMART3Sensor;
                         gsDeviceText = "SMART 3 Sensor";
                         break;
                     case 20:
-                        gDeviceType = EnmDeviceType.SMART4Sensor;
                         gsDeviceText = "SMART 4 Sensor";
                         break;
                     case 26:
-                        gDeviceType = EnmDeviceType.UnmonitoredRelayOutput;
                         gsDeviceText = "Unmonitored Relay Output";
                         break;
                     case 50:
@@ -2314,7 +2297,6 @@ public string gsDeviceText = "";
                     case 81:
                         break;
                     default:
-                        gDeviceType = EnmDeviceType.Unknown;
                         gsDeviceText = "";
                         break;
                 }

@@ -21,6 +21,13 @@ namespace DraxTechnology.Panels
         protected const string ksettingpanelsection = "PANEL";
         protected const string ksettingmainsection = "MAIN";
         private const string kinifolder = "";
+        #endregion
+
+        #region Fields
+        protected readonly List<byte> buffer = new List<byte>();
+        protected Timer heartbeat_timer;
+        public readonly string Extension;
+        public DateTime lastDataReceived = DateTime.MinValue;
 
         private Queue<byte[]> commandQueue = new Queue<byte[]>();
         private object queueLock = new object();
@@ -40,14 +47,17 @@ namespace DraxTechnology.Panels
         private Timer analoguePumpTimer;
         protected virtual int AnalogueResponseTimeoutMs => 3000;
 
-        #endregion
+        // Shared analogue readings store (data\analogue.db under the configured
+        // base). Panels that support analogue readback call InitAnalogueStore()
+        // once at construction; a store failure downgrades to running without
+        // the database rather than failing the service.
+        protected AnalogueEventsContext _analogueDb;
 
-        #region private fields
-        protected readonly List<byte> buffer = new List<byte>();
-        protected Timer heartbeat_timer;
-        public string Extension;
-
-
+        // Shared counters behind the client's "Heart Beats: N - Messages: N"
+        // display (GetPanelHandShake / GetPanelNumMessages). Panels count via
+        // CountHeartbeat/CountMessage; Gent and Taktis keep their own overrides.
+        private int numHeartbeats = 0;
+        private int numMessages = 0;
         #endregion
 
         #region Properties
@@ -63,19 +73,11 @@ namespace DraxTechnology.Panels
         protected string BaseFolder { get; private set; }
         public int Offset { get; set; }
 
-        public DateTime lastDataReceived = DateTime.MinValue;
-
         // Abstract properties
 
         public abstract string FakeString { get; }
         public abstract string PanelVersion { get; }
-        // Shared counters behind the client's "Heart Beats: N - Messages: N"
-        // display (GetPanelHandShake / GetPanelNumMessages). Panels count via
-        // CountHeartbeat/CountMessage; Gent and Taktis keep their own overrides.
-        private int numHeartbeats = 0;
-        private int numMessages = 0;
         public virtual int NumHeartbeats => numHeartbeats;
-
         public virtual int NumMessages => numMessages;
 
         protected void CountHeartbeat()
@@ -126,12 +128,6 @@ namespace DraxTechnology.Panels
         {
             OutsideEvents?.Invoke(this, new CustomEventArgs(message, notifyui));
         }
-
-        // Shared analogue readings store (data\analogue.db under the configured
-        // base). Panels that support analogue readback call InitAnalogueStore()
-        // once at construction; a store failure downgrades to running without
-        // the database rather than failing the service.
-        protected AnalogueEventsContext _analogueDb;
 
         protected void InitAnalogueStore()
         {
@@ -214,7 +210,7 @@ namespace DraxTechnology.Panels
             NoteCommsRestored();
         }
 
-        // ---- Comms monitoring (VB CommsMonitor, default on) -----------------
+        #region Comms monitoring (VB CommsMonitor, default on)
         // The VB polled the panel every 20s and raised "Panel Communications
         // Failure" to AMX after giPollTimeOut unanswered heartbeats
         // (NOTNetManager.bas SendComError: panel 1 + offset, loop 0, address 0,
@@ -270,6 +266,7 @@ namespace DraxTechnology.Panels
                 this.NotifyClient("Comms-fail send to AMX failed: " + ex.Message, false);
             }
         }
+        #endregion
 
         public virtual void SerialPort_Datareceived(object sender, SerialDataReceivedEventArgs e)
         {
@@ -641,9 +638,11 @@ namespace DraxTechnology.Panels
         // (send_message then falls through to serialsend).
         //
         // NOTE FOR MIKE: this is faithful to the VB but has NOT been run against a real
-        // panel yet — verify on hardware. The ack here is "the next complete inbound
-        // frame after we transmit" (in half-duplex the panel echoes the command back,
-        // which serves as the ack). Tunables are the three constants below.
+        // panel yet — verify on hardware. The ack is the panel echoing our command
+        // frame back byte-for-byte (the VB matched the echo text the same way,
+        // PRLNetManager echo-removal); an inbound frame that doesn't match is an
+        // independent panel event and leaves the command to the resend timer.
+        // Tunables are the three constants below.
 
         // Hold transmits until the line has been quiet this long since the last byte
         // in — covers the small inter-frame gap on the half-duplex bus.
@@ -691,10 +690,13 @@ namespace DraxTechnology.Panels
 
         /// <summary>
         /// Receive-side hook. Call with frameComplete=false the moment bytes start
-        /// arriving (bus busy) and frameComplete=true when a full '\r'-terminated frame
-        /// has been received (the post-frame idle gap, and our ack signal).
+        /// arriving (bus busy) and frameComplete=true — passing the frame text —
+        /// when a full '\r'-terminated frame has been received (the post-frame idle
+        /// gap). A frame matching the in-flight command is its echo and acks it;
+        /// any other frame is an independent panel event and leaves the command
+        /// to the resend timer.
         /// </summary>
-        protected void NoteHalfDuplexReceive(bool frameComplete)
+        protected void NoteHalfDuplexReceive(bool frameComplete, string frame = null)
         {
             if (!UseHalfDuplexGatedSend) return;
             lock (_hdLock)
@@ -708,9 +710,14 @@ namespace DraxTechnology.Panels
 
                 _hdReceivingFrame = false;
                 _hdLastFrameWasEcho = false;
-                // A complete inbound frame is the panel answering — treat it as the ack
-                // for a command we've already written, and clear it.
-                if (_hdInFlight != null && _hdAttempts > 0)
+                // On the shared half-duplex bus our own transmission loops back, so
+                // the ack is an inbound frame byte-identical to the command we wrote
+                // (the VB matched the echo text too — PRLNetManager echo-removal).
+                // Commands are >IE frames like events, so without the match a
+                // heartbeat response could false-ack, and without the echo flag the
+                // looped-back command would re-enter Parse as a panel event.
+                if (_hdInFlight != null && _hdAttempts > 0 && frame != null &&
+                    frame.TrimEnd('\r') == Encoding.ASCII.GetString(_hdInFlight).TrimEnd('\r'))
                 {
                     _hdLastFrameWasEcho = true;
                     _hdInFlight = null;
