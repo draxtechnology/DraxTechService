@@ -222,7 +222,10 @@ namespace DraxTechnology.Panels
         // calling CheckCommsMonitor() from their heartbeat callback; the
         // restore fires from Parse on any received data.
         private bool commsFailed = false;
-        protected virtual int CommsFailAfterMissedHeartbeats => 2;
+        // 3, not 2: the VB's giPollTimeOut was loosened from 2 to 3 in 2013
+        // ("J.M 10/04/13 ... for Bournemouth because of drop outs on busy
+        // periods", frmPRLNetworkManager.frm) — 2 false-alarmed on busy links.
+        protected virtual int CommsFailAfterMissedHeartbeats => 3;
         // Heartbeat cadence for the comms check and the panel timers. The VB
         // Notifier polled every 20s (tmrHeartbeat 20000ms) — the ID3K family
         // overrides to match; other panels keep the shared 60s default.

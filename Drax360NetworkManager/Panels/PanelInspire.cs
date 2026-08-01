@@ -2402,7 +2402,7 @@ public string gsDeviceText = "";
             }
             catch (Exception)
             {
-                base.NotifyClient("Failed To Open Comm Port" + serialport.PortName, false);
+                base.NotifyClient("Failed To Open Comm Port " + serialport.PortName, false);
             }
 
             if (serialport.IsOpen)
@@ -2411,7 +2411,14 @@ public string gsDeviceText = "";
                 serialport.DiscardOutBuffer();
             }
 
-            moduleoffset = base.GetSetting<int>(ksettingsetupsection, "ModuleOffset");
+            // Read as string so a missing ModuleOffset can default to 100 without
+            // clobbering a configured value (a configured 0 stays 0).
+            string settingmoduleoffset = base.GetSetting<string>(ksettingsetupsection, "ModuleOffset");
+            if (!int.TryParse(settingmoduleoffset, out moduleoffset))
+            {
+                moduleoffset = 100;
+                base.NotifyClient("ModuleOffset not set in config file, defaulting to 100", false);
+            }
             moduleoffsetmode = "node";
             try
             {
@@ -2419,12 +2426,7 @@ public string gsDeviceText = "";
                 if (setting != null)
                     moduleoffsetmode = setting.ToLower();
                 else
-                {
                     base.NotifyClient("ModuleOffsetMode not set in config file, defaulting to Node", false);
-                    base.NotifyClient("moduleoffset not set in config file, defaulting to 100", false);
-                    moduleoffset = 100;
-                }
-
             }
             catch (Exception)
             {
@@ -2490,6 +2492,12 @@ public string gsDeviceText = "";
         public override void Analogue(string passedvalues)
         {
             ParsePassedValues(passedvalues, out int node, out int loop, out _, out int device);
+
+            // Same offset strip as send_message — the VB subtracts giAmx1Offset
+            // on the AMX analogue request too (frmPRLNetworkManager precedent).
+            if (this.Offset > 0 && node > this.Offset)
+                node -= this.Offset;
+
             string body = Id3kExtendedDeviceStatus.BuildStatusRequestBody(node, loop, device);
             string frame = (gbHalfDuplex ? body + CreateNOTChecksum(body.Substring(1)) : body) + "\r";
 

@@ -306,6 +306,12 @@ namespace DraxTechnology.Panels
         public override void Analogue(string passedvalues)
         {
             ParsePassedValues(passedvalues, out int node, out int loop, out _, out int device);
+
+            // Same offset strip as send_message — the VB subtracts giAmx1Offset
+            // on the AMX analogue request too (frmPRLNetworkManager precedent).
+            if (this.Offset > 0 && node > this.Offset)
+                node -= this.Offset;
+
             string body = Id3kExtendedDeviceStatus.BuildStatusRequestBody(node, loop, device);
             string frame = body + CreateNOTChecksum(body.Substring(1)) + "\r";
 
