@@ -22,7 +22,10 @@ namespace DraxTechnology.Panels
         protected int panelzeroaddress = 1;
         // Points whose extra AMX isolation event is currently on — the gate
         // that keeps the AMX isolation count straight (HandlePostSwitchDispatch).
-        private readonly HashSet<(int p2, int p3, int p4)> _activeIsolations = new HashSet<(int, int, int)>();
+        // Keyed WITH the input type p1: sub-addressed module channels share
+        // panel/loop/address and differ only by input type, so a key without
+        // p1 swallowed the second channel's count event (Mike, 2026-08-04).
+        private readonly HashSet<(int p2, int p3, int p4, int p1)> _activeIsolations = new HashSet<(int, int, int, int)>();
 
         // ----------------------------------------------------------------
         // Parse-state bag — populated during Parse, read by post-switch dispatch
@@ -2118,8 +2121,8 @@ namespace DraxTechnology.Panels
                 // "1 Isolation", Inspire zone test 2026-07-30). Send the extra
                 // only on a genuine per-point transition.
                 bool transition = on
-                    ? _activeIsolations.Add((p2, p3, p4))
-                    : _activeIsolations.Remove((p2, p3, p4));
+                    ? _activeIsolations.Add((p2, p3, p4, p1))
+                    : _activeIsolations.Remove((p2, p3, p4, p1));
                 if (transition)
                 {
                     send_response_amx_disable(evnum, st.gsTextField, gsDeviceText, zonetext, on);

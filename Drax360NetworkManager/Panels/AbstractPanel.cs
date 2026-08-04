@@ -275,12 +275,13 @@ namespace DraxTechnology.Panels
         // restart: an enable that finds an empty set swallows the clear and
         // the AMX isolation row sticks (seen on the real Inspire,
         // 2026-08-04), while a panel re-list after a restart double-raises.
-        // One "p2,p3,p4" line per point, alongside analogue.db under the
-        // configured base folder.
+        // One "p2,p3,p4,p1" line per point, alongside analogue.db under the
+        // configured base folder. The input type p1 is part of the key — see
+        // the _activeIsolations comments in the ID3K drivers.
         private string IsolationStateFile =>
             Path.Combine(BaseFolder, "data", "isolations-" + GetFileName + ".txt");
 
-        protected void LoadIsolationState(HashSet<(int p2, int p3, int p4)> set)
+        protected void LoadIsolationState(HashSet<(int p2, int p3, int p4, int p1)> set)
         {
             try
             {
@@ -288,13 +289,19 @@ namespace DraxTechnology.Panels
                 foreach (string line in File.ReadAllLines(IsolationStateFile))
                 {
                     string[] parts = line.Split(',');
-                    if (parts.Length == 3 &&
-                        int.TryParse(parts[0], out int p2) &&
-                        int.TryParse(parts[1], out int p3) &&
-                        int.TryParse(parts[2], out int p4))
+                    if (parts.Length < 3 ||
+                        !int.TryParse(parts[0], out int p2) ||
+                        !int.TryParse(parts[1], out int p3) ||
+                        !int.TryParse(parts[2], out int p4))
                     {
-                        set.Add((p2, p3, p4));
+                        continue;
                     }
+                    // Three-field lines predate the p1 key; those points could
+                    // only have been plain-device isolations (Isolate = 4).
+                    int p1 = (int)enmPRLAlarmType.Isolate;
+                    if (parts.Length >= 4)
+                        int.TryParse(parts[3], out p1);
+                    set.Add((p2, p3, p4, p1));
                 }
                 if (set.Count > 0)
                     this.NotifyClient($"Restored {set.Count} active isolation(s) from the last run", false);
@@ -307,7 +314,7 @@ namespace DraxTechnology.Panels
             }
         }
 
-        protected void SaveIsolationState(HashSet<(int p2, int p3, int p4)> set)
+        protected void SaveIsolationState(HashSet<(int p2, int p3, int p4, int p1)> set)
         {
             try
             {
@@ -315,7 +322,7 @@ namespace DraxTechnology.Panels
                 string[] lines = new string[set.Count];
                 int i = 0;
                 foreach (var p in set)
-                    lines[i++] = p.p2 + "," + p.p3 + "," + p.p4;
+                    lines[i++] = p.p2 + "," + p.p3 + "," + p.p4 + "," + p.p1;
                 File.WriteAllLines(IsolationStateFile, lines);
             }
             catch (Exception ex)
