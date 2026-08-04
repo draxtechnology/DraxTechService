@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO.Ports;
 using System.Linq;
-using System.Net.NetworkInformation;
 using System.Text;
 using System.Threading;
 
@@ -25,16 +24,13 @@ namespace DraxTechnology.Panels
 
         public override string FakeString
         {
-            get =>
-
-                /* Inspire
-            >IS0001C000000000000BE7\r
-            >IE0220611450330000000BDD\r
-            >IE0220611450330000000BDD\r
-            >IE0220611450330000000BDD\r
-            >IE0220611450330000000BDD\r
-            >IE0102411527000100001S01030000000000"OFFICE P1?DEV ROOM ZONE 1"1A7\r*/
-                ">IE0220611450330000000BDD\r";
+            get
+            {
+                string msg = "";
+                msg += ">IE0102421149300100004M01000000000201\r";
+                msg += ">IE0102421149300100004M01000000000302\r";
+                return msg;
+            }
         }
         public override string PanelVersion => "1.0.0.0";
         public PanelInspire(string baselogfolder, string identifier) : base(baselogfolder, identifier, "INSMan", "INS")
@@ -183,6 +179,13 @@ namespace DraxTechnology.Panels
                         out address);
                     giAddressNumber = address;
 
+                    int iSubAdress = 0;
+                    if (ourmessage.Length > 36)
+                    {
+                        int.TryParse(
+                            Encoding.UTF8.GetString(ourmessage, 36 - 1, 2),
+                            out iSubAdress);
+                    }
                     string sTextField = "";
                     if (ourmessage != null && ourmessage.Length > 38)
                     {
@@ -342,14 +345,51 @@ namespace DraxTechnology.Panels
                             break;
 
                         case enmNotEventType.Deviceenabled:
-                            Console.WriteLine(DateTime.Now + ": " + "Device " + address + " Enabled");
                             gAlarmType = enmNotAlarmType.NOTIsolate.ToString();
+                            if (iSubAdress > 0)
+                            {
+                                switch (iSubAdress)
+                                {
+                                    case 1:
+                                        gAlarmType = enmNotAlarmType.NOTSubAddress1Disable.ToString();
+                                        break;
+                                    case 2:
+                                        gAlarmType = enmNotAlarmType.NOTSubAddress2Disable.ToString();
+                                        break;
+                                    case 3:
+                                        gAlarmType = enmNotAlarmType.NOTSubAddress3Disable.ToString();
+                                        break;
+                                    case 4:
+                                        gAlarmType = enmNotAlarmType.NOTSubAddress4Disable.ToString();
+                                        break;
+                                }
+                            }
                             gsTextField = sTextField.Length > 0 ? sTextField : "Device " + address + " Enabled";
                             on = false;
                             break;
 
                         case enmNotEventType.Devicedisabled:
+
                             gAlarmType = enmNotAlarmType.NOTIsolate.ToString();
+                            if (iSubAdress > 0)
+                            {
+                                switch (iSubAdress)
+                                {
+                                    case 1:
+                                        gAlarmType = enmNotAlarmType.NOTSubAddress1Disable.ToString();
+                                        break;
+                                    case 2:
+                                        gAlarmType = enmNotAlarmType.NOTSubAddress2Disable.ToString();
+                                        break;
+                                    case 3:
+                                        gAlarmType = enmNotAlarmType.NOTSubAddress3Disable.ToString();
+                                        break;
+                                    case 4:
+                                        gAlarmType = enmNotAlarmType.NOTSubAddress4Disable.ToString();
+                                        break;
+                                }
+                            }
+
                             gsTextField = sTextField.Length > 0 ? sTextField : "Device " + address + " Disabled";
                             Console.WriteLine(DateTime.Now + ": " + "Device " + address + " Disabled");
                             break;
@@ -391,21 +431,21 @@ namespace DraxTechnology.Panels
                             break;
 
                         case enmNotEventType.AUXSet:
-                            gAlarmType = enmNotAlarmType.NOTNonFireAlarm.ToString();
+                            gAlarmType = enmNotAlarmType.NOTNonFireAlarm1.ToString();
                             gsTextField = "AUX Set";
                             getDeviceText = false;
                             Console.WriteLine(DateTime.Now + ": " + gsTextField);
                             break;
 
                         case enmNotEventType.AuxCleared:
-                            gAlarmType = enmNotAlarmType.NOTNonFireAlarm.ToString();
+                            gAlarmType = enmNotAlarmType.NOTNonFireAlarm1.ToString();
                             gsTextField = "Aux Cleared";
                             getDeviceText = false;
                             Console.WriteLine(DateTime.Now + ": " + gsTextField);
                             break;
 
                         case enmNotEventType.TechnicalAlarm:
-                            gAlarmType = enmNotAlarmType.NOTNonFireAlarm.ToString();
+                            gAlarmType = enmNotAlarmType.NOTNonFireAlarm1.ToString();
                             gsTextField = "Technical Alarm";
                             getDeviceText = false;
                             Console.WriteLine(DateTime.Now + ": " + gsTextField);
@@ -444,7 +484,7 @@ namespace DraxTechnology.Panels
                             break;
 
                         case enmNotEventType.ThermalAlarm:
-                            gAlarmType = enmNotAlarmType.NOTNonFireAlarm.ToString();
+                            gAlarmType = enmNotAlarmType.NOTNonFireAlarm1.ToString();
                             giAddressNumber = 0;
                             gsTextField = "Thermal Alarm";
                             getDeviceText = false;
@@ -996,13 +1036,6 @@ namespace DraxTechnology.Panels
                             Console.WriteLine(DateTime.Now + ": " + gsTextField);
                             break;
 
-                        // 192/193 route to the same AMX point as Entire Zone
-                        // Disable — loop 15, address = zone — with 192 clearing
-                        // it (VB NOTNetManager.bas: giLoopNumber = 15,
-                        // giAddressNumber = giZoneNumber, gbClearedEvent =
-                        // True). The previous address 71 with the frame's loop
-                        // meant the disabled row could never clear on AMX
-                        // (zone test, 2026-07-30).
                         case enmNotEventType.NetworkZoneInEnabled:  // 192
                             gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                             loop = 15;
@@ -2115,7 +2148,7 @@ namespace DraxTechnology.Panels
                         zonetext = "Zone " + zone;
                     }
                     evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, on);
-                    if (p1 == (int)enmPRLAlarmType.Isolate)  // If Disable Device neeed to also send another event to AMX to increase the Isolation count
+                    if (p1 == (int)enmPRLAlarmType.Isolate || p1 == (int)enmNotAlarmType.NOTSubAddress1Disable || p1 == (int)enmNotAlarmType.NOTSubAddress2Disable || p1 == (int)enmNotAlarmType.NOTSubAddress3Disable || p1 == (int)enmNotAlarmType.NOTSubAddress4Disable)  // If Disable Device neeed to also send another event to AMX to increase the Isolation count
                     {
                         if (!bDontSendToAMX)
                         {

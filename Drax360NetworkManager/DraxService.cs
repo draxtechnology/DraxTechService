@@ -668,14 +668,20 @@ namespace DraxTechnology
     public enum enmNotAlarmType
     {
         NOTFire = 0,
-        NOTNonFireAlarm = 1,
+        NOTNonFireAlarm1 = 1,
         NOTPreAlarm = 2,
+        NOTNonFireAlarm2 = 3,
         NOTIsolate = 4,
+        NOTNonFireAlarm3 = 5,
         NOTTestModeFire = 6,
+        NOTNonFireAlarm4 = 7,
         NOTFault = 8,
         NOTOutputActivate = 9,
         NOTDeviceTestMode = 10,
-        NOTDisableZone = 11,
+        NOTSubAddress1Disable = 11,
+        NOTSubAddress2Disable = 12,
+        NOTSubAddress3Disable = 13,
+        NOTSubAddress4Disable = 14,
         NOTStatusEvent = 15,
     }
     public enum enmNotPRLAlarmType
