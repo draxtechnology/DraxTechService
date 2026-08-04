@@ -2129,6 +2129,7 @@ namespace DraxTechnology.Panels
                                 : _activeIsolations.Remove((p2, p3, p4));
                             if (transition)
                             {
+                                this.NotifyClient("Sending send_response_amx_disable: " + gsTextField + " gsDeviceText: " + gsDeviceText + " zonetext: " + zonetext + " on: " + on, false);
                                 send_response_amx_disable(evnum, gsTextField, zonetext, gsDeviceText, on);
                             }
                         }
@@ -2144,6 +2145,7 @@ namespace DraxTechnology.Panels
                             if (!bDontSendToAMX)
                             {
                                 int offEvnum = CSAMXSingleton.CS.MakeInputNumber(entry.p2, entry.p3, entry.p4, entry.p1, false);
+                                this.NotifyClient("Sending SendResetToAMX: " + gsTextField + " gsDeviceText: " + gsDeviceText + " zonetext: " + zonetext + " on: " + on, false);
                                 CSAMXSingleton.CS.SendResetToAMX(offEvnum, gsTextField, "", "");
                             }
                         }
@@ -2152,7 +2154,7 @@ namespace DraxTechnology.Panels
 
                     if (!bDontSendToAMX)
                     {
-                        this.NotifyClient("Sending gsTextField: " + gsTextField + " gsDeviceText: " + gsDeviceText + " zonetext: " + zonetext, false);
+                        this.NotifyClient("Sending gsTextField: " + gsTextField + " gsDeviceText: " + gsDeviceText + " zonetext: " + zonetext + " on: " + on, false);
                         send_response_amx_and_serial(evnum, gsTextField, gsDeviceText, zonetext);
                     }
 
