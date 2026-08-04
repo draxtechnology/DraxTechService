@@ -44,12 +44,14 @@ namespace DraxTechnology.Panels
                 heartbeat_timer = new Timer(heartbeat_timer_callback, this.Identifier, 1000, HeartbeatIntervalSeconds * 1000);
                 this.Offset = base.GetSetting<int>(ksettingsetupsection, "giAmx1Offset");
                 InitAnalogueStore();
+                LoadIsolationState(_activeIsolations);
             }
         }
 
-        // VB Notifier heartbeat cadence (tmrHeartbeat 20000ms) — with two
-        // missed polls raising the comms fault, detection lands within
-        // 40-60s of silence like the legacy.
+        // VB Notifier heartbeat cadence (tmrHeartbeat 20000ms) — with three
+        // missed polls raising the comms fault (the VB's post-2013
+        // giPollTimeOut), detection lands within 60-80s of silence like the
+        // legacy.
         protected override int HeartbeatIntervalSeconds => 20;
         public override void SerialPort_Datareceived(object sender, System.IO.Ports.SerialDataReceivedEventArgs e)
         {
@@ -2131,6 +2133,7 @@ namespace DraxTechnology.Panels
                             {
                                 this.NotifyClient("Sending send_response_amx_disable: " + gsTextField + " gsDeviceText: " + gsDeviceText + " zonetext: " + zonetext + " on: " + on, false);
                                 send_response_amx_disable(evnum, gsTextField, zonetext, gsDeviceText, on);
+                                SaveIsolationState(_activeIsolations);
                             }
                         }
                     }

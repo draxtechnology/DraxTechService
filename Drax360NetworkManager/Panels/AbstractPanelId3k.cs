@@ -46,12 +46,16 @@ namespace DraxTechnology.Panels
             : base(baselogfolder, identifier, inifile, extension)
         {
             if (!string.IsNullOrEmpty(identifier))
+            {
                 InitAnalogueStore();
+                LoadIsolationState(_activeIsolations);
+            }
         }
 
-        // VB Notifier heartbeat cadence (tmrHeartbeat 20000ms) — with two
-        // missed polls raising the comms fault, detection lands within
-        // 40-60s of silence like the legacy.
+        // VB Notifier heartbeat cadence (tmrHeartbeat 20000ms) — with three
+        // missed polls raising the comms fault (the VB's post-2013
+        // giPollTimeOut), detection lands within 60-80s of silence like the
+        // legacy.
         protected override int HeartbeatIntervalSeconds => 20;
 
         // ----------------------------------------------------------------
@@ -2117,7 +2121,10 @@ namespace DraxTechnology.Panels
                     ? _activeIsolations.Add((p2, p3, p4))
                     : _activeIsolations.Remove((p2, p3, p4));
                 if (transition)
+                {
                     send_response_amx_disable(evnum, st.gsTextField, gsDeviceText, zonetext, on);
+                    SaveIsolationState(_activeIsolations);
+                }
             }
         }
 

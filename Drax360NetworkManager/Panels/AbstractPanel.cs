@@ -268,6 +268,63 @@ namespace DraxTechnology.Panels
         }
         #endregion
 
+        #region Persisted isolation state
+        // The extra AMX isolation event is gated on per-point transitions
+        // (HandlePostSwitchDispatch / the Inspire Isolate block), so the set
+        // of points AMX currently shows isolated has to survive a service
+        // restart: an enable that finds an empty set swallows the clear and
+        // the AMX isolation row sticks (seen on the real Inspire,
+        // 2026-08-04), while a panel re-list after a restart double-raises.
+        // One "p2,p3,p4" line per point, alongside analogue.db under the
+        // configured base folder.
+        private string IsolationStateFile =>
+            Path.Combine(BaseFolder, "data", "isolations-" + GetFileName + ".txt");
+
+        protected void LoadIsolationState(HashSet<(int p2, int p3, int p4)> set)
+        {
+            try
+            {
+                if (!File.Exists(IsolationStateFile)) return;
+                foreach (string line in File.ReadAllLines(IsolationStateFile))
+                {
+                    string[] parts = line.Split(',');
+                    if (parts.Length == 3 &&
+                        int.TryParse(parts[0], out int p2) &&
+                        int.TryParse(parts[1], out int p3) &&
+                        int.TryParse(parts[2], out int p4))
+                    {
+                        set.Add((p2, p3, p4));
+                    }
+                }
+                if (set.Count > 0)
+                    this.NotifyClient($"Restored {set.Count} active isolation(s) from the last run", false);
+            }
+            catch (Exception ex)
+            {
+                // Never let state restore take the service down — worst case
+                // is the pre-persistence behaviour (an empty set).
+                this.NotifyClient("Isolation state load failed (starting empty): " + ex.Message, false);
+            }
+        }
+
+        protected void SaveIsolationState(HashSet<(int p2, int p3, int p4)> set)
+        {
+            try
+            {
+                Directory.CreateDirectory(Path.Combine(BaseFolder, "data"));
+                string[] lines = new string[set.Count];
+                int i = 0;
+                foreach (var p in set)
+                    lines[i++] = p.p2 + "," + p.p3 + "," + p.p4;
+                File.WriteAllLines(IsolationStateFile, lines);
+            }
+            catch (Exception ex)
+            {
+                this.NotifyClient("Isolation state save failed: " + ex.Message, false);
+            }
+        }
+        #endregion
+
         public virtual void SerialPort_Datareceived(object sender, SerialDataReceivedEventArgs e)
         {
             // Stamp every received-bytes event so GETCOMMPORTSTATUS can report
