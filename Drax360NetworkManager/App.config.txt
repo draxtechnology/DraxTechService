@@ -1,41 +1,57 @@
 <?xml version="1.0" encoding="utf-8"?>
 <configuration>
   <appSettings>
-    <add key="Panels" value="Gent" />
-    <!--
+    <add key="Panels" value="U2FsdGVkX1+f3C+TzSBV52yzgMMjNa8=" />
+
+        <!--
     Valid Values =
       Advanced                          U2FsdGVkX1/JJ3QPvEOW5nOGw+zEb4s/
       Email                             U2FsdGVkX1+YN+3YDMt0ebrDTZ2F
       AUTESPA                           U2FsdGVkX191GGJ/bumkNXbg8/TxbEI=                    1070 Channel
       Gent                              U2FsdGVkX1+HX8ee7Qrcq95XoWk=
-      Inspire                           U2FsdGVkX1+f3C+TzSBV52yzgMMjNa8=
+      Inspire                           U2FsdGVkX1+f3C+TzSBV52yzgMMjNa8=                    1080 Chanel
       MorleyMax                         U2FsdGVkX18lYZGUa4wybYDH/IvY1JtcgA==
 	  MorleyZX                          U2FsdGVkX18NyBOg7pRGwII0IHkcqQt3
 	  Notifier                          U2FsdGVkX19zEDkZEbF52Y4s3TnjygSE==
-	  Pearl                             U2FsdGVkX19VMiux41uUA+jxbmLn
+	  Pearl                             U2FsdGVkX19VMiux41uUA+jxbmLnn
 	  RSM                               U2FsdGVkX18OMDQk8xhCw1xicQ==
 	  Syncro                            U2FsdGVkX1/5DsGH2yC+z/jVGTW23A==
       Taktis                            U2FsdGVkX18EWMTvtQVOK6qA+tJkkQ==
     -->
-    <add key="Configuration" value="c:\amx1" />
+
+
+    <add key="Configuration" value="c:\AMX1" />
     <!-- build temp, log, ini under this foler -->
     <add key="FakeMode" value="0" />
     <!-- 0 = off, 1 = on -->
-    <add key="ClientSettingsProvider.ServiceUri" value="" />
+    <!-- AMX instance / port. A site can run up to four managers in parallel;
+         this C# service may occupy any of the four slots.
+           AmxInstance = 1..4  -> port 3090..3093 (AMX1=3090, AMX2=3091, ...)
+           AmxPort     = explicit port, overrides AmxInstance if both set.
+         Omit both to default to 3090 (AMX1). -->
+    <!-- <add key="AmxInstance" value="1" /> -->
+    <!-- <add key="AmxPort" value="3090" /> -->
+    <!-- MQTT mirror for the open head-end / Node-RED PoC. Additive and parallel to
+         AMX: when enabled, every normalised event is also published as JSON to a
+         local broker. Off by default so a normal install behaves exactly as before.
+           MqttEnabled     false = off (default), true = on
+           MqttBroker      broker host (default localhost — self-contained, no internet)
+           MqttPort        broker TCP port (default 1883)
+           MqttTopicPrefix root topic; events -> <prefix>/<panel>/event,
+                           log -> <prefix>/<panel>/log, controls in <- <prefix>/<panel>/cmd -->
+    <add key="MqttEnabled" value="false" />
+    <add key="MqttBroker" value="localhost" />
+    <add key="MqttPort" value="1883" />
+    <add key="MqttTopicPrefix" value="drax" />
+    <!-- Fallback for AMX shutdown. The client exits when AMX sends NWM:END at
+         close (legacy NWM parity). If a site's AMX build closes its socket
+         without sending END (check the service trace: "Received From AMX:"
+         lines followed by "AMX link down"), enable this and the service will
+         forward NWM:END to the client itself when the AMX TCP link drops.
+         Off by default: a link drop also happens on an AMX crash or restart,
+         not just a deliberate close, and closing the operator's client on a
+         crash may not be wanted.
+           CloseClientOnAmxLoss  false = off (default), true = on -->
+    <add key="CloseClientOnAmxLoss" value="false" />
   </appSettings>
-  <startup>
-    <supportedRuntime version="v4.0" sku=".NETFramework,Version=v4.8.1" />
-  </startup>
-  <system.web>
-    <membership defaultProvider="ClientAuthenticationMembershipProvider">
-      <providers>
-        <add name="ClientAuthenticationMembershipProvider" type="System.Web.ClientServices.Providers.ClientFormsAuthenticationMembershipProvider, System.Web.Extensions, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35" serviceUri="" />
-      </providers>
-    </membership>
-    <roleManager defaultProvider="ClientRoleProvider" enabled="true">
-      <providers>
-        <add name="ClientRoleProvider" type="System.Web.ClientServices.Providers.ClientRoleProvider, System.Web.Extensions, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35" serviceUri="" cacheTimeout="86400" />
-      </providers>
-    </roleManager>
-  </system.web>
 </configuration>

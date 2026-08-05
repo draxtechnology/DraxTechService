@@ -276,17 +276,32 @@ namespace DraxTechnology.Panels
                     switch ((enmNotEventType)eventcode)
                     {
                         case enmNotEventType.Fire:
-                            Console.WriteLine(DateTime.Now + ": " + gsTextField);
                             gAlarmType = enmNotAlarmType.NOTFire.ToString();
+                            if (iSubAdress > 0)
+                            {
+                                switch (iSubAdress)
+                                {
+                                    case 1:
+                                        gAlarmType = enmNotAlarmType.NOTInputActivated1.ToString();
+                                        break;
+                                    case 2:
+                                        gAlarmType = enmNotAlarmType.NOTInputActivated2.ToString();
+                                        break;
+                                    case 3:
+                                        gAlarmType = enmNotAlarmType.NOTInputActivated3.ToString();
+                                        break;
+                                    case 4:
+                                        gAlarmType = enmNotAlarmType.NOTInputActivated4.ToString();
+                                        break;
+                                }
+                            }
                             break;
 
                         case enmNotEventType.TestFire:
-                            Console.WriteLine(DateTime.Now + ": " + gsTextField);
                             gAlarmType = enmNotAlarmType.NOTFire.ToString();
                             break;
 
                         case enmNotEventType.FireDisabled:
-                            Console.WriteLine(DateTime.Now + ": " + gsTextField);
                             gAlarmType = enmNotAlarmType.NOTTestModeFire.ToString();
                             bDontSendToAMX = true;
                             break;
@@ -434,21 +449,21 @@ namespace DraxTechnology.Panels
                             break;
 
                         case enmNotEventType.AUXSet:
-                            gAlarmType = enmNotAlarmType.NOTNonFireAlarm1.ToString();
+                            gAlarmType = enmNotAlarmType.NOTInputActivated1.ToString();
                             gsTextField = "AUX Set";
                             getDeviceText = false;
                             Console.WriteLine(DateTime.Now + ": " + gsTextField);
                             break;
 
                         case enmNotEventType.AuxCleared:
-                            gAlarmType = enmNotAlarmType.NOTNonFireAlarm1.ToString();
+                            gAlarmType = enmNotAlarmType.NOTInputActivated1.ToString();
                             gsTextField = "Aux Cleared";
                             getDeviceText = false;
                             Console.WriteLine(DateTime.Now + ": " + gsTextField);
                             break;
 
                         case enmNotEventType.TechnicalAlarm:
-                            gAlarmType = enmNotAlarmType.NOTNonFireAlarm1.ToString();
+                            gAlarmType = enmNotAlarmType.NOTInputActivated1.ToString();
                             gsTextField = "Technical Alarm";
                             getDeviceText = false;
                             Console.WriteLine(DateTime.Now + ": " + gsTextField);
@@ -487,7 +502,7 @@ namespace DraxTechnology.Panels
                             break;
 
                         case enmNotEventType.ThermalAlarm:
-                            gAlarmType = enmNotAlarmType.NOTNonFireAlarm1.ToString();
+                            gAlarmType = enmNotAlarmType.NOTInputActivated1.ToString();
                             giAddressNumber = 0;
                             gsTextField = "Thermal Alarm";
                             getDeviceText = false;
