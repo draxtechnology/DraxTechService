@@ -218,6 +218,11 @@ namespace DraxTechnology.Panels
         // calling CheckCommsMonitor() from their heartbeat callback; the
         // restore fires from Parse on any received data.
         private bool commsFailed = false;
+        // Arms the monitor on its first tick so a panel that has NEVER
+        // answered still raises the fault — an AMX started against a dead
+        // link showed nothing (Mike/James, 2026-08-06); the VB alarmed
+        // within ~80s of boot regardless.
+        private DateTime monitorStarted = DateTime.MinValue;
         // 3, not 2: the VB's giPollTimeOut was loosened from 2 to 3 in 2013
         // ("J.M 10/04/13 ... for Bournemouth because of drop outs on busy
         // periods", frmPRLNetworkManager.frm) — 2 false-alarmed on busy links.
@@ -229,9 +234,16 @@ namespace DraxTechnology.Panels
 
         protected void CheckCommsMonitor()
         {
-            if (lastDataReceived == DateTime.MinValue)
-                return; // nothing ever received — startup, not a comms drop
-            double silentSeconds = (DateTime.Now - lastDataReceived).TotalSeconds;
+            // Never-received counts from the first monitor tick, not forever:
+            // silence is measured from the last data or, before any data has
+            // arrived, from when monitoring began — so a dead-from-boot link
+            // faults on the same three-heartbeat timing as a mid-run break.
+            if (monitorStarted == DateTime.MinValue)
+                monitorStarted = DateTime.Now;
+            DateTime baseline = lastDataReceived == DateTime.MinValue
+                ? monitorStarted
+                : lastDataReceived;
+            double silentSeconds = (DateTime.Now - baseline).TotalSeconds;
             if (!commsFailed && silentSeconds > HeartbeatIntervalSeconds * CommsFailAfterMissedHeartbeats)
             {
                 commsFailed = true;
