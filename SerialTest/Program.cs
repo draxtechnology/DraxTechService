@@ -2,7 +2,7 @@ using System.IO.Ports;
 
 class Program
 {
-    static SerialPort serialPort;
+    static SerialPort? serialPort;
     static string SerialTestlogFile = "c:\\temp\\serial_log.txt";
 
     static void Main()

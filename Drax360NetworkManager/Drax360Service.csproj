@@ -14,6 +14,8 @@
     <!-- Service is Windows-only by design (ServiceBase, EventLog, WMI, named-pipe ACLs).
          CA1416 fires for Windows-only APIs even though our TFM is net10.0-windows. -->
     <NoWarn>$(NoWarn);CA1416</NoWarn>
+    <!-- Warnings reached zero 2026-08-07; lock the baseline so regressions fail the build. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>

@@ -26,8 +26,8 @@ namespace Taktis_Receive
         public const string CMD_EVENT_ACK = "134";
         public const string CMD_START_MONITORING = "231";
         public const string CMD_STOP_MONITORING = "244";
-        TcpClient client;
-        NetworkStream stream;
+        TcpClient client = null!;   // established in Run() before any use
+        NetworkStream stream = null!;
 
         private long[] glSerialNo = new long[4];
 
