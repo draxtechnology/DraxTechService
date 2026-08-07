@@ -524,28 +524,6 @@ namespace DraxTechnology.Panels
             return false;
         }
 
-        protected bool serialsendstring_analogue(string[] values)
-        {
-            if (serialport?.IsOpen == true)
-            {
-                foreach (var v in values)
-                {
-                    if (!string.IsNullOrEmpty(v))
-                    {
-                        byte b = unchecked((byte)Convert.ToInt32(v));
-                        serialport.Write(new byte[] { b }, 0, 1);
-
-                        Thread.Sleep(20); // increase if needed (10–20ms sometimes)
-                    }
-                }
-                Thread.Sleep(1000);
-
-                this.NotifyClient("Sent analogue: " + string.Join(", ", values), false);
-                return true;
-            }
-            return false;
-        }
-
         // Queues an analogue request behind the response gate. The frame goes
         // to the wire immediately if nothing is outstanding; otherwise it waits
         // for NoteAnalogueResponse (the >ISE arriving) or the timeout. Panels
@@ -937,9 +915,11 @@ namespace DraxTechnology.Panels
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // handle/log failure
+                // A dead port makes this fire on every reconnect attempt — log to
+                // the file only so the failure loop is visible without UI noise.
+                this.NotifyClient("Serial reconnect failed: " + ex.Message, false);
             }
         }
         #endregion

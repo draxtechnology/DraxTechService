@@ -64,12 +64,9 @@ namespace DraxTechnology
                 Directory.CreateDirectory(this.logfiles);
             }
 
-            // Option 3: delete leftover files from any previous run before resuming.
-            foreach (var f in Directory.GetFiles(this.logfiles, "*." + extension))
-            {
-      //          try { File.Delete(f); } catch { }
-            }
-
+            // Leftover files from a previous run are deliberately kept: DraxService's
+            // init_service replays them to AMX (crash recovery), and the MAK-ack
+            // delete path owns their lifetime from there.
             determinelastfilenumber();
 
             _cleanupTimer = new System.Timers.Timer(10_000) { AutoReset = true };
@@ -271,6 +268,12 @@ namespace DraxTechnology
             catch { }
         }
 
+        // Serialises the file-number increment and file write below. FlushMessages
+        // is called from every panel parser thread plus the AMX connect path;
+        // without this, two concurrent flushes could take the same file number
+        // and collide on the CreateNew.
+        private readonly object _flushLock = new object();
+
         public void FlushMessages()
         {
             List<NVM> toProcess;
@@ -293,48 +296,51 @@ namespace DraxTechnology
                 return;
             }
 
-            filenumber++;
-            if (filenumber > kmaxfilenumber) filenumber = 1;
-
-            string filename = filenumber.ToString() + "." + extension;
-            string fullfilename = Path.Combine(logfiles, filename);
-
-            // Open the file in write mode, changed from append as we need to create a new file on flush
-
-            if (System.IO.File.Exists(fullfilename))
+            lock (_flushLock)
             {
-                System.IO.File.Delete(fullfilename);
-            }
+                filenumber++;
+                if (filenumber > kmaxfilenumber) filenumber = 1;
 
-            using (FileStream fileStream = new FileStream(fullfilename, FileMode.CreateNew, FileAccess.Write))
-            {
-                byte[] ourbytes = contents.ToArray();
-                fileStream.Write(ourbytes, 0, ourbytes.Length);
-                fileStream.Close();
-                if (AMXTransfer.Instance.IsConnected)
+                string filename = filenumber.ToString() + "." + extension;
+                string fullfilename = Path.Combine(logfiles, filename);
+
+                // Open the file in write mode, changed from append as we need to create a new file on flush
+
+                if (System.IO.File.Exists(fullfilename))
                 {
-                    AMXTransfer.Instance.SendMessage($"NTX:" + fullfilename);
+                    System.IO.File.Delete(fullfilename);
                 }
-            }
-            //File.Delete(fullfilename);  // If I delete the file straight away then nothing appears on AMX
-            var files = Directory.GetFiles(this.logfiles, "*." + extension);
-            foreach (var file in files)
-            {
-                try
+
+                using (FileStream fileStream = new FileStream(fullfilename, FileMode.CreateNew, FileAccess.Write))
                 {
-                    if (!file.Equals(fullfilename, StringComparison.OrdinalIgnoreCase))
+                    byte[] ourbytes = contents.ToArray();
+                    fileStream.Write(ourbytes, 0, ourbytes.Length);
+                    fileStream.Close();
+                    if (AMXTransfer.Instance.IsConnected)
                     {
-                        var fileAge = DateTime.Now - File.GetLastWriteTime(file);
-                        if (fileAge.TotalMinutes > 5)  //  last resort but should rarely (if ever) fire now.
-                        {
-                            File.Delete(file);
-                        }
+                        AMXTransfer.Instance.SendMessage($"NTX:" + fullfilename);
                     }
                 }
-                catch
-                { }
-            }
 
+                //File.Delete(fullfilename);  // If I delete the file straight away then nothing appears on AMX
+                var files = Directory.GetFiles(this.logfiles, "*." + extension);
+                foreach (var file in files)
+                {
+                    try
+                    {
+                        if (!file.Equals(fullfilename, StringComparison.OrdinalIgnoreCase))
+                        {
+                            var fileAge = DateTime.Now - File.GetLastWriteTime(file);
+                            if (fileAge.TotalMinutes > 5)  //  last resort but should rarely (if ever) fire now.
+                            {
+                                File.Delete(file);
+                            }
+                        }
+                    }
+                    catch
+                    { }
+                }
+            }
         }
         #endregion
         #region private methods
@@ -345,14 +351,20 @@ namespace DraxTechnology
         {
             var dirInfo = new DirectoryInfo(logfiles);
             var allFiles = dirInfo.GetFiles("*." + extension, SearchOption.TopDirectoryOnly);
-            FileInfo lastmodifiedfile = allFiles.OrderBy(fi => fi.LastWriteTime).LastOrDefault();
-            if (lastmodifiedfile == null) return;
 
-            string[] splits = lastmodifiedfile.Name.Split('.');
-
-            if (splits.Length != 2) return;
-
-            filenumber = Convert.ToInt32(splits[0]);
+            // Newest numeric file wins (not max-numeric: the counter wraps at
+            // kmaxfilenumber, so after a wrap the newest file is the low number).
+            // Skip anything that doesn't parse — a stray non-numeric file here
+            // used to throw FormatException out of Startup and stop the service.
+            foreach (var fi in allFiles.OrderByDescending(f => f.LastWriteTime))
+            {
+                string[] splits = fi.Name.Split('.');
+                if (splits.Length == 2 && int.TryParse(splits[0], out int n))
+                {
+                    filenumber = n;
+                    return;
+                }
+            }
         }
 
         public void sendalarmorreset(int eventnumber, string dtext, string dtext2, string dtext3, bool on)

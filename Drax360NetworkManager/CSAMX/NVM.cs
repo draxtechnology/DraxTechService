@@ -125,8 +125,12 @@ namespace DraxTechnology
         }
         private byte[] rendercharb(string ourstr, int ourwidth)
         {
-            string ret = ourstr.PadRight(ourwidth, (char)0);
-            return Encoding.ASCII.GetBytes(ret);
+            // The record layout is fixed-width: an over-length text would make
+            // this record longer than AMX expects and shift every field after it,
+            // so truncate as well as pad.
+            string ret = ourstr ?? "";
+            if (ret.Length > ourwidth) ret = ret.Substring(0, ourwidth);
+            return Encoding.ASCII.GetBytes(ret.PadRight(ourwidth, (char)0));
         }
         #endregion
     }

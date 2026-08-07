@@ -216,40 +216,63 @@ namespace DraxTechnology.Panels
         #region SerialPort_DataReceived
         public override void SerialPort_Datareceived(object sender, SerialDataReceivedEventArgs e)
         {
-            lastDataReceived = DateTime.Now;
-
-            int bytesToRead = serialport.BytesToRead;
-            if (bytesToRead <= 0) return;
-
-            byte[] incoming = new byte[bytesToRead];
-            int read = serialport.Read(incoming, 0, bytesToRead);
-            if (read <= 0) return;
-
-            string hex = BitConverter.ToString(incoming, 0, read).Replace("-", " ");
-            string asc = new string(incoming.Take(read)
-                .Select(b => b >= 0x20 && b < 0x7F ? (char)b : '.').ToArray());
-            base.NotifyClient($"RX {read} bytes | HEX: {hex} | ASC: {asc}", false);
-
-            if (_framer != null)
+            // Guard the whole handler: an exception escaping a SerialPort event
+            // thread takes the service process down (the base handler is guarded;
+            // this override must be too).
+            try
             {
-                int offset = 0;
-                while (offset < read)
+                lastDataReceived = DateTime.Now;
+
+                int bytesToRead = serialport.BytesToRead;
+                if (bytesToRead <= 0) return;
+
+                byte[] incoming = new byte[bytesToRead];
+                int read = serialport.Read(incoming, 0, bytesToRead);
+                if (read <= 0) return;
+
+                string hex = BitConverter.ToString(incoming, 0, read).Replace("-", " ");
+                string asc = new string(incoming.Take(read)
+                    .Select(b => b >= 0x20 && b < 0x7F ? (char)b : '.').ToArray());
+                base.NotifyClient($"RX {read} bytes | HEX: {hex} | ASC: {asc}", false);
+
+                if (_framer != null)
                 {
-                    byte[] chunk = incoming.Skip(offset).Take(read - offset).ToArray();
-                    int consumed = _framer.Feed(chunk);
-                    base.NotifyClient($"Framer consumed {consumed} of {chunk.Length} bytes", false);
-
-                    if (consumed == 0)
+                    int offset = 0;
+                    while (offset < read)
                     {
-                        lock (_buffer) { _buffer.AddRange(chunk); ExtractMessages(); }
-                        break;
-                    }
-                    offset += consumed;
-                }
-                return;
-            }
+                        byte[] chunk = incoming.Skip(offset).Take(read - offset).ToArray();
+                        int consumed = _framer.Feed(chunk);
+                        base.NotifyClient($"Framer consumed {consumed} of {chunk.Length} bytes", false);
 
-            lock (_buffer) { _buffer.AddRange(incoming.Take(read)); ExtractMessages(); }
+                        if (consumed == 0)
+                        {
+                            lock (_buffer) { _buffer.AddRange(chunk); ExtractMessages(); }
+                            break;
+                        }
+                        offset += consumed;
+                    }
+                    return;
+                }
+
+                lock (_buffer) { _buffer.AddRange(incoming.Take(read)); ExtractMessages(); }
+            }
+            catch (Exception ex)
+            {
+                base.NotifyClient("ESPA receive error: " + ex.Message, false);
+            }
+        }
+
+        // Device text sits between a pair of '#' characters in the pager line.
+        // Pager text without the full pair must not throw on the receive thread —
+        // fall back to empty device text instead.
+        private static string ExtractHashDelimitedDeviceText(string text)
+        {
+            int first = text.IndexOf('#');
+            if (first < 0) return "";
+            string rest = text.Substring(first + 1);
+            int second = rest.IndexOf('#');
+            if (second < 0) return "";
+            return Regex.Replace(rest.Substring(0, second), @" {2,}", " ").Trim();
         }
 
         private void ExtractMessages()
@@ -322,9 +345,7 @@ namespace DraxTechnology.Panels
                 int rsIdx = gsTextField.ToLower().IndexOf("<rs>");
                 if (rsIdx >= 0) gsTextField = gsTextField.Substring(0, rsIdx);
 
-                gsDeviceText = gsTextField.Substring(gsTextField.IndexOf("#") + 1).Trim();
-                gsDeviceText = gsDeviceText.Substring(0, gsDeviceText.IndexOf("#")).Trim();
-                gsDeviceText = Regex.Replace(gsDeviceText, @" {2,}", " ").Trim();
+                gsDeviceText = ExtractHashDelimitedDeviceText(gsTextField);
 
                 gsTextField = gsTextField.Replace("#", "").Trim();
                 gsTextField = Regex.Replace(gsTextField, @" {2,}", " ").Trim();
@@ -354,9 +375,7 @@ namespace DraxTechnology.Panels
                 int rsIdx = gsTextField.ToLower().IndexOf("<rs>");
                 if (rsIdx >= 0) gsTextField = gsTextField.Substring(0, rsIdx);
 
-                gsDeviceText = gsTextField.Substring(gsTextField.IndexOf("#") + 1).Trim();
-                gsDeviceText = gsDeviceText.Substring(0, gsDeviceText.IndexOf("#")).Trim();
-                gsDeviceText = Regex.Replace(gsDeviceText, @" {2,}", " ").Trim();
+                gsDeviceText = ExtractHashDelimitedDeviceText(gsTextField);
 
                 gsTextField = gsTextField.Replace("#", "").Trim();
                 gsTextField = Regex.Replace(gsTextField, @" {2,}", " ").Trim();
@@ -384,9 +403,7 @@ namespace DraxTechnology.Panels
                 int rsIdx = gsTextField.ToLower().IndexOf("<rs>");
                 if (rsIdx >= 0) gsTextField = gsTextField.Substring(0, rsIdx);
 
-                gsDeviceText = gsTextField.Substring(gsTextField.IndexOf("#") + 1).Trim();
-                gsDeviceText = gsDeviceText.Substring(0, gsDeviceText.IndexOf("#")).Trim();
-                gsDeviceText = Regex.Replace(gsDeviceText, @" {2,}", " ").Trim();
+                gsDeviceText = ExtractHashDelimitedDeviceText(gsTextField);
 
                 gsTextField = gsTextField.Replace("#", "").Trim();
                 gsTextField = Regex.Replace(gsTextField, @" {2,}", " ").Trim();

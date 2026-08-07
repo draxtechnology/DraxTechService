@@ -130,20 +130,14 @@ namespace DraxTechnology
             // Drop any leftover ack signal so the next NTX send waits for a
             // fresh MAK from the new connection rather than racing on a stale set.
             _makAck.Reset();
+            _makPendingFile = null;
         }
 
-        // Add near the top of the class
         private static readonly ManualResetEventSlim _makAck = new ManualResetEventSlim(false);
-
-        public static void WaitForMak()
-        {
-            _makAck.Wait();
-        }
-
-        public static void ResetMak()
-        {
-            _makAck.Reset();
-        }
+        // The file path of the NTX currently gated on its MAK. The ack handler
+        // releases the gate only for a matching path — a late MAK from an earlier
+        // timed-out send must not release the next frame early.
+        private static volatile string _makPendingFile;
         private async Task tcpconnect()
         {
             bool wasConnected = false;
@@ -236,7 +230,19 @@ namespace DraxTechnology
                         {
                             CSAMXSingleton.CS.ScheduleDelete(filename);
                         }
-                        _makAck.Set();  // releases the sender thread's WaitForMak
+                        // Release the sender's ack gate only if this MAK is for the
+                        // frame it is actually waiting on; a stale ack (earlier
+                        // timed-out send) still schedules its delete above but must
+                        // not let the next frame jump the pacing.
+                        string pending = _makPendingFile;
+                        if (pending != null && string.Equals(filename, pending, StringComparison.OrdinalIgnoreCase))
+                        {
+                            _makAck.Set();
+                        }
+                        else
+                        {
+                            NotifyClient("Stale MAK (no frame waiting on it): " + filename);
+                        }
                     }
                     else if (msg.StartsWith("MTX:"))
                     {
@@ -317,18 +323,18 @@ namespace DraxTechnology
                     if (parts.Length > 8)
                     {
                         DraxService.OnAmxPipeCommand?.Invoke(parts);
-                        Thread.Sleep(500);  // give the panel writer a moment to pick up the file before we send the echo-back
                     }
                 }
                 return;
             }
 
-            // Single CTRL or other pipe-delimited graphic command.
+            // Single CTRL or other pipe-delimited graphic command. Dispatch lands
+            // in the panels' own command queues, which drain at panel pace — this
+            // runs on the AMX receive thread, so it must not block.
             string[] partsSingle = msg.Split(kpipedelim);
             if (partsSingle.Length <= 8)
                 return;
             DraxService.OnAmxPipeCommand?.Invoke(partsSingle);
-            Thread.Sleep(500);  // give the panel writer a moment to pick up the file before we send the echo-back
         }
 
         public void NotifyClient(string message)
@@ -424,11 +430,16 @@ namespace DraxTechnology
         {
             const int maxAttempts = 3;
 
-            // Heartbeat is fire-and-forget; everything else (NTX:, MTX: echo,
-            // file paths) waits for AMX to MAK before we send the next frame.
-            // This is what the sleep was crudely approximating before.
-            bool waitForAck = !string.Equals(message, "?", StringComparison.Ordinal);
-            if (waitForAck) _makAck.Reset();
+            // Only NTX: frames are MAK'd by AMX — the heartbeat and the MTX
+            // echo-back get no ack (see the MTX handler comment), so waiting on
+            // them just burned the full timeout per send. Gate NTX frames on
+            // their own MAK before sending the next.
+            bool waitForAck = message.StartsWith("NTX:", StringComparison.Ordinal);
+            if (waitForAck)
+            {
+                _makPendingFile = message.Substring(4).Trim();
+                _makAck.Reset();
+            }
 
             for (int attempt = 1; attempt <= maxAttempts; attempt++)
             {
@@ -442,9 +453,13 @@ namespace DraxTechnology
                             _stream.Write(data, 0, data.Length);
                             _stream.Flush();
 
-                            if (waitForAck && !_makAck.Wait(kMakTimeout))
+                            if (waitForAck)
                             {
-                                NotifyClient("AMX MAK timeout for: " + message);
+                                if (!_makAck.Wait(kMakTimeout))
+                                {
+                                    NotifyClient("AMX MAK timeout for: " + message);
+                                }
+                                _makPendingFile = null;
                             }
                             return;
                         }

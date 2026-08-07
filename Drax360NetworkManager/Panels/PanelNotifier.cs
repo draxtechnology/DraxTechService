@@ -233,10 +233,6 @@ namespace DraxTechnology.Panels
             if (this.Offset > 0 && node > this.Offset)
                 node -= this.Offset;
 
-            // Diagnostic — confirm the module gate receives the right device value.
-            // Remove once module-disable path is verified end-to-end.
-            this.NotifyClient($"send_message: action={action} device={device}");
-
             if (device >= kModuleAddressMin)
             {
                 action = action switch

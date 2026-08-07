@@ -1092,6 +1092,9 @@ namespace DraxTechnology
 
             var mytMaxNWMBuffers = 64;
             var tempPath = Path.Combine(configurationbasefolder, "Temp");
+            // Fresh install: Temp doesn't exist yet and GetFiles would throw,
+            // aborting init_service before any panel started.
+            Directory.CreateDirectory(tempPath);
             var files = Directory.GetFiles(tempPath, "*." + ext)
                                  .Select(Path.GetFileName)
                                  .OrderBy(f => f)
@@ -1153,9 +1156,11 @@ namespace DraxTechnology
                 }
                 for (int n = x; n <= files.Count; n++)
                 {
+                    // Enqueue only. The file's lifetime belongs to the MAK-ack
+                    // delete path (ScheduleDelete on MAK, orphan re-send if AMX
+                    // never acks) — deleting here raced the sender thread and
+                    // could remove the file before AMX had read it.
                     AMXTransfer.Instance.SendMessage("NTX:" + Path.Combine(tempPath, files[n - 1]));
-                    Thread.Sleep(100);
-                    File.Delete(Path.Combine(tempPath, files[n - 1]));
                 }
             }
             PassNWMDataToAMX1();
@@ -1492,15 +1497,39 @@ namespace DraxTechnology
         }
         private async void startpipesend()
         {
+            // This method is async void: any exception that escapes it takes the whole
+            // process down. Everything inside the loop is therefore guarded — a bad
+            // command answers the client with an ERROR string, and pipe teardown from
+            // stoppipeserver (dispose mid-await) exits the loop cleanly.
             while (pipeserversend != null)
             {
-                await pipeserversend.WaitForConnectionAsync();
+                try
+                {
+                    await pipeserversend.WaitForConnectionAsync();
+                }
+                catch (Exception ex)
+                {
+                    if (pipeserversend == null || ex is ObjectDisposedException || ex is NullReferenceException)
+                        return; // stoppipeserver tore the pipe down under us — clean shutdown
+                    ln("Pipe server wait error: " + ex.Message, EventLogEntryType.Error);
+                    continue;
+                }
 
                 //receive message from client
-                var messagebytes = readpipemessage(pipeserversend);
-                string strresponse = Encoding.UTF8.GetString(messagebytes);
-                ln("Message received from client: " + strresponse);
-                string strret = handlepiperesponse(strresponse) ?? "";
+                string strresponse = "";
+                string strret;
+                try
+                {
+                    var messagebytes = readpipemessage(pipeserversend);
+                    strresponse = Encoding.UTF8.GetString(messagebytes);
+                    ln("Message received from client: " + strresponse);
+                    strret = handlepiperesponse(strresponse) ?? "";
+                }
+                catch (Exception ex)
+                {
+                    ln("Pipe command failed (" + strresponse + "): " + ex.Message, EventLogEntryType.Error);
+                    strret = "ERROR: " + ex.Message;
+                }
                 // An empty result (e.g. a missing SETTINGSGET key) is sent as an explicit
                 // sentinel: a zero-length payload is a zero-length message, which message-mode
                 // pipes cannot frame reliably. The client maps the sentinel back to "".
@@ -1799,7 +1828,7 @@ namespace DraxTechnology
                     break;
 
                 case "GETCOMMPORTSTATUS":
-                    if (partssplit.Length != 1) break;
+                    if (partssplit == null || partssplit.Length != 1) break;
                     string identifier = partssplit[0];
                     DateTime lastSeen = DateTime.MinValue;
                     AbstractPanel ourabstractpanel = null;
@@ -1830,12 +1859,11 @@ namespace DraxTechnology
 
                 case "TEST BOX":
 
-                    if (partssplit.Length >= 4)
+                    if (partssplit != null && partssplit.Length >= 4
+                        && int.TryParse(partssplit[0], out int tbP1) && int.TryParse(partssplit[1], out int tbP2)
+                        && int.TryParse(partssplit[2], out int tbP3) && int.TryParse(partssplit[3], out int tbP4))
                     {
-                        int p1 = int.Parse(partssplit[0]); int p2 = int.Parse(partssplit[1]);
-                        int p3 = int.Parse(partssplit[2]); int p4 = int.Parse(partssplit[3]);
-
-                        int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, true);
+                        int evnum = CSAMXSingleton.CS.MakeInputNumber(tbP2, tbP3, tbP4, tbP1, true);
                         CSAMXSingleton.CS.SendAlarmToAMX(evnum, "##TEST", "", "");
                         CSAMXSingleton.CS.FlushMessages();
                     }
@@ -1843,19 +1871,18 @@ namespace DraxTechnology
 
                 case "TEST BOX RESET":
 
-                    if (partssplit.Length >= 4)
+                    if (partssplit != null && partssplit.Length >= 4
+                        && int.TryParse(partssplit[0], out int trP1) && int.TryParse(partssplit[1], out int trP2)
+                        && int.TryParse(partssplit[2], out int trP3) && int.TryParse(partssplit[3], out int trP4))
                     {
-                        int p1 = int.Parse(partssplit[0]); int p2 = int.Parse(partssplit[1]);
-                        int p3 = int.Parse(partssplit[2]); int p4 = int.Parse(partssplit[3]);
-
-                        int evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, false);
+                        int evnum = CSAMXSingleton.CS.MakeInputNumber(trP2, trP3, trP4, trP1, false);
                         CSAMXSingleton.CS.SendResetToAMX(evnum, "##TEST", "", "");
                         CSAMXSingleton.CS.FlushMessages();
                     }
                     break;
 
                 case "SETTINGSGET":
-                    if (partssplit.Length != 2) break;
+                    if (partssplit == null || partssplit.Length != 2) break;
                     {
                         string section = partssplit[0];
                         string key = partssplit[1];
@@ -1865,7 +1892,7 @@ namespace DraxTechnology
                     break;
 
                 case "SETTINGSGETKEYSINSECTION":
-                    if (partssplit.Length != 1) break;
+                    if (partssplit == null || partssplit.Length != 1) break;
                     {
                         string section = partssplit[0];
                         ret = SettingsSingleton.Instance(panel).GetSettingsKeysInSection(section);
@@ -1877,7 +1904,7 @@ namespace DraxTechnology
                     break;
 
                 case "SETTINGSSET":
-                    if (partssplit.Length != 3) break;
+                    if (partssplit == null || partssplit.Length != 3) break;
                     {
                         string section = partssplit[0];
                         string key = partssplit[1];
@@ -1918,7 +1945,8 @@ namespace DraxTechnology
                 default:
 
                     ln("Pipe Message Not Handled " + cmd);
-                    throw new Exception("Pipe Message Not Handled " + cmd);
+                    ret = "ERROR: Pipe Message Not Handled " + cmd;
+                    break;
             }
 
             return ret;
@@ -1993,6 +2021,19 @@ namespace DraxTechnology
                 {
                     panel = "Unknown";
                     EventLogger.WriteToEventLog("Panel not set in config and could not be detected from Current.Nwm — service cannot start.", EventLogEntryType.Error);
+                    if (Elements.isService)
+                    {
+                        // Fail the start visibly. Continuing used to leave the SCM
+                        // showing Running for a service that never started a panel
+                        // (getpanel() threw "Panel Undefined" and OnStart swallowed it).
+                        ExitCode = 1064; // ERROR_EXCEPTION_IN_SERVICE
+                        Stop();
+                    }
+                    else
+                    {
+                        Console.Error.WriteLine("Panel not set in config and could not be detected from Current.Nwm — cannot start.");
+                    }
+                    return;
                 }
             }
             else

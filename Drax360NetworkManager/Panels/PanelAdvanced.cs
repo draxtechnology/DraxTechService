@@ -523,12 +523,6 @@ namespace DraxTechnology.Panels
             }
 
 
-            string filePath = @"C:\Temp\Advanced_c#.txt";
-            string messageText = string.Join(" ", ourmessage);
-            string logLine = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
-                           + " - " + messageText;
-            File.AppendAllText(filePath, logLine + Environment.NewLine);
-
             // The panel re-sends a sequenced packet every second until acked;
             // the VB skipped consecutive repeats ("Repeated packet with same
             // seq"). Re-ack but do not re-process, or a re-sent analogue or
@@ -998,6 +992,12 @@ namespace DraxTechnology.Panels
                 }
 
                 byte chunklength = data[startpos + lengthofchar];
+                if (chunklength == 0)
+                {
+                    // A zero-length chunk can't advance startpos — one corrupt
+                    // length byte would spin this loop forever on the receive thread.
+                    break;
+                }
                 byte[] chunk = data.Skip(startpos).Take(chunklength).ToArray();
                 chunks.Add(chunk);
                 removelength += chunk.Length;
