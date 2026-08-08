@@ -2189,10 +2189,17 @@ namespace DraxTechnology.Panels
                         }
                     }
 
-                    if ((enmNotEventType)eventcode == enmNotEventType.DisableZone)
+                    // The real Inspire reports zone disablement as 193/192
+                    // (NetworkZoneInDisabled/Enabled), never the plain 137/136
+                    // pair (whole-day trace 2026-08-07: zero 136/137 frames).
+                    // Both pairs accepted so a variant that does send the
+                    // plain codes still books the row.
+                    if ((enmNotEventType)eventcode == enmNotEventType.DisableZone ||
+                        (enmNotEventType)eventcode == enmNotEventType.NetworkZoneInDisabled)
                         _disabledZones.Add(((int)zone, p2, p3, p4, p1));
 
-                    if ((enmNotEventType)eventcode == enmNotEventType.EnableZone)
+                    if ((enmNotEventType)eventcode == enmNotEventType.EnableZone ||
+                        (enmNotEventType)eventcode == enmNotEventType.NetworkZoneInEnabled)
                     {
                         foreach (var entry in _disabledZones.Where(e => e.zone == (int)zone).ToList())
                         {

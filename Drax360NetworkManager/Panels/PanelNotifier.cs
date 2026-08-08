@@ -201,11 +201,17 @@ namespace DraxTechnology.Panels
             // Shared isolate double-send
             base.HandlePostSwitchDispatch(evnum, st, p1, on, zone, zonetext, eventcode, p2, p3, p4);
 
-            // Track DisableZone so EnableZone can send AMX resets for each disabled device
-            if ((enmNotEventType)eventcode == enmNotEventType.DisableZone)
+            // Track zone disables so the matching enable can send AMX resets
+            // for the booked zone rows. The ID3K wire reports these as
+            // 193/192 (NetworkZoneInDisabled/Enabled) — the real Inspire
+            // never sends the plain 137/136 pair (trace 2026-08-07) — but
+            // both pairs are accepted here.
+            if ((enmNotEventType)eventcode == enmNotEventType.DisableZone ||
+                (enmNotEventType)eventcode == enmNotEventType.NetworkZoneInDisabled)
                 _disabledZones.Add(((int)zone, p2, p3, p4, p1));
 
-            if ((enmNotEventType)eventcode == enmNotEventType.EnableZone)
+            if ((enmNotEventType)eventcode == enmNotEventType.EnableZone ||
+                (enmNotEventType)eventcode == enmNotEventType.NetworkZoneInEnabled)
             {
                 foreach (var entry in _disabledZones.Where(e => e.zone == (int)zone).ToList())
                 {
