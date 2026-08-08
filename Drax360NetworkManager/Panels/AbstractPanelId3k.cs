@@ -68,15 +68,51 @@ namespace DraxTechnology.Panels
         {
             base.Parse(buffer);
 
-            byte[] ourmessage = this.buffer.ToArray();
-            int foundat = -1;
-            for (int i = 0; i < ourmessage.Length; i++)
+            // Drain ALL complete frames from the buffer. The base DataReceived
+            // handler sleeps a second before reading, so multiple frames per
+            // read are the norm (a heartbeat answer glued to an event frame).
+            // The old single-frame path Clear()ed the buffer after the first
+            // \r, silently destroying every frame behind it — a fire event
+            // arriving behind an IS answer never reached AMX. Ported from
+            // PanelInspire's proven drain loop.
+            while (true)
             {
-                if (ourmessage[i] == '\r') { foundat = i; break; }
-            }
-            if (foundat <= 0) return;
-            this.buffer.Clear();
+                int foundat = -1;
+                for (int i = 0; i < this.buffer.Count; i++)
+                {
+                    if (this.buffer[i] == '\r') { foundat = i; break; }
+                }
+                if (foundat < 0) return;
+                if (foundat == 0)
+                {
+                    // A stray CR at the head (line noise, a split terminator)
+                    // was never consumed: every later Parse saw it at index 0
+                    // and returned, wedging the parser for good while the
+                    // comms monitor still saw data flowing. Swallow it and
+                    // keep draining.
+                    this.buffer.RemoveAt(0);
+                    continue;
+                }
+                byte[] ourmessage = this.buffer.GetRange(0, foundat + 1).ToArray();
+                this.buffer.RemoveRange(0, foundat + 1);
 
+                // Per-frame isolation: one corrupt frame must not abandon the
+                // complete frames queued behind it.
+                try
+                {
+                    ProcessId3kFrame(ourmessage, foundat);
+                }
+                catch (Exception ex)
+                {
+                    this.NotifyClient("Frame parse error (" + this.GetType().Name + "): " + ex.Message, false);
+                }
+            }
+        }
+
+        // One complete frame, trailing \r included; per-frame rejections
+        // return here so the drain loop above continues with the next frame.
+        private void ProcessId3kFrame(byte[] ourmessage, int foundat)
+        {
             string strmsg = Encoding.UTF8.GetString(ourmessage, 0, foundat);
 
             // Frame complete — the bus is idle again, so release the half-duplex

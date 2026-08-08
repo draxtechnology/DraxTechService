@@ -873,7 +873,14 @@ namespace DraxTechnology
         private string panel = "";
         private string configurationbasefolder = "";
 
-        private List<AbstractPanel> abstractpanels = new List<AbstractPanel>();
+        // Copy-on-write: every mutation replaces the list wholesale instead
+        // of editing it in place. The list is iterated lock-free from the
+        // fake-mode timers, the AMX receive thread, MQTT callbacks, the pipe
+        // server and WMI device-change callbacks — a SERVICERESTART clearing
+        // it mid-iteration threw "collection was modified" (silently eating
+        // control commands, and fatal from a timer callback). Readers always
+        // enumerate a stable snapshot; only assign, never Add/Clear in place.
+        private volatile List<AbstractPanel> abstractpanels = new List<AbstractPanel>();
 
         private List<System.Threading.Timer> faketimers = new List<System.Threading.Timer>();
 
@@ -945,7 +952,13 @@ namespace DraxTechnology
                 string logdir = Path.Combine(configurationbasefolder, klogfilefolder);
                 if (!Directory.Exists(logdir))
                     Directory.CreateDirectory(logdir);
-                string workinglogfile = Path.Combine(logdir, DateTime.Now.ToString("yyyy-MM-dd-") + getpanel().GetFileName + ".log");
+                // Cache the log-name stem: getpanel() constructs a complete
+                // panel driver (ini checks, directory create) per call, and
+                // this ran on every log line while holding the log mutex.
+                // The panel type is fixed for the life of the process.
+                if (_logFileNameCache == null)
+                    _logFileNameCache = getpanel().GetFileName;
+                string workinglogfile = Path.Combine(logdir, DateTime.Now.ToString("yyyy-MM-dd-") + _logFileNameCache + ".log");
                 File.AppendAllText(workinglogfile, friendlytimestamp() + " " + message + "\r\n");
             }
             catch (Exception ex)
@@ -957,6 +970,8 @@ namespace DraxTechnology
                 filelockmutex.ReleaseMutex();
             }
         }
+
+        private string _logFileNameCache;
 
         private void pad()
         {
@@ -988,7 +1003,7 @@ namespace DraxTechnology
                 try { ap.OutsideEvents -= Sp_Fire; } catch { }
                 try { ap.Shutdown(); } catch { }
             }
-            abstractpanels.Clear();
+            abstractpanels = new List<AbstractPanel>();
 
             // Same story for the fake-mode timers: Clear() drops the refs
             // but the underlying threading.Timer keeps firing. Dispose first.
@@ -1012,7 +1027,7 @@ namespace DraxTechnology
                 AbstractPanel ap = getpanel(identifier);
                 ap.StartUp(fakemode);
                 ap.OutsideEvents += Sp_Fire;
-                abstractpanels.Add(ap);
+                abstractpanels = new List<AbstractPanel>(abstractpanels) { ap };
                 StartDeviceWatcher();
                 return;
             }
@@ -1024,10 +1039,18 @@ namespace DraxTechnology
                 AbstractPanel ap = getpanel(identifier);
                 ap.StartUp(fakemode);
                 ap.OutsideEvents += Sp_Fire;
-                abstractpanels.Add(ap);
+                abstractpanels = new List<AbstractPanel>(abstractpanels) { ap };
 
                 try
                 {
+                    // SERVICERESTART re-enters here with the previous listener
+                    // still bound to the port — a fresh TcpListener.Start()
+                    // then throws address-in-use and the catch below tears down
+                    // the NEW (dead) listener, leaving no RSM transport at all
+                    // until a full service restart. Stop the old one first;
+                    // its accept loop exits on the cancelled token.
+                    rsmStopListener();
+
                     rsmtcpListener = new TcpListener(IPAddress.Any, krsmport);
                     rsmtcpListener.Start();
 
@@ -1083,7 +1106,7 @@ namespace DraxTechnology
                 else
                 { }
 
-                abstractpanels.Add(ap);
+                abstractpanels = new List<AbstractPanel>(abstractpanels) { ap };
                 break;
             }
 
@@ -1095,9 +1118,15 @@ namespace DraxTechnology
             // Fresh install: Temp doesn't exist yet and GetFiles would throw,
             // aborting init_service before any panel started.
             Directory.CreateDirectory(tempPath);
-            var files = Directory.GetFiles(tempPath, "*." + ext)
-                                 .Select(Path.GetFileName)
-                                 .OrderBy(f => f)
+            // Chronological order, oldest first. Name ordering is wrong twice
+            // over: lexicographically "1000" sorts before "998", so replay ran
+            // out of order and the excess-trim below deleted the NEWEST events
+            // instead of the oldest; and the file-number counter wraps at
+            // kmaxfilenumber, so even numeric ordering misorders across a wrap.
+            // Write time is the same wrap-safe key determinelastfilenumber uses.
+            var files = new DirectoryInfo(tempPath).GetFiles("*." + ext)
+                                 .OrderBy(fi => fi.LastWriteTime)
+                                 .Select(fi => fi.Name)
                                  .ToList();
 
             // Pathological-backlog guard. Files are normally deleted on AMX's
@@ -1388,30 +1417,42 @@ namespace DraxTechnology
 
         private void fake_timer(object sender)
         {
-            string identifier = sender.ToString();
-            ln("Fake Timer Tick " + identifier);
-
-            AbstractPanel ourabstractpanel = null;
-            foreach (AbstractPanel ap in abstractpanels)
+            // Guarded end to end: this is a Threading.Timer callback, so any
+            // escape (a Parse throw on a bad FakeString, a panel torn down by
+            // SERVICERESTART mid-tick) is an unhandled background-thread
+            // exception and kills the whole process. SerialPort_Datareceived
+            // guards its Parse; this is the only other Parse entry point.
+            try
             {
-                if (ap.Identifier == identifier)
+                string identifier = sender.ToString();
+                ln("Fake Timer Tick " + identifier);
+
+                AbstractPanel ourabstractpanel = null;
+                foreach (AbstractPanel ap in abstractpanels)
                 {
-                    ourabstractpanel = ap;
-                    break;
+                    if (ap.Identifier == identifier)
+                    {
+                        ourabstractpanel = ap;
+                        break;
+                    }
                 }
+                if (ourabstractpanel == null) return;
+
+                string read = ourabstractpanel.FakeString;
+
+                byte[] bytes = Encoding.ASCII.GetBytes(read);
+
+                // fake_timer feeds the panel directly and never goes through
+                // SerialPort_Datareceived, so stamp lastDataReceived here — this is
+                // the only "message received" signal GETCOMMPORTSTATUS has in fake mode.
+                ourabstractpanel.lastDataReceived = DateTime.Now;
+
+                ourabstractpanel.Parse(bytes);
             }
-            if (ourabstractpanel == null) return;
-
-            string read = ourabstractpanel.FakeString;
-
-            byte[] bytes = Encoding.ASCII.GetBytes(read);
-
-            // fake_timer feeds the panel directly and never goes through
-            // SerialPort_Datareceived, so stamp lastDataReceived here — this is
-            // the only "message received" signal GETCOMMPORTSTATUS has in fake mode.
-            ourabstractpanel.lastDataReceived = DateTime.Now;
-
-            ourabstractpanel.Parse(bytes);
+            catch (Exception ex)
+            {
+                ln("fake_timer error: " + ex.Message, EventLogEntryType.Warning);
+            }
         }
         private AbstractPanel getpanel(string identifier = "")
         {
@@ -1587,7 +1628,10 @@ namespace DraxTechnology
         {
             using (NamedPipeClientStream pipe = new NamedPipeClientStream(".", kpipenamereturn, PipeDirection.InOut))
             {
-                pipe.Connect(5000);
+                // Local pipe: a running client accepts in milliseconds. Keep
+                // the no-client timeout short so a notification burst with no
+                // UI doesn't back the send chain up 5 s per message.
+                pipe.Connect(1000);
                 pipe.ReadMode = PipeTransmissionMode.Message;
 
                 byte[] ba = Encoding.Default.GetBytes(message);
@@ -2317,6 +2361,17 @@ namespace DraxTechnology
             }
         }
 
+        // Serialises client-notify sends on a background chain and keeps them
+        // off the calling thread: the AMX receive loop used to block up to 5 s
+        // inside pipe.Connect for every NWM:/GEN:/AUT: frame when no client
+        // was running, and during that stall no MAK ack could dispatch — the
+        // sender's ack gate then falsely timed out and the orphan re-sender
+        // could duplicate files AMX had already taken. Every caller ignores
+        // the response, so the send is queued fire-and-forget; the chain
+        // preserves message order to the client.
+        private static Task _returnSendChain = Task.CompletedTask;
+        private static readonly object _returnSendLock = new object();
+
         public string sendreturncmd(string cmd, string parameters = "")
         {
             string strcmd = cmd;
@@ -2325,18 +2380,23 @@ namespace DraxTechnology
                 strcmd += kpipedelim + parameters;
             }
 
-            string result = "";
-
-            try
+            lock (_returnSendLock)
             {
-                result = Task.Run(() => sendreturnserver(strcmd)).Result;
-            }
-            catch (Exception ex)
-            {
-                result = "Error: " + ex;
+                _returnSendChain = _returnSendChain.ContinueWith(_ =>
+                {
+                    try
+                    {
+                        sendreturnserver(strcmd).GetAwaiter().GetResult();
+                    }
+                    catch
+                    {
+                        // No client connected — expected whenever the UI
+                        // isn't running; never let it surface.
+                    }
+                }, TaskScheduler.Default);
             }
 
-            return result;
+            return "";
         }
 
         public void Stopit()
@@ -2365,7 +2425,7 @@ namespace DraxTechnology
             {
                 ap.Shutdown();
             }
-            abstractpanels.Clear();
+            abstractpanels = new List<AbstractPanel>();
 
             // TCP cleanup is AMXTransfer.Instance.Stop()'s job now (the
             // shadow-field cleanup that lived here was a no-op).
@@ -2387,19 +2447,46 @@ namespace DraxTechnology
                 Console.WriteLine(DateTime.Now + ": " + "Error stopping MqttTransfer: " + ex.Message);
             }
 
+            StopDeviceWatcher();
+
             ln("Stopped Service");
         }
 
+        // Held so re-entry (SERVICERESTART calls init_service again) replaces
+        // the watcher instead of stacking another live one — each leaked
+        // watcher multiplied every device-change event into another concurrent
+        // RescanPorts. Stopped in Stopit.
+        private ManagementEventWatcher _deviceWatcher;
+
         private void StartDeviceWatcher()
         {
+            StopDeviceWatcher();
             var watcher = new ManagementEventWatcher(
                 new WqlEventQuery("SELECT * FROM Win32_DeviceChangeEvent"));
             watcher.EventArrived += (s, e) =>
             {
-                Console.WriteLine(DateTime.Now + ": " + "Device change detected. Rescanning ports...");
-                RescanPorts();
+                // WMI callback thread — an escape here is process-fatal.
+                try
+                {
+                    Console.WriteLine(DateTime.Now + ": " + "Device change detected. Rescanning ports...");
+                    RescanPorts();
+                }
+                catch (Exception ex)
+                {
+                    EventLogger.WriteToEventLog("Device-change rescan failed: " + ex.Message, EventLogEntryType.Warning);
+                }
             };
             watcher.Start();
+            _deviceWatcher = watcher;
+        }
+
+        private void StopDeviceWatcher()
+        {
+            var old = _deviceWatcher;
+            _deviceWatcher = null;
+            if (old == null) return;
+            try { old.Stop(); } catch { }
+            try { old.Dispose(); } catch { }
         }
 
         private bool firstruncheck()
@@ -2488,7 +2575,10 @@ namespace DraxTechnology
 
                     if (ack != null && ack.Length > 0)
                     {
-                        await stream.WriteAsync(ack, 0, ack.Length, token);
+                        // Serialised with outbound commands via the module's
+                        // WriteLock — a bare WriteAsync here raced TryWrite
+                        // and could interleave two frames on the wire.
+                        rsmPanel.WriteAck(stream, ack);
                     }
                 }
             }

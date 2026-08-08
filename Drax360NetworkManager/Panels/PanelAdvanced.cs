@@ -125,29 +125,46 @@ namespace DraxTechnology.Panels
             // fixed wait was the main cost of the ~3s-per-device scan seen live
             // (2026-07-16). Proceed once the buffer has stopped growing for two
             // consecutive 25ms samples, capped at 500ms.
-            int lastcount = -1, stable = 0;
-            for (int i = 0; i < 20 && stable < 2; i++)
-            {
-                int now = serialport.BytesToRead;
-                if (now == lastcount) stable++;
-                else { stable = 0; lastcount = now; }
-                Thread.Sleep(25);
-            }
-
-            int bytestoread = serialport.BytesToRead;
-            if (bytestoread == 0) return;
-
-            byte[] readbytes = new byte[bytestoread];
-            int numberread = serialport.Read(readbytes, 0, bytestoread);
-            if (numberread == 0) return;
-
+            // Read guard like the base handler: a removed USB adaptor kills
+            // the handle mid-event and BytesToRead/Read throw on the
+            // SerialPort event thread — unhandled there, that takes the whole
+            // service down (this override never had the base's guard).
+            byte[] readbytes;
             try
             {
-                Parse(readbytes);
+                int lastcount = -1, stable = 0;
+                for (int i = 0; i < 20 && stable < 2; i++)
+                {
+                    int now = serialport.BytesToRead;
+                    if (now == lastcount) stable++;
+                    else { stable = 0; lastcount = now; }
+                    Thread.Sleep(25);
+                }
+
+                int bytestoread = serialport.BytesToRead;
+                if (bytestoread == 0) return;
+
+                readbytes = new byte[bytestoread];
+                int numberread = serialport.Read(readbytes, 0, bytestoread);
+                if (numberread == 0) return;
             }
             catch (Exception ex)
             {
-                this.NotifyClient($"Parse error ({this.GetType().Name}): {ex.Message}");
+                this.NotifyClient("Serial read failed (adaptor removed?): " + ex.Message, false);
+                try { serialport.Close(); } catch { }
+                return;
+            }
+
+            lock (parseLock)
+            {
+                try
+                {
+                    Parse(readbytes);
+                }
+                catch (Exception ex)
+                {
+                    this.NotifyClient($"Parse error ({this.GetType().Name}): {ex.Message}");
+                }
             }
         }
 

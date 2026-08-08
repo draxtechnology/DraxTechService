@@ -323,17 +323,26 @@ namespace DraxTechnology
                 }
 
                 //File.Delete(fullfilename);  // If I delete the file straight away then nothing appears on AMX
+                // Last-resort sweep for MAK'd files the cleanup timer somehow
+                // missed. Only files already in _pendingDelete are eligible:
+                // anything NOT pending delete is un-acknowledged and owned by
+                // the orphan re-send path (or parked awaiting an AMX
+                // reconnect) — age-deleting those during an AMX outage
+                // permanently loses the event, since orphan re-send only runs
+                // while connected.
                 var files = Directory.GetFiles(this.logfiles, "*." + extension);
                 foreach (var file in files)
                 {
                     try
                     {
-                        if (!file.Equals(fullfilename, StringComparison.OrdinalIgnoreCase))
+                        if (!file.Equals(fullfilename, StringComparison.OrdinalIgnoreCase) &&
+                            _pendingDelete.ContainsKey(file))
                         {
                             var fileAge = DateTime.Now - File.GetLastWriteTime(file);
                             if (fileAge.TotalMinutes > 5)  //  last resort but should rarely (if ever) fire now.
                             {
                                 File.Delete(file);
+                                _pendingDelete.TryRemove(file, out _);
                             }
                         }
                     }

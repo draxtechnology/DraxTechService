@@ -66,13 +66,13 @@ namespace DraxTechnology.Panels
             //
             if (cmd == "IS")
             {
-                string stracknowledge = ">IACK\r";
-
-                foreach (char ch in stracknowledge)
-                {
-                    SendChar(ch);
-                }
-                Console.WriteLine(DateTime.Now + ": " + stracknowledge.Replace("\r", "") + " Sent to Panel");
+                // SendFrame, not a SendChar loop: the char loop wrote outside
+                // queueLock, so the heartbeat's >IQS could interleave with a
+                // half-sent >IACK into one garbage frame — the exact failure
+                // the SendFrame comment block in AbstractPanel documents from
+                // the 2026-07-29 Inspire trace. Same bytes, sent atomically.
+                SendFrame(">IACK\r");
+                Console.WriteLine(DateTime.Now + ": >IACK Sent to Panel");
             }
 
             if (cmd == "IE")
@@ -109,7 +109,10 @@ namespace DraxTechnology.Panels
                 gsDeviceText = "";
                 GetDeviceTypeText(iDevicetype);
                 gsZoneText = "";
-                if (ourmessage.Length > 38)
+                // > 44, not > 38: the count below is Length - 44, so frames
+                // of 39-44 bytes produced a negative count and the throw lost
+                // the whole event, not just its text.
+                if (ourmessage.Length > 44)
                 {
                     gsZoneText = Encoding.UTF8.GetString(ourmessage, 38, ourmessage.Length - 44);
                     gsZoneText = gsZoneText.Replace("�", Environment.NewLine);
@@ -712,14 +715,10 @@ namespace DraxTechnology.Panels
             CSAMXSingleton.CS.SendAlarmToAMX(evnum, message1, message2, message3);
             CSAMXSingleton.CS.FlushMessages();
 
-            string stracknowledge = ">IACK\r";
+            // SendFrame, not a SendChar loop — see the IS-ack comment in Parse.
+            SendFrame(">IACK\r");
 
-            foreach (char ch in stracknowledge)
-            {
-                SendChar(ch);
-            }
-
-            Console.WriteLine(DateTime.Now + ": " + stracknowledge.Replace("\r", "") + " Sent to Panel");
+            Console.WriteLine(DateTime.Now + ": >IACK Sent to Panel");
         }
         public void GetDeviceTypeText(int piDeviceType)
         {

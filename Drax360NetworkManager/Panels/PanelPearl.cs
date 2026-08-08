@@ -7,6 +7,10 @@ namespace DraxTechnology.Panels
 {
     internal class PanelPearl : AbstractPanelId3k
     {
+        // Inbound module addresses are reported to AMX at +100
+        // (GetModuleAddressOffset in the base) — same convention as Notifier.
+        private const int kModuleAddressMin = 100;
+
         public override string FakeString =>
             /* Pearl
             >IS0001C000000000000BE7\r
@@ -151,6 +155,23 @@ namespace DraxTechnology.Panels
             if (this.Offset > 0 && node > this.Offset)
                 node -= this.Offset;
 
+            // Inbound reporting adds GetModuleAddressOffset (=100) to module
+            // addresses (sensor 'M'), so AMX knows Pearl modules at 100+ —
+            // strip it back off and route to the module frame on the way out,
+            // mirroring PanelNotifier. Without this, a disable on a module
+            // AMX saw at 101 went to the wire as "S101": three digits in a
+            // two-digit field with the wrong sensor flag, and the command
+            // silently failed.
+            if (device >= kModuleAddressMin)
+            {
+                action = action switch
+                {
+                    ActionType.kDISABLEDEVICE => ActionType.kDISABLEMODULE,
+                    ActionType.kENABLEDEVICE  => ActionType.kENABLEMODULE,
+                    _                          => action,
+                };
+            }
+
             DateTime now       = DateTime.Now;
             int iDayOfWeek     = (int)now.DayOfWeek + 1;
             string sHH         = now.Hour.ToString("D2");
@@ -179,10 +200,10 @@ namespace DraxTechnology.Panels
                 message = $">IE{node:D2}023{iDayOfWeek}{sHH}{sMM}{sSS}{loop:D2}{zone:D5}S{device:D2}00";
 
             if (action == ActionType.kDISABLEMODULE)
-                message = $">IE{node:D2}024{iDayOfWeek}{sHH}{sMM}{sSS}{loop:D2}{zone:D5}M{device:D2}00";
+                message = $">IE{node:D2}024{iDayOfWeek}{sHH}{sMM}{sSS}{loop:D2}{zone:D5}M{(device >= kModuleAddressMin ? device - kModuleAddressMin : device):D2}00";
 
             if (action == ActionType.kENABLEMODULE)
-                message = $">IE{node:D2}023{iDayOfWeek}{sHH}{sMM}{sSS}{loop:D2}{zone:D5}M{device:D2}00";
+                message = $">IE{node:D2}023{iDayOfWeek}{sHH}{sMM}{sSS}{loop:D2}{zone:D5}M{(device >= kModuleAddressMin ? device - kModuleAddressMin : device):D2}00";
 
             if (action == ActionType.kDISABLEZONE)
                 message = $">IE00137{iDayOfWeek}{sHH}{sMM}{sSS}00{zone:D5}";
@@ -192,11 +213,14 @@ namespace DraxTechnology.Panels
 
             if (string.IsNullOrEmpty(message)) return;
 
-            // Pearl does not append a checksum — just terminate with \r
+            // Pearl does not append a checksum — just terminate with \r.
+            // SendFrame, not a SendChar loop: the char loop wrote outside
+            // queueLock, so the 20 s heartbeat's >IQS could interleave with a
+            // half-sent command into one garbage frame — the exact failure the
+            // SendFrame comment block in AbstractPanel documents from the
+            // 2026-07-29 Inspire trace. Same bytes, sent atomically.
             string frame = message + "\r";
-
-            foreach (char ch in frame)
-                SendChar(ch);
+            SendFrame(frame);
 
             Console.WriteLine(DateTime.Now + ": " + frame.Replace("\r", "") + " Sent to panel");
         }

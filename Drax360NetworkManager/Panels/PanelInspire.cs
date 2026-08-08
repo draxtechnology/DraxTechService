@@ -58,27 +58,32 @@ namespace DraxTechnology.Panels
             // implementation — it is the main cause of slow event delivery on this panel.
             lastDataReceived = DateTime.Now;
             NoteHalfDuplexReceive(false);
-            byte[] readbytes;
-            int numberread;
-            try
+            // Overlapping DataReceived callbacks share the parse buffer —
+            // serialise the read+Parse block (see parseLock in the base).
+            lock (parseLock)
             {
-                int bytestoread = serialport.BytesToRead;
-                if (bytestoread == 0) return;
-                readbytes = new byte[bytestoread];
-                numberread = serialport.Read(readbytes, 0, bytestoread);
+                byte[] readbytes;
+                int numberread;
+                try
+                {
+                    int bytestoread = serialport.BytesToRead;
+                    if (bytestoread == 0) return;
+                    readbytes = new byte[bytestoread];
+                    numberread = serialport.Read(readbytes, 0, bytestoread);
+                }
+                catch (Exception ex)
+                {
+                    // Removed USB adaptor kills the handle mid-event (VB error
+                    // 8021); never throw on the SerialPort event thread. Close so
+                    // the next send re-Opens once the port re-enumerates.
+                    this.NotifyClient("Serial read failed (adaptor removed?): " + ex.Message, false);
+                    try { serialport.Close(); } catch { }
+                    return;
+                }
+                if (numberread == 0) return;
+                try { Parse(readbytes); }
+                catch (Exception ex) { this.NotifyClient($"Parse error (PanelInspire): {ex.Message}"); }
             }
-            catch (Exception ex)
-            {
-                // Removed USB adaptor kills the handle mid-event (VB error
-                // 8021); never throw on the SerialPort event thread. Close so
-                // the next send re-Opens once the port re-enumerates.
-                this.NotifyClient("Serial read failed (adaptor removed?): " + ex.Message, false);
-                try { serialport.Close(); } catch { }
-                return;
-            }
-            if (numberread == 0) return;
-            try { Parse(readbytes); }
-            catch (Exception ex) { this.NotifyClient($"Parse error (PanelInspire): {ex.Message}"); }
         }
 
         public override void Parse(byte[] buffer)
@@ -95,7 +100,17 @@ namespace DraxTechnology.Panels
                 {
                     if (this.buffer[i] == '\r') { foundat = i; break; }
                 }
-                if (foundat <= 0) return;
+                if (foundat < 0) return;
+                if (foundat == 0)
+                {
+                    // A stray CR at the head (line noise, a split terminator)
+                    // was never consumed: every later Parse saw it at index 0
+                    // and returned, wedging the parser for good while the
+                    // comms monitor still saw data flowing. Swallow it and
+                    // keep draining.
+                    this.buffer.RemoveAt(0);
+                    continue;
+                }
                 // Remove only the first complete message; leave any trailing bytes for
                 // the next Parse() call so back-to-back panel notifications aren't dropped.
                 byte[] ourmessage = this.buffer.GetRange(0, foundat + 1).ToArray();
@@ -268,7 +283,12 @@ namespace DraxTechnology.Panels
                     {
                         NotifyClient("Failed Checksum NOTNACK");
                         SendFrame(">IN\r");
-                        return;
+                        // continue, not return: a corrupt frame must reject
+                        // only itself — returning abandoned every complete
+                        // frame still in the buffer (e.g. a Fire behind the
+                        // corrupt one) until the next serial event redrove
+                        // the drain, delaying real alarms.
+                        continue;
                     }
 
                     bool getDeviceText = true;
@@ -2183,7 +2203,12 @@ namespace DraxTechnology.Panels
                             if (transition)
                             {
                                 this.NotifyClient("Sending send_response_amx_disable: " + gsTextField + " gsDeviceText: " + gsDeviceText + " zonetext: " + zonetext + " on: " + on, false);
-                                send_response_amx_disable(evnum, gsTextField, zonetext, gsDeviceText, on);
+                                // Argument order matches the base and the main
+                                // dispatch below: (text, deviceText, zoneText).
+                                // These were transposed, rendering the AMX
+                                // isolation row with zone text in the device
+                                // slot and vice versa.
+                                send_response_amx_disable(evnum, gsTextField, gsDeviceText, zonetext, on);
                                 SaveIsolationState(_activeIsolations);
                             }
                         }

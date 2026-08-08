@@ -1,4 +1,4 @@
-#region usings
+﻿#region usings
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -52,7 +52,12 @@ namespace DraxTechnology
             }
             foreach (string key in orderedKeys)
             {
-                string[] splits = key.Split(ksettingdelim);
+                // Split on the FIRST delimiter only: keys are stored as
+                // SECTION<delim>NAME and section names never contain the
+                // delimiter, but a setting NAME containing it (e.g. an
+                // underscored ini key) produced 3+ parts here and the whole
+                // setting was silently dropped from the rewritten ini.
+                string[] splits = key.Split(ksettingdelim, 2);
                 if (splits.Length != 2) continue;
                 string workingsection = splits[0];
                 if (workingsection != section)
@@ -206,7 +211,7 @@ namespace DraxTechnology
             }
             foreach (string key in keys)
             {
-                string[] splits = key.Split(ksettingdelim);
+                string[] splits = key.Split(ksettingdelim, 2);  // first delimiter only - setting names may contain it
                 if (splits.Length != 2) continue;
                 string workingsection = splits[0];
                 if (workingsection != findsection) continue;
@@ -258,7 +263,7 @@ namespace DraxTechnology
             }
             foreach (string key in keys)
             {
-                string[] splits = key.Split(ksettingdelim);
+                string[] splits = key.Split(ksettingdelim, 2);  // first delimiter only - setting names may contain it
                 if (splits.Length != 2) continue;
                 string workingsection = splits[0];
                 if (workingsection != section)

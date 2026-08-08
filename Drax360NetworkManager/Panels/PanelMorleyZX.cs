@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO.Ports;
 using System.Linq;
@@ -231,48 +231,50 @@ namespace DraxTechnology.Panels
 
         private void PollTimer_Elapsed(object sender, ElapsedEventArgs e)
         {
-            // First, check if port is still physically present
-            if (!IsPortStillAvailable())
+            try
             {
-                int evnum = CSAMXSingleton.CS.MakeInputNumber(g_bytMasterPanelID, 0, 9, 15, true);
-                send_response_amx(evnum, "", "Master Panel Offline or Not Responding");
-                connectionLostNotified = true;
-            }
+                // Level, not edge, was the old behaviour: every 3-second tick
+                // re-sent the offline alarm (up to four copies — the checks
+                // were independent ifs), flooding the AMX queue by tens of
+                // thousands overnight. connectionLostNotified was set but
+                // never consulted; OnValidResponseReceived already clears it,
+                // so gate the raise on it: one alarm per outage. The poll
+                // command itself still goes every tick, exactly as before.
+                bool offline =
+                    !IsPortStillAvailable() ||
+                    serialport?.IsOpen != true;
 
-            // Check if port is still open
-            if (serialport?.IsOpen != true)
-            {
-                int evnum = CSAMXSingleton.CS.MakeInputNumber(g_bytMasterPanelID, 0, 9, 15, true);
-                send_response_amx(evnum, "", "Master Panel Offline or Not Responding");
-                connectionLostNotified = true;
-            }
+                // Try to send poll command
+                bool sendSuccess = MorleyQuickPanelStatus(MASTER_PANEL_ID);
 
-            // Try to send poll command
-            bool sendSuccess = MorleyQuickPanelStatus(MASTER_PANEL_ID);
-
-            if (!sendSuccess)
-            {
-                consecutiveFailures++;
-                if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES)
+                if (!sendSuccess)
                 {
-                    int evnum = CSAMXSingleton.CS.MakeInputNumber(g_bytMasterPanelID, 0, 9, 15, true);
+                    consecutiveFailures++;
+                    if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES)
+                        offline = true;
+                }
+
+                // Check response timeout
+                if (lastSuccessfulResponse != DateTime.MinValue && (DateTime.Now - lastSuccessfulResponse).TotalSeconds > g_intResponseTimeout)
+                    offline = true;
+
+                if (offline && !connectionLostNotified)
+                {
+                    int evnum = CSAMXSingleton.CS.MakeInputNumber(g_bytMasterPanelID + g_intAmx1Offset, 0, 9, 15, true);
                     send_response_amx(evnum, "", "Master Panel Offline or Not Responding");
                     connectionLostNotified = true;
                 }
             }
-
-            // Check response timeout
-            if (lastSuccessfulResponse != DateTime.MinValue && (DateTime.Now - lastSuccessfulResponse).TotalSeconds > g_intResponseTimeout)
+            catch (Exception ex)
             {
-                int evnum = CSAMXSingleton.CS.MakeInputNumber(g_bytMasterPanelID, 0, 9, 15, true);
-                send_response_amx(evnum, "", "Master Panel Offline or Not Responding");
-                connectionLostNotified = true;
+                NotifyClient("Poll timer error: " + ex.Message, false);
             }
         }
 
         private bool IsPortStillAvailable()
         {
             // Check if the COM port still exists in the system
+            if (serialport == null) return false;
             string[] availablePorts = SerialPort.GetPortNames();
             return availablePorts.Contains(serialport.PortName);
         }
@@ -289,10 +291,15 @@ namespace DraxTechnology.Panels
                 case SerialError.TXFull:
                     // These might indicate cable disconnect or hardware issues
                     //HandleSerialPortFailure("Hardware error detected");
-                    base.NotifyClient($"Master Panel Offline or Not Responding: {serialport.CtsHolding}");
-                    int evnum = CSAMXSingleton.CS.MakeInputNumber(g_bytMasterPanelID, 0, 9, 15, true);
-                    send_response_amx(evnum, "", "Master Panel Offline or Not Responding");
-                    connectionLostNotified = true;
+                    // Same edge gate as the poll timer — repeated hardware
+                    // errors must not re-raise a fresh alarm per occurrence.
+                    if (!connectionLostNotified)
+                    {
+                        base.NotifyClient($"Master Panel Offline or Not Responding: {serialport.CtsHolding}");
+                        int evnum = CSAMXSingleton.CS.MakeInputNumber(g_bytMasterPanelID + g_intAmx1Offset, 0, 9, 15, true);
+                        send_response_amx(evnum, "", "Master Panel Offline or Not Responding");
+                        connectionLostNotified = true;
+                    }
                     break;
             }
         }
@@ -513,7 +520,7 @@ namespace DraxTechnology.Panels
             consecutiveFailures = 0;
             if (connectionLostNotified)
             {
-                int evnum = CSAMXSingleton.CS.MakeInputNumber(g_bytMasterPanelID, 0, 9, 15, false);   // clear the event from AMX
+                int evnum = CSAMXSingleton.CS.MakeInputNumber(g_bytMasterPanelID + g_intAmx1Offset, 0, 9, 15, false);   // clear the event from AMX
                 send_response_amx(evnum, "", "Master Panel Offline or Not Responding");
                 connectionLostNotified = false;
                 base.ProcessQueuedCommands();
@@ -734,7 +741,7 @@ namespace DraxTechnology.Panels
 
                             //                            SendDeviceStatusToAMX1((MorleyEventPriority)response[5], (MorleyEventNature)response[56], (MorleyDetectorType)response[11]);
 
-                            int evnum = CSAMXSingleton.CS.MakeInputNumber(panelID, 0, tInputNumber, 15, isOn);
+                            int evnum = CSAMXSingleton.CS.MakeInputNumber(panelID + g_intAmx1Offset, 0, tInputNumber, 15, isOn);
                             send_response_amx(evnum, "", tInputText);
 
                             string notifyMsg = $"Panel {panelID} Input {tInputNumber}: {tInputText} = {onOff}";
@@ -845,6 +852,8 @@ namespace DraxTechnology.Panels
                 waitingForDetailedResponse = false;  // No alarms, resume polling
             }
 
+            // NO AMX offset here: this panel ID goes back out on the WIRE as
+            // a device-status query, not to AMX.
             int p2 = response[2]; // Source Panel ID
             int p3 = response[7]; // Loop number
             int p4 = response[9]; // Device Address
@@ -931,7 +940,7 @@ namespace DraxTechnology.Panels
             }
 
             int p1 = 15;
-            int p2 = response[2]; // Source Panel ID
+            int p2 = response[2] + g_intAmx1Offset; // Source Panel ID (+ configured AMX offset — the ini value was read but never applied)
             int p3 = response[7]; // Loop number
             int p4 = response[9]; // Device Address
             bool on = true;
@@ -1461,7 +1470,7 @@ namespace DraxTechnology.Panels
                     // Fake an "input" from the remote
                     //evNum = MakeInputNumber((int)bytPanelID, (int)bytLoopID, (int)bytDeviceID, 4);
 
-                    int evnum = CSAMXSingleton.CS.MakeInputNumber(bytPanelID, bytLoopID, bytDeviceID, 15, blnIsolate);
+                    int evnum = CSAMXSingleton.CS.MakeInputNumber(bytPanelID + g_intAmx1Offset, bytLoopID, bytDeviceID, 15, blnIsolate);
                     send_response_amx(evnum, "", "");
 
                     if (blnIsolate == true)
@@ -1481,7 +1490,7 @@ namespace DraxTechnology.Panels
 
                     // Now send a fake isolation signal to log and isolation list
 
-                    evnum = CSAMXSingleton.CS.MakeInputNumber(bytPanelID, bytLoopID, bytDeviceID, 4);
+                    evnum = CSAMXSingleton.CS.MakeInputNumber(bytPanelID + g_intAmx1Offset, bytLoopID, bytDeviceID, 4);
                     send_response_amx(evnum, "", "");
                     // Signal isolation
                     //WriteNWMData(tStr, 2, evNum, DLL.Dat[0], ps, "", "", blnIsolate ? 1 : 0);

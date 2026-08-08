@@ -25,6 +25,15 @@ namespace DraxTechnology.Panels
 
         #region Fields
         protected readonly List<byte> buffer = new List<byte>();
+        // Serialises serial-read + Parse. SerialPort raises DataReceived on
+        // thread-pool threads that can overlap while a handler is still
+        // running (the base handler holds its event open a full second), and
+        // two overlapped handlers then race AddRange/Clear/RemoveRange on the
+        // shared parse buffer — corrupting frame order or throwing mid-scan.
+        // Take this around the read+Parse block in every DataReceived
+        // handler; fake_timer's Parse call comes through Parse directly and
+        // panels needing it there can lock in Parse instead.
+        protected readonly object parseLock = new object();
         protected Timer heartbeat_timer;
         public readonly string Extension;
         public DateTime lastDataReceived = DateTime.MinValue;
@@ -161,6 +170,10 @@ namespace DraxTechnology.Panels
                     Value = value
                 });
                 _analogueDb.SaveChanges();
+                // The context lives for the panel's lifetime and a saved
+                // entity stays tracked (state Unchanged) forever — one tracked
+                // row per reading grows without bound on scan-heavy sites.
+                _analogueDb.ChangeTracker.Clear();
             }
             catch (Exception ex)
             {
@@ -310,9 +323,12 @@ namespace DraxTechnology.Panels
                     }
                     // Three-field lines predate the p1 key; those points could
                     // only have been plain-device isolations (Isolate = 4).
+                    // Keep that default on a corrupt fourth field too — a bare
+                    // TryParse zeroed p1 on failure, loading the point keyed
+                    // as input type 0 (Fire) so its real enable never matched.
                     int p1 = (int)enmPRLAlarmType.Isolate;
-                    if (parts.Length >= 4)
-                        int.TryParse(parts[3], out p1);
+                    if (parts.Length >= 4 && int.TryParse(parts[3], out int parsedP1))
+                        p1 = parsedP1;
                     set.Add((p2, p3, p4, p1));
                 }
                 if (set.Count > 0)
@@ -369,42 +385,48 @@ namespace DraxTechnology.Panels
             // (Notifier, MorleyZX, MorleyMax, Pearl, RSM) before swapping in
             // the bounded version.
             System.Threading.Thread.Sleep(1000);
-            int bytestoread;
-            byte[] readbytes;
-            int numberread;
-            try
+            // The sleep stays OUTSIDE the lock: overlapped handlers sleep in
+            // parallel, then serialise on the read — the second finds zero
+            // bytes and returns.
+            lock (parseLock)
             {
-                bytestoread = serialport.BytesToRead;
-                if (bytestoread == 0) return;
-                readbytes = new byte[bytestoread];
-                numberread = serialport.Read(readbytes, 0, bytestoread);
-            }
-            catch (Exception ex)
-            {
-                // A removed USB adaptor kills the handle mid-event (VB error
-                // 8021) — an unhandled throw here is on the SerialPort event
-                // thread and would take the service down. Close so the next
-                // send attempts a fresh Open once the port re-enumerates; the
-                // comms monitor raises the AMX failure in the meantime.
-                this.NotifyClient("Serial read failed (adaptor removed?): " + ex.Message, false);
-                try { serialport.Close(); } catch { }
-                return;
-            }
-            if (numberread == 0) return;
+                int bytestoread;
+                byte[] readbytes;
+                int numberread;
+                try
+                {
+                    bytestoread = serialport.BytesToRead;
+                    if (bytestoread == 0) return;
+                    readbytes = new byte[bytestoread];
+                    numberread = serialport.Read(readbytes, 0, bytestoread);
+                }
+                catch (Exception ex)
+                {
+                    // A removed USB adaptor kills the handle mid-event (VB error
+                    // 8021) — an unhandled throw here is on the SerialPort event
+                    // thread and would take the service down. Close so the next
+                    // send attempts a fresh Open once the port re-enumerates; the
+                    // comms monitor raises the AMX failure in the meantime.
+                    this.NotifyClient("Serial read failed (adaptor removed?): " + ex.Message, false);
+                    try { serialport.Close(); } catch { }
+                    return;
+                }
+                if (numberread == 0) return;
 
-            // Parse runs on the SerialPort.DataReceived thread and decodes raw panel
-            // bytes (Convert.ToInt32/ToDecimal on field slices, fixed-offset indexing).
-            // A corrupt or partial frame can throw here; an unhandled throw on the
-            // event thread loses the frame and can leave the parser's buffer desynced.
-            // Guard centrally so a single bad frame can never take the read path down —
-            // log it and let the next DataReceived event re-drive parsing.
-            try
-            {
-                Parse(readbytes);
-            }
-            catch (Exception ex)
-            {
-                this.NotifyClient($"Parse error ({this.GetType().Name}): {ex.Message}");
+                // Parse runs on the SerialPort.DataReceived thread and decodes raw panel
+                // bytes (Convert.ToInt32/ToDecimal on field slices, fixed-offset indexing).
+                // A corrupt or partial frame can throw here; an unhandled throw on the
+                // event thread loses the frame and can leave the parser's buffer desynced.
+                // Guard centrally so a single bad frame can never take the read path down —
+                // log it and let the next DataReceived event re-drive parsing.
+                try
+                {
+                    Parse(readbytes);
+                }
+                catch (Exception ex)
+                {
+                    this.NotifyClient($"Parse error ({this.GetType().Name}): {ex.Message}");
+                }
             }
         }
 

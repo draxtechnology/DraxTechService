@@ -189,16 +189,25 @@ namespace DraxTechnology.Panels
                         }
                     }
 
-                    if (Ip[NumLines].Trim().ToLower() == "trouble")
+                    if (n < 3)
+                    {
+                        // Slash pair at the line head, or no dd/mm/yy found at
+                        // all on a short line — Substring(n - 3) went negative
+                        // and threw off the receive thread. Keep the whole
+                        // line as the event text instead.
+                        tEvType = Ip[NumLines].Trim();
+                        tTime = "";
+                    }
+                    else if (Ip[NumLines].Trim().ToLower() == "trouble")
                     {
                         tEvType = Ip[NumLines];
+                        tTime = Ip[NumLines].Substring(n - 3).Trim();
                     }
                     else
                     {
                         tEvType = Ip[NumLines].Substring(0, n - 3).Trim();
+                        tTime = Ip[NumLines].Substring(n - 3).Trim();
                     }
-
-                    tTime = Ip[NumLines].Substring(n - 3).Trim();
 
                     // JM 28/04/25 remove the date/time from the text
                     Ip[NumLines] = tEvType;
@@ -220,8 +229,17 @@ namespace DraxTechnology.Panels
                                 }
                             }
 
-                            tEvType = Ip[NumLines].Substring(0, n - 3).Trim();
-                            tTime = Ip[NumLines].Substring(n - 3).Trim();
+                            if (n < 3)
+                            {
+                                // Same negative-Substring guard as above.
+                                tEvType = Ip[NumLines].Trim();
+                                tTime = "";
+                            }
+                            else
+                            {
+                                tEvType = Ip[NumLines].Substring(0, n - 3).Trim();
+                                tTime = Ip[NumLines].Substring(n - 3).Trim();
+                            }
                         }
                         else
                         {
@@ -275,7 +293,12 @@ namespace DraxTechnology.Panels
 
                     string numPart = after.Replace(" ", "X");
 
-                    tNode = int.Parse(new string(numPart.TakeWhile(char.IsDigit).ToArray()));
+                    // "NODE= 5" (space after =) leaves no leading digits and
+                    // int.Parse("") threw off the receive thread — treat the
+                    // line as not carrying a node number and keep scanning.
+                    string nodeDigits = new string(numPart.TakeWhile(char.IsDigit).ToArray());
+                    if (nodeDigits.Length == 0) continue;
+                    tNode = int.Parse(nodeDigits);
 
                     giNodeNumber = tNode;
 
@@ -292,7 +315,10 @@ namespace DraxTechnology.Panels
                     string after = line.Substring(n + 3);
                     string numPart = after.Replace(" ", "X");
 
-                    tNode = int.Parse(new string(numPart.TakeWhile(char.IsDigit).ToArray()));
+                    // Same guard as the NODE= branch above.
+                    string ndDigits = new string(numPart.TakeWhile(char.IsDigit).ToArray());
+                    if (ndDigits.Length == 0) continue;
+                    tNode = int.Parse(ndDigits);
 
                     giNodeNumber = tNode;
 
@@ -1334,17 +1360,23 @@ namespace DraxTechnology.Panels
             {
                 this.NotifyClient("gAlarmType " + gAlarmType + " " + ex.Message, false);
             }
-            evnum = CSAMXSingleton.CS.MakeInputNumber(giNodeNumber, giLoopNumber, giDeviceAddress, p1, on);
+            // Inbound events must carry the configured AMX offset like every
+            // other panel: outbound send_message already applies it, and the
+            // log line below always printed the offset node while the event
+            // itself went out raw — on an offset site events landed on the
+            // wrong AMX node with a log that looked correct.
+            int amxNode = giNodeNumber + this.Offset;
+            evnum = CSAMXSingleton.CS.MakeInputNumber(amxNode, giLoopNumber, giDeviceAddress, p1, on);
 
             if (giDeviceAddress == 255)
             {
                 giDeviceAddress = GetInputNumber(evnum);
-                giNodeNumber = GetBoardAddress(evnum);
+                amxNode = GetBoardAddress(evnum);
                 giLoopNumber = GetLoopNumber(evnum);
-                evnum = CSAMXSingleton.CS.MakeInputNumber(giNodeNumber, giLoopNumber, giDeviceAddress, p1, on);
+                evnum = CSAMXSingleton.CS.MakeInputNumber(amxNode, giLoopNumber, giDeviceAddress, p1, on);
                 this.NotifyClient("Device 255 so now " + giDeviceAddress, false);
             }
-            base.NotifyClient("Send to AMX: Node = " + (giNodeNumber + this.Offset) + " Loop = " + giLoopNumber + " Address = " + giDeviceAddress);
+            base.NotifyClient("Send to AMX: Node = " + amxNode + " Loop = " + giLoopNumber + " Address = " + giDeviceAddress);
 
             if (tIpType == (int)enmPRLAlarmType.Isolate)  // If Disable Device neeed to also send another event to AMX to increase the Isolation count
             {
@@ -1974,23 +2006,48 @@ namespace DraxTechnology.Panels
 
         public override void SerialPort_Datareceived(object sender, SerialDataReceivedEventArgs e)
         {
-            Thread.Sleep(500); // wait for more data
-            int bytesToRead = serialport.BytesToRead;
-            if (bytesToRead <= 0) return;
+            // Guarded like the base handler: a removed USB adaptor kills the
+            // handle mid-event and BytesToRead/Read throw on the SerialPort
+            // event thread; a malformed line can also throw out of the parse
+            // path (this override never had the base's guards) — either way
+            // an escape here takes the whole service down.
+            byte[] incoming;
+            int read;
+            try
+            {
+                Thread.Sleep(500); // wait for more data
+                int bytesToRead = serialport.BytesToRead;
+                if (bytesToRead <= 0) return;
 
-            byte[] incoming = new byte[bytesToRead];
-            int read = serialport.Read(incoming, 0, bytesToRead);
-            if (read <= 0) return;
+                incoming = new byte[bytesToRead];
+                read = serialport.Read(incoming, 0, bytesToRead);
+                if (read <= 0) return;
+            }
+            catch (Exception ex)
+            {
+                this.NotifyClient("Serial read failed (adaptor removed?): " + ex.Message, false);
+                try { serialport.Close(); } catch { }
+                return;
+            }
 
             // Raw dump of everything off the wire: without this the log cannot
             // distinguish "panel never replied" from "replied in a frame shape
             // we don't decode" (2026-07-10 scan: 255 sends, silence, empty db).
             base.NotifyClient("Serial RX (" + read + " bytes): " + string.Join(", ", incoming.Take(read)), false);
 
-            lock (_buffer)
+            // Parse guard is separate from the read guard: a malformed line
+            // must not close the port, just drop the frame and log.
+            try
             {
-                _buffer.AddRange(incoming);
-                ExtractMessages();
+                lock (_buffer)
+                {
+                    _buffer.AddRange(incoming);
+                    ExtractMessages();
+                }
+            }
+            catch (Exception ex)
+            {
+                this.NotifyClient($"Parse error (PanelSyncro): {ex.Message}", false);
             }
         }
 

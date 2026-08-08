@@ -1,4 +1,4 @@
-#region usings
+﻿#region usings
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -46,7 +46,7 @@ namespace DraxTechnology
             }
             foreach (string key in orderedKeys)
             {
-                string[] splits = key.Split(ksettingdelim);
+                string[] splits = key.Split(ksettingdelim, 2);  // first delimiter only - setting names may contain it
                 if (splits.Length != 2) continue;
                 string workingsection = splits[0];
                 if (workingsection != section)
@@ -178,7 +178,7 @@ namespace DraxTechnology
             }
             foreach (string key in keys)
             {
-                string[] splits = key.Split(ksettingdelim);
+                string[] splits = key.Split(ksettingdelim, 2);  // first delimiter only - setting names may contain it
                 if (splits.Length != 2) continue;
                 string workingsection = splits[0];
                 if (workingsection != findsection) continue;
@@ -216,7 +216,7 @@ namespace DraxTechnology
             }
             foreach (string key in keys)
             {
-                string[] splits = key.Split(ksettingdelim);
+                string[] splits = key.Split(ksettingdelim, 2);  // first delimiter only - setting names may contain it
                 if (splits.Length != 2) continue;
                 string workingsection = splits[0];
                 if (workingsection != section)

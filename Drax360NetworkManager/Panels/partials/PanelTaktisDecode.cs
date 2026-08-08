@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -29,6 +29,10 @@ namespace DraxTechnology.Panels
         // In real-panel testing 4 faults generated 1,000+ files this way. Persists
         // across messages; cleared only on a panel Reset (HandleReset), like _faultList.
         private readonly HashSet<long> _sentActiveEvents = new HashSet<long>();
+        // _sentActiveEvents is touched from both the RX and TX reader loops
+        // (live events vs active-events replay) — concurrent HashSet mutation
+        // corrupts the set. Take this around every Add/Remove/Clear.
+        private readonly object _sentActiveEventsLock = new object();
         private readonly int _amx1Offset;
         private readonly bool _ulSettings;
         private readonly string _ioModuleSettings;
@@ -68,7 +72,9 @@ namespace DraxTechnology.Panels
                 int firstAddress = address;
                 int finalAddress = 0;
                 int doubleFaultInputType = 0;
-                bool _ulSettings = false;
+                // (local 'bool _ulSettings = false' removed — it shadowed the
+                // readonly field loaded from Takman.ini ULSettings, making the
+                // flag inert in this method on UL-configured sites)
                 _alarmList = new AlarmListManager();
                 _zoneDisableList = new ZoneDisableListManager();
                 // _faultList intentionally NOT re-created here — it persists
@@ -186,15 +192,18 @@ namespace DraxTechnology.Panels
                 // A clear (alarmOn=false) removes the condition and passes through so
                 // AMX sees the restore; a clear for something never reported active
                 // (a snapshot repeat) is dropped.
-                if (alarmOn)
+                lock (_sentActiveEventsLock)
                 {
-                    if (!_sentActiveEvents.Add(inputNumber))
-                        return;
-                }
-                else
-                {
-                    if (!_sentActiveEvents.Remove(inputNumber))
-                        return;
+                    if (alarmOn)
+                    {
+                        if (!_sentActiveEvents.Add(inputNumber))
+                            return;
+                    }
+                    else
+                    {
+                        if (!_sentActiveEvents.Remove(inputNumber))
+                            return;
+                    }
                 }
 
                 // Add/remove from alarm list
@@ -327,7 +336,9 @@ namespace DraxTechnology.Panels
         {
             string _faultWord = "Fault";
             string _earthFaultWord = "Earth Fault";
-            bool _ulSettings = false;
+            // (local 'bool _ulSettings = false' removed — it shadowed the
+            // readonly field loaded from Takman.ini ULSettings, making the
+            // flag inert in this method on UL-configured sites)
 
             // gbULSettings = Val(ReadFromIniFile("SetUp", "ULSettings", "0", IniFile))
 
@@ -1872,7 +1883,9 @@ namespace DraxTechnology.Panels
             string _evacWord = "Evacuate";
             string _alertWord = "Alert";
             string _techWord = "Technical Alarm";
-            bool _ulSettings = false;
+            // (local 'bool _ulSettings = false' removed — it shadowed the
+            // readonly field loaded from Takman.ini ULSettings, making the
+            // flag inert in this method on UL-configured sites)
 
             switch (inputAction)
             {
@@ -1949,7 +1962,9 @@ namespace DraxTechnology.Panels
             int addressType)
         {
             int inputType = 15;
-            bool _ulSettings = false;
+            // (local 'bool _ulSettings = false' removed — it shadowed the
+            // readonly field loaded from Takman.ini ULSettings, making the
+            // flag inert in this method on UL-configured sites)
 
             switch (eventType)
             {
@@ -2423,7 +2438,7 @@ namespace DraxTechnology.Panels
             _faultList.Clear();
             // A panel Reset clears all active conditions, so forget what we've
             // reported — genuinely re-occurring events after a Reset must send again.
-            _sentActiveEvents.Clear();
+            lock (_sentActiveEventsLock) _sentActiveEvents.Clear();
 
             //_networkManager.StartActiveEventsTimer();
             //_networkManager.StartResetDelayTimer(10000);

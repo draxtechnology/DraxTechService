@@ -854,36 +854,36 @@ namespace DraxTechnology.Panels
 
         private void PollTimer_Elapsed(object sender, ElapsedEventArgs e)
         {
-            // First, check if port is still physically present
-            if (!IsPortStillAvailable())
+            try
             {
-                int evnum = CSAMXSingleton.CS.MakeInputNumber(1 + Offset, 0, 0, 0, true);
-                CSAMXSingleton.CS.SendAlarmToAMX(evnum, "Master Panel Offline or Not Responding", "", "");
-                CSAMXSingleton.CS.FlushMessages();
-                connectionLostNotified = true;
-            }
+                // Level, not edge, was the old behaviour: every 3-second tick
+                // re-sent the offline alarm (up to three copies — the checks
+                // were independent ifs), flooding the AMX queue by tens of
+                // thousands overnight. connectionLostNotified was set but
+                // never consulted; the heartbeat's recovery path already
+                // clears it, so gate the raise on it: one alarm per outage.
+                bool offline =
+                    !IsPortStillAvailable() ||
+                    serialport?.IsOpen != true ||
+                    (lastSuccessfulResponse != DateTime.MinValue && (DateTime.Now - lastSuccessfulResponse).TotalSeconds > g_intResponseTimeout);
 
-            // Check if port is still open
-            if (serialport?.IsOpen != true)
-            {
-                int evnum = CSAMXSingleton.CS.MakeInputNumber(1 + Offset, 0, 0, 0, true);
-                CSAMXSingleton.CS.SendAlarmToAMX(evnum, "Master Panel Offline or Not Responding", "", "");
-                CSAMXSingleton.CS.FlushMessages();
-                connectionLostNotified = true;
+                if (offline && !connectionLostNotified)
+                {
+                    int evnum = CSAMXSingleton.CS.MakeInputNumber(1 + Offset, 0, 0, 0, true);
+                    CSAMXSingleton.CS.SendAlarmToAMX(evnum, "Master Panel Offline or Not Responding", "", "");
+                    CSAMXSingleton.CS.FlushMessages();
+                    connectionLostNotified = true;
+                }
             }
-
-            // Check response timeout
-            if (lastSuccessfulResponse != DateTime.MinValue && (DateTime.Now - lastSuccessfulResponse).TotalSeconds > g_intResponseTimeout)
+            catch (Exception ex)
             {
-                int evnum = CSAMXSingleton.CS.MakeInputNumber(1 + Offset, 0, 0, 0, true);
-                CSAMXSingleton.CS.SendAlarmToAMX(evnum, "Master Panel Offline or Not Responding", "", "");
-                CSAMXSingleton.CS.FlushMessages();
-                connectionLostNotified = true;
+                NotifyClient("Poll timer error: " + ex.Message, false);
             }
         }
         private bool IsPortStillAvailable()
         {
             // Check if the COM port still exists in the system
+            if (serialport == null) return false;
             string[] availablePorts = SerialPort.GetPortNames();
             return availablePorts.Contains(serialport.PortName);
         }
@@ -1201,22 +1201,40 @@ namespace DraxTechnology.Panels
             lastDataReceived = DateTime.Now;
             int waited = 0;
 
-            while (serialport.BytesToRead < kchunksize && waited < maxWaitMs)
+            // Guarded like the base handler: a removed USB adaptor kills the
+            // handle mid-event, and BytesToRead/Read then throw on the
+            // SerialPort event thread — unhandled there, that takes the whole
+            // service down (this override never had the base's guard). The
+            // 500 ms accumulate loop widens the exposure window. parseLock
+            // serialises overlapped callbacks against the shared parse buffer.
+            try
             {
-                System.Threading.Thread.Sleep(pollDelayMs);
-                waited += pollDelayMs;
+                while (serialport.BytesToRead < kchunksize && waited < maxWaitMs)
+                {
+                    System.Threading.Thread.Sleep(pollDelayMs);
+                    waited += pollDelayMs;
+                }
+
+                lock (parseLock)
+                {
+                    int bytestoread = serialport.BytesToRead;
+                    if (bytestoread == 0) return;
+
+                    byte[] readbytes = new byte[bytestoread];
+                    int numberread = serialport.Read(readbytes, 0, bytestoread);
+                    if (numberread == 0) return;
+
+                    // add check for 0606 at the beginning of the message  ??????
+
+                    try { Parse(readbytes); }
+                    catch (Exception ex) { this.NotifyClient($"Parse error (PanelGent): {ex.Message}"); }
+                }
             }
-
-            int bytestoread = serialport.BytesToRead;
-            if (bytestoread == 0) return;
-
-            byte[] readbytes = new byte[bytestoread];
-            int numberread = serialport.Read(readbytes, 0, bytestoread);
-            if (numberread == 0) return;
-
-            // add check for 0606 at the beginning of the message  ??????
-
-            Parse(readbytes);
+            catch (Exception ex)
+            {
+                this.NotifyClient("Serial read failed (adaptor removed?): " + ex.Message, false);
+                try { serialport.Close(); } catch { }
+            }
         }
         private void track_fault(int evnum)
         {

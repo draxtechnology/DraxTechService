@@ -440,8 +440,12 @@ namespace DraxTechnology.Panels
                 giLoopNumber = addr.Loop;
                 giDeviceAddress = addr.Device;
 
+                // Inbound events must carry the configured AMX offset: the
+                // log line below always printed the offset node while the
+                // event itself went out raw — on an offset site events landed
+                // on the wrong AMX node with a log that looked correct.
                 evnum = CSAMXSingleton.CS.MakeInputNumber(
-                    addr.Node, addr.Loop, addr.Device, p1, on);
+                    addr.Node + this.Offset, addr.Loop, addr.Device, p1, on);
 
                 base.NotifyClient("Send to AMX: Node=" + (addr.Node + this.Offset) +
                                   " Loop=" + addr.Loop + " Address=" + addr.Device);

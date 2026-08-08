@@ -1271,6 +1271,32 @@ namespace DraxTechnology.Panels
         /// write lock, bumping the TX counter. Shared by the GET/SET/restart paths.
         /// Returns false (and logs) on a write error.
         /// </summary>
+        // Writes a Parse-produced ACK under the same per-module WriteLock as
+        // TryWrite/SendCommand. The receive loop used to write the ack with a
+        // bare WriteAsync, and a concurrent outbound command (Reset from the
+        // pipe thread, say) could interleave bytes of two scrambled frames on
+        // the wire — the module rejects both and the command is silently lost.
+        public void WriteAck(NetworkStream stream, byte[] ack)
+        {
+            if (stream == null || ack == null || ack.Length == 0) return;
+            ModuleState state = null;
+            lock (modulesLock)
+            {
+                foreach (var kv in modules)
+                {
+                    if (ReferenceEquals(kv.Value.Stream, stream)) { state = kv.Value; break; }
+                }
+            }
+            // Pre-registration acks (first packet) have no module state yet —
+            // lock on the stream itself so two of those can't interleave either.
+            object writeLock = state != null ? state.WriteLock : stream;
+            lock (writeLock)
+            {
+                stream.Write(ack, 0, ack.Length);
+                stream.Flush();
+            }
+        }
+
         private bool TryWrite(ModuleState state, NetworkStream stream, string body)
         {
             byte[] bytes = scrambleandencodemessage(body);
