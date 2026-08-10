@@ -28,10 +28,16 @@
         /// </summary>
         private void InitializeComponent()
         {
-            // 
+            //
             // DraxService
-            // 
-            this.ServiceName = "DraxTechnology";
+            //
+            // Must exactly match the ServiceInstall/@Name WiX registers this instance's
+            // install under (Product.wxs) — SCM dispatches to a running process by this
+            // string, so a mismatch here means the service never starts. Suffixed with
+            // the resolved AmxInstance so each of the 4 side-by-side installs answers to
+            // its own registered name (DraxTechnology1..4); also doubles as the
+            // Application-log event source (ServiceBase.EventLog uses ServiceName).
+            this.ServiceName = "DraxTechnology" + AMXTransfer.ReadConfiguredInstanceNumber();
 
         }
 

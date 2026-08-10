@@ -10,7 +10,7 @@
        an equal version. -->
   <Package Name="Drax Technology Service"
            Manufacturer="Drax Technology"
-           Version="1.0.27"
+           Version="1.0.28"
            UpgradeCode="B5758DCA-6BC5-4E2C-BF55-7FA118631F65"
            Scope="perMachine"
            InstallerVersion="500">
@@ -29,16 +29,40 @@
          gated here — pair this MSI with a bootstrapper bundle (mirroring
          DraxTechClient/DraxClientSetup) when shipping to a fresh machine. -->
 
+    <!-- One product, four side-by-side service instances (AMX's own dongle caps
+         a site at four network managers, ports 3090-3093 — see AMXTransfer.cs).
+         Every instance installs unconditionally; which ones actually run is a
+         site decision made after install (start the service(s) the site is
+         licensed for — all four start Manual/Demand, see ServiceInstall below).
+         There is deliberately no upgrade path from the old single-instance
+         product (service name "DraxTechnology", folder C:\AMX1) — the 2 sites
+         on that scheme today get migrated by hand, not by MSI upgrade logic. -->
     <Feature Id="Main" Title="Drax Technology Service" Level="1">
-      <ComponentGroupRef Id="ServiceComponents" />
-      <ComponentGroupRef Id="DependencyFiles" />
-      <ComponentGroupRef Id="IniFiles" />
-      <ComponentGroupRef Id="WinRuntimeFiles" />
-      <ComponentGroupRef Id="FolderPermissions" />
+      <ComponentGroupRef Id="ServiceComponents1" />
+      <ComponentGroupRef Id="DependencyFiles1" />
+      <ComponentGroupRef Id="IniFiles1" />
+      <ComponentGroupRef Id="WinRuntimeFiles1" />
+      <ComponentGroupRef Id="FolderPermissions1" />
+      <ComponentGroupRef Id="ServiceComponents2" />
+      <ComponentGroupRef Id="DependencyFiles2" />
+      <ComponentGroupRef Id="IniFiles2" />
+      <ComponentGroupRef Id="WinRuntimeFiles2" />
+      <ComponentGroupRef Id="FolderPermissions2" />
+      <ComponentGroupRef Id="ServiceComponents3" />
+      <ComponentGroupRef Id="DependencyFiles3" />
+      <ComponentGroupRef Id="IniFiles3" />
+      <ComponentGroupRef Id="WinRuntimeFiles3" />
+      <ComponentGroupRef Id="FolderPermissions3" />
+      <ComponentGroupRef Id="ServiceComponents4" />
+      <ComponentGroupRef Id="DependencyFiles4" />
+      <ComponentGroupRef Id="IniFiles4" />
+      <ComponentGroupRef Id="WinRuntimeFiles4" />
+      <ComponentGroupRef Id="FolderPermissions4" />
+      <ComponentGroupRef Id="SharedEventSource" />
     </Feature>
 
     <!-- Minimal UI: single Install button → progress → Finish.
-         No directory or license pages — install path is fixed at C:\AMX1. -->
+         No directory or license pages — install paths are fixed at C:\AMX1..4. -->
     <ui:WixUI Id="WixUI_Minimal" />
 
     <!-- Logo bitmaps — regenerate with DraxServiceSetup\MakeBitmaps.ps1
@@ -46,83 +70,275 @@
     <WixVariable Id="WixUIBannerBmp" Value="banner.bmp" />
     <WixVariable Id="WixUIDialogBmp" Value="dialog.bmp" />
 
-    <!-- C:\AMX1\ as install location, with ini\ subfolder and the
-         runtimes\win\lib\net10.0\ subtree that the .NET runtime expects
-         for RID-specific NuGet assets (ServiceController, EventLog, etc.).
-         The leaf folder name must match the TFM in Drax360Service.csproj —
-         the runtime resolves it literally from runtimeTargets in deps.json. -->
+    <!-- C:\AMX1..4\ as install locations, each with its own ini\ subfolder and
+         runtimes\win\lib\net10.0\ subtree that the .NET runtime expects for
+         RID-specific NuGet assets (ServiceController, EventLog, etc.) — every
+         instance is a complete, independent copy of the app, since each needs
+         its own DraxTechnology.dll.config next to its own exe. The leaf folder
+         name must match the TFM in Drax360Service.csproj — the runtime resolves
+         it literally from runtimeTargets in deps.json. -->
     <StandardDirectory Id="TARGETDIR">
-      <Directory Id="INSTALLFOLDER" Name="AMX1">
-        <Directory Id="IniFolder" Name="ini" />
-        <Directory Id="RuntimesDir" Name="runtimes">
-          <Directory Id="RuntimesWinDir" Name="win">
-            <Directory Id="RuntimesWinLibDir" Name="lib">
-              <Directory Id="WinRuntimeDir" Name="net10.0" />
+      <Directory Id="INSTALLFOLDER1" Name="AMX1">
+        <Directory Id="IniFolder1" Name="ini" />
+        <Directory Id="RuntimesDir1" Name="runtimes">
+          <Directory Id="RuntimesWinDir1" Name="win">
+            <Directory Id="RuntimesWinLibDir1" Name="lib">
+              <Directory Id="WinRuntimeDir1" Name="net10.0" />
+            </Directory>
+          </Directory>
+        </Directory>
+      </Directory>
+      <Directory Id="INSTALLFOLDER2" Name="AMX2">
+        <Directory Id="IniFolder2" Name="ini" />
+        <Directory Id="RuntimesDir2" Name="runtimes">
+          <Directory Id="RuntimesWinDir2" Name="win">
+            <Directory Id="RuntimesWinLibDir2" Name="lib">
+              <Directory Id="WinRuntimeDir2" Name="net10.0" />
+            </Directory>
+          </Directory>
+        </Directory>
+      </Directory>
+      <Directory Id="INSTALLFOLDER3" Name="AMX3">
+        <Directory Id="IniFolder3" Name="ini" />
+        <Directory Id="RuntimesDir3" Name="runtimes">
+          <Directory Id="RuntimesWinDir3" Name="win">
+            <Directory Id="RuntimesWinLibDir3" Name="lib">
+              <Directory Id="WinRuntimeDir3" Name="net10.0" />
+            </Directory>
+          </Directory>
+        </Directory>
+      </Directory>
+      <Directory Id="INSTALLFOLDER4" Name="AMX4">
+        <Directory Id="IniFolder4" Name="ini" />
+        <Directory Id="RuntimesDir4" Name="runtimes">
+          <Directory Id="RuntimesWinDir4" Name="win">
+            <Directory Id="RuntimesWinLibDir4" Name="lib">
+              <Directory Id="WinRuntimeDir4" Name="net10.0" />
             </Directory>
           </Directory>
         </Directory>
       </Directory>
     </StandardDirectory>
 
-    <!-- Grant the service account full control of the install folder so
+    <!-- Grant the service account full control of each install folder so
          DraxService can write log files, NWM temp files, and Current.Nwm. -->
-    <ComponentGroup Id="FolderPermissions" Directory="INSTALLFOLDER">
-      <Component Id="AmxFolderPermission" Guid="B2C6D3E4-5F6A-7B8C-9D0E-1F2A3B4C5D6E">
+    <ComponentGroup Id="FolderPermissions1" Directory="INSTALLFOLDER1">
+      <Component Id="AmxFolderPermission1" Guid="B2C6D3E4-5F6A-7B8C-9D0E-1F2A3B4C5D6E">
+        <CreateFolder>
+          <util:PermissionEx User="SYSTEM" GenericAll="yes" />
+        </CreateFolder>
+      </Component>
+    </ComponentGroup>
+    <ComponentGroup Id="FolderPermissions2" Directory="INSTALLFOLDER2">
+      <Component Id="AmxFolderPermission2" Guid="C3D7E4F5-6A7B-8C9D-0E1F-2A3B4C5D6E7F">
+        <CreateFolder>
+          <util:PermissionEx User="SYSTEM" GenericAll="yes" />
+        </CreateFolder>
+      </Component>
+    </ComponentGroup>
+    <ComponentGroup Id="FolderPermissions3" Directory="INSTALLFOLDER3">
+      <Component Id="AmxFolderPermission3" Guid="D4E8F5A6-7B8C-9D0E-1F2A-3B4C5D6E7F80">
+        <CreateFolder>
+          <util:PermissionEx User="SYSTEM" GenericAll="yes" />
+        </CreateFolder>
+      </Component>
+    </ComponentGroup>
+    <ComponentGroup Id="FolderPermissions4" Directory="INSTALLFOLDER4">
+      <Component Id="AmxFolderPermission4" Guid="E5F9A6B7-8C9D-0E1F-2A3B-4C5D6E7F8091">
         <CreateFolder>
           <util:PermissionEx User="SYSTEM" GenericAll="yes" />
         </CreateFolder>
       </Component>
     </ComponentGroup>
 
-    <!-- Service component: holds the EXE + service install/control -->
-    <ComponentGroup Id="ServiceComponents" Directory="INSTALLFOLDER">
-      <Component Id="DraxTechnologyExe" Guid="A1B5C2D3-4E5F-6A7B-8C9D-0E1F2A3B4C5D">
-        <!-- On .NET (Core) the exe is the apphost; the managed assembly + config
-             (DraxTechnology.dll, .dll.config, .deps.json, .runtimeconfig.json)
-             are picked up by the auto-generated Files.wxs DependencyFiles
-             group. -->
-        <File Id="DraxTechnology.exe"
-              Source="$(var.Drax360Service.TargetDir)DraxTechnology.exe"
-              KeyPath="yes" />
-        <!-- Stamp the chosen install folder into the service's config so every
-             path (inis, logs, temp, analogue database) follows a non-default
-             install drive. The AMX installer passes its destination as:
-               msiexec /i DraxTechnologyServiceSetup.msi INSTALLFOLDER="D:\AMX1" /qn
-             On a default install this rewrites the value to C:\AMX1\ — the same
-             folder the config already names. -->
-        <util:XmlFile Id="StampConfigurationBase"
-                      File="[INSTALLFOLDER]DraxTechnology.dll.config"
-                      Action="setValue"
-                      ElementPath="//configuration/appSettings/add[\[]@key='Configuration'[\]]"
-                      Name="value"
-                      Value="[INSTALLFOLDER]" />
-        <!-- Register the event source while the MSI is elevated. -->
+    <!-- Registered once, shared by all four instances' Application-log sources
+         (see the per-instance util:EventSource below) — the Service-log source
+         Drax360NetworkManager's own EventLogger.cs writes under is not instance-
+         scoped, so registering it four times would just recreate the same
+         registry key redundantly. -->
+    <ComponentGroup Id="SharedEventSource" Directory="INSTALLFOLDER1">
+      <Component Id="Drax360ServiceLogEventSource" Guid="F6A0B7C8-9D0E-1F2A-3B4C-5D6E7F809102">
         <util:EventSource Name="Drax360"
                           Log="Service"
                           EventMessageFile="[WindowsFolder]Microsoft.NET\Framework64\v4.0.30319\EventLogMessages.dll" />
-        <!-- ServiceBase.EventLog uses the service name as source in the Application log -->
-        <util:EventSource Name="DraxTechnology"
+      </Component>
+    </ComponentGroup>
+
+    <!-- Service components: one per instance, each holding its own EXE + service
+         install/control. Internal service Name is "DraxTechnology{n}" (must match
+         DraxService.Designer.cs's this.ServiceName exactly — SCM dispatches to a
+         running process by this string) with a human-readable DisplayName of
+         "Drax Technology Service {n}" — that's what shows in services.msc. -->
+    <ComponentGroup Id="ServiceComponents1" Directory="INSTALLFOLDER1">
+      <Component Id="DraxTechnologyExe1" Guid="A1B5C2D3-4E5F-6A7B-8C9D-0E1F2A3B4C5D">
+        <File Id="DraxTechnology1.exe"
+              Source="$(var.Drax360Service.TargetDir)DraxTechnology.exe"
+              KeyPath="yes" />
+        <!-- Stamp this install's own folder + instance number into its config so
+             every path (inis, logs, temp, analogue database) and the AMX port /
+             pipe suffix (AMXTransfer.ReadConfiguredInstanceNumber) resolve to
+             instance 1 specifically. -->
+        <util:XmlFile Id="StampConfigurationBase1"
+                      File="[INSTALLFOLDER1]DraxTechnology.dll.config"
+                      Action="setValue"
+                      ElementPath="//configuration/appSettings/add[\[]@key='Configuration'[\]]"
+                      Name="value"
+                      Value="[INSTALLFOLDER1]" />
+        <util:XmlFile Id="StampAmxInstance1"
+                      File="[INSTALLFOLDER1]DraxTechnology.dll.config"
+                      Action="setValue"
+                      ElementPath="//configuration/appSettings/add[\[]@key='AmxInstance'[\]]"
+                      Name="value"
+                      Value="1" />
+        <util:EventSource Name="DraxTechnology1"
                           Log="Application"
                           EventMessageFile="[WindowsFolder]Microsoft.NET\Framework64\v4.0.30319\EventLogMessages.dll" />
-        <ServiceInstall Id="DraxTechnologyService"
-                        Name="DraxTechnology"
-                        DisplayName="Drax Technology Service"
-                        Description="Drax Technology Network Manager"
+        <ServiceInstall Id="DraxTechnologyService1"
+                        Name="DraxTechnology1"
+                        DisplayName="Drax Technology Service 1"
+                        Description="Drax Technology Network Manager (instance 1)"
                         Type="ownProcess"
                         Start="demand"
                         ErrorControl="normal"
                         Account="LocalSystem"
                         Vital="yes">
-          <!-- Allow any local user to start/stop/query the service without elevation,
-               so the VB6 client does not need to run as administrator. -->
           <util:PermissionEx User="Users"
                              ServiceQueryStatus="yes"
                              ServiceStart="yes"
                              ServiceStop="yes"
                              ServiceInterrogate="yes" />
         </ServiceInstall>
-        <ServiceControl Id="DraxTechnologyServiceControl"
-                        Name="DraxTechnology"
+        <ServiceControl Id="DraxTechnologyServiceControl1"
+                        Name="DraxTechnology1"
+                        Stop="both"
+                        Remove="uninstall"
+                        Wait="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <ComponentGroup Id="ServiceComponents2" Directory="INSTALLFOLDER2">
+      <Component Id="DraxTechnologyExe2" Guid="1A2B3C4D-5E6F-7081-92A3-B4C5D6E7F809">
+        <File Id="DraxTechnology2.exe"
+              Source="$(var.Drax360Service.TargetDir)DraxTechnology.exe"
+              KeyPath="yes" />
+        <util:XmlFile Id="StampConfigurationBase2"
+                      File="[INSTALLFOLDER2]DraxTechnology.dll.config"
+                      Action="setValue"
+                      ElementPath="//configuration/appSettings/add[\[]@key='Configuration'[\]]"
+                      Name="value"
+                      Value="[INSTALLFOLDER2]" />
+        <util:XmlFile Id="StampAmxInstance2"
+                      File="[INSTALLFOLDER2]DraxTechnology.dll.config"
+                      Action="setValue"
+                      ElementPath="//configuration/appSettings/add[\[]@key='AmxInstance'[\]]"
+                      Name="value"
+                      Value="2" />
+        <util:EventSource Name="DraxTechnology2"
+                          Log="Application"
+                          EventMessageFile="[WindowsFolder]Microsoft.NET\Framework64\v4.0.30319\EventLogMessages.dll" />
+        <ServiceInstall Id="DraxTechnologyService2"
+                        Name="DraxTechnology2"
+                        DisplayName="Drax Technology Service 2"
+                        Description="Drax Technology Network Manager (instance 2)"
+                        Type="ownProcess"
+                        Start="demand"
+                        ErrorControl="normal"
+                        Account="LocalSystem"
+                        Vital="yes">
+          <util:PermissionEx User="Users"
+                             ServiceQueryStatus="yes"
+                             ServiceStart="yes"
+                             ServiceStop="yes"
+                             ServiceInterrogate="yes" />
+        </ServiceInstall>
+        <ServiceControl Id="DraxTechnologyServiceControl2"
+                        Name="DraxTechnology2"
+                        Stop="both"
+                        Remove="uninstall"
+                        Wait="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <ComponentGroup Id="ServiceComponents3" Directory="INSTALLFOLDER3">
+      <Component Id="DraxTechnologyExe3" Guid="2B3C4D5E-6F70-8192-A3B4-C5D6E7F80910">
+        <File Id="DraxTechnology3.exe"
+              Source="$(var.Drax360Service.TargetDir)DraxTechnology.exe"
+              KeyPath="yes" />
+        <util:XmlFile Id="StampConfigurationBase3"
+                      File="[INSTALLFOLDER3]DraxTechnology.dll.config"
+                      Action="setValue"
+                      ElementPath="//configuration/appSettings/add[\[]@key='Configuration'[\]]"
+                      Name="value"
+                      Value="[INSTALLFOLDER3]" />
+        <util:XmlFile Id="StampAmxInstance3"
+                      File="[INSTALLFOLDER3]DraxTechnology.dll.config"
+                      Action="setValue"
+                      ElementPath="//configuration/appSettings/add[\[]@key='AmxInstance'[\]]"
+                      Name="value"
+                      Value="3" />
+        <util:EventSource Name="DraxTechnology3"
+                          Log="Application"
+                          EventMessageFile="[WindowsFolder]Microsoft.NET\Framework64\v4.0.30319\EventLogMessages.dll" />
+        <ServiceInstall Id="DraxTechnologyService3"
+                        Name="DraxTechnology3"
+                        DisplayName="Drax Technology Service 3"
+                        Description="Drax Technology Network Manager (instance 3)"
+                        Type="ownProcess"
+                        Start="demand"
+                        ErrorControl="normal"
+                        Account="LocalSystem"
+                        Vital="yes">
+          <util:PermissionEx User="Users"
+                             ServiceQueryStatus="yes"
+                             ServiceStart="yes"
+                             ServiceStop="yes"
+                             ServiceInterrogate="yes" />
+        </ServiceInstall>
+        <ServiceControl Id="DraxTechnologyServiceControl3"
+                        Name="DraxTechnology3"
+                        Stop="both"
+                        Remove="uninstall"
+                        Wait="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <ComponentGroup Id="ServiceComponents4" Directory="INSTALLFOLDER4">
+      <Component Id="DraxTechnologyExe4" Guid="3C4D5E6F-7081-92A3-B4C5-D6E7F8091021">
+        <File Id="DraxTechnology4.exe"
+              Source="$(var.Drax360Service.TargetDir)DraxTechnology.exe"
+              KeyPath="yes" />
+        <util:XmlFile Id="StampConfigurationBase4"
+                      File="[INSTALLFOLDER4]DraxTechnology.dll.config"
+                      Action="setValue"
+                      ElementPath="//configuration/appSettings/add[\[]@key='Configuration'[\]]"
+                      Name="value"
+                      Value="[INSTALLFOLDER4]" />
+        <util:XmlFile Id="StampAmxInstance4"
+                      File="[INSTALLFOLDER4]DraxTechnology.dll.config"
+                      Action="setValue"
+                      ElementPath="//configuration/appSettings/add[\[]@key='AmxInstance'[\]]"
+                      Name="value"
+                      Value="4" />
+        <util:EventSource Name="DraxTechnology4"
+                          Log="Application"
+                          EventMessageFile="[WindowsFolder]Microsoft.NET\Framework64\v4.0.30319\EventLogMessages.dll" />
+        <ServiceInstall Id="DraxTechnologyService4"
+                        Name="DraxTechnology4"
+                        DisplayName="Drax Technology Service 4"
+                        Description="Drax Technology Network Manager (instance 4)"
+                        Type="ownProcess"
+                        Start="demand"
+                        ErrorControl="normal"
+                        Account="LocalSystem"
+                        Vital="yes">
+          <util:PermissionEx User="Users"
+                             ServiceQueryStatus="yes"
+                             ServiceStart="yes"
+                             ServiceStop="yes"
+                             ServiceInterrogate="yes" />
+        </ServiceInstall>
+        <ServiceControl Id="DraxTechnologyServiceControl4"
+                        Name="DraxTechnology4"
                         Stop="both"
                         Remove="uninstall"
                         Wait="yes" />

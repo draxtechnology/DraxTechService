@@ -24,12 +24,15 @@
     <!-- build temp, log, ini under this foler -->
     <add key="FakeMode" value="0" />
     <!-- 0 = off, 1 = on -->
-    <!-- AMX instance / port. A site can run up to four managers in parallel;
-         this C# service may occupy any of the four slots.
+    <!-- AMX instance / port. A site can run up to four managers in parallel, each
+         its own side-by-side Drax360Service install (C:\AMX1..4, its own service
+         name, its own named pipe pair) — AmxInstance is the one number all of that
+         keys off, stamped into each install's config by the installer.
            AmxInstance = 1..4  -> port 3090..3093 (AMX1=3090, AMX2=3091, ...)
-           AmxPort     = explicit port, overrides AmxInstance if both set.
-         Omit both to default to 3090 (AMX1). -->
-    <!-- <add key="AmxInstance" value="1" /> -->
+           AmxPort     = explicit port, overrides AmxInstance's port derivation only
+                         (folder/service-name/pipe still follow AmxInstance).
+         Omit AmxInstance to default to 1. -->
+    <add key="AmxInstance" value="1" />
     <!-- <add key="AmxPort" value="3090" /> -->
     <!-- MQTT mirror for the open head-end / Node-RED PoC. Additive and parallel to
          AMX: when enabled, every normalised event is also published as JSON to a

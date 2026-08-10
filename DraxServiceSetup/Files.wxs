@@ -1,121 +1,473 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   <Fragment>
-    <ComponentGroup Id="DependencyFiles" Directory="INSTALLFOLDER">
-      <Component Id="cmp_DraxTechnology_deps_json" Guid="F91FFF1A-1250-B428-8072-3F876BD74DA6">
-        <File Id="fil_DraxTechnology_deps_json" Source="$(var.Drax360Service.TargetDir)DraxTechnology.deps.json" KeyPath="yes" />
+    <ComponentGroup Id="DependencyFiles1" Directory="INSTALLFOLDER1">
+      <Component Id="cmp_DraxTechnology_deps_json_1" Guid="2926C275-A57F-7550-1FB6-ED664FD9D432">
+        <File Id="fil_DraxTechnology_deps_json_1" Source="$(var.Drax360Service.TargetDir)DraxTechnology.deps.json" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_DraxTechnology_dll" Guid="AE6CC3F0-53A2-B8B8-8FEE-45AC74308185">
-        <File Id="fil_DraxTechnology_dll" Source="$(var.Drax360Service.TargetDir)DraxTechnology.dll" KeyPath="yes" />
+      <Component Id="cmp_DraxTechnology_dll_1" Guid="D476F6EF-DA46-AD4E-AFDC-982E50BC05A4">
+        <File Id="fil_DraxTechnology_dll_1" Source="$(var.Drax360Service.TargetDir)DraxTechnology.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_DraxTechnology_dll_config" Guid="4F1FE90E-849C-F00F-7C25-284A701D56CB">
-        <File Id="fil_DraxTechnology_dll_config" Source="$(var.Drax360Service.TargetDir)DraxTechnology.dll.config" KeyPath="yes" />
+      <Component Id="cmp_DraxTechnology_dll_config_1" Guid="F534F450-5BD2-CF9F-6F14-4A3ED9805D7A">
+        <File Id="fil_DraxTechnology_dll_config_1" Source="$(var.Drax360Service.TargetDir)DraxTechnology.dll.config" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_DraxTechnology_runtimeconfig_json" Guid="B93526DF-12D5-1A9A-FA9F-EEF7ED44736F">
-        <File Id="fil_DraxTechnology_runtimeconfig_json" Source="$(var.Drax360Service.TargetDir)DraxTechnology.runtimeconfig.json" KeyPath="yes" />
+      <Component Id="cmp_DraxTechnology_runtimeconfig_json_1" Guid="EFB3A3BF-D3C0-B68F-D4D4-4E832BCE9F9E">
+        <File Id="fil_DraxTechnology_runtimeconfig_json_1" Source="$(var.Drax360Service.TargetDir)DraxTechnology.runtimeconfig.json" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_e_sqlite3_dll" Guid="D5E1A5E2-76EA-DFB5-7B1B-1EEDD1D7660E">
-        <File Id="fil_e_sqlite3_dll" Source="$(var.Drax360Service.TargetDir)e_sqlite3.dll" KeyPath="yes" />
+      <Component Id="cmp_e_sqlite3_dll_1" Guid="1F9232BB-8DDE-1BA2-DEC1-EA92787F9777">
+        <File Id="fil_e_sqlite3_dll_1" Source="$(var.Drax360Service.TargetDir)e_sqlite3.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_Microsoft_Data_Sqlite_dll" Guid="4BC0A4DC-1DAE-EDA2-F6AE-7EF8019E06E7">
-        <File Id="fil_Microsoft_Data_Sqlite_dll" Source="$(var.Drax360Service.TargetDir)Microsoft.Data.Sqlite.dll" KeyPath="yes" />
+      <Component Id="cmp_Microsoft_Data_Sqlite_dll_1" Guid="88ABFF0C-C041-E24C-7D45-4173C2B28414">
+        <File Id="fil_Microsoft_Data_Sqlite_dll_1" Source="$(var.Drax360Service.TargetDir)Microsoft.Data.Sqlite.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_Microsoft_EntityFrameworkCore_Abstractions_dll" Guid="631AB968-1FD0-06CC-153F-601A068939BE">
-        <File Id="fil_Microsoft_EntityFrameworkCore_Abstractions_dll" Source="$(var.Drax360Service.TargetDir)Microsoft.EntityFrameworkCore.Abstractions.dll" KeyPath="yes" />
+      <Component Id="cmp_Microsoft_EntityFrameworkCore_Abstractions_dll_1" Guid="157AD194-0FA6-1A9E-E118-6EBD32BB52A6">
+        <File Id="fil_Microsoft_EntityFrameworkCore_Abstractions_dll_1" Source="$(var.Drax360Service.TargetDir)Microsoft.EntityFrameworkCore.Abstractions.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_Microsoft_EntityFrameworkCore_dll" Guid="74626E90-7BBE-18CA-CCD0-293BD3F2606A">
-        <File Id="fil_Microsoft_EntityFrameworkCore_dll" Source="$(var.Drax360Service.TargetDir)Microsoft.EntityFrameworkCore.dll" KeyPath="yes" />
+      <Component Id="cmp_Microsoft_EntityFrameworkCore_dll_1" Guid="31221779-17BC-6948-E500-41DD19A19485">
+        <File Id="fil_Microsoft_EntityFrameworkCore_dll_1" Source="$(var.Drax360Service.TargetDir)Microsoft.EntityFrameworkCore.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_Microsoft_EntityFrameworkCore_Relational_dll" Guid="26F6C7C8-86B4-9997-6C63-157FC8FE4081">
-        <File Id="fil_Microsoft_EntityFrameworkCore_Relational_dll" Source="$(var.Drax360Service.TargetDir)Microsoft.EntityFrameworkCore.Relational.dll" KeyPath="yes" />
+      <Component Id="cmp_Microsoft_EntityFrameworkCore_Relational_dll_1" Guid="6AAD9414-DAB8-3B2E-DF5A-D003395A5518">
+        <File Id="fil_Microsoft_EntityFrameworkCore_Relational_dll_1" Source="$(var.Drax360Service.TargetDir)Microsoft.EntityFrameworkCore.Relational.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_Microsoft_EntityFrameworkCore_Sqlite_dll" Guid="557515F0-9F78-A53F-A50C-B63884A0D46C">
-        <File Id="fil_Microsoft_EntityFrameworkCore_Sqlite_dll" Source="$(var.Drax360Service.TargetDir)Microsoft.EntityFrameworkCore.Sqlite.dll" KeyPath="yes" />
+      <Component Id="cmp_Microsoft_EntityFrameworkCore_Sqlite_dll_1" Guid="D2033618-1E52-91B3-6332-DF38739DAFD7">
+        <File Id="fil_Microsoft_EntityFrameworkCore_Sqlite_dll_1" Source="$(var.Drax360Service.TargetDir)Microsoft.EntityFrameworkCore.Sqlite.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_Microsoft_Extensions_Caching_Abstractions_dll" Guid="79BE2F28-CA44-B3A2-4F99-5F4EE6B76C93">
-        <File Id="fil_Microsoft_Extensions_Caching_Abstractions_dll" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Caching.Abstractions.dll" KeyPath="yes" />
+      <Component Id="cmp_Microsoft_Extensions_Caching_Abstractions_dll_1" Guid="CE4DC8A8-B26F-DBD4-F3F6-56DA73B937E7">
+        <File Id="fil_Microsoft_Extensions_Caching_Abstractions_dll_1" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Caching.Abstractions.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_Microsoft_Extensions_Caching_Memory_dll" Guid="751CE0D7-6376-9DEC-E9C6-B72CB724414B">
-        <File Id="fil_Microsoft_Extensions_Caching_Memory_dll" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Caching.Memory.dll" KeyPath="yes" />
+      <Component Id="cmp_Microsoft_Extensions_Caching_Memory_dll_1" Guid="A8A16092-D4F4-84A9-8C5C-1CE9CF6D196C">
+        <File Id="fil_Microsoft_Extensions_Caching_Memory_dll_1" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Caching.Memory.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_Microsoft_Extensions_Configuration_Abstractions_dll" Guid="F4D82565-EA28-D7A3-1479-134D74BCEFE5">
-        <File Id="fil_Microsoft_Extensions_Configuration_Abstractions_dll" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Configuration.Abstractions.dll" KeyPath="yes" />
+      <Component Id="cmp_Microsoft_Extensions_Configuration_Abstractions_dll_1" Guid="0864E4B4-9C48-C6B0-D336-E2AC673E9EC0">
+        <File Id="fil_Microsoft_Extensions_Configuration_Abstractions_dll_1" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Configuration.Abstractions.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_Microsoft_Extensions_DependencyInjection_Abstractions_dll" Guid="5997496B-6038-8717-A127-FBF148D46072">
-        <File Id="fil_Microsoft_Extensions_DependencyInjection_Abstractions_dll" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.DependencyInjection.Abstractions.dll" KeyPath="yes" />
+      <Component Id="cmp_Microsoft_Extensions_DependencyInjection_Abstractions_dll_1" Guid="53CCA2A7-EB3D-51F3-3F8B-B37501A191A9">
+        <File Id="fil_Microsoft_Extensions_DependencyInjection_Abstractions_dll_1" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.DependencyInjection.Abstractions.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_Microsoft_Extensions_DependencyInjection_dll" Guid="828AE85A-51F6-BA7F-E29E-13F3C704D1CC">
-        <File Id="fil_Microsoft_Extensions_DependencyInjection_dll" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.DependencyInjection.dll" KeyPath="yes" />
+      <Component Id="cmp_Microsoft_Extensions_DependencyInjection_dll_1" Guid="A39059E8-76FD-2EB0-4E7C-2FA6DD4E12E5">
+        <File Id="fil_Microsoft_Extensions_DependencyInjection_dll_1" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.DependencyInjection.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_Microsoft_Extensions_DependencyModel_dll" Guid="3B0F08C7-84ED-F92D-62D0-6086CFCBA24C">
-        <File Id="fil_Microsoft_Extensions_DependencyModel_dll" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.DependencyModel.dll" KeyPath="yes" />
+      <Component Id="cmp_Microsoft_Extensions_DependencyModel_dll_1" Guid="71A45EC5-E070-03C4-3EF8-6CFC7688A853">
+        <File Id="fil_Microsoft_Extensions_DependencyModel_dll_1" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.DependencyModel.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_Microsoft_Extensions_Logging_Abstractions_dll" Guid="73EC0B74-06FF-4E9F-1CF5-E814619781D5">
-        <File Id="fil_Microsoft_Extensions_Logging_Abstractions_dll" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Logging.Abstractions.dll" KeyPath="yes" />
+      <Component Id="cmp_Microsoft_Extensions_Logging_Abstractions_dll_1" Guid="00FC4F19-2E8A-6D21-AF68-38392FF5255B">
+        <File Id="fil_Microsoft_Extensions_Logging_Abstractions_dll_1" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Logging.Abstractions.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_Microsoft_Extensions_Logging_dll" Guid="AC95355A-64B8-A49C-9BF3-FFA7AC401AF0">
-        <File Id="fil_Microsoft_Extensions_Logging_dll" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Logging.dll" KeyPath="yes" />
+      <Component Id="cmp_Microsoft_Extensions_Logging_dll_1" Guid="8F6D3426-B772-0BC2-7F64-51426B0E9BC4">
+        <File Id="fil_Microsoft_Extensions_Logging_dll_1" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Logging.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_Microsoft_Extensions_Options_dll" Guid="0197CD3D-6E02-54BF-D37F-DE23DCEDC416">
-        <File Id="fil_Microsoft_Extensions_Options_dll" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Options.dll" KeyPath="yes" />
+      <Component Id="cmp_Microsoft_Extensions_Options_dll_1" Guid="5DAA08D3-63E6-49F3-3397-72964F609E41">
+        <File Id="fil_Microsoft_Extensions_Options_dll_1" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Options.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_Microsoft_Extensions_Primitives_dll" Guid="8446077E-4E10-5286-9DD3-E84091CE833E">
-        <File Id="fil_Microsoft_Extensions_Primitives_dll" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Primitives.dll" KeyPath="yes" />
+      <Component Id="cmp_Microsoft_Extensions_Primitives_dll_1" Guid="6F7B2293-F4F7-E49D-3369-8840E63D21B6">
+        <File Id="fil_Microsoft_Extensions_Primitives_dll_1" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Primitives.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_MQTTnet_dll" Guid="1F0A11EC-0D35-4AF8-4134-F09562E9D495">
-        <File Id="fil_MQTTnet_dll" Source="$(var.Drax360Service.TargetDir)MQTTnet.dll" KeyPath="yes" />
+      <Component Id="cmp_MQTTnet_dll_1" Guid="8CC3528E-206E-0DFC-3001-5D3E2E8FE9C7">
+        <File Id="fil_MQTTnet_dll_1" Source="$(var.Drax360Service.TargetDir)MQTTnet.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_SQLitePCLRaw_batteries_v2_dll" Guid="2CCE773F-FD53-136F-A6F2-259EDB5CBEAA">
-        <File Id="fil_SQLitePCLRaw_batteries_v2_dll" Source="$(var.Drax360Service.TargetDir)SQLitePCLRaw.batteries_v2.dll" KeyPath="yes" />
+      <Component Id="cmp_SQLitePCLRaw_batteries_v2_dll_1" Guid="8E68B1A9-69D9-456D-9A6D-00E61C59C422">
+        <File Id="fil_SQLitePCLRaw_batteries_v2_dll_1" Source="$(var.Drax360Service.TargetDir)SQLitePCLRaw.batteries_v2.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_SQLitePCLRaw_core_dll" Guid="BB1CE317-5348-C99C-8B1A-4F121AC38F10">
-        <File Id="fil_SQLitePCLRaw_core_dll" Source="$(var.Drax360Service.TargetDir)SQLitePCLRaw.core.dll" KeyPath="yes" />
+      <Component Id="cmp_SQLitePCLRaw_core_dll_1" Guid="1D89EB7A-A120-25B2-976F-9CE3ACEE7F99">
+        <File Id="fil_SQLitePCLRaw_core_dll_1" Source="$(var.Drax360Service.TargetDir)SQLitePCLRaw.core.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_SQLitePCLRaw_provider_e_sqlite3_dll" Guid="15A6A51B-909E-6CF4-2EF3-937C85E9B611">
-        <File Id="fil_SQLitePCLRaw_provider_e_sqlite3_dll" Source="$(var.Drax360Service.TargetDir)SQLitePCLRaw.provider.e_sqlite3.dll" KeyPath="yes" />
+      <Component Id="cmp_SQLitePCLRaw_provider_e_sqlite3_dll_1" Guid="3229E983-C772-E638-F2E3-CAA2EBD8C03F">
+        <File Id="fil_SQLitePCLRaw_provider_e_sqlite3_dll_1" Source="$(var.Drax360Service.TargetDir)SQLitePCLRaw.provider.e_sqlite3.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_System_CodeDom_dll" Guid="FC67817D-8CB1-DE11-1E88-9F506156C0F1">
-        <File Id="fil_System_CodeDom_dll" Source="$(var.Drax360Service.TargetDir)System.CodeDom.dll" KeyPath="yes" />
+      <Component Id="cmp_System_CodeDom_dll_1" Guid="0E63BA92-EA9D-5E5D-DFBF-E504AFB13A14">
+        <File Id="fil_System_CodeDom_dll_1" Source="$(var.Drax360Service.TargetDir)System.CodeDom.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_System_Configuration_ConfigurationManager_dll" Guid="3FF9A826-C1CE-4F79-FDEC-1D66AC5D9F9A">
-        <File Id="fil_System_Configuration_ConfigurationManager_dll" Source="$(var.Drax360Service.TargetDir)System.Configuration.ConfigurationManager.dll" KeyPath="yes" />
+      <Component Id="cmp_System_Configuration_ConfigurationManager_dll_1" Guid="E653AE65-170C-FEB0-498E-6C92BE6DCC4F">
+        <File Id="fil_System_Configuration_ConfigurationManager_dll_1" Source="$(var.Drax360Service.TargetDir)System.Configuration.ConfigurationManager.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_System_Diagnostics_EventLog_dll" Guid="3DD4021C-A972-81A9-209C-D5F1907FA3F7">
-        <File Id="fil_System_Diagnostics_EventLog_dll" Source="$(var.Drax360Service.TargetDir)System.Diagnostics.EventLog.dll" KeyPath="yes" />
+      <Component Id="cmp_System_Diagnostics_EventLog_dll_1" Guid="B856E191-8818-E151-78DA-C19C06F52EB1">
+        <File Id="fil_System_Diagnostics_EventLog_dll_1" Source="$(var.Drax360Service.TargetDir)System.Diagnostics.EventLog.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_System_IO_Ports_dll" Guid="9E955980-39EA-9775-F9F3-73F40B15A9C4">
-        <File Id="fil_System_IO_Ports_dll" Source="$(var.Drax360Service.TargetDir)System.IO.Ports.dll" KeyPath="yes" />
+      <Component Id="cmp_System_IO_Ports_dll_1" Guid="0B1D831B-3369-918B-F3A2-5D8F3510CD46">
+        <File Id="fil_System_IO_Ports_dll_1" Source="$(var.Drax360Service.TargetDir)System.IO.Ports.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_System_Management_dll" Guid="0FAD2BC3-6083-5F17-245D-8B4061164B1C">
-        <File Id="fil_System_Management_dll" Source="$(var.Drax360Service.TargetDir)System.Management.dll" KeyPath="yes" />
+      <Component Id="cmp_System_Management_dll_1" Guid="BFBB92DA-21B4-2FD1-5462-587728CC7BC2">
+        <File Id="fil_System_Management_dll_1" Source="$(var.Drax360Service.TargetDir)System.Management.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_System_Security_Cryptography_ProtectedData_dll" Guid="3C705919-1021-5E55-5309-AAB8CA791F65">
-        <File Id="fil_System_Security_Cryptography_ProtectedData_dll" Source="$(var.Drax360Service.TargetDir)System.Security.Cryptography.ProtectedData.dll" KeyPath="yes" />
+      <Component Id="cmp_System_Security_Cryptography_ProtectedData_dll_1" Guid="731B20C9-686B-54A2-A7F3-BC3E0C52C312">
+        <File Id="fil_System_Security_Cryptography_ProtectedData_dll_1" Source="$(var.Drax360Service.TargetDir)System.Security.Cryptography.ProtectedData.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_System_ServiceProcess_ServiceController_dll" Guid="6B04A3B5-9869-A779-D1FB-53D00D21A823">
-        <File Id="fil_System_ServiceProcess_ServiceController_dll" Source="$(var.Drax360Service.TargetDir)System.ServiceProcess.ServiceController.dll" KeyPath="yes" />
+      <Component Id="cmp_System_ServiceProcess_ServiceController_dll_1" Guid="A98686C5-E973-CBC4-B657-BA33424C3246">
+        <File Id="fil_System_ServiceProcess_ServiceController_dll_1" Source="$(var.Drax360Service.TargetDir)System.ServiceProcess.ServiceController.dll" KeyPath="yes" />
       </Component>
     </ComponentGroup>
 
-    <ComponentGroup Id="IniFiles" Directory="IniFolder">
+    <ComponentGroup Id="IniFiles1" Directory="IniFolder1">
     </ComponentGroup>
 
-    <ComponentGroup Id="WinRuntimeFiles" Directory="WinRuntimeDir">
-      <Component Id="cmp_winrt_System_Diagnostics_EventLog_dll" Guid="F48B14F4-B455-D108-6688-92ABA44185A5">
-        <File Id="fil_winrt_System_Diagnostics_EventLog_dll" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\System.Diagnostics.EventLog.dll" KeyPath="yes" />
+    <ComponentGroup Id="WinRuntimeFiles1" Directory="WinRuntimeDir1">
+      <Component Id="cmp_winrt_System_Diagnostics_EventLog_dll_1" Guid="D39C226B-0171-062B-A739-E8A4204BEAF1">
+        <File Id="fil_winrt_System_Diagnostics_EventLog_dll_1" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\System.Diagnostics.EventLog.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_winrt_System_Diagnostics_EventLog_Messages_dll" Guid="40D8C017-F164-467B-F882-09CACB1EED1B">
-        <File Id="fil_winrt_System_Diagnostics_EventLog_Messages_dll" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\System.Diagnostics.EventLog.Messages.dll" KeyPath="yes" />
+      <Component Id="cmp_winrt_System_Diagnostics_EventLog_Messages_dll_1" Guid="6EA976A2-69C1-0EE2-8D37-48E8853294D2">
+        <File Id="fil_winrt_System_Diagnostics_EventLog_Messages_dll_1" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\System.Diagnostics.EventLog.Messages.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_winrt_System_IO_Ports_dll" Guid="BA8F8BDB-470F-0704-0F29-FDB2FBCAF4A1">
-        <File Id="fil_winrt_System_IO_Ports_dll" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\System.IO.Ports.dll" KeyPath="yes" />
+      <Component Id="cmp_winrt_System_IO_Ports_dll_1" Guid="6A3BACD8-5933-A044-0FE7-7218E830E910">
+        <File Id="fil_winrt_System_IO_Ports_dll_1" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\System.IO.Ports.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_winrt_System_Management_dll" Guid="B41E1342-22B5-7A3F-F41D-D2D0EFE7BF1E">
-        <File Id="fil_winrt_System_Management_dll" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\System.Management.dll" KeyPath="yes" />
+      <Component Id="cmp_winrt_System_Management_dll_1" Guid="3226D118-E354-7B7D-65A5-2F56F005BB6B">
+        <File Id="fil_winrt_System_Management_dll_1" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\System.Management.dll" KeyPath="yes" />
       </Component>
-      <Component Id="cmp_winrt_System_ServiceProcess_ServiceController_dll" Guid="311540BC-62CA-0F6C-507F-FE4673F16659">
-        <File Id="fil_winrt_System_ServiceProcess_ServiceController_dll" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\System.ServiceProcess.ServiceController.dll" KeyPath="yes" />
+      <Component Id="cmp_winrt_System_ServiceProcess_ServiceController_dll_1" Guid="BA8745C7-6012-67A5-4C63-C654BDA1BFDE">
+        <File Id="fil_winrt_System_ServiceProcess_ServiceController_dll_1" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\System.ServiceProcess.ServiceController.dll" KeyPath="yes" />
       </Component>
     </ComponentGroup>
+
+    <ComponentGroup Id="DependencyFiles2" Directory="INSTALLFOLDER2">
+      <Component Id="cmp_DraxTechnology_deps_json_2" Guid="60B0A40C-9FA6-AB70-959A-6FB25705FE59">
+        <File Id="fil_DraxTechnology_deps_json_2" Source="$(var.Drax360Service.TargetDir)DraxTechnology.deps.json" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_DraxTechnology_dll_2" Guid="63FE5266-585F-0650-DD90-7FF1F95FDBB1">
+        <File Id="fil_DraxTechnology_dll_2" Source="$(var.Drax360Service.TargetDir)DraxTechnology.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_DraxTechnology_dll_config_2" Guid="031C7834-5943-6F0E-0757-C4DADFE50FC6">
+        <File Id="fil_DraxTechnology_dll_config_2" Source="$(var.Drax360Service.TargetDir)DraxTechnology.dll.config" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_DraxTechnology_runtimeconfig_json_2" Guid="9B4E0699-B98C-8FB8-52F0-D43EF9DDE957">
+        <File Id="fil_DraxTechnology_runtimeconfig_json_2" Source="$(var.Drax360Service.TargetDir)DraxTechnology.runtimeconfig.json" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_e_sqlite3_dll_2" Guid="4A237566-20E3-1F48-D880-FE2A26E68B8A">
+        <File Id="fil_e_sqlite3_dll_2" Source="$(var.Drax360Service.TargetDir)e_sqlite3.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Data_Sqlite_dll_2" Guid="71927A79-EF20-E8EE-EF87-5EC702E2BECB">
+        <File Id="fil_Microsoft_Data_Sqlite_dll_2" Source="$(var.Drax360Service.TargetDir)Microsoft.Data.Sqlite.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_EntityFrameworkCore_Abstractions_dll_2" Guid="51320889-E7B7-30DC-6CC3-15A47A370846">
+        <File Id="fil_Microsoft_EntityFrameworkCore_Abstractions_dll_2" Source="$(var.Drax360Service.TargetDir)Microsoft.EntityFrameworkCore.Abstractions.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_EntityFrameworkCore_dll_2" Guid="2CBB8A84-BD3E-6D50-9D17-6E095B5F9274">
+        <File Id="fil_Microsoft_EntityFrameworkCore_dll_2" Source="$(var.Drax360Service.TargetDir)Microsoft.EntityFrameworkCore.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_EntityFrameworkCore_Relational_dll_2" Guid="7A5C7E40-7961-8825-2D61-C8143FA66799">
+        <File Id="fil_Microsoft_EntityFrameworkCore_Relational_dll_2" Source="$(var.Drax360Service.TargetDir)Microsoft.EntityFrameworkCore.Relational.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_EntityFrameworkCore_Sqlite_dll_2" Guid="BCAC5A06-D048-C8FE-8DB6-14198B8CA9FD">
+        <File Id="fil_Microsoft_EntityFrameworkCore_Sqlite_dll_2" Source="$(var.Drax360Service.TargetDir)Microsoft.EntityFrameworkCore.Sqlite.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Extensions_Caching_Abstractions_dll_2" Guid="094B8134-3FFD-0297-8652-481EACB05BB2">
+        <File Id="fil_Microsoft_Extensions_Caching_Abstractions_dll_2" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Caching.Abstractions.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Extensions_Caching_Memory_dll_2" Guid="AFCBF2C5-8E62-C2B4-64B6-2ABD9408A982">
+        <File Id="fil_Microsoft_Extensions_Caching_Memory_dll_2" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Caching.Memory.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Extensions_Configuration_Abstractions_dll_2" Guid="F14C9BF2-4A5B-9DD4-8DCB-EA2DDB2D1B98">
+        <File Id="fil_Microsoft_Extensions_Configuration_Abstractions_dll_2" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Configuration.Abstractions.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Extensions_DependencyInjection_Abstractions_dll_2" Guid="A35A8DE6-943D-6594-9D51-3296F23DAF72">
+        <File Id="fil_Microsoft_Extensions_DependencyInjection_Abstractions_dll_2" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.DependencyInjection.Abstractions.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Extensions_DependencyInjection_dll_2" Guid="4B31DBD4-4BD4-FB11-1298-97ED501C312D">
+        <File Id="fil_Microsoft_Extensions_DependencyInjection_dll_2" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.DependencyInjection.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Extensions_DependencyModel_dll_2" Guid="86CE0835-6AEE-EDB7-359B-797599910073">
+        <File Id="fil_Microsoft_Extensions_DependencyModel_dll_2" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.DependencyModel.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Extensions_Logging_Abstractions_dll_2" Guid="4E9CB996-93D1-B05E-22E2-2FF851325C71">
+        <File Id="fil_Microsoft_Extensions_Logging_Abstractions_dll_2" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Logging.Abstractions.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Extensions_Logging_dll_2" Guid="A6883AF6-6B47-913B-5CE7-7EBFE02F5453">
+        <File Id="fil_Microsoft_Extensions_Logging_dll_2" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Logging.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Extensions_Options_dll_2" Guid="618BAC0E-254E-D180-4204-67156AF38DB2">
+        <File Id="fil_Microsoft_Extensions_Options_dll_2" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Options.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Extensions_Primitives_dll_2" Guid="6D9E60F7-0AAE-0688-E097-CFBCC9B803D8">
+        <File Id="fil_Microsoft_Extensions_Primitives_dll_2" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Primitives.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_MQTTnet_dll_2" Guid="91EF30D3-C117-1036-BA31-5FAD1C3F60F3">
+        <File Id="fil_MQTTnet_dll_2" Source="$(var.Drax360Service.TargetDir)MQTTnet.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_SQLitePCLRaw_batteries_v2_dll_2" Guid="441851B7-8849-172B-E267-4E04737972F1">
+        <File Id="fil_SQLitePCLRaw_batteries_v2_dll_2" Source="$(var.Drax360Service.TargetDir)SQLitePCLRaw.batteries_v2.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_SQLitePCLRaw_core_dll_2" Guid="75043076-4D71-2951-4536-B90C28DB7079">
+        <File Id="fil_SQLitePCLRaw_core_dll_2" Source="$(var.Drax360Service.TargetDir)SQLitePCLRaw.core.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_SQLitePCLRaw_provider_e_sqlite3_dll_2" Guid="18B76F4C-6EDB-41C2-16DE-81BDA26DD299">
+        <File Id="fil_SQLitePCLRaw_provider_e_sqlite3_dll_2" Source="$(var.Drax360Service.TargetDir)SQLitePCLRaw.provider.e_sqlite3.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_System_CodeDom_dll_2" Guid="B9EE29BA-F83D-6521-A04A-35876121B8F5">
+        <File Id="fil_System_CodeDom_dll_2" Source="$(var.Drax360Service.TargetDir)System.CodeDom.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_System_Configuration_ConfigurationManager_dll_2" Guid="0960AE0E-0787-B325-4E82-71C743A21389">
+        <File Id="fil_System_Configuration_ConfigurationManager_dll_2" Source="$(var.Drax360Service.TargetDir)System.Configuration.ConfigurationManager.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_System_Diagnostics_EventLog_dll_2" Guid="1621B428-3078-A6DB-5C93-1725E8FBF2A9">
+        <File Id="fil_System_Diagnostics_EventLog_dll_2" Source="$(var.Drax360Service.TargetDir)System.Diagnostics.EventLog.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_System_IO_Ports_dll_2" Guid="F5BD6E92-9310-3EEA-1F80-BC3CFD5B2422">
+        <File Id="fil_System_IO_Ports_dll_2" Source="$(var.Drax360Service.TargetDir)System.IO.Ports.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_System_Management_dll_2" Guid="9D0F91A5-F5F3-F908-C86D-5159F996F1FD">
+        <File Id="fil_System_Management_dll_2" Source="$(var.Drax360Service.TargetDir)System.Management.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_System_Security_Cryptography_ProtectedData_dll_2" Guid="0379E0DC-21C8-2A8D-C4E9-2F4612898D7C">
+        <File Id="fil_System_Security_Cryptography_ProtectedData_dll_2" Source="$(var.Drax360Service.TargetDir)System.Security.Cryptography.ProtectedData.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_System_ServiceProcess_ServiceController_dll_2" Guid="3A787C58-032D-4607-217D-A0962171E1B1">
+        <File Id="fil_System_ServiceProcess_ServiceController_dll_2" Source="$(var.Drax360Service.TargetDir)System.ServiceProcess.ServiceController.dll" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <ComponentGroup Id="IniFiles2" Directory="IniFolder2">
+    </ComponentGroup>
+
+    <ComponentGroup Id="WinRuntimeFiles2" Directory="WinRuntimeDir2">
+      <Component Id="cmp_winrt_System_Diagnostics_EventLog_dll_2" Guid="647CB2F2-FA7B-8F3D-F531-0FBFA7AF7C68">
+        <File Id="fil_winrt_System_Diagnostics_EventLog_dll_2" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\System.Diagnostics.EventLog.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_winrt_System_Diagnostics_EventLog_Messages_dll_2" Guid="F605BD12-76A9-5903-5DD8-FBD6D4B72143">
+        <File Id="fil_winrt_System_Diagnostics_EventLog_Messages_dll_2" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\System.Diagnostics.EventLog.Messages.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_winrt_System_IO_Ports_dll_2" Guid="68BDAB1B-688E-F5B1-6733-03D00D872B10">
+        <File Id="fil_winrt_System_IO_Ports_dll_2" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\System.IO.Ports.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_winrt_System_Management_dll_2" Guid="9B4D26F7-A309-6173-F3A9-B04A252AD73E">
+        <File Id="fil_winrt_System_Management_dll_2" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\System.Management.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_winrt_System_ServiceProcess_ServiceController_dll_2" Guid="5173F43C-6124-A7FC-BAF0-622E9E28F58C">
+        <File Id="fil_winrt_System_ServiceProcess_ServiceController_dll_2" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\System.ServiceProcess.ServiceController.dll" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <ComponentGroup Id="DependencyFiles3" Directory="INSTALLFOLDER3">
+      <Component Id="cmp_DraxTechnology_deps_json_3" Guid="F8929EE7-65F0-DCF4-2DB3-46B92B908277">
+        <File Id="fil_DraxTechnology_deps_json_3" Source="$(var.Drax360Service.TargetDir)DraxTechnology.deps.json" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_DraxTechnology_dll_3" Guid="719B5DD2-CD4B-0E00-5EA0-16680EE56F13">
+        <File Id="fil_DraxTechnology_dll_3" Source="$(var.Drax360Service.TargetDir)DraxTechnology.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_DraxTechnology_dll_config_3" Guid="BE2420FA-3A33-A854-EC97-0A10E5252089">
+        <File Id="fil_DraxTechnology_dll_config_3" Source="$(var.Drax360Service.TargetDir)DraxTechnology.dll.config" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_DraxTechnology_runtimeconfig_json_3" Guid="89322A56-AFE5-ABC4-4AEA-091F1F4C4082">
+        <File Id="fil_DraxTechnology_runtimeconfig_json_3" Source="$(var.Drax360Service.TargetDir)DraxTechnology.runtimeconfig.json" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_e_sqlite3_dll_3" Guid="FD1B323B-E5D9-14C4-1659-FD583E5F1A98">
+        <File Id="fil_e_sqlite3_dll_3" Source="$(var.Drax360Service.TargetDir)e_sqlite3.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Data_Sqlite_dll_3" Guid="95D40438-392D-86B8-41FB-6185F2A5AE80">
+        <File Id="fil_Microsoft_Data_Sqlite_dll_3" Source="$(var.Drax360Service.TargetDir)Microsoft.Data.Sqlite.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_EntityFrameworkCore_Abstractions_dll_3" Guid="450E8D0C-B77E-E5CC-7930-492C851E8FE6">
+        <File Id="fil_Microsoft_EntityFrameworkCore_Abstractions_dll_3" Source="$(var.Drax360Service.TargetDir)Microsoft.EntityFrameworkCore.Abstractions.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_EntityFrameworkCore_dll_3" Guid="28CD2102-0001-705A-AA92-2EE13942BD67">
+        <File Id="fil_Microsoft_EntityFrameworkCore_dll_3" Source="$(var.Drax360Service.TargetDir)Microsoft.EntityFrameworkCore.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_EntityFrameworkCore_Relational_dll_3" Guid="8A47A0DB-A4CA-2CC7-5CFE-EEA66D4F3B15">
+        <File Id="fil_Microsoft_EntityFrameworkCore_Relational_dll_3" Source="$(var.Drax360Service.TargetDir)Microsoft.EntityFrameworkCore.Relational.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_EntityFrameworkCore_Sqlite_dll_3" Guid="D741E932-ED7B-83EF-28EF-DA4EBA00113C">
+        <File Id="fil_Microsoft_EntityFrameworkCore_Sqlite_dll_3" Source="$(var.Drax360Service.TargetDir)Microsoft.EntityFrameworkCore.Sqlite.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Extensions_Caching_Abstractions_dll_3" Guid="DE216EE0-1F80-2835-EAB2-76465336830F">
+        <File Id="fil_Microsoft_Extensions_Caching_Abstractions_dll_3" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Caching.Abstractions.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Extensions_Caching_Memory_dll_3" Guid="5C218420-8C73-7CC8-39DC-CB5DD0A23AD5">
+        <File Id="fil_Microsoft_Extensions_Caching_Memory_dll_3" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Caching.Memory.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Extensions_Configuration_Abstractions_dll_3" Guid="C83C9271-E164-55A2-1F59-F5989400AEBF">
+        <File Id="fil_Microsoft_Extensions_Configuration_Abstractions_dll_3" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Configuration.Abstractions.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Extensions_DependencyInjection_Abstractions_dll_3" Guid="824B7A66-529F-113E-B082-FB5AE7CDAC85">
+        <File Id="fil_Microsoft_Extensions_DependencyInjection_Abstractions_dll_3" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.DependencyInjection.Abstractions.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Extensions_DependencyInjection_dll_3" Guid="11F14BE5-2E9B-2590-6C0F-4ED7FE9F85FD">
+        <File Id="fil_Microsoft_Extensions_DependencyInjection_dll_3" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.DependencyInjection.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Extensions_DependencyModel_dll_3" Guid="7276DA40-1D34-5E7B-FD98-C1F81FAC2C8F">
+        <File Id="fil_Microsoft_Extensions_DependencyModel_dll_3" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.DependencyModel.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Extensions_Logging_Abstractions_dll_3" Guid="8D14775D-059F-5DB2-D449-C59ACAE4DE2B">
+        <File Id="fil_Microsoft_Extensions_Logging_Abstractions_dll_3" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Logging.Abstractions.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Extensions_Logging_dll_3" Guid="8CF031DB-4072-F01C-A894-832EC1489358">
+        <File Id="fil_Microsoft_Extensions_Logging_dll_3" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Logging.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Extensions_Options_dll_3" Guid="D418DEB6-6CF3-F8E6-D408-2D73D96EF2EA">
+        <File Id="fil_Microsoft_Extensions_Options_dll_3" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Options.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Extensions_Primitives_dll_3" Guid="FEBA0217-C85C-F820-FBE3-20062E2EDB5F">
+        <File Id="fil_Microsoft_Extensions_Primitives_dll_3" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Primitives.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_MQTTnet_dll_3" Guid="6E4AF5A1-6F58-E640-77EE-8F7DCFEE7009">
+        <File Id="fil_MQTTnet_dll_3" Source="$(var.Drax360Service.TargetDir)MQTTnet.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_SQLitePCLRaw_batteries_v2_dll_3" Guid="092439BA-DA56-0389-DC8D-1578FC1B1F3B">
+        <File Id="fil_SQLitePCLRaw_batteries_v2_dll_3" Source="$(var.Drax360Service.TargetDir)SQLitePCLRaw.batteries_v2.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_SQLitePCLRaw_core_dll_3" Guid="0A2193CA-6DBC-006D-581C-6320F2672B8A">
+        <File Id="fil_SQLitePCLRaw_core_dll_3" Source="$(var.Drax360Service.TargetDir)SQLitePCLRaw.core.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_SQLitePCLRaw_provider_e_sqlite3_dll_3" Guid="0B59D0EB-C7C3-1053-68AA-2FC680D7FEA7">
+        <File Id="fil_SQLitePCLRaw_provider_e_sqlite3_dll_3" Source="$(var.Drax360Service.TargetDir)SQLitePCLRaw.provider.e_sqlite3.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_System_CodeDom_dll_3" Guid="2CDB6585-13D9-A520-B7C3-1F42A9DC065F">
+        <File Id="fil_System_CodeDom_dll_3" Source="$(var.Drax360Service.TargetDir)System.CodeDom.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_System_Configuration_ConfigurationManager_dll_3" Guid="0DC54EBD-5F34-E24F-A1B0-6662AD0E5635">
+        <File Id="fil_System_Configuration_ConfigurationManager_dll_3" Source="$(var.Drax360Service.TargetDir)System.Configuration.ConfigurationManager.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_System_Diagnostics_EventLog_dll_3" Guid="FC564A29-2BC1-E756-BD84-CDC6940401D0">
+        <File Id="fil_System_Diagnostics_EventLog_dll_3" Source="$(var.Drax360Service.TargetDir)System.Diagnostics.EventLog.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_System_IO_Ports_dll_3" Guid="80753128-F304-BDDD-8EB5-7533E0E280E8">
+        <File Id="fil_System_IO_Ports_dll_3" Source="$(var.Drax360Service.TargetDir)System.IO.Ports.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_System_Management_dll_3" Guid="C6871EDD-2E65-8822-4F0B-554A252ACFD1">
+        <File Id="fil_System_Management_dll_3" Source="$(var.Drax360Service.TargetDir)System.Management.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_System_Security_Cryptography_ProtectedData_dll_3" Guid="694E496A-4F9B-EE42-34D3-19C2B08D6D16">
+        <File Id="fil_System_Security_Cryptography_ProtectedData_dll_3" Source="$(var.Drax360Service.TargetDir)System.Security.Cryptography.ProtectedData.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_System_ServiceProcess_ServiceController_dll_3" Guid="22DF0FD5-84C5-2972-80F7-C90BEB6A32E4">
+        <File Id="fil_System_ServiceProcess_ServiceController_dll_3" Source="$(var.Drax360Service.TargetDir)System.ServiceProcess.ServiceController.dll" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <ComponentGroup Id="IniFiles3" Directory="IniFolder3">
+    </ComponentGroup>
+
+    <ComponentGroup Id="WinRuntimeFiles3" Directory="WinRuntimeDir3">
+      <Component Id="cmp_winrt_System_Diagnostics_EventLog_dll_3" Guid="4EC9DF7D-F85A-B972-12B2-6FCFA9ECE6E7">
+        <File Id="fil_winrt_System_Diagnostics_EventLog_dll_3" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\System.Diagnostics.EventLog.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_winrt_System_Diagnostics_EventLog_Messages_dll_3" Guid="4F0CB54B-E80A-3542-AA26-A9BEF5417A45">
+        <File Id="fil_winrt_System_Diagnostics_EventLog_Messages_dll_3" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\System.Diagnostics.EventLog.Messages.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_winrt_System_IO_Ports_dll_3" Guid="508FE1E2-22D0-AD15-1707-97BFB5EB5130">
+        <File Id="fil_winrt_System_IO_Ports_dll_3" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\System.IO.Ports.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_winrt_System_Management_dll_3" Guid="D15E4F4F-03D4-4637-35A3-82041ADD7DE2">
+        <File Id="fil_winrt_System_Management_dll_3" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\System.Management.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_winrt_System_ServiceProcess_ServiceController_dll_3" Guid="CE55072B-30A1-A088-23CF-54F30724CC34">
+        <File Id="fil_winrt_System_ServiceProcess_ServiceController_dll_3" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\System.ServiceProcess.ServiceController.dll" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <ComponentGroup Id="DependencyFiles4" Directory="INSTALLFOLDER4">
+      <Component Id="cmp_DraxTechnology_deps_json_4" Guid="EE8363F5-0C5C-B6ED-43E7-1AB497D4E7FD">
+        <File Id="fil_DraxTechnology_deps_json_4" Source="$(var.Drax360Service.TargetDir)DraxTechnology.deps.json" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_DraxTechnology_dll_4" Guid="8E4F1040-943D-3473-69C7-F295CAC8BAC5">
+        <File Id="fil_DraxTechnology_dll_4" Source="$(var.Drax360Service.TargetDir)DraxTechnology.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_DraxTechnology_dll_config_4" Guid="2AD0BCAA-2785-107D-23ED-B3EBBFB9DE8F">
+        <File Id="fil_DraxTechnology_dll_config_4" Source="$(var.Drax360Service.TargetDir)DraxTechnology.dll.config" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_DraxTechnology_runtimeconfig_json_4" Guid="056ADB1B-4CE1-6131-A103-A607A115CEF3">
+        <File Id="fil_DraxTechnology_runtimeconfig_json_4" Source="$(var.Drax360Service.TargetDir)DraxTechnology.runtimeconfig.json" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_e_sqlite3_dll_4" Guid="E98C2628-3863-CFA4-F094-59C8B3292B2D">
+        <File Id="fil_e_sqlite3_dll_4" Source="$(var.Drax360Service.TargetDir)e_sqlite3.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Data_Sqlite_dll_4" Guid="87E4A2DF-45E0-436A-8D73-CCB82F0F3BC0">
+        <File Id="fil_Microsoft_Data_Sqlite_dll_4" Source="$(var.Drax360Service.TargetDir)Microsoft.Data.Sqlite.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_EntityFrameworkCore_Abstractions_dll_4" Guid="EAB2C83C-7E1C-D350-AFCA-3802C6668165">
+        <File Id="fil_Microsoft_EntityFrameworkCore_Abstractions_dll_4" Source="$(var.Drax360Service.TargetDir)Microsoft.EntityFrameworkCore.Abstractions.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_EntityFrameworkCore_dll_4" Guid="00992AA9-DAC5-01C9-86F2-068FD8E5B816">
+        <File Id="fil_Microsoft_EntityFrameworkCore_dll_4" Source="$(var.Drax360Service.TargetDir)Microsoft.EntityFrameworkCore.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_EntityFrameworkCore_Relational_dll_4" Guid="2FF0007B-B61B-6934-D719-E0CCC7F20182">
+        <File Id="fil_Microsoft_EntityFrameworkCore_Relational_dll_4" Source="$(var.Drax360Service.TargetDir)Microsoft.EntityFrameworkCore.Relational.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_EntityFrameworkCore_Sqlite_dll_4" Guid="8E62DE1D-9125-C531-CD20-273C37E75CBE">
+        <File Id="fil_Microsoft_EntityFrameworkCore_Sqlite_dll_4" Source="$(var.Drax360Service.TargetDir)Microsoft.EntityFrameworkCore.Sqlite.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Extensions_Caching_Abstractions_dll_4" Guid="730A54D6-1336-D22E-A45F-6785E01DE6E9">
+        <File Id="fil_Microsoft_Extensions_Caching_Abstractions_dll_4" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Caching.Abstractions.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Extensions_Caching_Memory_dll_4" Guid="02B2CAA0-0E23-EA0B-D994-D89735370347">
+        <File Id="fil_Microsoft_Extensions_Caching_Memory_dll_4" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Caching.Memory.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Extensions_Configuration_Abstractions_dll_4" Guid="88E2A009-3122-133A-5AA0-48ED9E609BBF">
+        <File Id="fil_Microsoft_Extensions_Configuration_Abstractions_dll_4" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Configuration.Abstractions.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Extensions_DependencyInjection_Abstractions_dll_4" Guid="E70FD9E1-BBE6-7F4F-65F3-B41AEE90916E">
+        <File Id="fil_Microsoft_Extensions_DependencyInjection_Abstractions_dll_4" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.DependencyInjection.Abstractions.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Extensions_DependencyInjection_dll_4" Guid="8BE48CD7-DB4A-9EAA-004F-3A8215AB46BD">
+        <File Id="fil_Microsoft_Extensions_DependencyInjection_dll_4" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.DependencyInjection.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Extensions_DependencyModel_dll_4" Guid="E483E18C-BC7C-2B97-6A00-42EC18351D92">
+        <File Id="fil_Microsoft_Extensions_DependencyModel_dll_4" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.DependencyModel.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Extensions_Logging_Abstractions_dll_4" Guid="842F1711-D7F9-2BF8-E83E-3EDD7AC81647">
+        <File Id="fil_Microsoft_Extensions_Logging_Abstractions_dll_4" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Logging.Abstractions.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Extensions_Logging_dll_4" Guid="7083903B-9457-B33B-C7DA-0176BB6D4AD5">
+        <File Id="fil_Microsoft_Extensions_Logging_dll_4" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Logging.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Extensions_Options_dll_4" Guid="28C995B1-03C3-22E0-7570-5E90AC8E8733">
+        <File Id="fil_Microsoft_Extensions_Options_dll_4" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Options.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_Microsoft_Extensions_Primitives_dll_4" Guid="6BE66E05-EAE2-8775-D25E-72054EBF4173">
+        <File Id="fil_Microsoft_Extensions_Primitives_dll_4" Source="$(var.Drax360Service.TargetDir)Microsoft.Extensions.Primitives.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_MQTTnet_dll_4" Guid="376D3251-7204-3A80-93BE-CCA1E28E094D">
+        <File Id="fil_MQTTnet_dll_4" Source="$(var.Drax360Service.TargetDir)MQTTnet.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_SQLitePCLRaw_batteries_v2_dll_4" Guid="14724C85-BD29-061E-3AC1-B3468E2FB58D">
+        <File Id="fil_SQLitePCLRaw_batteries_v2_dll_4" Source="$(var.Drax360Service.TargetDir)SQLitePCLRaw.batteries_v2.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_SQLitePCLRaw_core_dll_4" Guid="BA20C4FF-CA01-039F-41A0-B7D6ACE75B41">
+        <File Id="fil_SQLitePCLRaw_core_dll_4" Source="$(var.Drax360Service.TargetDir)SQLitePCLRaw.core.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_SQLitePCLRaw_provider_e_sqlite3_dll_4" Guid="493C97D8-4F28-DADC-0259-6198C358B55C">
+        <File Id="fil_SQLitePCLRaw_provider_e_sqlite3_dll_4" Source="$(var.Drax360Service.TargetDir)SQLitePCLRaw.provider.e_sqlite3.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_System_CodeDom_dll_4" Guid="963893E2-4FA3-53BC-9A56-CA20D167BCD3">
+        <File Id="fil_System_CodeDom_dll_4" Source="$(var.Drax360Service.TargetDir)System.CodeDom.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_System_Configuration_ConfigurationManager_dll_4" Guid="BC734F4E-6B18-87E5-CE13-116B41297BC5">
+        <File Id="fil_System_Configuration_ConfigurationManager_dll_4" Source="$(var.Drax360Service.TargetDir)System.Configuration.ConfigurationManager.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_System_Diagnostics_EventLog_dll_4" Guid="CAA8D44A-3662-C166-89DF-53021DD2B0BA">
+        <File Id="fil_System_Diagnostics_EventLog_dll_4" Source="$(var.Drax360Service.TargetDir)System.Diagnostics.EventLog.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_System_IO_Ports_dll_4" Guid="AA382710-1C2A-F58E-84D9-44146C7FC25B">
+        <File Id="fil_System_IO_Ports_dll_4" Source="$(var.Drax360Service.TargetDir)System.IO.Ports.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_System_Management_dll_4" Guid="3B8BEA78-212F-E30A-5909-6967122895C8">
+        <File Id="fil_System_Management_dll_4" Source="$(var.Drax360Service.TargetDir)System.Management.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_System_Security_Cryptography_ProtectedData_dll_4" Guid="6E9849CE-F9D3-A9BF-5799-399CC9FA988E">
+        <File Id="fil_System_Security_Cryptography_ProtectedData_dll_4" Source="$(var.Drax360Service.TargetDir)System.Security.Cryptography.ProtectedData.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_System_ServiceProcess_ServiceController_dll_4" Guid="3FB9F962-D42D-1CA8-C35B-A9DF58166840">
+        <File Id="fil_System_ServiceProcess_ServiceController_dll_4" Source="$(var.Drax360Service.TargetDir)System.ServiceProcess.ServiceController.dll" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <ComponentGroup Id="IniFiles4" Directory="IniFolder4">
+    </ComponentGroup>
+
+    <ComponentGroup Id="WinRuntimeFiles4" Directory="WinRuntimeDir4">
+      <Component Id="cmp_winrt_System_Diagnostics_EventLog_dll_4" Guid="64BFBF5A-5538-CD53-0717-3099E2175997">
+        <File Id="fil_winrt_System_Diagnostics_EventLog_dll_4" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\System.Diagnostics.EventLog.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_winrt_System_Diagnostics_EventLog_Messages_dll_4" Guid="2F97BCA8-24F1-BE99-DD22-B9D5BCE26928">
+        <File Id="fil_winrt_System_Diagnostics_EventLog_Messages_dll_4" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\System.Diagnostics.EventLog.Messages.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_winrt_System_IO_Ports_dll_4" Guid="CB284D40-33D0-A3FB-3463-584391CD74FF">
+        <File Id="fil_winrt_System_IO_Ports_dll_4" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\System.IO.Ports.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_winrt_System_Management_dll_4" Guid="D945DF48-50F2-E2E0-A508-71426400B631">
+        <File Id="fil_winrt_System_Management_dll_4" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\System.Management.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_winrt_System_ServiceProcess_ServiceController_dll_4" Guid="85CCC812-2471-60C6-7DA6-744FD06CCAA2">
+        <File Id="fil_winrt_System_ServiceProcess_ServiceController_dll_4" Source="$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\System.ServiceProcess.ServiceController.dll" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
   </Fragment>
 </Wix>

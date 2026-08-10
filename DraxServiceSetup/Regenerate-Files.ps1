@@ -3,6 +3,12 @@
 # stays in sync. Build the service first (dotnet build) so bin\Debug is populated.
 #
 #   pwsh DraxServiceSetup\Regenerate-Files.ps1
+#
+# Emits one full copy of every ComponentGroup per side-by-side instance (1..4) —
+# each instance is its own complete install under C:\AMX{n} with its own
+# DraxTechnology.dll.config, so the same physical binaries need a distinct
+# Component/File per destination folder. See Product.wxs for the matching
+# INSTALLFOLDER{n}/IniFolder{n}/WinRuntimeDir{n} directory tree.
 
 Set-Location $PSScriptRoot
 $bin = Join-Path $PSScriptRoot '..\Drax360NetworkManager\bin\Debug'
@@ -21,7 +27,7 @@ $iniFiles = Get-ChildItem (Join-Path $bin 'ini') -File -ErrorAction SilentlyCont
 # NuGet packages like System.ServiceProcess.ServiceController ship Windows-specific
 # DLLs under runtimes\win\lib\net10.0\. The .NET runtime resolves these via the
 # runtimeTargets in deps.json, so they must be installed into the matching subfolder
-# (C:\AMX1\runtimes\win\lib\net10.0\) — not just the app root.
+# (C:\AMX{n}\runtimes\win\lib\net10.0\) — not just the app root.
 $winRuntimeDir = Join-Path $bin 'runtimes\win\lib\net10.0'
 $winRuntimeFiles = if (Test-Path $winRuntimeDir) {
   Get-ChildItem $winRuntimeDir -File | Sort-Object Name
@@ -40,37 +46,42 @@ $sb = New-Object System.Text.StringBuilder
 [void]$sb.AppendLine('<?xml version="1.0" encoding="UTF-8"?>')
 [void]$sb.AppendLine('<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">')
 [void]$sb.AppendLine('  <Fragment>')
-[void]$sb.AppendLine('    <ComponentGroup Id="DependencyFiles" Directory="INSTALLFOLDER">')
-foreach ($f in $rootFiles) {
-  $safe = Sanitize $f.Name
-  $guid = StableGuid("DraxSetup:$($f.Name)")
-  [void]$sb.AppendLine("      <Component Id=`"cmp_$safe`" Guid=`"$guid`">")
-  [void]$sb.AppendLine("        <File Id=`"fil_$safe`" Source=`"`$(var.Drax360Service.TargetDir)$($f.Name)`" KeyPath=`"yes`" />")
-  [void]$sb.AppendLine('      </Component>')
+
+foreach ($instance in 1..4) {
+  [void]$sb.AppendLine("    <ComponentGroup Id=`"DependencyFiles$instance`" Directory=`"INSTALLFOLDER$instance`">")
+  foreach ($f in $rootFiles) {
+    $safe = Sanitize $f.Name
+    $guid = StableGuid("DraxSetup:$instance`:$($f.Name)")
+    [void]$sb.AppendLine("      <Component Id=`"cmp_$($safe)_$instance`" Guid=`"$guid`">")
+    [void]$sb.AppendLine("        <File Id=`"fil_$($safe)_$instance`" Source=`"`$(var.Drax360Service.TargetDir)$($f.Name)`" KeyPath=`"yes`" />")
+    [void]$sb.AppendLine('      </Component>')
+  }
+  [void]$sb.AppendLine('    </ComponentGroup>')
+  [void]$sb.AppendLine()
+  [void]$sb.AppendLine("    <ComponentGroup Id=`"IniFiles$instance`" Directory=`"IniFolder$instance`">")
+  foreach ($f in $iniFiles) {
+    $safe = Sanitize $f.Name
+    $guid = StableGuid("DraxSetup:$instance`:ini\$($f.Name)")
+    [void]$sb.AppendLine("      <Component Id=`"cmp_ini_$($safe)_$instance`" Guid=`"$guid`">")
+    [void]$sb.AppendLine("        <File Id=`"fil_ini_$($safe)_$instance`" Source=`"`$(var.Drax360Service.TargetDir)ini\$($f.Name)`" KeyPath=`"yes`" />")
+    [void]$sb.AppendLine('      </Component>')
+  }
+  [void]$sb.AppendLine('    </ComponentGroup>')
+  [void]$sb.AppendLine()
+  [void]$sb.AppendLine("    <ComponentGroup Id=`"WinRuntimeFiles$instance`" Directory=`"WinRuntimeDir$instance`">")
+  foreach ($f in $winRuntimeFiles) {
+    $safe = Sanitize $f.Name
+    $guid = StableGuid("DraxSetup:$instance`:runtimes\win\lib\net10.0\$($f.Name)")
+    [void]$sb.AppendLine("      <Component Id=`"cmp_winrt_$($safe)_$instance`" Guid=`"$guid`">")
+    [void]$sb.AppendLine("        <File Id=`"fil_winrt_$($safe)_$instance`" Source=`"`$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\$($f.Name)`" KeyPath=`"yes`" />")
+    [void]$sb.AppendLine('      </Component>')
+  }
+  [void]$sb.AppendLine('    </ComponentGroup>')
+  [void]$sb.AppendLine()
 }
-[void]$sb.AppendLine('    </ComponentGroup>')
-[void]$sb.AppendLine()
-[void]$sb.AppendLine('    <ComponentGroup Id="IniFiles" Directory="IniFolder">')
-foreach ($f in $iniFiles) {
-  $safe = Sanitize $f.Name
-  $guid = StableGuid("DraxSetup:ini\$($f.Name)")
-  [void]$sb.AppendLine("      <Component Id=`"cmp_ini_$safe`" Guid=`"$guid`">")
-  [void]$sb.AppendLine("        <File Id=`"fil_ini_$safe`" Source=`"`$(var.Drax360Service.TargetDir)ini\$($f.Name)`" KeyPath=`"yes`" />")
-  [void]$sb.AppendLine('      </Component>')
-}
-[void]$sb.AppendLine('    </ComponentGroup>')
-[void]$sb.AppendLine()
-[void]$sb.AppendLine('    <ComponentGroup Id="WinRuntimeFiles" Directory="WinRuntimeDir">')
-foreach ($f in $winRuntimeFiles) {
-  $safe = Sanitize $f.Name
-  $guid = StableGuid("DraxSetup:runtimes\win\lib\net10.0\$($f.Name)")
-  [void]$sb.AppendLine("      <Component Id=`"cmp_winrt_$safe`" Guid=`"$guid`">")
-  [void]$sb.AppendLine("        <File Id=`"fil_winrt_$safe`" Source=`"`$(var.Drax360Service.TargetDir)runtimes\win\lib\net10.0\$($f.Name)`" KeyPath=`"yes`" />")
-  [void]$sb.AppendLine('      </Component>')
-}
-[void]$sb.AppendLine('    </ComponentGroup>')
+
 [void]$sb.AppendLine('  </Fragment>')
 [void]$sb.AppendLine('</Wix>')
 
 Set-Content -Path (Join-Path $PSScriptRoot 'Files.wxs') -Value $sb.ToString() -Encoding UTF8 -NoNewline
-"Wrote Files.wxs: deps=$($rootFiles.Count) ini=$($iniFiles.Count) winrt=$($winRuntimeFiles.Count)"
+"Wrote Files.wxs: deps=$($rootFiles.Count) ini=$($iniFiles.Count) winrt=$($winRuntimeFiles.Count) x4 instances"
