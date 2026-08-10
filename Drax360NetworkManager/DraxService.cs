@@ -766,8 +766,12 @@ namespace DraxTechnology
     public partial class DraxService : ServiceBase
     {
         #region constants
-        const string kpipenamesend = "DraxTechnologyPipeSend";
-        const string kpipenamereturn = "DraxTechnologyPipeReturn";
+        // Suffixed with the resolved AmxInstance (AMXTransfer.ReadConfiguredInstanceNumber)
+        // so side-by-side service instances don't share a pipe with each other or with
+        // the matching Drax360Client instance. Computed, not const, since it depends on
+        // config read at runtime — safe to read any time, no startup ordering dependency.
+        string kpipenamesend => "DraxTechnologyPipeSend" + AMXTransfer.ReadConfiguredInstanceNumber();
+        string kpipenamereturn => "DraxTechnologyPipeReturn" + AMXTransfer.ReadConfiguredInstanceNumber();
         const char kpipedelim = '|';
         // Sentinel sent in place of an empty response. A genuinely empty payload is a
         // zero-length message, which PipeTransmissionMode.Message cannot frame reliably;

@@ -594,33 +594,49 @@ namespace DraxTechnology
         // AMX instance this manager bound to.
         private int ReadConfiguredPort()
         {
-            int port = kDefaultAmxPort;
             try
             {
                 string portSetting = ConfigurationManager.AppSettings["AmxPort"]?.Trim();
-                string instanceSetting = ConfigurationManager.AppSettings["AmxInstance"]?.Trim();
-
                 if (!string.IsNullOrEmpty(portSetting)
                     && int.TryParse(portSetting, out int explicitPort)
                     && explicitPort > 0 && explicitPort <= 65535)
                 {
-                    port = explicitPort;
-                }
-                else if (!string.IsNullOrEmpty(instanceSetting)
-                    && int.TryParse(instanceSetting, out int instance)
-                    && instance >= 1 && instance <= 4)
-                {
-                    port = kAmxInstanceBasePort + instance;
+                    return explicitPort;
                 }
             }
             catch
             {
                 // Config unavailable (e.g. running outside the service host) —
-                // keep the default. Never let port resolution stop startup.
-                port = kDefaultAmxPort;
+                // fall through to the instance-derived default. Never let port
+                // resolution stop startup.
             }
 
-            return port;
+            return kAmxInstanceBasePort + ReadConfiguredInstanceNumber();
+        }
+
+        // Resolves the configured AmxInstance (1..4), independent of any AmxPort
+        // override. This is the one place that decides "which of the 4 side-by-side
+        // installs is this" — DraxService's pipe names key off the same value, so
+        // folder / service name / pipe / port all stay consistent for one install.
+        // Missing, invalid, or out of range -> 1.
+        internal static int ReadConfiguredInstanceNumber()
+        {
+            try
+            {
+                string instanceSetting = ConfigurationManager.AppSettings["AmxInstance"]?.Trim();
+                if (!string.IsNullOrEmpty(instanceSetting)
+                    && int.TryParse(instanceSetting, out int instance)
+                    && instance >= 1 && instance <= 4)
+                {
+                    return instance;
+                }
+            }
+            catch
+            {
+                // Config unavailable — default to instance 1.
+            }
+
+            return 1;
         }
 
         public static AMXTransfer Instance
