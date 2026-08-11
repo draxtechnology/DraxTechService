@@ -10,7 +10,7 @@
        an equal version. -->
   <Package Name="Drax Technology Service"
            Manufacturer="Drax Technology"
-           Version="1.0.31"
+           Version="1.0.32"
            UpgradeCode="B5758DCA-6BC5-4E2C-BF55-7FA118631F65"
            Scope="perMachine"
            InstallerVersion="500">
@@ -33,10 +33,10 @@
          caps a site at four network managers, ports 3090-3093 — see
          AMXTransfer.cs). Each instance's config is stamped with its
          AmxInstance and a blank (UNCONFIGURED) panel type; the service
-         derives folder/port/pipes/name from that one number, seeds its ini
-         files from the install's ini\ templates on first run, and refuses to
-         start until AMX writes the licence panel type or an engineer sets
-         it. There is deliberately no upgrade path from the old
+         derives port/pipes/name from that one number and its base folder
+         from the install location (drive-agnostic), seeds its ini files from
+         the install's ini\ templates on first run, and refuses to start
+         until AMX writes the licence panel type or an engineer sets it. There is deliberately no upgrade path from the old
          single-instance product (service name "DraxTechnology", folder
          C:\AMX1) — the 2 sites on that scheme today get migrated by hand,
          not by MSI upgrade logic. -->
@@ -58,8 +58,8 @@
       <ComponentGroupRef Id="WinRuntimeFiles1" />
       <ComponentGroupRef Id="FolderPermissions1" />
     </Feature>
-    <Feature Id="Instance2" Title="Service Instance 2 (C:\AMX2, port 3091)"
-             Description="Drax Technology Service 2 — installs to C:\AMX2, AMX port 3091."
+    <Feature Id="Instance2" Title="Service Instance 2 (C:\AMX1\NWM2, port 3091)"
+             Description="Drax Technology Service 2 — installs to C:\AMX1\NWM2, AMX port 3091."
              Level="1" AllowAdvertise="no">
       <ComponentGroupRef Id="ServiceComponents2" />
       <ComponentGroupRef Id="DependencyFiles2" />
@@ -67,8 +67,8 @@
       <ComponentGroupRef Id="WinRuntimeFiles2" />
       <ComponentGroupRef Id="FolderPermissions2" />
     </Feature>
-    <Feature Id="Instance3" Title="Service Instance 3 (C:\AMX3, port 3092)"
-             Description="Drax Technology Service 3 — installs to C:\AMX3, AMX port 3092."
+    <Feature Id="Instance3" Title="Service Instance 3 (C:\AMX1\NWM3, port 3092)"
+             Description="Drax Technology Service 3 — installs to C:\AMX1\NWM3, AMX port 3092."
              Level="1" AllowAdvertise="no">
       <ComponentGroupRef Id="ServiceComponents3" />
       <ComponentGroupRef Id="DependencyFiles3" />
@@ -76,8 +76,8 @@
       <ComponentGroupRef Id="WinRuntimeFiles3" />
       <ComponentGroupRef Id="FolderPermissions3" />
     </Feature>
-    <Feature Id="Instance4" Title="Service Instance 4 (C:\AMX4, port 3093)"
-             Description="Drax Technology Service 4 — installs to C:\AMX4, AMX port 3093."
+    <Feature Id="Instance4" Title="Service Instance 4 (C:\AMX1\NWM4, port 3093)"
+             Description="Drax Technology Service 4 — installs to C:\AMX1\NWM4, AMX port 3093."
              Level="1" AllowAdvertise="no">
       <ComponentGroupRef Id="ServiceComponents4" />
       <ComponentGroupRef Id="IniFiles4" />
@@ -104,6 +104,10 @@
          its own DraxTechnology.dll.config next to its own exe. The leaf folder
          name must match the TFM in Drax360Service.csproj — the runtime resolves
          it literally from runtimeTargets in deps.json. -->
+    <!-- James's layout (2026-08-11): everything lives under the one C:\AMX1
+         tree — instance 1 at the root, instances 2-4 as NWM2..NWM4
+         subfolders, so AMX's own files and every network manager share one
+         root. The old scheme was separate C:\AMX2..4 folders. -->
     <StandardDirectory Id="TARGETDIR">
       <Directory Id="INSTALLFOLDER1" Name="AMX1">
         <Directory Id="IniFolder1" Name="ini" />
@@ -114,33 +118,33 @@
             </Directory>
           </Directory>
         </Directory>
-      </Directory>
-      <Directory Id="INSTALLFOLDER2" Name="AMX2">
-        <Directory Id="IniFolder2" Name="ini" />
-        <Directory Id="RuntimesDir2" Name="runtimes">
-          <Directory Id="RuntimesWinDir2" Name="win">
-            <Directory Id="RuntimesWinLibDir2" Name="lib">
-              <Directory Id="WinRuntimeDir2" Name="net10.0" />
+        <Directory Id="INSTALLFOLDER2" Name="NWM2">
+          <Directory Id="IniFolder2" Name="ini" />
+          <Directory Id="RuntimesDir2" Name="runtimes">
+            <Directory Id="RuntimesWinDir2" Name="win">
+              <Directory Id="RuntimesWinLibDir2" Name="lib">
+                <Directory Id="WinRuntimeDir2" Name="net10.0" />
+              </Directory>
             </Directory>
           </Directory>
         </Directory>
-      </Directory>
-      <Directory Id="INSTALLFOLDER3" Name="AMX3">
-        <Directory Id="IniFolder3" Name="ini" />
-        <Directory Id="RuntimesDir3" Name="runtimes">
-          <Directory Id="RuntimesWinDir3" Name="win">
-            <Directory Id="RuntimesWinLibDir3" Name="lib">
-              <Directory Id="WinRuntimeDir3" Name="net10.0" />
+        <Directory Id="INSTALLFOLDER3" Name="NWM3">
+          <Directory Id="IniFolder3" Name="ini" />
+          <Directory Id="RuntimesDir3" Name="runtimes">
+            <Directory Id="RuntimesWinDir3" Name="win">
+              <Directory Id="RuntimesWinLibDir3" Name="lib">
+                <Directory Id="WinRuntimeDir3" Name="net10.0" />
+              </Directory>
             </Directory>
           </Directory>
         </Directory>
-      </Directory>
-      <Directory Id="INSTALLFOLDER4" Name="AMX4">
-        <Directory Id="IniFolder4" Name="ini" />
-        <Directory Id="RuntimesDir4" Name="runtimes">
-          <Directory Id="RuntimesWinDir4" Name="win">
-            <Directory Id="RuntimesWinLibDir4" Name="lib">
-              <Directory Id="WinRuntimeDir4" Name="net10.0" />
+        <Directory Id="INSTALLFOLDER4" Name="NWM4">
+          <Directory Id="IniFolder4" Name="ini" />
+          <Directory Id="RuntimesDir4" Name="runtimes">
+            <Directory Id="RuntimesWinDir4" Name="win">
+              <Directory Id="RuntimesWinLibDir4" Name="lib">
+                <Directory Id="WinRuntimeDir4" Name="net10.0" />
+              </Directory>
             </Directory>
           </Directory>
         </Directory>

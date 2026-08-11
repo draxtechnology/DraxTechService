@@ -2078,14 +2078,26 @@ namespace DraxTechnology
             // panel = ConfigurationManager.AppSettings["Panels"].Trim().ToUpper();
 
             // Base folder must be known before panel detection so PersistPanelToConfig can run.
-            // A missing or empty Configuration key derives from the master instance
-            // number (AmxInstance -> C:\AMX{N}), so a stock instance config needs
-            // only Panels + AmxInstance. An explicit key still wins for
-            // non-standard layouts.
+            // A missing or empty Configuration key defaults to the folder the
+            // exe runs from — the installer puts each instance's exe in its
+            // own folder (C:\AMX1 root, NWM2..4 subfolders), so the install
+            // location IS the base folder on any drive, no path hard-coded
+            // (Mike, 2026-08-11: sites exist on other drives). An explicit
+            // key still wins for non-standard layouts.
             string configuredbase = ConfigurationManager.AppSettings["Configuration"]?.Trim();
             configurationbasefolder = !string.IsNullOrEmpty(configuredbase)
                 ? configuredbase
-                : @"C:\AMX" + AMXTransfer.ReadConfiguredInstanceNumber();
+                : AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
+
+            // Base folder + Temp exist BEFORE the panel gate below: a dormant
+            // (UNCONFIGURED) instance refuses to start, but AMX must still
+            // have somewhere to drop Current.Nwm or a later licence change
+            // could never self-configure this instance.
+            if (!Directory.Exists(configurationbasefolder))
+            {
+                Directory.CreateDirectory(configurationbasefolder);
+            }
+            Directory.CreateDirectory(Path.Combine(configurationbasefolder, "Temp"));
 
             string panelencrypted = ConfigurationManager.AppSettings["Panels"].Trim();
             if (panelencrypted.Length < 20)
