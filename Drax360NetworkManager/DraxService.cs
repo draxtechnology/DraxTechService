@@ -1295,8 +1295,8 @@ namespace DraxTechnology
                 }
                 if (blockStart >= 0)
                 {
-                    nwmLines.RemoveRange(blockStart, blockEnd - blockStart);
-                    File.WriteAllLines(CURRENTNWMDATAFILE, nwmLines);
+                   // nwmLines.RemoveRange(blockStart, blockEnd - blockStart);
+                    // File.WriteAllLines(CURRENTNWMDATAFILE, nwmLines);
                 }
 
                 using (StreamWriter w = File.AppendText(CURRENTNWMDATAFILE))
@@ -1320,7 +1320,14 @@ namespace DraxTechnology
                     string exePath = Environment.ProcessPath!;
                     string exeDateTime = File.GetLastWriteTime(exePath).ToString("dd/MM/yyyy HH:mm:ss");
 
-                    w.WriteLine("[0]\r\nProgName=" + panel + " Network Manager");
+                    if (blockStart >= 0)
+                    {
+                        w.WriteLine("[1]\r\nProgName=" + panel + " Network Manager");   // TODO handle more than 2 c#
+                    }
+                    else
+                    {
+                        w.WriteLine("[0]\r\nProgName=" + panel + " Network Manager");
+                    }
                     w.WriteLine("Name=" + panel + "\r\nVersion=" + versionString + "\r\nNodeName=" + panel + " Fire Panel");
                     w.WriteLine("Offset=0\r\nFirstNode=1\r\nLastNode=" + GetNwmMaxNodes(0, "NwmHandle" + result));
                     w.WriteLine("Startup=" + DateTime.Now);
