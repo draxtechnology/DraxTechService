@@ -29,19 +29,17 @@
          gated here — pair this MSI with a bootstrapper bundle (mirroring
          DraxTechClient/DraxClientSetup) when shipping to a fresh machine. -->
 
-    <!-- One product, up to four side-by-side service instances (AMX's own
-         dongle caps a site at four network managers, ports 3090-3093 — see
-         AMXTransfer.cs). The engineer PICKS the instance(s) at install time
-         on the feature tree — instance 1 is on by default, 2-4 are off
-         (Level 2 > default INSTALLLEVEL). Adding an instance later is
-         Programs and Features -> Change, not a reinstall, and MajorUpgrade's
-         default feature migration keeps the site's selection across version
-         upgrades. Each instance's config is stamped with its AmxInstance;
-         the service derives folder/port/pipes/name from that one number and
-         seeds its ini files from the install's ini\ templates on first run.
-         There is deliberately no upgrade path from the old single-instance
-         product (service name "DraxTechnology", folder C:\AMX1) — the 2 sites
-         on that scheme today get migrated by hand, not by MSI upgrade logic. -->
+    <!-- One product, four side-by-side service instances (AMX's own dongle
+         caps a site at four network managers, ports 3090-3093 — see
+         AMXTransfer.cs). Each instance's config is stamped with its
+         AmxInstance and a blank (UNCONFIGURED) panel type; the service
+         derives folder/port/pipes/name from that one number, seeds its ini
+         files from the install's ini\ templates on first run, and refuses to
+         start until AMX writes the licence panel type or an engineer sets
+         it. There is deliberately no upgrade path from the old
+         single-instance product (service name "DraxTechnology", folder
+         C:\AMX1) — the 2 sites on that scheme today get migrated by hand,
+         not by MSI upgrade logic. -->
     <Feature Id="Core" Title="Core" Level="1" AllowAbsent="no" Display="hidden">
       <ComponentGroupRef Id="SharedEventSource" />
     </Feature>
@@ -88,43 +86,11 @@
       <ComponentGroupRef Id="FolderPermissions4" />
     </Feature>
 
-    <!-- The instance prompt. Defaults to 1, so a silent install
-         (msiexec /qn, optionally INSTANCENUM=n) needs no UI at all. -->
-    <Property Id="INSTANCENUM" Value="1" Secure="yes" />
-    <UI>
-      <Dialog Id="InstanceDlg" Width="370" Height="270" Title="[ProductName] Setup">
-        <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="no" Text="WixUI_Bmp_Banner" />
-        <Control Id="Title" Type="Text" X="15" Y="6" Width="290" Height="15" Transparent="yes" NoPrefix="yes" Text="{\WixUI_Font_Title}Service instance" />
-        <Control Id="Description" Type="Text" X="25" Y="23" Width="320" Height="15" Transparent="yes" NoPrefix="yes" Text="Choose which network manager instance to install on this machine." />
-        <Control Id="BannerLine" Type="Line" X="0" Y="44" Width="370" Height="0" />
-        <Control Id="Instances" Type="RadioButtonGroup" Property="INSTANCENUM" X="35" Y="65" Width="300" Height="100">
-          <RadioButtonGroup Property="INSTANCENUM">
-            <RadioButton Value="1" X="0" Y="0" Width="290" Height="16" Text="Instance 1   (C:\AMX1, AMX port 3090)" />
-            <RadioButton Value="2" X="0" Y="20" Width="290" Height="16" Text="Instance 2   (C:\AMX2, AMX port 3091)" />
-            <RadioButton Value="3" X="0" Y="40" Width="290" Height="16" Text="Instance 3   (C:\AMX3, AMX port 3092)" />
-            <RadioButton Value="4" X="0" Y="60" Width="290" Height="16" Text="Instance 4   (C:\AMX4, AMX port 3093)" />
-          </RadioButtonGroup>
-        </Control>
-        <Control Id="Note" Type="Text" X="35" Y="170" Width="300" Height="30" Transparent="yes" NoPrefix="yes" Text="Instances already on this machine stay installed — running setup again adds the chosen instance alongside them." />
-        <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
-        <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back" />
-        <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="&amp;Next" />
-        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="Cancel">
-          <Publish Event="SpawnDialog" Value="CancelDlg" Condition="1" />
-        </Control>
-      </Dialog>
-      <!-- Fresh install: Welcome → InstanceDlg → VerifyReady (license page
-           skipped — no agreed EULA text; InstallDirDlg never shown, paths are
-           fixed per instance). Maintenance: Change → InstanceDlg to add an
-           instance. -->
-      <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="InstanceDlg" Order="99" Condition="NOT Installed" />
-      <Publish Dialog="InstanceDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Condition="NOT Installed" />
-      <Publish Dialog="InstanceDlg" Control="Back" Event="NewDialog" Value="MaintenanceTypeDlg" Condition="Installed" />
-      <Publish Dialog="InstanceDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" Condition="1" />
-      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="InstanceDlg" Order="99" Condition="NOT Installed OR WixUI_InstallMode = &quot;Change&quot;" />
-      <Publish Dialog="MaintenanceTypeDlg" Control="ChangeButton" Event="NewDialog" Value="InstanceDlg" Order="99" Condition="1" />
-    </UI>
-    <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER1" />
+    <!-- Minimal UI: single Install button → progress → Finish.
+         No instance question (Mike/James, 2026-08-11) and no directory or
+         license pages — all four instances install to their fixed
+         C:\AMX1..4 paths and sit dormant until configured and started. -->
+    <ui:WixUI Id="WixUI_Minimal" />
 
     <!-- Logo bitmaps — regenerate with DraxServiceSetup\MakeBitmaps.ps1
          if DraxLogo.png is updated. -->
@@ -251,6 +217,17 @@
                       ElementPath="//configuration/appSettings/add[\[]@key='AmxInstance'[\]]"
                       Name="value"
                       Value="1" />
+        <!-- Blank the panel type: a freshly installed instance is dormant and
+             must not half-run as the dev default panel. UNCONFIGURED fails
+             the service's valid-panel check, so the SCM start refuses with a
+             clear event-log reason until AMX writes the licence panel type
+             into this config or an engineer sets it. -->
+        <util:XmlFile Id="StampPanelsBlank1"
+                      File="[INSTALLFOLDER1]DraxTechnology.dll.config"
+                      Action="setValue"
+                      ElementPath="//configuration/appSettings/add[\[]@key='Panels'[\]]"
+                      Name="value"
+                      Value="UNCONFIGURED" />
         <util:EventSource Name="DraxTechnology1"
                           Log="Application"
                           EventMessageFile="[WindowsFolder]Microsoft.NET\Framework64\v4.0.30319\EventLogMessages.dll" />
@@ -294,6 +271,12 @@
                       ElementPath="//configuration/appSettings/add[\[]@key='AmxInstance'[\]]"
                       Name="value"
                       Value="2" />
+        <util:XmlFile Id="StampPanelsBlank2"
+                      File="[INSTALLFOLDER2]DraxTechnology.dll.config"
+                      Action="setValue"
+                      ElementPath="//configuration/appSettings/add[\[]@key='Panels'[\]]"
+                      Name="value"
+                      Value="UNCONFIGURED" />
         <util:EventSource Name="DraxTechnology2"
                           Log="Application"
                           EventMessageFile="[WindowsFolder]Microsoft.NET\Framework64\v4.0.30319\EventLogMessages.dll" />
@@ -337,6 +320,12 @@
                       ElementPath="//configuration/appSettings/add[\[]@key='AmxInstance'[\]]"
                       Name="value"
                       Value="3" />
+        <util:XmlFile Id="StampPanelsBlank3"
+                      File="[INSTALLFOLDER3]DraxTechnology.dll.config"
+                      Action="setValue"
+                      ElementPath="//configuration/appSettings/add[\[]@key='Panels'[\]]"
+                      Name="value"
+                      Value="UNCONFIGURED" />
         <util:EventSource Name="DraxTechnology3"
                           Log="Application"
                           EventMessageFile="[WindowsFolder]Microsoft.NET\Framework64\v4.0.30319\EventLogMessages.dll" />
@@ -380,6 +369,12 @@
                       ElementPath="//configuration/appSettings/add[\[]@key='AmxInstance'[\]]"
                       Name="value"
                       Value="4" />
+        <util:XmlFile Id="StampPanelsBlank4"
+                      File="[INSTALLFOLDER4]DraxTechnology.dll.config"
+                      Action="setValue"
+                      ElementPath="//configuration/appSettings/add[\[]@key='Panels'[\]]"
+                      Name="value"
+                      Value="UNCONFIGURED" />
         <util:EventSource Name="DraxTechnology4"
                           Log="Application"
                           EventMessageFile="[WindowsFolder]Microsoft.NET\Framework64\v4.0.30319\EventLogMessages.dll" />

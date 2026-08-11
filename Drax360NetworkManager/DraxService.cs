@@ -2075,7 +2075,15 @@ namespace DraxTechnology
                 else
                 {
                     panel = "Unknown";
-                    EventLogger.WriteToEventLog("Panel not set in config and could not be detected from Current.Nwm — service cannot start.", EventLogEntryType.Error);
+                    // Deliberate dormant-instance behaviour, not only an error
+                    // case: freshly installed instances are stamped with a
+                    // blank Panels value (Product.wxs StampPanelsBlank) so a
+                    // service that nobody has configured refuses to run.
+                    EventLogger.WriteToEventLog(
+                        "Panel type not configured for instance " + AMXTransfer.ReadConfiguredInstanceNumber()
+                        + " (and not detectable from Current.Nwm) — the service stays stopped until AMX writes"
+                        + " the licence panel type into DraxTechnology.dll.config or an engineer sets the Panels key.",
+                        EventLogEntryType.Error);
                     if (Elements.isService)
                     {
                         // Fail the start visibly. Continuing used to leave the SCM
@@ -2086,7 +2094,9 @@ namespace DraxTechnology
                     }
                     else
                     {
-                        Console.Error.WriteLine("Panel not set in config and could not be detected from Current.Nwm — cannot start.");
+                        Console.Error.WriteLine("Panel type not configured for instance "
+                            + AMXTransfer.ReadConfiguredInstanceNumber()
+                            + " (and not detectable from Current.Nwm) — cannot start until it is.");
                     }
                     return;
                 }
