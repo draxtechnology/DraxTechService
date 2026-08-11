@@ -45,9 +45,15 @@
     <Feature Id="Core" Title="Core" Level="1" AllowAbsent="no" Display="hidden">
       <ComponentGroupRef Id="SharedEventSource" />
     </Feature>
+    <!-- Instance features are driven by the INSTANCENUM radio prompt, not the
+         feature tree: each feature turns on when its number is chosen, and the
+         "OR !InstanceN = 3" keeps an already-installed instance installed when
+         the MSI is re-run (maintenance Change or a later add) with a different
+         number — picking instance 3 later ADDS it, never removes instance 1. -->
     <Feature Id="Instance1" Title="Service Instance 1 (C:\AMX1, port 3090)"
              Description="Drax Technology Service 1 — installs to C:\AMX1, AMX port 3090."
-             Level="1" AllowAdvertise="no">
+             Level="2" Display="hidden" AllowAdvertise="no">
+      <Level Value="1" Condition="INSTANCENUM = &quot;1&quot; OR !Instance1 = 3" />
       <ComponentGroupRef Id="ServiceComponents1" />
       <ComponentGroupRef Id="DependencyFiles1" />
       <ComponentGroupRef Id="IniFiles1" />
@@ -56,7 +62,8 @@
     </Feature>
     <Feature Id="Instance2" Title="Service Instance 2 (C:\AMX2, port 3091)"
              Description="Drax Technology Service 2 — installs to C:\AMX2, AMX port 3091."
-             Level="2" AllowAdvertise="no">
+             Level="2" Display="hidden" AllowAdvertise="no">
+      <Level Value="1" Condition="INSTANCENUM = &quot;2&quot; OR !Instance2 = 3" />
       <ComponentGroupRef Id="ServiceComponents2" />
       <ComponentGroupRef Id="DependencyFiles2" />
       <ComponentGroupRef Id="IniFiles2" />
@@ -65,7 +72,8 @@
     </Feature>
     <Feature Id="Instance3" Title="Service Instance 3 (C:\AMX3, port 3092)"
              Description="Drax Technology Service 3 — installs to C:\AMX3, AMX port 3092."
-             Level="2" AllowAdvertise="no">
+             Level="2" Display="hidden" AllowAdvertise="no">
+      <Level Value="1" Condition="INSTANCENUM = &quot;3&quot; OR !Instance3 = 3" />
       <ComponentGroupRef Id="ServiceComponents3" />
       <ComponentGroupRef Id="DependencyFiles3" />
       <ComponentGroupRef Id="IniFiles3" />
@@ -74,7 +82,8 @@
     </Feature>
     <Feature Id="Instance4" Title="Service Instance 4 (C:\AMX4, port 3093)"
              Description="Drax Technology Service 4 — installs to C:\AMX4, AMX port 3093."
-             Level="2" AllowAdvertise="no">
+             Level="2" Display="hidden" AllowAdvertise="no">
+      <Level Value="1" Condition="INSTANCENUM = &quot;4&quot; OR !Instance4 = 3" />
       <ComponentGroupRef Id="ServiceComponents4" />
       <ComponentGroupRef Id="IniFiles4" />
       <ComponentGroupRef Id="DependencyFiles4" />
@@ -82,9 +91,43 @@
       <ComponentGroupRef Id="FolderPermissions4" />
     </Feature>
 
-    <!-- Feature-tree UI: the instance picker. Welcome → feature selection →
-         install. Instance paths are fixed per feature (C:\AMX1..4). -->
-    <ui:WixUI Id="WixUI_FeatureTree" />
+    <!-- The instance prompt. Defaults to 1, so a silent install
+         (msiexec /qn, optionally INSTANCENUM=n) needs no UI at all. -->
+    <Property Id="INSTANCENUM" Value="1" Secure="yes" />
+    <UI>
+      <Dialog Id="InstanceDlg" Width="370" Height="270" Title="[ProductName] Setup">
+        <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="no" Text="WixUI_Bmp_Banner" />
+        <Control Id="Title" Type="Text" X="15" Y="6" Width="290" Height="15" Transparent="yes" NoPrefix="yes" Text="{\WixUI_Font_Title}Service instance" />
+        <Control Id="Description" Type="Text" X="25" Y="23" Width="320" Height="15" Transparent="yes" NoPrefix="yes" Text="Choose which network manager instance to install on this machine." />
+        <Control Id="BannerLine" Type="Line" X="0" Y="44" Width="370" Height="0" />
+        <Control Id="Instances" Type="RadioButtonGroup" Property="INSTANCENUM" X="35" Y="65" Width="300" Height="100">
+          <RadioButtonGroup Property="INSTANCENUM">
+            <RadioButton Value="1" X="0" Y="0" Width="290" Height="16" Text="Instance 1   (C:\AMX1, AMX port 3090)" />
+            <RadioButton Value="2" X="0" Y="20" Width="290" Height="16" Text="Instance 2   (C:\AMX2, AMX port 3091)" />
+            <RadioButton Value="3" X="0" Y="40" Width="290" Height="16" Text="Instance 3   (C:\AMX3, AMX port 3092)" />
+            <RadioButton Value="4" X="0" Y="60" Width="290" Height="16" Text="Instance 4   (C:\AMX4, AMX port 3093)" />
+          </RadioButtonGroup>
+        </Control>
+        <Control Id="Note" Type="Text" X="35" Y="170" Width="300" Height="30" Transparent="yes" NoPrefix="yes" Text="Instances already on this machine stay installed — running setup again adds the chosen instance alongside them." />
+        <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
+        <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back" />
+        <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="&amp;Next" />
+        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="Cancel">
+          <Publish Event="SpawnDialog" Value="CancelDlg" Condition="1" />
+        </Control>
+      </Dialog>
+      <!-- Fresh install: Welcome → InstanceDlg → VerifyReady (license page
+           skipped — no agreed EULA text; InstallDirDlg never shown, paths are
+           fixed per instance). Maintenance: Change → InstanceDlg to add an
+           instance. -->
+      <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="InstanceDlg" Order="99" Condition="NOT Installed" />
+      <Publish Dialog="InstanceDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Condition="NOT Installed" />
+      <Publish Dialog="InstanceDlg" Control="Back" Event="NewDialog" Value="MaintenanceTypeDlg" Condition="Installed" />
+      <Publish Dialog="InstanceDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" Condition="1" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="InstanceDlg" Order="99" Condition="NOT Installed OR WixUI_InstallMode = &quot;Change&quot;" />
+      <Publish Dialog="MaintenanceTypeDlg" Control="ChangeButton" Event="NewDialog" Value="InstanceDlg" Order="99" Condition="1" />
+    </UI>
+    <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER1" />
 
     <!-- Logo bitmaps — regenerate with DraxServiceSetup\MakeBitmaps.ps1
          if DraxLogo.png is updated. -->
