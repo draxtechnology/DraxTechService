@@ -360,6 +360,46 @@ namespace DraxTechnology.Panels
         }
         #endregion
 
+        #region Disabled-zone tracking
+        // Zone disablements book their AMX row here so the matching zone
+        // enable can send the reset that clears it — the panel sends no
+        // per-row clear, only the zone-enable event (real Inspire, whole-day
+        // trace 2026-08-07). The event number is captured at book time so the
+        // reset always matches the row as it was sent, even if an address
+        // offset setting changes in between. In-memory only: a service
+        // restart loses the bookings — the same open reconciliation question
+        // as a panel re-list mid comms drop.
+        protected sealed class DisabledZoneTracker
+        {
+            private readonly object gate = new object();
+            private readonly List<(int zone, int evnum)> entries = new List<(int zone, int evnum)>();
+
+            public void Book(int zone, int evnum)
+            {
+                lock (gate) entries.Add((zone, evnum));
+            }
+
+            // Removes and returns the booked event numbers for a zone. The
+            // caller owns sending the resets — the reset text belongs to the
+            // enable event being handled.
+            public List<int> Sweep(int zone)
+            {
+                lock (gate)
+                {
+                    List<int> swept = entries.Where(e => e.zone == zone).Select(e => e.evnum).ToList();
+                    entries.RemoveAll(e => e.zone == zone);
+                    return swept;
+                }
+            }
+        }
+
+        // One per panel — each driver family that reports zone disablement
+        // wires its disable/enable pair through this (the ID3K family in
+        // AbstractPanelId3k.HandlePostSwitchDispatch, Inspire in its own
+        // dispatch; remaining drivers as their wire semantics are confirmed).
+        protected readonly DisabledZoneTracker disabledZones = new DisabledZoneTracker();
+        #endregion
+
         public virtual void SerialPort_Datareceived(object sender, SerialDataReceivedEventArgs e)
         {
             // Stamp every received-bytes event so GETCOMMPORTSTATUS can report

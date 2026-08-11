@@ -2139,9 +2139,10 @@ namespace DraxTechnology.Panels
             => false;
 
         // ----------------------------------------------------------------
-        // Post-switch dispatch hook — subclasses add panel-specific logic
-        // (e.g. Notifier's _disabledZones tracking). Called only when
-        // bDontSendToAMX is false, before send_response_amx_and_serial.
+        // Post-switch dispatch hook — the shared isolate transition gate and
+        // the zone disable/enable book-and-sweep; subclasses override to add
+        // panel-specific logic on top. Called only when bDontSendToAMX is
+        // false, before send_response_amx_and_serial.
         // ----------------------------------------------------------------
         protected virtual void HandlePostSwitchDispatch(
             int evnum, Id3kParseState st, int p1, bool on,
@@ -2164,6 +2165,23 @@ namespace DraxTechnology.Panels
                     send_response_amx_disable(evnum, st.gsTextField, gsDeviceText, zonetext, on);
                     SaveIsolationState(_activeIsolations);
                 }
+            }
+
+            // Track zone disables so the matching enable can send AMX resets
+            // for the booked zone rows (shared DisabledZoneTracker on the
+            // base). The ID3K wire reports these as 193/192
+            // (NetworkZoneInDisabled/Enabled) — the real Inspire never sends
+            // the plain 137/136 pair (trace 2026-08-07) — but both pairs are
+            // accepted so a variant that does send them still books the row.
+            if ((enmNotEventType)eventcode == enmNotEventType.DisableZone ||
+                (enmNotEventType)eventcode == enmNotEventType.NetworkZoneInDisabled)
+                disabledZones.Book((int)zone, CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, false));
+
+            if ((enmNotEventType)eventcode == enmNotEventType.EnableZone ||
+                (enmNotEventType)eventcode == enmNotEventType.NetworkZoneInEnabled)
+            {
+                foreach (int offEvnum in disabledZones.Sweep((int)zone))
+                    CSAMXSingleton.CS.SendResetToAMX(offEvnum, st.gsTextField, "", "");
             }
         }
 

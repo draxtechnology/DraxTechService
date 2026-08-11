@@ -13,7 +13,6 @@ namespace DraxTechnology.Panels
         private bool gbHalfDuplex = false;
         private bool gbSectoring = false;
         private int gsSectorNo;
-        private readonly List<(int zone, int p2, int p3, int p4, int p1)> _disabledZones = new();
         // Points whose extra AMX isolation event is currently on — the gate
         // that keeps the AMX isolation count straight (see the Isolate block).
         // Keyed WITH the input type p1: sub-addressed module channels share
@@ -2218,24 +2217,23 @@ namespace DraxTechnology.Panels
                     // (NetworkZoneInDisabled/Enabled), never the plain 137/136
                     // pair (whole-day trace 2026-08-07: zero 136/137 frames).
                     // Both pairs accepted so a variant that does send the
-                    // plain codes still books the row.
+                    // plain codes still books the row. Book/sweep is the
+                    // shared DisabledZoneTracker on AbstractPanel.
                     if ((enmNotEventType)eventcode == enmNotEventType.DisableZone ||
                         (enmNotEventType)eventcode == enmNotEventType.NetworkZoneInDisabled)
-                        _disabledZones.Add(((int)zone, p2, p3, p4, p1));
+                        disabledZones.Book((int)zone, CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, false));
 
                     if ((enmNotEventType)eventcode == enmNotEventType.EnableZone ||
                         (enmNotEventType)eventcode == enmNotEventType.NetworkZoneInEnabled)
                     {
-                        foreach (var entry in _disabledZones.Where(e => e.zone == (int)zone).ToList())
+                        foreach (int offEvnum in disabledZones.Sweep((int)zone))
                         {
                             if (!bDontSendToAMX)
                             {
-                                int offEvnum = CSAMXSingleton.CS.MakeInputNumber(entry.p2, entry.p3, entry.p4, entry.p1, false);
                                 this.NotifyClient("Sending SendResetToAMX: " + gsTextField + " gsDeviceText: " + gsDeviceText + " zonetext: " + zonetext + " on: " + on, false);
                                 CSAMXSingleton.CS.SendResetToAMX(offEvnum, gsTextField, "", "");
                             }
                         }
-                        _disabledZones.RemoveAll(e => e.zone == (int)zone);
                     }
 
                     if (!bDontSendToAMX)

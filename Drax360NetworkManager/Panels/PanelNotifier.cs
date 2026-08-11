@@ -13,8 +13,6 @@ namespace DraxTechnology.Panels
         // >IE…M.. wire format subtracts it to get the module index.
         private const int kModuleAddressMin = 100;
 
-        private readonly List<(int zone, int p2, int p3, int p4, int p1)> _disabledZones = new();
-
         public override string FakeString =>
             /* Notifier
             >IS0001C000000000000BE7\r
@@ -190,40 +188,9 @@ namespace DraxTechnology.Panels
             }
         }
 
-        // ----------------------------------------------------------------
-        // Post-switch: Notifier's _disabledZones bookkeeping
-        // ----------------------------------------------------------------
-        protected override void HandlePostSwitchDispatch(
-            int evnum, Id3kParseState st, int p1, bool on,
-            decimal zone, string zonetext, int eventcode,
-            int p2, int p3, int p4)
-        {
-            // Shared isolate double-send
-            base.HandlePostSwitchDispatch(evnum, st, p1, on, zone, zonetext, eventcode, p2, p3, p4);
-
-            // Track zone disables so the matching enable can send AMX resets
-            // for the booked zone rows. The ID3K wire reports these as
-            // 193/192 (NetworkZoneInDisabled/Enabled) — the real Inspire
-            // never sends the plain 137/136 pair (trace 2026-08-07) — but
-            // both pairs are accepted here.
-            if ((enmNotEventType)eventcode == enmNotEventType.DisableZone ||
-                (enmNotEventType)eventcode == enmNotEventType.NetworkZoneInDisabled)
-                _disabledZones.Add(((int)zone, p2, p3, p4, p1));
-
-            if ((enmNotEventType)eventcode == enmNotEventType.EnableZone ||
-                (enmNotEventType)eventcode == enmNotEventType.NetworkZoneInEnabled)
-            {
-                foreach (var entry in _disabledZones.Where(e => e.zone == (int)zone).ToList())
-                {
-                    if (!st.bDontSendToAMX)
-                    {
-                        int offEvnum = CSAMXSingleton.CS.MakeInputNumber(entry.p2, entry.p3, entry.p4, entry.p1, false);
-                        CSAMXSingleton.CS.SendResetToAMX(offEvnum, st.gsTextField, "", "");
-                    }
-                }
-                _disabledZones.RemoveAll(e => e.zone == (int)zone);
-            }
-        }
+        // Zone disable/enable book-and-sweep now lives in the base
+        // HandlePostSwitchDispatch (shared DisabledZoneTracker) so Pearl
+        // gets the same behaviour — no Notifier-specific override needed.
 
         // ----------------------------------------------------------------
         // send_message — Notifier wire format: body + CRC + \r, via HalfDuplexSend
