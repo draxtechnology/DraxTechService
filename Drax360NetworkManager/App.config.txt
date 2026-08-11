@@ -21,13 +21,20 @@
 
 
     <add key="Configuration" value="c:\AMX1" />
-    <!-- build temp, log, ini under this foler -->
+    <!-- Base folder for temp, log, ini. OPTIONAL since the master-number change:
+         when this key is missing or empty the folder derives from AmxInstance
+         (C:\AMX1..4), so a stock instance config needs only Panels + AmxInstance.
+         Set it explicitly only for non-standard layouts. On first run, an empty
+         base folder is seeded with the per-panel ini templates the installer
+         ships in the install's ini\ subfolder — the service reads inis from the
+         base-folder ROOT; ini\ next to the exe is templates only. -->
     <add key="FakeMode" value="0" />
     <!-- 0 = off, 1 = on -->
     <!-- AMX instance / port. A site can run up to four managers in parallel, each
          its own side-by-side Drax360Service install (C:\AMX1..4, its own service
-         name, its own named pipe pair) — AmxInstance is the one number all of that
-         keys off, stamped into each install's config by the installer.
+         name, its own named pipe pair) — AmxInstance is the ONE master number all
+         of that keys off (folder, service name, pipe pair, port), stamped into
+         each install's config by the installer.
            AmxInstance = 1..4  -> port 3090..3093 (AMX1=3090, AMX2=3091, ...)
            AmxPort     = explicit port, overrides AmxInstance's port derivation only
                          (folder/service-name/pipe still follow AmxInstance).

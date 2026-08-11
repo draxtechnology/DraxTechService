@@ -2052,7 +2052,14 @@ namespace DraxTechnology
             // panel = ConfigurationManager.AppSettings["Panels"].Trim().ToUpper();
 
             // Base folder must be known before panel detection so PersistPanelToConfig can run.
-            configurationbasefolder = ConfigurationManager.AppSettings["Configuration"].Trim();
+            // A missing or empty Configuration key derives from the master instance
+            // number (AmxInstance -> C:\AMX{N}), so a stock instance config needs
+            // only Panels + AmxInstance. An explicit key still wins for
+            // non-standard layouts.
+            string configuredbase = ConfigurationManager.AppSettings["Configuration"]?.Trim();
+            configurationbasefolder = !string.IsNullOrEmpty(configuredbase)
+                ? configuredbase
+                : @"C:\AMX" + AMXTransfer.ReadConfiguredInstanceNumber();
 
             string panelencrypted = ConfigurationManager.AppSettings["Panels"].Trim();
             if (panelencrypted.Length < 20)
@@ -2505,11 +2512,47 @@ namespace DraxTechnology
             var allFiles = dirInfo.GetFiles("*." + "ini", SearchOption.TopDirectoryOnly);
             if (allFiles.Length == 0)
             {
+                // Fresh instance folder — seed from the install's ini\ template
+                // store (shipped next to the exe) before failing the start. The
+                // service reads inis from the base-folder ROOT; the install's
+                // ini\ subfolder is templates only.
+                SeedIniTemplates(inifolder);
+                allFiles = dirInfo.GetFiles("*." + "ini", SearchOption.TopDirectoryOnly);
+            }
+            if (allFiles.Length == 0)
+            {
                 ln("Error No Ini Files Copied into " + inifolder, EventLogEntryType.Error);
                 return false;
             }
 
             return true;
+        }
+
+        private void SeedIniTemplates(string inifolder)
+        {
+            try
+            {
+                string templates = Path.Combine(AppContext.BaseDirectory, "ini");
+                if (!Directory.Exists(templates)) return;
+                int seeded = 0;
+                foreach (string src in Directory.GetFiles(templates, "*.ini", SearchOption.TopDirectoryOnly))
+                {
+                    string dest = Path.Combine(inifolder, Path.GetFileName(src));
+                    if (!File.Exists(dest))
+                    {
+                        File.Copy(src, dest);
+                        seeded++;
+                    }
+                }
+                if (seeded > 0)
+                    ln("Seeded " + seeded + " ini template(s) from " + templates + " into " + inifolder);
+            }
+            catch (Exception ex)
+            {
+                // Best-effort — a failure here falls through to the existing
+                // no-inis error rather than taking the start down differently.
+                ln("Ini template seeding failed: " + ex.Message, EventLogEntryType.Warning);
+            }
         }
 
         private void RescanPorts()

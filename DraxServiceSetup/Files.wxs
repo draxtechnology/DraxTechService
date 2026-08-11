@@ -98,6 +98,21 @@
     </ComponentGroup>
 
     <ComponentGroup Id="IniFiles1" Directory="IniFolder1">
+      <Component Id="cmp_ini_EmlMan_ini_1" Guid="C5689623-55F4-E105-8331-3752956AB4A7">
+        <File Id="fil_ini_EmlMan_ini_1" Source="$(var.Drax360Service.TargetDir)ini\EmlMan.ini" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_ini_GenMan_ini_1" Guid="3B9435FC-11E8-6AA3-DA8B-F756E174A0DA">
+        <File Id="fil_ini_GenMan_ini_1" Source="$(var.Drax360Service.TargetDir)ini\GenMan.ini" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_ini_INSMan_ini_1" Guid="F1316CF9-743C-F508-EA11-27F6B7697B2D">
+        <File Id="fil_ini_INSMan_ini_1" Source="$(var.Drax360Service.TargetDir)ini\INSMan.ini" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_ini_KsfMan_ini_1" Guid="91618A6A-3702-2182-BF18-13B754CCDE17">
+        <File Id="fil_ini_KsfMan_ini_1" Source="$(var.Drax360Service.TargetDir)ini\KsfMan.ini" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_ini_Takman_ini_1" Guid="E5AAAEE1-BE66-0F96-3F43-C67A7D9D9E81">
+        <File Id="fil_ini_Takman_ini_1" Source="$(var.Drax360Service.TargetDir)ini\Takman.ini" KeyPath="yes" />
+      </Component>
     </ComponentGroup>
 
     <ComponentGroup Id="WinRuntimeFiles1" Directory="WinRuntimeDir1">
@@ -215,6 +230,21 @@
     </ComponentGroup>
 
     <ComponentGroup Id="IniFiles2" Directory="IniFolder2">
+      <Component Id="cmp_ini_EmlMan_ini_2" Guid="F19356E1-0DD6-FA20-5025-F1000C9EDCB0">
+        <File Id="fil_ini_EmlMan_ini_2" Source="$(var.Drax360Service.TargetDir)ini\EmlMan.ini" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_ini_GenMan_ini_2" Guid="AAD318B5-D975-9107-F629-1C8693AC275F">
+        <File Id="fil_ini_GenMan_ini_2" Source="$(var.Drax360Service.TargetDir)ini\GenMan.ini" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_ini_INSMan_ini_2" Guid="CF513BC4-098E-9CFC-FF0F-81A608916625">
+        <File Id="fil_ini_INSMan_ini_2" Source="$(var.Drax360Service.TargetDir)ini\INSMan.ini" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_ini_KsfMan_ini_2" Guid="5D614408-86F3-8B93-9D13-8CF9C8543FB1">
+        <File Id="fil_ini_KsfMan_ini_2" Source="$(var.Drax360Service.TargetDir)ini\KsfMan.ini" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_ini_Takman_ini_2" Guid="C20788D4-B064-4BF9-B892-7265237327EF">
+        <File Id="fil_ini_Takman_ini_2" Source="$(var.Drax360Service.TargetDir)ini\Takman.ini" KeyPath="yes" />
+      </Component>
     </ComponentGroup>
 
     <ComponentGroup Id="WinRuntimeFiles2" Directory="WinRuntimeDir2">
@@ -332,6 +362,21 @@
     </ComponentGroup>
 
     <ComponentGroup Id="IniFiles3" Directory="IniFolder3">
+      <Component Id="cmp_ini_EmlMan_ini_3" Guid="16CA5EB0-E40E-65D7-0B9D-FC2F6BFC998A">
+        <File Id="fil_ini_EmlMan_ini_3" Source="$(var.Drax360Service.TargetDir)ini\EmlMan.ini" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_ini_GenMan_ini_3" Guid="ED18060E-687F-B972-2B5B-3587BC880B12">
+        <File Id="fil_ini_GenMan_ini_3" Source="$(var.Drax360Service.TargetDir)ini\GenMan.ini" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_ini_INSMan_ini_3" Guid="4AC8BE74-B7CA-1A74-F7A0-465A9CFC1005">
+        <File Id="fil_ini_INSMan_ini_3" Source="$(var.Drax360Service.TargetDir)ini\INSMan.ini" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_ini_KsfMan_ini_3" Guid="D20F5172-69BF-1335-19CD-02A2D7039B32">
+        <File Id="fil_ini_KsfMan_ini_3" Source="$(var.Drax360Service.TargetDir)ini\KsfMan.ini" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_ini_Takman_ini_3" Guid="FE77089A-CA04-804B-3040-D6D583A9CCD3">
+        <File Id="fil_ini_Takman_ini_3" Source="$(var.Drax360Service.TargetDir)ini\Takman.ini" KeyPath="yes" />
+      </Component>
     </ComponentGroup>
 
     <ComponentGroup Id="WinRuntimeFiles3" Directory="WinRuntimeDir3">
@@ -449,6 +494,21 @@
     </ComponentGroup>
 
     <ComponentGroup Id="IniFiles4" Directory="IniFolder4">
+      <Component Id="cmp_ini_EmlMan_ini_4" Guid="EB62DFF8-7BA0-F881-F9AC-26908DCE2747">
+        <File Id="fil_ini_EmlMan_ini_4" Source="$(var.Drax360Service.TargetDir)ini\EmlMan.ini" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_ini_GenMan_ini_4" Guid="C97CC1DB-95B8-4BA2-4880-4403C01C362B">
+        <File Id="fil_ini_GenMan_ini_4" Source="$(var.Drax360Service.TargetDir)ini\GenMan.ini" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_ini_INSMan_ini_4" Guid="0245BE16-0AD0-E025-EABE-A8F3C0435087">
+        <File Id="fil_ini_INSMan_ini_4" Source="$(var.Drax360Service.TargetDir)ini\INSMan.ini" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_ini_KsfMan_ini_4" Guid="3DA41FA1-2504-7AFC-E737-6D9ED62AA534">
+        <File Id="fil_ini_KsfMan_ini_4" Source="$(var.Drax360Service.TargetDir)ini\KsfMan.ini" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_ini_Takman_ini_4" Guid="1CB3A125-4379-8963-270A-9C65E5285789">
+        <File Id="fil_ini_Takman_ini_4" Source="$(var.Drax360Service.TargetDir)ini\Takman.ini" KeyPath="yes" />
+      </Component>
     </ComponentGroup>
 
     <ComponentGroup Id="WinRuntimeFiles4" Directory="WinRuntimeDir4">

@@ -42,6 +42,14 @@
     </Compile>
   </ItemGroup>
 
+  <!-- Per-panel ini templates. Copied to the output ini\ folder so the MSI
+       ships them (Regenerate-Files.ps1 harvests bin\Debug\ini) and the
+       service can seed a fresh instance folder on first run
+       (firstruncheck's template-seeding step). -->
+  <ItemGroup>
+    <Content Include="ini\*.ini" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <EmbeddedResource Update="DraxService.resx">
       <DependentUpon>DraxService.cs</DependentUpon>

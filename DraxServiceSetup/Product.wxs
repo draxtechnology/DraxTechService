@@ -10,7 +10,7 @@
        an equal version. -->
   <Package Name="Drax Technology Service"
            Manufacturer="Drax Technology"
-           Version="1.0.28"
+           Version="1.0.29"
            UpgradeCode="B5758DCA-6BC5-4E2C-BF55-7FA118631F65"
            Scope="perMachine"
            InstallerVersion="500">
@@ -29,41 +29,62 @@
          gated here — pair this MSI with a bootstrapper bundle (mirroring
          DraxTechClient/DraxClientSetup) when shipping to a fresh machine. -->
 
-    <!-- One product, four side-by-side service instances (AMX's own dongle caps
-         a site at four network managers, ports 3090-3093 — see AMXTransfer.cs).
-         Every instance installs unconditionally; which ones actually run is a
-         site decision made after install (start the service(s) the site is
-         licensed for — all four start Manual/Demand, see ServiceInstall below).
+    <!-- One product, up to four side-by-side service instances (AMX's own
+         dongle caps a site at four network managers, ports 3090-3093 — see
+         AMXTransfer.cs). The engineer PICKS the instance(s) at install time
+         on the feature tree — instance 1 is on by default, 2-4 are off
+         (Level 2 > default INSTALLLEVEL). Adding an instance later is
+         Programs and Features -> Change, not a reinstall, and MajorUpgrade's
+         default feature migration keeps the site's selection across version
+         upgrades. Each instance's config is stamped with its AmxInstance;
+         the service derives folder/port/pipes/name from that one number and
+         seeds its ini files from the install's ini\ templates on first run.
          There is deliberately no upgrade path from the old single-instance
          product (service name "DraxTechnology", folder C:\AMX1) — the 2 sites
          on that scheme today get migrated by hand, not by MSI upgrade logic. -->
-    <Feature Id="Main" Title="Drax Technology Service" Level="1">
+    <Feature Id="Core" Title="Core" Level="1" AllowAbsent="no" Display="hidden">
+      <ComponentGroupRef Id="SharedEventSource" />
+    </Feature>
+    <Feature Id="Instance1" Title="Service Instance 1 (C:\AMX1, port 3090)"
+             Description="Drax Technology Service 1 — installs to C:\AMX1, AMX port 3090."
+             Level="1" AllowAdvertise="no">
       <ComponentGroupRef Id="ServiceComponents1" />
       <ComponentGroupRef Id="DependencyFiles1" />
       <ComponentGroupRef Id="IniFiles1" />
       <ComponentGroupRef Id="WinRuntimeFiles1" />
       <ComponentGroupRef Id="FolderPermissions1" />
+    </Feature>
+    <Feature Id="Instance2" Title="Service Instance 2 (C:\AMX2, port 3091)"
+             Description="Drax Technology Service 2 — installs to C:\AMX2, AMX port 3091."
+             Level="2" AllowAdvertise="no">
       <ComponentGroupRef Id="ServiceComponents2" />
       <ComponentGroupRef Id="DependencyFiles2" />
       <ComponentGroupRef Id="IniFiles2" />
       <ComponentGroupRef Id="WinRuntimeFiles2" />
       <ComponentGroupRef Id="FolderPermissions2" />
+    </Feature>
+    <Feature Id="Instance3" Title="Service Instance 3 (C:\AMX3, port 3092)"
+             Description="Drax Technology Service 3 — installs to C:\AMX3, AMX port 3092."
+             Level="2" AllowAdvertise="no">
       <ComponentGroupRef Id="ServiceComponents3" />
       <ComponentGroupRef Id="DependencyFiles3" />
       <ComponentGroupRef Id="IniFiles3" />
       <ComponentGroupRef Id="WinRuntimeFiles3" />
       <ComponentGroupRef Id="FolderPermissions3" />
+    </Feature>
+    <Feature Id="Instance4" Title="Service Instance 4 (C:\AMX4, port 3093)"
+             Description="Drax Technology Service 4 — installs to C:\AMX4, AMX port 3093."
+             Level="2" AllowAdvertise="no">
       <ComponentGroupRef Id="ServiceComponents4" />
-      <ComponentGroupRef Id="DependencyFiles4" />
       <ComponentGroupRef Id="IniFiles4" />
+      <ComponentGroupRef Id="DependencyFiles4" />
       <ComponentGroupRef Id="WinRuntimeFiles4" />
       <ComponentGroupRef Id="FolderPermissions4" />
-      <ComponentGroupRef Id="SharedEventSource" />
     </Feature>
 
-    <!-- Minimal UI: single Install button → progress → Finish.
-         No directory or license pages — install paths are fixed at C:\AMX1..4. -->
-    <ui:WixUI Id="WixUI_Minimal" />
+    <!-- Feature-tree UI: the instance picker. Welcome → feature selection →
+         install. Instance paths are fixed per feature (C:\AMX1..4). -->
+    <ui:WixUI Id="WixUI_FeatureTree" />
 
     <!-- Logo bitmaps — regenerate with DraxServiceSetup\MakeBitmaps.ps1
          if DraxLogo.png is updated. -->
