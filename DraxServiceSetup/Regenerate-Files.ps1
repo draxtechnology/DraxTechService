@@ -4,11 +4,14 @@
 #
 #   pwsh DraxServiceSetup\Regenerate-Files.ps1
 #
-# Emits one full copy of every ComponentGroup per side-by-side instance (1..4) —
-# each instance is its own complete install under C:\AMX{n} with its own
-# DraxTechnology.dll.config, so the same physical binaries need a distinct
-# Component/File per destination folder. See Product.wxs for the matching
-# INSTALLFOLDER{n}/IniFolder{n}/WinRuntimeDir{n} directory tree.
+# Emits one full copy of DependencyFiles/WinRuntimeFiles per side-by-side
+# instance (1..4) — each instance is its own complete install under
+# C:\AMX1\NWM{n} with its own DraxTechnology.dll.config, so the same physical
+# binaries need a distinct Component/File per destination folder. The ini
+# templates are identical across instances, so they get ONE shared
+# ComponentGroup installed once to the shared C:\AMX1\ini folder instead of
+# being duplicated per instance. See Product.wxs for the matching
+# INSTALLFOLDER{n}/IniFolder/WinRuntimeDir{n} directory tree.
 
 Set-Location $PSScriptRoot
 $bin = Join-Path $PSScriptRoot '..\Drax360NetworkManager\bin\Debug'
@@ -47,6 +50,17 @@ $sb = New-Object System.Text.StringBuilder
 [void]$sb.AppendLine('<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">')
 [void]$sb.AppendLine('  <Fragment>')
 
+[void]$sb.AppendLine("    <ComponentGroup Id=`"IniFiles`" Directory=`"IniFolder`">")
+foreach ($f in $iniFiles) {
+  $safe = Sanitize $f.Name
+  $guid = StableGuid("DraxSetup:shared:ini\$($f.Name)")
+  [void]$sb.AppendLine("      <Component Id=`"cmp_ini_$safe`" Guid=`"$guid`">")
+  [void]$sb.AppendLine("        <File Id=`"fil_ini_$safe`" Source=`"`$(var.Drax360Service.TargetDir)ini\$($f.Name)`" KeyPath=`"yes`" />")
+  [void]$sb.AppendLine('      </Component>')
+}
+[void]$sb.AppendLine('    </ComponentGroup>')
+[void]$sb.AppendLine()
+
 foreach ($instance in 1..4) {
   [void]$sb.AppendLine("    <ComponentGroup Id=`"DependencyFiles$instance`" Directory=`"INSTALLFOLDER$instance`">")
   foreach ($f in $rootFiles) {
@@ -54,16 +68,6 @@ foreach ($instance in 1..4) {
     $guid = StableGuid("DraxSetup:$instance`:$($f.Name)")
     [void]$sb.AppendLine("      <Component Id=`"cmp_$($safe)_$instance`" Guid=`"$guid`">")
     [void]$sb.AppendLine("        <File Id=`"fil_$($safe)_$instance`" Source=`"`$(var.Drax360Service.TargetDir)$($f.Name)`" KeyPath=`"yes`" />")
-    [void]$sb.AppendLine('      </Component>')
-  }
-  [void]$sb.AppendLine('    </ComponentGroup>')
-  [void]$sb.AppendLine()
-  [void]$sb.AppendLine("    <ComponentGroup Id=`"IniFiles$instance`" Directory=`"IniFolder$instance`">")
-  foreach ($f in $iniFiles) {
-    $safe = Sanitize $f.Name
-    $guid = StableGuid("DraxSetup:$instance`:ini\$($f.Name)")
-    [void]$sb.AppendLine("      <Component Id=`"cmp_ini_$($safe)_$instance`" Guid=`"$guid`">")
-    [void]$sb.AppendLine("        <File Id=`"fil_ini_$($safe)_$instance`" Source=`"`$(var.Drax360Service.TargetDir)ini\$($f.Name)`" KeyPath=`"yes`" />")
     [void]$sb.AppendLine('      </Component>')
   }
   [void]$sb.AppendLine('    </ComponentGroup>')

@@ -42,6 +42,7 @@
          not by MSI upgrade logic. -->
     <Feature Id="Core" Title="Core" Level="1" AllowAbsent="no" Display="hidden">
       <ComponentGroupRef Id="SharedEventSource" />
+      <ComponentGroupRef Id="IniFiles" />
     </Feature>
     <!-- All four instances install unconditionally and sit dormant (Manual
          start) until a site needs them — Mike/James's explicit direction
@@ -49,12 +50,11 @@
          just starts a different service, never the installer again. The
          per-instance feature split is kept purely as structure (msiexec
          REMOVE=InstanceN stays possible for edge cases). -->
-    <Feature Id="Instance1" Title="Service Instance 1 (C:\AMX1, port 3090)"
-             Description="Drax Technology Service 1 — installs to C:\AMX1, AMX port 3090."
+    <Feature Id="Instance1" Title="Service Instance 1 (C:\AMX1\NWM1, port 3090)"
+             Description="Drax Technology Service 1 — installs to C:\AMX1\NWM1, AMX port 3090."
              Level="1" AllowAdvertise="no">
       <ComponentGroupRef Id="ServiceComponents1" />
       <ComponentGroupRef Id="DependencyFiles1" />
-      <ComponentGroupRef Id="IniFiles1" />
       <ComponentGroupRef Id="WinRuntimeFiles1" />
       <ComponentGroupRef Id="FolderPermissions1" />
     </Feature>
@@ -63,7 +63,6 @@
              Level="1" AllowAdvertise="no">
       <ComponentGroupRef Id="ServiceComponents2" />
       <ComponentGroupRef Id="DependencyFiles2" />
-      <ComponentGroupRef Id="IniFiles2" />
       <ComponentGroupRef Id="WinRuntimeFiles2" />
       <ComponentGroupRef Id="FolderPermissions2" />
     </Feature>
@@ -72,7 +71,6 @@
              Level="1" AllowAdvertise="no">
       <ComponentGroupRef Id="ServiceComponents3" />
       <ComponentGroupRef Id="DependencyFiles3" />
-      <ComponentGroupRef Id="IniFiles3" />
       <ComponentGroupRef Id="WinRuntimeFiles3" />
       <ComponentGroupRef Id="FolderPermissions3" />
     </Feature>
@@ -80,7 +78,6 @@
              Description="Drax Technology Service 4 — installs to C:\AMX1\NWM4, AMX port 3093."
              Level="1" AllowAdvertise="no">
       <ComponentGroupRef Id="ServiceComponents4" />
-      <ComponentGroupRef Id="IniFiles4" />
       <ComponentGroupRef Id="DependencyFiles4" />
       <ComponentGroupRef Id="WinRuntimeFiles4" />
       <ComponentGroupRef Id="FolderPermissions4" />
@@ -97,29 +94,36 @@
     <WixVariable Id="WixUIBannerBmp" Value="banner.bmp" />
     <WixVariable Id="WixUIDialogBmp" Value="dialog.bmp" />
 
-    <!-- C:\AMX1..4\ as install locations, each with its own ini\ subfolder and
+    <!-- C:\AMX1\NWM1..4\ as install locations, each with its own
          runtimes\win\lib\net10.0\ subtree that the .NET runtime expects for
          RID-specific NuGet assets (ServiceController, EventLog, etc.) — every
          instance is a complete, independent copy of the app, since each needs
-         its own DraxTechnology.dll.config next to its own exe. The leaf folder
+         its own DraxTechnology.dll.config next to its own exe (the ini
+         templates are the one exception — shared, see below). The leaf folder
          name must match the TFM in Drax360Service.csproj — the runtime resolves
          it literally from runtimeTargets in deps.json. -->
     <!-- James's layout (2026-08-11): everything lives under the one C:\AMX1
-         tree — instance 1 at the root, instances 2-4 as NWM2..NWM4
-         subfolders, so AMX's own files and every network manager share one
-         root. The old scheme was separate C:\AMX2..4 folders. -->
+         tree — instances 1-4 as NWM1..NWM4 subfolders, so AMX's own files
+         and every network manager share one root. The old scheme was
+         separate C:\AMX2..4 folders. The ini templates are identical across
+         instances (Files.wxs sources all four from the same build output),
+         so they ship once to a single shared C:\AMX1\ini rather than being
+         duplicated into every NWM{n}\ini — SeedIniTemplates in
+         DraxService.cs reads from there (one level up from its own instance
+         folder) when it seeds each instance's live config on first run. -->
     <StandardDirectory Id="TARGETDIR">
-      <Directory Id="INSTALLFOLDER1" Name="AMX1">
-        <Directory Id="IniFolder1" Name="ini" />
-        <Directory Id="RuntimesDir1" Name="runtimes">
-          <Directory Id="RuntimesWinDir1" Name="win">
-            <Directory Id="RuntimesWinLibDir1" Name="lib">
-              <Directory Id="WinRuntimeDir1" Name="net10.0" />
+      <Directory Id="AmxRootDir" Name="AMX1">
+        <Directory Id="IniFolder" Name="ini" />
+        <Directory Id="INSTALLFOLDER1" Name="NWM1">
+          <Directory Id="RuntimesDir1" Name="runtimes">
+            <Directory Id="RuntimesWinDir1" Name="win">
+              <Directory Id="RuntimesWinLibDir1" Name="lib">
+                <Directory Id="WinRuntimeDir1" Name="net10.0" />
+              </Directory>
             </Directory>
           </Directory>
         </Directory>
         <Directory Id="INSTALLFOLDER2" Name="NWM2">
-          <Directory Id="IniFolder2" Name="ini" />
           <Directory Id="RuntimesDir2" Name="runtimes">
             <Directory Id="RuntimesWinDir2" Name="win">
               <Directory Id="RuntimesWinLibDir2" Name="lib">
@@ -129,7 +133,6 @@
           </Directory>
         </Directory>
         <Directory Id="INSTALLFOLDER3" Name="NWM3">
-          <Directory Id="IniFolder3" Name="ini" />
           <Directory Id="RuntimesDir3" Name="runtimes">
             <Directory Id="RuntimesWinDir3" Name="win">
               <Directory Id="RuntimesWinLibDir3" Name="lib">
@@ -139,7 +142,6 @@
           </Directory>
         </Directory>
         <Directory Id="INSTALLFOLDER4" Name="NWM4">
-          <Directory Id="IniFolder4" Name="ini" />
           <Directory Id="RuntimesDir4" Name="runtimes">
             <Directory Id="RuntimesWinDir4" Name="win">
               <Directory Id="RuntimesWinLibDir4" Name="lib">

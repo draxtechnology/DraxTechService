@@ -2535,10 +2535,11 @@ namespace DraxTechnology
             var allFiles = dirInfo.GetFiles("*." + "ini", SearchOption.TopDirectoryOnly);
             if (allFiles.Length == 0)
             {
-                // Fresh instance folder — seed from the install's ini\ template
-                // store (shipped next to the exe) before failing the start. The
-                // service reads inis from the base-folder ROOT; the install's
-                // ini\ subfolder is templates only.
+                // Fresh instance folder — seed from the shared install-wide
+                // ini\ template store (C:\AMX1\ini, one level up from every
+                // instance's own NWM{n} folder — identical templates, shipped
+                // once) before failing the start. The service reads inis from
+                // the base-folder ROOT; the shared ini\ folder is templates only.
                 SeedIniTemplates(inifolder);
                 allFiles = dirInfo.GetFiles("*." + "ini", SearchOption.TopDirectoryOnly);
             }
@@ -2555,7 +2556,15 @@ namespace DraxTechnology
         {
             try
             {
-                string templates = Path.Combine(AppContext.BaseDirectory, "ini");
+                // Production layout: templates are shared one level up from this
+                // instance's own NWM{n} folder (C:\AMX1\ini — see Product.wxs).
+                // Dev/console mode runs straight from the build output with no
+                // NWM{n} nesting, so fall back to the folder next to the exe.
+                string templates = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "ini"));
+                if (!Directory.Exists(templates))
+                {
+                    templates = Path.Combine(AppContext.BaseDirectory, "ini");
+                }
                 if (!Directory.Exists(templates)) return;
                 int seeded = 0;
                 foreach (string src in Directory.GetFiles(templates, "*.ini", SearchOption.TopDirectoryOnly))
