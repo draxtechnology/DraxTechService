@@ -45,15 +45,15 @@
     <Feature Id="Core" Title="Core" Level="1" AllowAbsent="no" Display="hidden">
       <ComponentGroupRef Id="SharedEventSource" />
     </Feature>
-    <!-- Instance features are driven by the INSTANCENUM radio prompt, not the
-         feature tree: each feature turns on when its number is chosen, and the
-         "OR !InstanceN = 3" keeps an already-installed instance installed when
-         the MSI is re-run (maintenance Change or a later add) with a different
-         number — picking instance 3 later ADDS it, never removes instance 1. -->
+    <!-- All four instances install unconditionally and sit dormant (Manual
+         start) until a site needs them — Mike/James's explicit direction
+         (2026-08-11): no instance question at install time; a licence change
+         just starts a different service, never the installer again. The
+         per-instance feature split is kept purely as structure (msiexec
+         REMOVE=InstanceN stays possible for edge cases). -->
     <Feature Id="Instance1" Title="Service Instance 1 (C:\AMX1, port 3090)"
              Description="Drax Technology Service 1 — installs to C:\AMX1, AMX port 3090."
-             Level="2" Display="hidden" AllowAdvertise="no">
-      <Level Value="1" Condition="INSTANCENUM = &quot;1&quot; OR !Instance1 = 3" />
+             Level="1" AllowAdvertise="no">
       <ComponentGroupRef Id="ServiceComponents1" />
       <ComponentGroupRef Id="DependencyFiles1" />
       <ComponentGroupRef Id="IniFiles1" />
@@ -62,8 +62,7 @@
     </Feature>
     <Feature Id="Instance2" Title="Service Instance 2 (C:\AMX2, port 3091)"
              Description="Drax Technology Service 2 — installs to C:\AMX2, AMX port 3091."
-             Level="2" Display="hidden" AllowAdvertise="no">
-      <Level Value="1" Condition="INSTANCENUM = &quot;2&quot; OR !Instance2 = 3" />
+             Level="1" AllowAdvertise="no">
       <ComponentGroupRef Id="ServiceComponents2" />
       <ComponentGroupRef Id="DependencyFiles2" />
       <ComponentGroupRef Id="IniFiles2" />
@@ -72,8 +71,7 @@
     </Feature>
     <Feature Id="Instance3" Title="Service Instance 3 (C:\AMX3, port 3092)"
              Description="Drax Technology Service 3 — installs to C:\AMX3, AMX port 3092."
-             Level="2" Display="hidden" AllowAdvertise="no">
-      <Level Value="1" Condition="INSTANCENUM = &quot;3&quot; OR !Instance3 = 3" />
+             Level="1" AllowAdvertise="no">
       <ComponentGroupRef Id="ServiceComponents3" />
       <ComponentGroupRef Id="DependencyFiles3" />
       <ComponentGroupRef Id="IniFiles3" />
@@ -82,8 +80,7 @@
     </Feature>
     <Feature Id="Instance4" Title="Service Instance 4 (C:\AMX4, port 3093)"
              Description="Drax Technology Service 4 — installs to C:\AMX4, AMX port 3093."
-             Level="2" Display="hidden" AllowAdvertise="no">
-      <Level Value="1" Condition="INSTANCENUM = &quot;4&quot; OR !Instance4 = 3" />
+             Level="1" AllowAdvertise="no">
       <ComponentGroupRef Id="ServiceComponents4" />
       <ComponentGroupRef Id="IniFiles4" />
       <ComponentGroupRef Id="DependencyFiles4" />
