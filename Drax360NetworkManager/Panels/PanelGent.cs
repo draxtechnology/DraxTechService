@@ -391,6 +391,20 @@ namespace DraxTechnology.Panels
 
                             evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, on);
                             send_response_amx_and_serial(evnum, "", message2);
+
+                            // The 0x03 itself carries no zone/device identity, so
+                            // the booked rows are the only route to per-row clears:
+                            // VB GENNetManager.bas:1832-1887 walks garyDisableSent
+                            // filtered by the reporting panel's node and resets each
+                            // row. Clear strips the ON bit, mirroring
+                            // clear_tracked_faults.
+                            foreach (int booked in disabledZones.Sweep(p2))
+                            {
+                                int clearEvnum = booked & 0x7FFFFFFF;
+                                this.NotifyClient("Clearing disablement evnum: " + clearEvnum, false);
+                                CSAMXSingleton.CS.SendAlarmToAMX(clearEvnum, "", "Disablements Cleared", "");
+                            }
+                            CSAMXSingleton.CS.FlushMessages();
                             break;
 
                         case 4:
@@ -595,6 +609,10 @@ namespace DraxTechnology.Panels
                         // or send_response_amx_and_serial — zone disablements were silently dropped.
                         p2 = sPanelNumber + this.Offset;
                         evnum = CSAMXSingleton.CS.MakeInputNumber(p2, 0, p4, p1);
+                        // Book for the 0x03 sweep (case 3) — keyed by the
+                        // offsetted panel node, VB garyDisableSent
+                        // (GENNetManager.bas:1701-1712).
+                        disabledZones.Book(p2, evnum);
                         send_response_amx_and_serial(evnum, "", message2);
                     }
                     else
@@ -613,6 +631,7 @@ namespace DraxTechnology.Panels
                         p2 = p2 + this.Offset;
 
                         evnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1);
+                        disabledZones.Book(p2, evnum);
                         send_response_amx_and_serial(evnum, "", message2, message3);
                     }
                     break;
