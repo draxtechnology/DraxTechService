@@ -1202,9 +1202,14 @@ namespace DraxTechnology
 
         // Maps NWM handle prefixes in Current.Nwm to panel names.
         // Add entries here when new handle→panel relationships are identified.
+        // Channels per App.config.txt: AUTESPA = 1070, Inspire = 1080. The
+        // missing 1080 left an Inspire licence undetectable, which with the
+        // UNCONFIGURED stamp meant a dormant Inspire instance could never
+        // self-configure (Mike's licence-2 test, 2026-08-11).
         private static readonly Dictionary<string, string> NwmHandlePanelMap = new()
         {
             { "1070=", "AUTESPA" },
+            { "1080=", "INSPIRE" },
             { "200=", "GENT" },
         };
 
