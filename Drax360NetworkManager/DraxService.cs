@@ -1277,27 +1277,8 @@ namespace DraxTechnology
                 // Remove stale registration block for this panel, then write a fresh one
                 // so Startup= and version info are always current.
                 var nwmLines = new List<string>(File.ReadAllLines(CURRENTNWMDATAFILE));
-                string marker = "ProgName=" + panel + " Network Manager";
-                int blockStart = -1, blockEnd = nwmLines.Count;
-                for (int i = 0; i < nwmLines.Count; i++)
-                {
-                    if (!nwmLines[i].Contains(marker)) continue;
-                    blockStart = i;
-                    for (int j = i - 1; j >= 0; j--)
-                    {
-                        if (nwmLines[j].TrimStart().StartsWith("[")) { blockStart = j; break; }
-                    }
-                    for (int j = i + 1; j < nwmLines.Count; j++)
-                    {
-                        if (nwmLines[j].TrimStart().StartsWith("[")) { blockEnd = j; break; }
-                    }
-                    break;
-                }
-                if (blockStart >= 0)
-                {
-                   // nwmLines.RemoveRange(blockStart, blockEnd - blockStart);
-                    // File.WriteAllLines(CURRENTNWMDATAFILE, nwmLines);
-                }
+
+                int allProgNameCount = nwmLines.Count(l => l.Contains("ProgName="));
 
                 using (StreamWriter w = File.AppendText(CURRENTNWMDATAFILE))
                 {
@@ -1320,14 +1301,8 @@ namespace DraxTechnology
                     string exePath = Environment.ProcessPath!;
                     string exeDateTime = File.GetLastWriteTime(exePath).ToString("dd/MM/yyyy HH:mm:ss");
 
-                    if (blockStart >= 0)
-                    {
-                        w.WriteLine("[1]\r\nProgName=" + panel + " Network Manager");   // TODO handle more than 2 c#
-                    }
-                    else
-                    {
-                        w.WriteLine("[0]\r\nProgName=" + panel + " Network Manager");
-                    }
+                    w.WriteLine("[" + allProgNameCount + "]\r\nProgName=" + panel + " Network Manager");
+
                     w.WriteLine("Name=" + panel + "\r\nVersion=" + versionString + "\r\nNodeName=" + panel + " Fire Panel");
                     w.WriteLine("Offset=0\r\nFirstNode=1\r\nLastNode=" + GetNwmMaxNodes(0, "NwmHandle" + result));
                     w.WriteLine("Startup=" + DateTime.Now);
