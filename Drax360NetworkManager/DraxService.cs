@@ -1200,12 +1200,9 @@ namespace DraxTechnology
             StartDeviceWatcher();
         }
 
-        // Maps NWM handle prefixes in Current.Nwm to panel names.
-        // Add entries here when new handle→panel relationships are identified.
-        // Channels per App.config.txt: AUTESPA = 1070, Inspire = 1080. The
-        // missing 1080 left an Inspire licence undetectable, which with the
-        // UNCONFIGURED stamp meant a dormant Inspire instance could never
-        // self-configure (Mike's licence-2 test, 2026-08-11).
+        // Maps NWM channel numbers in Current.Nwm to panel names.
+        // Add entries here when new channel→panel relationships are identified.
+        // Channels per App.config.txt: AUTESPA = 1070, Inspire = 1080.
         private static readonly Dictionary<string, string> NwmHandlePanelMap = new()
         {
             { "1070=", "AUTESPA" },
@@ -1218,9 +1215,26 @@ namespace DraxTechnology
             if (!File.Exists(CURRENTNWMDATAFILE)) return null;
             try
             {
-                foreach (var line in File.ReadAllLines(CURRENTNWMDATAFILE))
+                // The [DDEChannel]/[TCPChannel] sections list EVERY licensed
+                // channel with a per-instance enabled flag — Mike's real AMX2
+                // file (2026-08-11, Drax Demo v3.0.0.Beta18) carries "1070=0"
+                // above "1080=1": Autronica licensed on the machine but not
+                // this instance, Inspire live here. Match on the flag, not
+                // mere presence — a presence match returned the first channel
+                // in file order and mis-detected AUTESPA for an Inspire
+                // instance. Line must START with the channel key so "1=1"
+                // and the numbered A/B info rows can't collide.
+                foreach (var rawline in File.ReadAllLines(CURRENTNWMDATAFILE))
+                {
+                    string line = rawline.Trim();
                     foreach (var kv in NwmHandlePanelMap)
-                        if (line.Contains(kv.Key)) return kv.Value;
+                    {
+                        if (!line.StartsWith(kv.Key)) continue;
+                        string flag = line.Substring(kv.Key.Length).Trim();
+                        if (int.TryParse(flag, out int enabled) && enabled != 0)
+                            return kv.Value;
+                    }
+                }
             }
             catch { }
             return null;
