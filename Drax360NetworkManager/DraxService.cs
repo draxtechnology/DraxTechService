@@ -1272,13 +1272,56 @@ namespace DraxTechnology
                 return;
             }
 
+            // Cross-process gate: all the service instances read-modify-write
+            // the one shared Current.Nwm, and AMX starts them together — two
+            // first-time registrations racing can otherwise count the same
+            // total and claim the same index.
+            using var nwmGate = new System.Threading.Mutex(false, @"Global\DraxTechnologyCurrentNwm");
+            bool gateHeld = false;
+            try { gateHeld = nwmGate.WaitOne(TimeSpan.FromSeconds(10)); }
+            catch (System.Threading.AbandonedMutexException) { gateHeld = true; }
+
             try
             {
-                // Remove stale registration block for this panel, then write a fresh one
-                // so Startup= and version info are always current.
+                // Re-registration REPLACES our own block, reusing its index, so
+                // Startup= and version stay current and a restart can't append
+                // a duplicate section (the file grew a block per service start
+                // and the indexes drifted — caught 2026-08-12). Only a
+                // first-ever registration appends, indexed by the count of
+                // ProgName= blocks so the numbering stays contiguous (Mike's
+                // model). The sweep removes EVERY block carrying our ProgName,
+                // which also cleans duplicates accumulated by earlier builds.
                 var nwmLines = new List<string>(File.ReadAllLines(CURRENTNWMDATAFILE));
+                string marker = "ProgName=" + panel + " Network Manager";
+                int ownIndex = -1;
+                while (true)
+                {
+                    int hit = nwmLines.FindIndex(l => l.Contains(marker));
+                    if (hit < 0) break;
+                    int blockStart = hit, blockEnd = nwmLines.Count;
+                    for (int j = hit - 1; j >= 0; j--)
+                    {
+                        string t = nwmLines[j].TrimStart();
+                        if (t.StartsWith("["))
+                        {
+                            blockStart = j;
+                            if (ownIndex < 0)
+                                int.TryParse(t.Trim().Trim('[', ']'), out ownIndex);
+                            break;
+                        }
+                    }
+                    for (int j = hit + 1; j < nwmLines.Count; j++)
+                    {
+                        if (nwmLines[j].TrimStart().StartsWith("[")) { blockEnd = j; break; }
+                    }
+                    nwmLines.RemoveRange(blockStart, blockEnd - blockStart);
+                }
 
-                int allProgNameCount = nwmLines.Count(l => l.Contains("ProgName="));
+                int allProgNameCount = ownIndex >= 0
+                    ? ownIndex
+                    : nwmLines.Count(l => l.Contains("ProgName="));
+
+                File.WriteAllLines(CURRENTNWMDATAFILE, nwmLines);
 
                 using (StreamWriter w = File.AppendText(CURRENTNWMDATAFILE))
                 {
@@ -1327,6 +1370,10 @@ namespace DraxTechnology
             catch (Exception ex)
             {
                 EventLogger.WriteToEventLog("Current.Nwm update failed: " + ex.Message, EventLogEntryType.Warning);
+            }
+            finally
+            {
+                if (gateHeld) nwmGate.ReleaseMutex();
             }
         }
         public int GetNwmMaxNodes(int nwmHandle, string type)

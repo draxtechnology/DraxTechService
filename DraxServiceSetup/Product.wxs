@@ -10,7 +10,7 @@
        an equal version. -->
   <Package Name="Drax Technology Service"
            Manufacturer="Drax Technology"
-           Version="1.0.33"
+           Version="1.0.34"
            UpgradeCode="B5758DCA-6BC5-4E2C-BF55-7FA118631F65"
            Scope="perMachine"
            InstallerVersion="500">
@@ -85,8 +85,9 @@
 
     <!-- Minimal UI: single Install button → progress → Finish.
          No instance question (Mike/James, 2026-08-11) and no directory or
-         license pages — all four instances install to their fixed
-         C:\AMX1..4 paths and sit dormant until configured and started. -->
+         license pages — all four instances install to their fixed NWM1..4
+         subfolders under the AMX root and sit dormant until configured and
+         started. -->
     <ui:WixUI Id="WixUI_Minimal" />
 
     <!-- Logo bitmaps — regenerate with DraxServiceSetup\MakeBitmaps.ps1

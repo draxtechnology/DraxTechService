@@ -23,10 +23,9 @@
     <add key="Configuration" value="c:\AMX1" />
     <!-- Base folder for temp, log, ini. OPTIONAL since the master-number change:
          when this key is missing or empty the folder defaults to wherever the
-         exe is installed (instance 1 = the AMX1 root, instances 2-4 = its
-         NWM2..4 subfolders — James's one-tree layout, on whatever drive the
-         site uses), so a stock instance config needs only Panels +
-         AmxInstance. Set it explicitly only for non-standard layouts. On
+         exe is installed (instances 1-4 = the AMX root's NWM1..4 subfolders —
+         James's one-tree layout, on whatever drive the site uses), so a stock
+         instance config needs only Panels + AmxInstance. Set it explicitly only for non-standard layouts. On
          first run, an empty base folder is seeded with the per-panel ini
          templates the installer ships in the install's ini\ subfolder — the
          service reads inis from the base-folder ROOT; ini\ next to the exe is
