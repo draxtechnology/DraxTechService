@@ -1560,6 +1560,10 @@ namespace DraxTechnology
                     ret = new PanelSyncro(this.configurationbasefolder, identifier);
                     break;
 
+                case "ARM":
+                    ret = new PanelSyncro(this.configurationbasefolder, identifier);
+                    break;
+
                 default:
                     throw new Exception("Panel Undefined " + panel);
             }
