@@ -55,10 +55,25 @@ namespace DraxTechnology.Panels
         {
             get
             {
-                string msg = "497 09:43 22/12 W54 {LF}{CR}";
-                msg += "EMERGENCY ALM {LF}{CR}";
-                msg += "498 09:43 22/12 W54 {LF}{CR}";
-                msg += "EMERGENCY CLR {LF}{CR}";
+                string msg = "497 09:43 22/12 W54 \n\r";
+                msg += "EMERGENCY ALM \n\r";
+                msg += "498 09:43 22/12 W54 \n\r";
+                msg += "EMERGENCY CLR \n\r";
+
+                msg += "335 09:42 20/12 88776 \n\r";
+                msg += "PATIENT CALL \n\r";
+                msg += "336 09:42 20/12 88776 \n\r";
+                msg += "PATIENT CLR \n\r";
+
+                msg += "499 09:51 20/12 88776 \n\r";
+                msg += "JACK REMOVED FLT \n\r";
+                msg += "500 09:51 20/12 88776 \n\r";
+                msg += "JACK REMOVED CLR \n\r";
+
+                msg += "337 10:12 20/12 88776 PATIE CALL \n\r";
+                msg += "PATIENT 32 \n\r";
+                msg += "338 10:12 20/12 88776 \n\r";
+                msg += "PATIENT CLR \n\r";
 
                 return msg;
             }
@@ -266,144 +281,100 @@ namespace DraxTechnology.Panels
                 processmessage(Encoding.UTF8.GetString(buffer));
         }
 
+        // Header line shape: "<event number> <hh:mm> <dd/MM> <zone/device>",
+        // e.g. "497 09:43 22/12 W54". The text on the following line
+        // ("EMERGENCY ALM", "PATIENT CALL", ...) belongs to that header.
+        private static readonly Regex HeaderLineRegex =
+            new Regex(@"^\d+\s+\d{2}:\d{2}\s+\d{2}/\d{2}\s+\S+", RegexOptions.Compiled);
+
         private bool processmessage(string result)
         {
-            string[] lines = result.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-            foreach (string line in lines)
+            string[] lines = result.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                                    .Select(l => l.Trim())
+                                    .Where(l => l.Length > 0)
+                                    .ToArray();
+
+            for (int i = 0; i < lines.Length; i++)
             {
-                string lineLower = Regex.Replace(line.ToLower(), @"\s+", " ").Trim();
-                if (!lineLower.Contains("pager text")) continue;
-                processEventLine(line);
+                if (!HeaderLineRegex.IsMatch(lines[i])) continue;
+
+                string headerLine = lines[i];
+                string eventText = (i + 1 < lines.Length) ? lines[i + 1] : "";
+                i++; // consume the paired text line so it isn't re-scanned as a header
+
+                processEventLine(headerLine, eventText);
             }
             return true;
         }
 
-        // Decodes a single pager-text line and routes the event to AMX.
-        // Works for both fake-mode log lines (containing "Pager Text : | ... <RS>...")
-        // and real-frame DisplayText ("Fire Alarm ZONE 1 ... # device #").
-        private void processEventLine(string line)
+        private void processEventLine(string headerLine, string eventText)
         {
             bool on = true;
-            int tIpType = 0;
             int p1 = 0;
             int evnum = 0;
-            string gsLine1 = "";
-            string gsLine2 = "";
 
             gsTextField = "";
             gsTextField2 = "";
             gsDeviceText = "";
 
-            string lineLower = Regex.Replace(line.ToLower(), @"\s+", " ").Trim();
-
-            if (lineLower.Contains("fire alarm fault"))
-            {
-                tIpType = 8;
-                gsTextField = line.Substring(line.ToLower().IndexOf("fire alarm fault") + 17);   // remove the "Fire Alarm Fault # " prefix to get to the device text, which is always between two '#' characters
-                int rsIdx = gsTextField.ToLower().IndexOf("<rs>");
-                if (rsIdx >= 0) gsTextField = gsTextField.Substring(0, rsIdx);
-
-                gsDeviceText = ExtractHashDelimitedDeviceText(gsTextField);
-
-                gsTextField = gsTextField.Replace("#", "").Trim();
-                gsTextField = Regex.Replace(gsTextField, @" {2,}", " ").Trim();
-
-                if (gsTextField.Length > 40)
-                {
-                    int iSplit = gsTextField.LastIndexOfAny(new[] { ' ', '-' }, 40);
-                    if (iSplit > 0)
-                    {
-                        gsLine1 = gsTextField.Substring(0, iSplit).TrimEnd();
-                        gsLine2 = gsTextField.Substring(iSplit).TrimStart(' ').Trim();
-                    }
-                    else
-                    {
-                        gsLine1 = gsTextField.Substring(0, 40);
-                        gsLine2 = gsTextField.Substring(40);
-                    }
-                    gsTextField = gsLine1;
-                    gsTextField2 = gsLine2;
-                }
-
-            }
-            else if (lineLower.Contains("fire pre alarm"))
-            {
-                tIpType = 2;
-                gsTextField = line.Substring(line.ToLower().IndexOf("fire pre alarm") + 15);  // remove the "Fire Pre Alarm # " prefix to get to the device text, which is always between two '#' characters
-                int rsIdx = gsTextField.ToLower().IndexOf("<rs>");
-                if (rsIdx >= 0) gsTextField = gsTextField.Substring(0, rsIdx);
-
-                gsDeviceText = ExtractHashDelimitedDeviceText(gsTextField);
-
-                gsTextField = gsTextField.Replace("#", "").Trim();
-                gsTextField = Regex.Replace(gsTextField, @" {2,}", " ").Trim();
-                if (gsTextField.Length > 40)
-                {
-                    int iSplit = gsTextField.LastIndexOfAny(new[] { ' ', '-' }, 40);
-                    if (iSplit > 0)
-                    {
-                        gsLine1 = gsTextField.Substring(0, iSplit).TrimEnd();
-                        gsLine2 = gsTextField.Substring(iSplit).TrimStart(' ').Trim();
-                    }
-                    else
-                    {
-                        gsLine1 = gsTextField.Substring(0, 40);
-                        gsLine2 = gsTextField.Substring(40);
-                    }
-                    gsTextField = gsLine1;
-                    gsTextField2 = gsLine2;
-                }
-            }
-            else if (lineLower.Contains("fire alarm"))
-            {
-                tIpType = 0;
-                gsTextField = line.Substring(line.ToLower().IndexOf("fire alarm") + 10);  // remove the "Fire Alarm # " prefix to get to the device text, which is always between two '#' characters
-                int rsIdx = gsTextField.ToLower().IndexOf("<rs>");
-                if (rsIdx >= 0) gsTextField = gsTextField.Substring(0, rsIdx);
-
-                gsDeviceText = ExtractHashDelimitedDeviceText(gsTextField);
-
-                gsTextField = gsTextField.Replace("#", "").Trim();
-                gsTextField = Regex.Replace(gsTextField, @" {2,}", " ").Trim();
-                if (gsTextField.Length > 40)
-                {
-                    int iSplit = gsTextField.LastIndexOfAny(new[] { ' ', '-' }, 40);
-                    if (iSplit > 0)
-                    {
-                        gsLine1 = gsTextField.Substring(0, iSplit).TrimEnd();
-                        gsLine2 = gsTextField.Substring(iSplit).TrimStart(' ').Trim();
-                    }
-                    else
-                    {
-                        gsLine1 = gsTextField.Substring(0, 40);
-                        gsLine2 = gsTextField.Substring(40);
-                    }
-                    gsTextField = gsLine1;
-                    gsTextField2 = gsLine2;
-                }
-            }
+            gsTextField = headerLine;
+            gsTextField2 = eventText;
 
             if (gsTextField.Length > 0)
             {
-                try
+                switch (true)
                 {
-                    p1 = (int)(enmNotAlarmType)Enum.Parse(typeof(enmNotAlarmType), tIpType.ToString());
+                    case var _ when gsTextField.Contains("497"):  // ALARM level event log
+                        p1 = 0;
+                        break;
+
+                    case var _ when gsTextField.Contains("498"):  // ALARM level event log clear
+                        p1 = 0;
+                        on = false;
+                        break;
+
+                    case var _ when gsTextField.Contains("335"):  // CALL level event log
+                        p1 = 1;
+                        break;
+
+                    case var _ when gsTextField.Contains("336"):  // CALL level event log clear
+                        p1 = 1;
+                        on = false;
+                        break;
+
+                    case var _ when gsTextField.Contains("337"):  // Resident keyfob IR call
+                        p1 = 1;
+                        break;
+
+                    case var _ when gsTextField.Contains("338"):  // Resident keyfob IR call clear
+                        p1 = 1;
+                        on = false;
+                        break;
+
+                    case var _ when gsTextField.Contains("499"):  // FAULT level event log
+                        p1 = 8;
+                        break;
+
+                    case var _ when gsTextField.Contains("500"):  // FAULT level event log clear
+                        p1 = 8;
+                        on = false;
+                        break;
                 }
-                catch (Exception ex)
-                {
-                    this.NotifyClient("tIpType parse error: " + tIpType + " " + ex.Message, false);
-                }
+
 
                 var addr = AssignOrLookup(gsDeviceText, null, null);
                 giLoopNumber = addr.Loop;
                 giDeviceAddress = addr.Device;
+
+                giDeviceAddress = 8;
+                gsTextField = gsTextField.Substring(15).Trim();
 
                 // Inbound events must carry the configured AMX offset: the
                 // log line below always printed the offset node while the
                 // event itself went out raw — on an offset site events landed
                 // on the wrong AMX node with a log that looked correct.
                 evnum = CSAMXSingleton.CS.MakeInputNumber(
-                    addr.Node + this.Offset, addr.Loop, addr.Device, p1, on);
+                    addr.Node + this.Offset, addr.Loop, 8, p1, on);
 
                 base.NotifyClient("Send to AMX: Node=" + (addr.Node + this.Offset) +
                                   " Loop=" + addr.Loop + " Address=" + addr.Device);
@@ -427,7 +398,7 @@ namespace DraxTechnology.Panels
             if (string.IsNullOrWhiteSpace(text)) return;
 
             base.NotifyClient("ARM Frame received: " + text, false);
-            processEventLine(text);
+            processEventLine(rec.Line1 ?? "", rec.Line2 ?? "");
         }
         #endregion
 

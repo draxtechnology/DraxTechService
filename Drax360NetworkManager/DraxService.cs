@@ -1561,7 +1561,7 @@ namespace DraxTechnology
                     break;
 
                 case "ARM":
-                    ret = new PanelSyncro(this.configurationbasefolder, identifier);
+                    ret = new PanelArm(this.configurationbasefolder, identifier);
                     break;
 
                 default:
