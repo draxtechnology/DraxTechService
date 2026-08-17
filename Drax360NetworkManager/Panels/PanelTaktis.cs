@@ -307,6 +307,24 @@ namespace DraxTechnology.Panels
     }
 
 
+    // One [ConnectionN] entry from Takman.ini — the unit of the multi-IP build
+    // (one TCP connection per panel, mixed standalone/network per James's
+    // requirement). Read by DraxService.ReadTaktisConnections; a site with no
+    // [ConnectionN] sections runs the legacy single-connection path untouched.
+    internal sealed class TaktisConnectionSettings
+    {
+        public int Index;            // N of [ConnectionN] — stable identity for logs and the licence cap
+        public string IPAddress;
+        public int Port;
+        // Standalone: a single panel that introduces itself as node 1 on its
+        // own wire — the service stamps PanelNumber over its events and maps
+        // controls for that number back to wire node 1. Network: wire node
+        // numbers pass through (the driver is fully node-aware).
+        public bool Standalone;
+        public int PanelNumber;      // assigned AMX panel number (standalone only)
+        public int ClientID;         // optional per-connection override of [SetUp] ClientID
+    }
+
     internal partial class PanelTaktis : AbstractPanel
     {
 
@@ -468,8 +486,20 @@ namespace DraxTechnology.Panels
                 GateOnSend = gateOnSend;
             }
         }
-        private readonly Channel _txCh = new Channel("TX", gateOnSend: true);
-        private readonly Channel _rxCh = new Channel("RX", gateOnSend: false);
+        // Constructed in the main constructor so multi-IP instances can carry
+        // their connection index in the channel name ("TX#2") — every log line
+        // then says which panel link it belongs to.
+        private readonly Channel _txCh;
+        private readonly Channel _rxCh;
+
+        // Multi-IP identity. Null _conn = legacy single-connection instance.
+        private readonly TaktisConnectionSettings _conn;
+        private readonly bool _standalone;
+        private readonly int _assignedPanel;
+        // Panel numbers owned by standalone sibling connections — a network
+        // connection must not also act on controls addressed to those.
+        // Populated by DraxService when the connection set is built.
+        internal HashSet<int> SiblingStandalonePanels = new HashSet<int>();
         #endregion
 
         #region public properties
@@ -494,28 +524,59 @@ namespace DraxTechnology.Panels
             return raw > 0 ? raw : node;
         }
 
+        // Multi-IP identity mapping. A standalone connection's panel reports
+        // itself as node 1 (legacy hardware as 254, remapped in DecodeMessage)
+        // — inbound events are stamped with the assigned panel number, and a
+        // control addressed to that number maps back to wire node 1. Network
+        // connections pass wire nodes through untouched. Legacy single-
+        // connection instances (_conn == null) behave exactly as before.
+        private int MapWireNodeToAmx(int wireNode)
+            => _standalone && _assignedPanel > 0 ? _assignedPanel : wireNode;
+
+        private int ToWireNode(int amxNode)
+        {
+            int raw = DeOffsetNode(amxNode);
+            return _standalone && _assignedPanel > 0 ? 1 : raw;
+        }
+
+        // Controls are broadcast to every panel instance (DispatchAmxPipeCommand
+        // loops abstractpanels) — each connection forwards only what it owns.
+        // A standalone connection owns exactly its assigned panel number; a
+        // network connection owns everything except numbers claimed by its
+        // standalone siblings (populated by DraxService at connection build).
+        private bool ClaimsAmxNode(int amxNode)
+        {
+            int raw = DeOffsetNode(amxNode);
+            if (_standalone && _assignedPanel > 0) return raw == _assignedPanel;
+            return !SiblingStandalonePanels.Contains(raw);
+        }
+
         public override void Alert(string passedValues)
         {
             ParsePassedValues(passedValues, out int node, out _, out _, out _);
-            sendtotaktis(TakSendType.TAKSendControlStartAlert, node: DeOffsetNode(node));
+            if (!ClaimsAmxNode(node)) return;
+            sendtotaktis(TakSendType.TAKSendControlStartAlert, node: ToWireNode(node));
         }
 
         public override void Reset(string passedValues)
         {
             ParsePassedValues(passedValues, out int node, out _, out _, out _);
-            sendtotaktis(TakSendType.TAKSendControlReset, node: DeOffsetNode(node));
+            if (!ClaimsAmxNode(node)) return;
+            sendtotaktis(TakSendType.TAKSendControlReset, node: ToWireNode(node));
         }
 
         public override void Silence(string passedValues)
         {
             ParsePassedValues(passedValues, out int node, out _, out _, out _);
-            sendtotaktis(TakSendType.TAKSendControlSilence, node: DeOffsetNode(node));
+            if (!ClaimsAmxNode(node)) return;
+            sendtotaktis(TakSendType.TAKSendControlSilence, node: ToWireNode(node));
         }
 
         public override void Evacuate(string passedValues)
         {
             ParsePassedValues(passedValues, out int node, out _, out _, out _);
-            sendtotaktis(TakSendType.TAKSendControlStartEVAC, node: DeOffsetNode(node));
+            if (!ClaimsAmxNode(node)) return;
+            sendtotaktis(TakSendType.TAKSendControlStartEVAC, node: ToWireNode(node));
         }
 
         public override void EvacuateNetwork(string passedValues)
@@ -528,19 +589,22 @@ namespace DraxTechnology.Panels
         public override void MuteBuzzers(string passedValues)
         {
             ParsePassedValues(passedValues, out int node, out _, out _, out _);
-            sendtotaktis(TakSendType.TAKSendControlSilenceBuzzer, node: DeOffsetNode(node));
+            if (!ClaimsAmxNode(node)) return;
+            sendtotaktis(TakSendType.TAKSendControlSilenceBuzzer, node: ToWireNode(node));
         }
 
         public override void DisableDevice(string passedValues)
         {
             ParsePassedValues(passedValues, out int node, out int loop, out _, out int device);
-            sendtotaktis(TakSendType.TAKSendControlDisableDevice, node: DeOffsetNode(node), loop: loop, address: device);
+            if (!ClaimsAmxNode(node)) return;
+            sendtotaktis(TakSendType.TAKSendControlDisableDevice, node: ToWireNode(node), loop: loop, address: device);
         }
 
         public override void EnableDevice(string passedValues)
         {
             ParsePassedValues(passedValues, out int node, out int loop, out _, out int device);
-            sendtotaktis(TakSendType.TAKSendControlEnableDevice, node: DeOffsetNode(node), loop: loop, address: device);
+            if (!ClaimsAmxNode(node)) return;
+            sendtotaktis(TakSendType.TAKSendControlEnableDevice, node: ToWireNode(node), loop: loop, address: device);
         }
 
         public override void DisableZone(string passedValues)
@@ -558,7 +622,8 @@ namespace DraxTechnology.Panels
         public override void Analogue(string passedvalues)
         {
             ParsePassedValues(passedvalues, out int node, out int loop, out _, out int device);
-            sendtotaktis(TakSendType.TAKSendQueryANALDetails, node: DeOffsetNode(node), loop: loop, address: device);
+            if (!ClaimsAmxNode(node)) return;
+            sendtotaktis(TakSendType.TAKSendQueryANALDetails, node: ToWireNode(node), loop: loop, address: device);
         }
         protected override void heartbeat_timer_callback(object sender)
         {
@@ -570,7 +635,24 @@ namespace DraxTechnology.Panels
             // doubles as the keepalive that actually resets the panel's idle
             // timer. The _sentActiveEvents de-dup swallows the replays.
             sendtotaktis(TakSendType.TAKSendRequestActEventsTX);
+            // Per-connection comms monitoring (James's multi-IP requirement,
+            // and the 2026-08-06 dead-link gap — an AMX started against an
+            // unreachable panel previously showed nothing). Faults on this
+            // connection's own panel number via the CommsFaultNode override;
+            // the restore fires from ReaderLoop when data resumes.
+            CheckCommsMonitor();
         }
+
+        // Comms monitor window: 3 missed × the 10s Taktis heartbeat = the
+        // failure raises after ~30s of link silence. A healthy link is never
+        // silent that long — the panel answers every heartbeat/active-events
+        // request with an ACK or NACK.
+        protected override int HeartbeatIntervalSeconds => 10;
+        // Each connection faults on its own AMX panel number: a standalone
+        // connection uses its assigned number, a network connection (and the
+        // legacy single instance) keeps the VB convention of panel 1.
+        protected override int CommsFaultNode
+            => (_standalone && _assignedPanel > 0 ? _assignedPanel : 1) + this.Offset;
 
         // Populated from Takman.ini in the constructor; no hardcoded fallbacks.
         private string gsIPAddress;
@@ -780,6 +862,13 @@ namespace DraxTechnology.Panels
                         continue;
                     }
 
+                    // Feed the comms monitor: TCP frames never pass through
+                    // SerialPort_Datareceived, so stamp the received-data time
+                    // here (also drives the client's GETCOMMPORTSTATUS line)
+                    // and clear any raised comms failure now data is back.
+                    lastDataReceived = DateTime.Now;
+                    NoteCommsRestored();
+
                     for (int i = 0; i < bytesRead; i++) ch.Assembly.Add(buffer[i]);
                     DrainFrames(ch);
                 }
@@ -963,19 +1052,47 @@ namespace DraxTechnology.Panels
 
 
 
-        public PanelTaktis(string baselogfolder, string identifier) : base(baselogfolder, identifier, "TAKMan", "TAK")
+        public PanelTaktis(string baselogfolder, string identifier)
+            : this(baselogfolder, identifier, null)
+        {
+        }
+
+        // conn == null is the legacy single-connection path — IP/port/client
+        // come from Takman.ini [SetUp] exactly as before. A non-null conn is
+        // one [ConnectionN] entry of the multi-IP build: this instance owns
+        // that panel's sockets, heartbeat, comms monitoring and identity only.
+        public PanelTaktis(string baselogfolder, string identifier, TaktisConnectionSettings conn)
+            : base(baselogfolder, identifier, "TAKMan", "TAK")
         {
             _baselogfolder = baselogfolder;
+            _conn = conn;
+            _standalone = conn?.Standalone ?? false;
+            _assignedPanel = conn?.PanelNumber ?? 0;
+            string connLabel = conn == null ? "" : "#" + conn.Index;
+            _txCh = new Channel("TX" + connLabel, gateOnSend: true);
+            _rxCh = new Channel("RX" + connLabel, gateOnSend: false);
             if (string.IsNullOrEmpty(identifier)) return;
 
             try
             {
-                gsIPAddress = base.GetSetting<string>(ksettingsetupsection, "PanelIPAddress");
-                int port = base.GetSetting<int>(ksettingsetupsection, "IPPort");
-                if (port > 0) gsIPPort = port.ToString();
+                if (conn != null)
+                {
+                    gsIPAddress = conn.IPAddress;
+                    // Entry-level port wins; entries without one inherit the
+                    // shared [SetUp] IPPort (panels usually all listen alike).
+                    int port = conn.Port > 0 ? conn.Port : base.GetSetting<int>(ksettingsetupsection, "IPPort");
+                    if (port > 0) gsIPPort = port.ToString();
+                }
+                else
+                {
+                    gsIPAddress = base.GetSetting<string>(ksettingsetupsection, "PanelIPAddress");
+                    int port = base.GetSetting<int>(ksettingsetupsection, "IPPort");
+                    if (port > 0) gsIPPort = port.ToString();
+                }
 
                 int clientId = base.GetSetting<int>(ksettingsetupsection, "ClientID");
                 if (clientId > 0) _clientID = clientId;
+                if (conn != null && conn.ClientID > 0) _clientID = conn.ClientID;
 
                 _amx1Offset = base.GetSetting<int>(ksettingsetupsection, "giAmx1Offset");
                 this.Offset = _amx1Offset;
@@ -987,10 +1104,14 @@ namespace DraxTechnology.Panels
 
                 if (!string.IsNullOrEmpty(_baselogfolder))
                 {
-                    _txLogPath = Path.Combine(_baselogfolder, "TAKTIS_transport.log");
+                    // One transport log per connection so interleaved links
+                    // stay separable; the legacy instance keeps the old name.
+                    _txLogPath = Path.Combine(_baselogfolder,
+                        conn == null ? "TAKTIS_transport.log" : $"TAKTIS_transport_{conn.Index}.log");
                 }
 
-                NotifyClient($"PanelTaktis: {gsIPAddress}:{gsIPPort} clientID={_clientID} offset={_amx1Offset}");
+                NotifyClient($"PanelTaktis{connLabel}: {gsIPAddress}:{gsIPPort} clientID={_clientID} offset={_amx1Offset}"
+                    + (_standalone ? $" standalone panel {_assignedPanel}" : conn != null ? " network" : ""));
             }
             catch (Exception ex)
             {
@@ -1583,6 +1704,9 @@ namespace DraxTechnology.Panels
 
             // MH 14/09/23: legacy panels report node 254 for the local panel.
             if (iNode == 254) iNode = 1;
+            // Standalone connection: stamp the assigned panel number over the
+            // wire node so AMX sees this connection's licensed identity.
+            iNode = MapWireNodeToAmx(iNode);
 
             switch (iMessageType)
             {
@@ -1610,6 +1734,7 @@ namespace DraxTechnology.Panels
                         // above (serial number, event group…) do not apply here.
                         int aNode = (int)ReadFieldU32(frame, o + 8);
                         if (aNode == 254) aNode = 1;   // legacy panels report 254 for the local panel
+                        aNode = MapWireNodeToAmx(aNode);  // standalone: assigned panel number
                         int aLoop = (int)ReadFieldU32(frame, o + 12) + 1;
                         int aAddress = (int)ReadFieldU32(frame, o + 16);
                         int aValue = (int)ReadFieldU32(frame, o + 28);
