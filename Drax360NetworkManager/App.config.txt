@@ -18,7 +18,7 @@
 	  Syncro                            U2FsdGVkX1/5DsGH2yC+z/jVGTW23A==
       Taktis                            U2FsdGVkX18EWMTvtQVOK6qA+tJkkQ==
       ARM                               U2FsdGVkX18Hlrftm2W91iTLSQ==
-      Galaxy                            U2FsdGVkX1/DFpK2vQF3hSdxyyk6iw==
+      Galaxy                            U2FsdGVkX18Xx26BNBfeQZMR526Oqw==
 
     Galaxy (Honeywell Galaxy Dimension intruder panel, IP-only via its
     Ethernet module - single TCP connection, no serial option): set
