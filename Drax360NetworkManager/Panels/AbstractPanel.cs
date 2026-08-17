@@ -244,6 +244,11 @@ namespace DraxTechnology.Panels
         // Notifier polled every 20s (tmrHeartbeat 20000ms) — the ID3K family
         // overrides to match; other panels keep the shared 60s default.
         protected virtual int HeartbeatIntervalSeconds => kHeartbeatDelaySeconds;
+        // The AMX node the comms failure reports against. The VB convention is
+        // panel 1 + offset; a driver instance that represents a specific panel
+        // (a standalone Taktis connection with an assigned panel number)
+        // overrides so each connection faults on its own number.
+        protected virtual int CommsFaultNode => 1 + this.Offset;
 
         protected void CheckCommsMonitor()
         {
@@ -279,7 +284,7 @@ namespace DraxTechnology.Panels
         {
             try
             {
-                int evnum = CSAMXSingleton.CS.MakeInputNumber(1 + this.Offset, 0, 0, 0, on);
+                int evnum = CSAMXSingleton.CS.MakeInputNumber(CommsFaultNode, 0, 0, 0, on);
                 if (on)
                     CSAMXSingleton.CS.SendAlarmToAMX(evnum, "Panel Communications Failure", "", "");
                 else

@@ -1074,6 +1074,21 @@ namespace DraxTechnology
 
                 return;
             }
+            if (panel == "TAKTIS")
+            {
+                // Multi-IP build: one PanelTaktis per [ConnectionN] entry in
+                // Takman.ini, mixed standalone/network (James's requirement),
+                // capped by the licence's maximum-IP-addresses key. A site
+                // with no [ConnectionN] sections falls through to the legacy
+                // single-connection path below, unchanged.
+                List<TaktisConnectionSettings> conns = ReadTaktisConnections(apbase);
+                if (conns.Count > 0)
+                {
+                    StartTaktisConnections(conns);
+                    return;
+                }
+            }
+
             string ext = apbase.Extension.ToUpper();
             for (int i = 1; i < 7; i++)
             {
@@ -1506,6 +1521,142 @@ namespace DraxTechnology
                 ln("fake_timer error: " + ex.Message, EventLogEntryType.Warning);
             }
         }
+        // Upper bound on [ConnectionN] sections probed in Takman.ini — a
+        // sixteen-panel site is the largest on the books (the hospital job);
+        // raise if a bigger one lands. Gaps in the numbering are tolerated.
+        private const int kMaxTaktisConnectionSections = 16;
+
+        private static List<TaktisConnectionSettings> ReadTaktisConnections(AbstractPanel settings)
+        {
+            var ret = new List<TaktisConnectionSettings>();
+            for (int i = 1; i <= kMaxTaktisConnectionSections; i++)
+            {
+                string section = "CONNECTION" + i;
+                string ip = settings.GetSetting<string>(section, "IPAddress");
+                if (string.IsNullOrWhiteSpace(ip)) continue;
+                string mode = settings.GetSetting<string>(section, "Mode") ?? "";
+                ret.Add(new TaktisConnectionSettings
+                {
+                    Index = i,
+                    IPAddress = ip.Trim(),
+                    Port = settings.GetSetting<int>(section, "IPPort"),
+                    Standalone = mode.Trim().Equals("Standalone", StringComparison.OrdinalIgnoreCase),
+                    PanelNumber = settings.GetSetting<int>(section, "PanelNumber"),
+                    ClientID = settings.GetSetting<int>(section, "ClientID"),
+                });
+            }
+            return ret;
+        }
+
+        // The licence's maximum-allowed-IP-addresses value (James, 2026-08-17:
+        // "another key in the licence file to store the maximum allowed IP
+        // addresses"). The licence reaches the service as Current.Nwm, which
+        // AMX writes — the key NAME below is provisional until James confirms
+        // it; the parse is deliberately section-agnostic and accepts the
+        // likely spellings so his side can land without another service build.
+        // Returns -1 when the key is absent or the file is unreadable = no cap.
+        private int ReadLicensedMaxIpConnections()
+        {
+            if (!File.Exists(CURRENTNWMDATAFILE)) return -1;
+            // Same cross-process gate the registration writer holds — an
+            // unguarded read racing AMX's bulk service start can hit a
+            // sharing violation mid rewrite.
+            using var nwmGate = new System.Threading.Mutex(false, @"Global\DraxTechnologyCurrentNwm");
+            bool gateHeld = false;
+            try { gateHeld = nwmGate.WaitOne(TimeSpan.FromSeconds(10)); }
+            catch (System.Threading.AbandonedMutexException) { gateHeld = true; }
+            try
+            {
+                string[] keyNames = { "MAXIMUMIPADDRESSES", "MAXIPADDRESSES", "MAXIPS" };
+                foreach (string rawline in File.ReadAllLines(CURRENTNWMDATAFILE))
+                {
+                    string line = rawline.Trim();
+                    int eq = line.IndexOf('=');
+                    if (eq <= 0) continue;
+                    string key = line.Substring(0, eq).Trim().ToUpperInvariant();
+                    if (!keyNames.Contains(key)) continue;
+                    if (int.TryParse(line.Substring(eq + 1).Trim(), out int max) && max >= 0)
+                        return max;
+                }
+            }
+            catch (Exception ex)
+            {
+                ln("Taktis licence: Current.Nwm read failed (" + ex.Message + ") — no IP cap applied", EventLogEntryType.Warning);
+            }
+            finally
+            {
+                if (gateHeld) { try { nwmGate.ReleaseMutex(); } catch { } }
+            }
+            return -1;
+        }
+
+        private void StartTaktisConnections(List<TaktisConnectionSettings> conns)
+        {
+            // Licence cap first: connections beyond the licensed maximum are
+            // refused loudly, in [ConnectionN] order, so a mis-licensed site
+            // reads as an event-log error rather than a silently dead panel.
+            int cap = ReadLicensedMaxIpConnections();
+            if (cap >= 0 && conns.Count > cap)
+            {
+                var refused = conns.Skip(cap).ToList();
+                conns = conns.Take(cap).ToList();
+                ln("Taktis licence: " + (refused.Count + conns.Count) + " IP connection(s) configured but the licence allows "
+                    + cap + " — refused: "
+                    + string.Join(", ", refused.Select(c => "Connection" + c.Index + " (" + c.IPAddress + ")")),
+                    EventLogEntryType.Error);
+            }
+            else if (cap < 0)
+            {
+                ln("Taktis licence: no maximum-IP-addresses key in Current.Nwm — no cap applied");
+            }
+
+            // Standalone entries need a usable, unique assigned panel number —
+            // numbering collisions are a commissioning error the service can't
+            // guess its way out of, so refuse the offender visibly.
+            var standalonePanels = new HashSet<int>();
+            var valid = new List<TaktisConnectionSettings>();
+            foreach (var c in conns)
+            {
+                if (c.Standalone)
+                {
+                    if (c.PanelNumber < 1)
+                    {
+                        ln("Taktis Connection" + c.Index + " (" + c.IPAddress + ") is Standalone but has no PanelNumber — connection not started", EventLogEntryType.Error);
+                        continue;
+                    }
+                    if (!standalonePanels.Add(c.PanelNumber))
+                    {
+                        ln("Taktis Connection" + c.Index + " (" + c.IPAddress + ") repeats standalone panel number " + c.PanelNumber + " — connection not started", EventLogEntryType.Error);
+                        continue;
+                    }
+                }
+                valid.Add(c);
+            }
+
+            foreach (var c in valid)
+            {
+                string identifier = "TAKTIS" + c.Index;
+                var ap = new PanelTaktis(this.configurationbasefolder, identifier, c);
+                // Network connections must not also act on controls addressed
+                // to a standalone sibling's panel number (standalone instances
+                // ignore the set — they claim by their own number only).
+                ap.SiblingStandalonePanels = standalonePanels;
+                ap.StartUp(fakemode);
+                ap.OutsideEvents += Sp_Fire;
+
+                if (this.fakemode > 0)
+                {
+                    ln("Opened Fake " + identifier + " Mode " + fakemode);
+                    faketimers.Add(new System.Threading.Timer(fake_timer, identifier, kfakefireinitialwakeseconds * 1000, kfaketimertickseconds * 1000));
+                }
+
+                abstractpanels = new List<AbstractPanel>(abstractpanels) { ap };
+            }
+
+            ln("Taktis multi-IP: started " + valid.Count + " connection(s) ("
+                + valid.Count(c => c.Standalone) + " standalone, " + valid.Count(c => !c.Standalone) + " network)");
+        }
+
         private AbstractPanel getpanel(string identifier = "")
         {
             AbstractPanel ret = null;
