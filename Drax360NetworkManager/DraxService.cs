@@ -1074,6 +1074,18 @@ namespace DraxTechnology
 
                 return;
             }
+            if (panel == "GALAXY")
+            {
+                // Galaxy Dimension over its Ethernet module - IP-only (Mike,
+                // 2026-08-17), single TCP connection like RSM/EMAIL.
+                string galaxyIdentifier = "GALAXY";
+                AbstractPanel galaxyPanel = getpanel(galaxyIdentifier);
+                galaxyPanel.StartUp(fakemode);
+                galaxyPanel.OutsideEvents += Sp_Fire;
+                abstractpanels = new List<AbstractPanel>(abstractpanels) { galaxyPanel };
+                return;
+            }
+
             if (panel == "TAKTIS")
             {
                 // Multi-IP build: one PanelTaktis per [ConnectionN] entry in
@@ -1705,6 +1717,10 @@ namespace DraxTechnology
 
                 case "TAKTIS":
                     ret = new PanelTaktis(this.configurationbasefolder, identifier);
+                    break;
+
+                case "GALAXY":
+                    ret = new PanelGalaxy(this.configurationbasefolder, identifier);
                     break;
 
                 case "SYNCRO":
@@ -2411,6 +2427,9 @@ namespace DraxTechnology
                 case "TAKTIS":
                     this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DataLogging"));
                     break;
+                case "GALAXY":
+                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DataLogging"));
+                    break;
                 case "SYNCRO":
                     this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "CreateLog"));
                     break;
@@ -2433,7 +2452,7 @@ namespace DraxTechnology
 
             startpipeserver();
 
-            if (panel != "TAKTIS" && panel != "EMAIL" && panel != "RSM")
+            if (panel != "TAKTIS" && panel != "EMAIL" && panel != "RSM" && panel != "GALAXY")
             {
                 pad();
                 dumpavailableserialports();
