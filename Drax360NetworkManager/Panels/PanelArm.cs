@@ -361,23 +361,21 @@ namespace DraxTechnology.Panels
                         break;
                 }
 
+                gsTextField = gsTextField.Substring(15).Trim();
+                gsDeviceText = gsTextField;
 
                 var addr = AssignOrLookup(gsDeviceText, null, null);
                 giLoopNumber = addr.Loop;
                 giDeviceAddress = addr.Device;
-
-                giDeviceAddress = 8;
-                gsTextField = gsTextField.Substring(15).Trim();
 
                 // Inbound events must carry the configured AMX offset: the
                 // log line below always printed the offset node while the
                 // event itself went out raw — on an offset site events landed
                 // on the wrong AMX node with a log that looked correct.
                 evnum = CSAMXSingleton.CS.MakeInputNumber(
-                    addr.Node + this.Offset, addr.Loop, 8, p1, on);
+                    addr.Node + this.Offset, addr.Loop, addr.Device, p1, on);
 
-                base.NotifyClient("Send to AMX: Node=" + (addr.Node + this.Offset) +
-                                  " Loop=" + addr.Loop + " Address=" + addr.Device);
+                base.NotifyClient("Send to AMX: Node=" + (addr.Node + this.Offset) + " Loop=" + addr.Loop + " Address=" + addr.Device);
                 base.NotifyClient("Send to AMX: gsTextField=" + gsTextField);
                 base.NotifyClient("Send to AMX: gsTextField2=" + gsTextField2);
 
