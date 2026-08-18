@@ -323,6 +323,10 @@ namespace DraxTechnology.Panels
         public bool Standalone;
         public int PanelNumber;      // assigned AMX panel number (standalone only)
         public int ClientID;         // optional per-connection override of [SetUp] ClientID
+        // Per-connection AMX offset (Mike, 2026-08-18: "set the offset for
+        // each IP address"). -1 = key absent, inherit [SetUp] giAmx1Offset;
+        // 0 is a valid explicit no-offset.
+        public int Offset = -1;
     }
 
     internal partial class PanelTaktis : AbstractPanel
@@ -1094,7 +1098,12 @@ namespace DraxTechnology.Panels
                 if (clientId > 0) _clientID = clientId;
                 if (conn != null && conn.ClientID > 0) _clientID = conn.ClientID;
 
-                _amx1Offset = base.GetSetting<int>(ksettingsetupsection, "giAmx1Offset");
+                // Entry-level offset wins; entries without one inherit the
+                // shared [SetUp] value, so a mixed site can place each
+                // panel's AMX numbering independently.
+                _amx1Offset = (conn != null && conn.Offset >= 0)
+                    ? conn.Offset
+                    : base.GetSetting<int>(ksettingsetupsection, "giAmx1Offset");
                 this.Offset = _amx1Offset;
                 InitAnalogueStore();
 

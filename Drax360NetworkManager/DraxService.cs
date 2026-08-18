@@ -1547,6 +1547,11 @@ namespace DraxTechnology
                 string ip = settings.GetSetting<string>(section, "IPAddress");
                 if (string.IsNullOrWhiteSpace(ip)) continue;
                 string mode = settings.GetSetting<string>(section, "Mode") ?? "";
+                // Offset needs the absent-vs-zero distinction (0 is a valid
+                // explicit offset), so read it as a string first.
+                string offsetRaw = settings.GetSetting<string>(section, "Offset");
+                int offset = -1;
+                if (!string.IsNullOrWhiteSpace(offsetRaw)) int.TryParse(offsetRaw.Trim(), out offset);
                 ret.Add(new TaktisConnectionSettings
                 {
                     Index = i,
@@ -1555,6 +1560,7 @@ namespace DraxTechnology
                     Standalone = mode.Trim().Equals("Standalone", StringComparison.OrdinalIgnoreCase),
                     PanelNumber = settings.GetSetting<int>(section, "PanelNumber"),
                     ClientID = settings.GetSetting<int>(section, "ClientID"),
+                    Offset = offset,
                 });
             }
             return ret;
@@ -1607,8 +1613,17 @@ namespace DraxTechnology
             // Licence cap first: connections beyond the licensed maximum are
             // refused loudly, in [ConnectionN] order, so a mis-licensed site
             // reads as an event-log error rather than a silently dead panel.
+            // An ABSENT key caps at 1, not unlimited (Richard, 2026-08-18):
+            // every existing licence lacks the key, and a single-panel site
+            // must not gain panels just by adding [ConnectionN] ini entries —
+            // multiple IPs need James's key actually granted.
             int cap = ReadLicensedMaxIpConnections();
-            if (cap >= 0 && conns.Count > cap)
+            if (cap < 0)
+            {
+                cap = 1;
+                ln("Taktis licence: no maximum-IP-addresses key in Current.Nwm — multi-IP capped at 1 connection until the licence carries the key");
+            }
+            if (conns.Count > cap)
             {
                 var refused = conns.Skip(cap).ToList();
                 conns = conns.Take(cap).ToList();
@@ -1616,10 +1631,6 @@ namespace DraxTechnology
                     + cap + " — refused: "
                     + string.Join(", ", refused.Select(c => "Connection" + c.Index + " (" + c.IPAddress + ")")),
                     EventLogEntryType.Error);
-            }
-            else if (cap < 0)
-            {
-                ln("Taktis licence: no maximum-IP-addresses key in Current.Nwm — no cap applied");
             }
 
             // Standalone entries need a usable, unique assigned panel number —
