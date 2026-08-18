@@ -1533,10 +1533,12 @@ namespace DraxTechnology
                 ln("fake_timer error: " + ex.Message, EventLogEntryType.Warning);
             }
         }
-        // Upper bound on [ConnectionN] sections probed in Takman.ini — a
-        // sixteen-panel site is the largest on the books (the hospital job);
-        // raise if a bigger one lands. Gaps in the numbering are tolerated.
-        private const int kMaxTaktisConnectionSections = 16;
+        // Upper bound on [ConnectionN] sections probed in Takman.ini — 255
+        // per Chris (2026-08-18, the sales-side maximum for Taktis/Galaxy
+        // estates; a site can mix standalone and networked connections, e.g.
+        // ten standalone plus one networked). Probing is a dictionary lookup
+        // per section, so the wide bound costs nothing. Gaps are tolerated.
+        private const int kMaxTaktisConnectionSections = 255;
 
         private static List<TaktisConnectionSettings> ReadTaktisConnections(AbstractPanel settings)
         {
