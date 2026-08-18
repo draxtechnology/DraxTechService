@@ -1622,7 +1622,13 @@ namespace DraxTechnology
             int cap = ReadLicensedMaxIpConnections();
             if (cap < 0)
             {
-                cap = 2; // 2026 08 18: James's key absent = no cap, but the service must not open more than one connection. The licence is effectively single-IP.                ln("Taktis licence: no maximum-IP-addresses key in Current.Nwm — multi-IP capped at 1 connection until the licence carries the key");
+                // TEMPORARY TEST FUDGE (2026-08-18): capped at 2 so the
+                // two-panel rig runs while James's licence key doesn't exist
+                // yet. REVERT TO 1 BEFORE ANY RELEASE — an absent key must
+                // mean a single connection, or a plain single-panel licence
+                // gains panels by ini edits alone.
+                cap = 2;
+                ln("Taktis licence: no maximum-IP-addresses key in Current.Nwm — TEST FUDGE cap of 2 applied (release builds must cap at 1)");
             }
             if (conns.Count > cap)
             {
