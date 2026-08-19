@@ -45,9 +45,10 @@ namespace DraxTechnology.Panels
         #endregion
 
         #region Serial / framer
-        private ArmFramer _framer;
         private readonly List<byte> _buffer = new List<byte>();
-        private readonly byte[] _terminator = { 0x0D, 0x0A, 0x0D, 0x0A };
+        // Wire format is plain ASCII lines ending LF CR (matches FakeString),
+        // not ESPA CRLF-CRLF framing.
+        private readonly byte[] _terminator = { 0x0A, 0x0D };
         #endregion
 
         #region FakeString
@@ -173,16 +174,7 @@ namespace DraxTechnology.Panels
                 base.NotifyClient("Serial port " + serialport.PortName + " open OK.", false);
             }
 
-            _framer = new ArmFramer(bytes =>
-            {
-                if (serialport != null && serialport.IsOpen)
-                    serialport.Write(bytes, 0, bytes.Length);
-            });
-
-            _framer.FrameReceived += OnArmFrame;
-            _framer.Log += msg => base.NotifyClient(msg, false);
-
-            base.NotifyClient("ARM framer started — waiting for panel polls.", false);
+            base.NotifyClient("ARM serial reader started — waiting for panel data.", false);
         }
         #endregion
 
@@ -207,25 +199,6 @@ namespace DraxTechnology.Panels
                 string asc = new string(incoming.Take(read)
                     .Select(b => b >= 0x20 && b < 0x7F ? (char)b : '.').ToArray());
                 base.NotifyClient($"RX {read} bytes | HEX: {hex} | ASC: {asc}", false);
-
-                if (_framer != null)
-                {
-                    int offset = 0;
-                    while (offset < read)
-                    {
-                        byte[] chunk = incoming.Skip(offset).Take(read - offset).ToArray();
-                        int consumed = _framer.Feed(chunk);
-                        base.NotifyClient($"Framer consumed {consumed} of {chunk.Length} bytes", false);
-
-                        if (consumed == 0)
-                        {
-                            lock (_buffer) { _buffer.AddRange(chunk); ExtractMessages(); }
-                            break;
-                        }
-                        offset += consumed;
-                    }
-                    return;
-                }
 
                 lock (_buffer) { _buffer.AddRange(incoming.Take(read)); ExtractMessages(); }
             }
@@ -284,8 +257,17 @@ namespace DraxTechnology.Panels
         // Header line shape: "<event number> <hh:mm> <dd/MM> <zone/device>",
         // e.g. "497 09:43 22/12 W54". The text on the following line
         // ("EMERGENCY ALM", "PATIENT CALL", ...) belongs to that header.
+        // This is the FakeString shape only — the real panel never sends it.
         private static readonly Regex HeaderLineRegex =
             new Regex(@"^\d+\s+\d{2}:\d{2}\s+\d{2}/\d{2}\s+\S+", RegexOptions.Compiled);
+
+        // Real panel wire shape — one line per event, columns fixed-width:
+        // "2   8    1 200 14:56 19/11 BED 1             EMERGENCY         ALM"
+        // "2   0    1 202 14:57 19/11 BED 1                 PRESENCE"
+        // (const, event-class code, const, sequence#, time, date, device, event type, optional status)
+        private static readonly Regex RealLineRegex = new Regex(
+            @"^\d+\s+\d+\s+\d+\s+\d+\s+\d{2}:\d{2}\s+\d{2}/\d{2}\s+(?<device>.+?)\s{2,}(?<eventtype>[A-Z][A-Z ]*?)(?:\s+(?<status>ALM|CLR))?\s*$",
+            RegexOptions.Compiled);
 
         private bool processmessage(string result)
         {
@@ -296,6 +278,16 @@ namespace DraxTechnology.Panels
 
             for (int i = 0; i < lines.Length; i++)
             {
+                Match realMatch = RealLineRegex.Match(lines[i]);
+                if (realMatch.Success)
+                {
+                    string device = realMatch.Groups["device"].Value.Trim();
+                    string eventType = realMatch.Groups["eventtype"].Value.Trim();
+                    string status = realMatch.Groups["status"].Success ? realMatch.Groups["status"].Value : "";
+                    processEventLine(eventType, status, device);
+                    continue;
+                }
+
                 if (!HeaderLineRegex.IsMatch(lines[i])) continue;
 
                 string headerLine = lines[i];
@@ -307,7 +299,7 @@ namespace DraxTechnology.Panels
             return true;
         }
 
-        private void processEventLine(string headerLine, string eventText)
+        private void processEventLine(string headerLine, string eventText, string deviceTextOverride = null)
         {
             bool on = true;
             int p1 = 0;
@@ -324,8 +316,9 @@ namespace DraxTechnology.Panels
             {
                 switch (true)
                 {
-                    case var _ when gsTextField.Contains("497"):  // ALARM level event log
+                    case var _ when gsTextField.Contains("EMERGENCY"):  // ALARM level event log
                         p1 = 0;
+                        if (gsTextField2.Contains("CLR")) on = false;
                         break;
 
                     case var _ when gsTextField.Contains("498"):  // ALARM level event log clear
@@ -361,7 +354,7 @@ namespace DraxTechnology.Panels
                         break;
                 }
 
-                gsTextField = gsTextField.Substring(15).Trim();
+                gsTextField = deviceTextOverride ?? gsTextField.Substring(15).Trim();
                 gsDeviceText = gsTextField;
 
                 var addr = AssignOrLookup(gsDeviceText, null, null);
@@ -386,17 +379,6 @@ namespace DraxTechnology.Panels
 
                 send_response_amx_and_serial(evnum, gsTextField, "", gsTextField2);
             }
-        }
-        #endregion
-
-        #region OnArmFrame — real panel byte-protocol path
-        private void OnArmFrame(EspaRecord rec)
-        {
-            string text = rec?.DisplayText ?? "";
-            if (string.IsNullOrWhiteSpace(text)) return;
-
-            base.NotifyClient("ARM Frame received: " + text, false);
-            processEventLine(rec.Line1 ?? "", rec.Line2 ?? "");
         }
         #endregion
 
