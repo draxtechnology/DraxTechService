@@ -261,18 +261,28 @@ namespace DraxTechnology.Panels
         private static readonly Regex HeaderLineRegex =
             new Regex(@"^\d+\s+\d{2}:\d{2}\s+\d{2}/\d{2}\s+\S+", RegexOptions.Compiled);
 
-        // Real panel wire shape — one line per event, columns fixed-width:
-        // "2   8    1 200 14:56 19/11 BED 1             EMERGENCY         ALM"
-        // "2   0    1 202 14:57 19/11 BED 1                 PRESENCE"
-        // (const, event-class code, const, sequence#, time, date, device, event type, optional status)
+        // Real panel wire shape (PC DISPLAY ON, single line per event):
+        //   "   8    2 174 13:30 19/11 BED 2              EMERGENCY         ALM"
+        //   "   0 1001 175 13:30 19/11 CONTROLLER 1       SILENCE ALM 1"
+        //   "   0 1001 177 13:31 19/11 CONTROLLER 1       POWER ON"
+        // Leading integers, right to left: sequence number, wire address (2 =
+        // BED 2, 1001 = CONTROLLER 1), event-class code (8 on the emergency
+        // lines, 0 on controller lines), plus an optional extra prefix — the
+        // first capture carried four numbers, the boardroom trace carries
+        // three, so accept either and read from the right. Event text may
+        // contain digits ("SILENCE ALM 1"), so no letters-only restriction;
+        // ALM/CLR state is pulled off the tail afterwards.
         private static readonly Regex RealLineRegex = new Regex(
-            @"^\d+\s+\d+\s+\d+\s+\d+\s+\d{2}:\d{2}\s+\d{2}/\d{2}\s+(?<device>.+?)\s{2,}(?<eventtype>[A-Z][A-Z ]*?)(?:\s+(?<status>ALM|CLR))?\s*$",
+            @"^(?<nums>\d+(?:\s+\d+){2,3})\s+\d{2}:\d{2}\s+\d{2}/\d{2}\s+(?<device>.+?)\s{2,}(?<text>\S.*?)\s*$",
             RegexOptions.Compiled);
 
         private bool processmessage(string result)
         {
+            // The real panel prefixes every line with ESC (0x1B) — invisible in
+            // Putty, fatal to an anchored regex, and not removed by Trim()
+            // (ESC isn't whitespace). Strip all non-printing bytes per line.
             string[] lines = result.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-                                    .Select(l => l.Trim())
+                                    .Select(l => Regex.Replace(l, @"[^\x20-\x7E]", "").Trim())
                                     .Where(l => l.Length > 0)
                                     .ToArray();
 
@@ -281,10 +291,7 @@ namespace DraxTechnology.Panels
                 Match realMatch = RealLineRegex.Match(lines[i]);
                 if (realMatch.Success)
                 {
-                    string device = realMatch.Groups["device"].Value.Trim();
-                    string eventType = realMatch.Groups["eventtype"].Value.Trim();
-                    string status = realMatch.Groups["status"].Success ? realMatch.Groups["status"].Value : "";
-                    processEventLine(eventType, status, device);
+                    ProcessRealEvent(realMatch);
                     continue;
                 }
 
@@ -297,6 +304,68 @@ namespace DraxTechnology.Panels
                 processEventLine(headerLine, eventText);
             }
             return true;
+        }
+
+        // Real single-line events (PC DISPLAY ON). EMERGENCY / CALL / fault
+        // families route to AMX with the established input types; anything the
+        // class table hasn't pinned yet (SILENCE ALM n, POWER ON...) is logged
+        // with its wire class code and NOT sent — the previous behaviour
+        // classified every unknown line as a fire alarm. The format document
+        // decides the full class-code table.
+        private void ProcessRealEvent(Match m)
+        {
+            int[] nums = m.Groups["nums"].Value
+                .Split((char[])null, StringSplitOptions.RemoveEmptyEntries)
+                .Select(int.Parse).ToArray();
+            int sequence = nums[nums.Length - 1];
+            int wireAddress = nums.Length >= 2 ? nums[nums.Length - 2] : 0;
+            int classCode = nums.Length >= 3 ? nums[nums.Length - 3] : 0;
+
+            string device = Regex.Replace(m.Groups["device"].Value, @" {2,}", " ").Trim();
+            string text = Regex.Replace(m.Groups["text"].Value, @" {2,}", " ").Trim();
+
+            // Tail state token: ALM (alarm on), CLR (clear), FLT (fault on) —
+            // "PANEL TAMPER      FLT" in the 19/11 trace. Info lines
+            // (PRESENCE, POWER ON, SILENCE ALM n) carry no token.
+            bool on = true;
+            bool faultSuffix = false;
+            if (text.EndsWith(" CLR", StringComparison.Ordinal))
+            {
+                on = false;
+                text = text.Substring(0, text.Length - 4).Trim();
+            }
+            else if (text.EndsWith(" ALM", StringComparison.Ordinal))
+            {
+                text = text.Substring(0, text.Length - 4).Trim();
+            }
+            else if (text.EndsWith(" FLT", StringComparison.Ordinal))
+            {
+                faultSuffix = true;
+                text = text.Substring(0, text.Length - 4).Trim();
+            }
+
+            // TAMPER is in the fault family so "PANEL TAMPER CLR" clears the
+            // same AMX point its FLT raised.
+            int p1;
+            if (faultSuffix) p1 = 8;
+            else if (text.Contains("EMERGENCY")) p1 = 0;
+            else if (text.Contains("CALL") || text.Contains("PATIENT")) p1 = 1;
+            else if (text.Contains("FLT") || text.Contains("FAULT") || text.Contains("JACK") || text.Contains("TAMPER")) p1 = 8;
+            else
+            {
+                base.NotifyClient("ARM event logged only (class " + classCode + ", wire addr " + wireAddress
+                    + ", seq " + sequence + "): '" + device + "' " + text, false);
+                return;
+            }
+
+            var addr = AssignOrLookup(device, null, null);
+            int evnum = CSAMXSingleton.CS.MakeInputNumber(
+                addr.Node + this.Offset, addr.Loop, addr.Device, p1, on);
+            base.NotifyClient("ARM " + (on ? "ALM" : "CLR") + " class=" + classCode
+                + " wireAddr=" + wireAddress + " -> AMX node " + (addr.Node + this.Offset)
+                + " loop " + addr.Loop + " dev " + addr.Device + " type " + p1
+                + ": " + device + " " + text);
+            send_response_amx_and_serial(evnum, device, "", text);
         }
 
         private void processEventLine(string headerLine, string eventText, string deviceTextOverride = null)
