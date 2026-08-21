@@ -116,8 +116,15 @@ namespace DraxTechnology.Panels
         #endregion
 
         #region StartUp
+        // The two-line header/text path only exists for FakeString; on the
+        // real wire it is unreachable-by-design (one line per Parse call) and
+        // matching it live meant historic event-log prints and PC-DISPLAY-OFF
+        // panels raised a fire alarm per line.
+        private bool _fakeMode;
+
         public override void StartUp(int fakemode)
         {
+            _fakeMode = fakemode > 0;
             int settingBaudRate = base.GetSetting<int>("SetUp", "BaudRate");
             string settingParity = base.GetSetting<string>("SetUp", "Parity");
             int settingDataBits = base.GetSetting<int>("SetUp", "DataBits");
@@ -272,8 +279,12 @@ namespace DraxTechnology.Panels
         // three, so accept either and read from the right. Event text may
         // contain digits ("SILENCE ALM 1"), so no letters-only restriction;
         // ALM/CLR state is pulled off the tail afterwards.
+        // Device/text separated on 3+ spaces: call point names can carry an
+        // internal double space by design ("42001  CP" in the spec), and the
+        // 2+ split truncated them to the first word, corrupting the events-db
+        // identity. The padded columns give 3+ spaces at the real boundary.
         private static readonly Regex RealLineRegex = new Regex(
-            @"^(?<nums>\d+(?:\s+\d+){2,3})\s+\d{2}:\d{2}\s+\d{2}/\d{2}\s+(?<device>.+?)\s{2,}(?<text>\S.*?)\s*$",
+            @"^(?<nums>\d+(?:\s+\d+){2,3})\s+\d{2}:\d{2}\s+\d{2}/\d{2}\s+(?<device>.+?)\s{3,}(?<text>\S.*?)\s*$",
             RegexOptions.Compiled);
 
         private bool processmessage(string result)
@@ -296,6 +307,25 @@ namespace DraxTechnology.Panels
                 }
 
                 if (!HeaderLineRegex.IsMatch(lines[i])) continue;
+
+                if (!_fakeMode)
+                {
+                    // A standard-format (two-line) header on the live wire is
+                    // either a historic event-log print (USER MENU -> EVENT
+                    // LOG - the spec says it looks exactly like live output)
+                    // or a panel left on PC DISPLAY OFF. Either way it must
+                    // not become an AMX event: historic prints replayed as a
+                    // fire alarm per line before this guard. Spec section 4:
+                    // warn and advise PC DISPLAY ON.
+                    if (!_warnedStandardFormat)
+                    {
+                        _warnedStandardFormat = true;
+                        base.NotifyClient("ARM: standard-format printer line received - historic log print, or the panel's"
+                            + " PC DISPLAY option is OFF (it must be ON for live monitoring). Lines logged only.");
+                    }
+                    base.NotifyClient("ARM standard-format line ignored: " + lines[i], false);
+                    continue;
+                }
 
                 string headerLine = lines[i];
                 string eventText = (i + 1 < lines.Length) ? lines[i + 1] : "";
@@ -324,12 +354,27 @@ namespace DraxTechnology.Panels
         private static readonly Regex LevelTokenRegex =
             new Regex(@"\b(CLR|ALM|CALL|FLT|INFO)\b", RegexOptions.Compiled);
 
-        // Active raises keyed on device text -> the input type sent, so a
-        // level-less CLR clears the right point.
-        private readonly Dictionary<string, int> _activeArmEvents
-            = new Dictionary<string, int>(StringComparer.Ordinal);
+        // Active raises keyed on device text -> the SET of input types sent.
+        // A single last-wins slot lost one of two concurrent levels (a call
+        // plus a low-battery fault on the same point is legitimate per the
+        // panel's type table), leaving the first latched on AMX forever. A
+        // level-less CLR clears the type its text family names, or every
+        // tracked type when the family is unknown.
+        private readonly Dictionary<string, HashSet<int>> _activeArmEvents
+            = new Dictionary<string, HashSet<int>>(StringComparer.Ordinal);
         private readonly object _activeArmLock = new object();
         private bool _warnedInfraredOff;
+        private bool _warnedStandardFormat;
+
+        // Text family for routing clears: EMERGENCY -> alarm, CALL/PATIENT ->
+        // call, fault vocabulary -> fault, else unknown (-1).
+        private static int TextFamily(string text)
+        {
+            if (text.Contains("EMERGENCY")) return 0;
+            if (text.Contains("CALL") || text.Contains("PATIENT")) return 1;
+            if (text.Contains("FLT") || text.Contains("FAULT") || text.Contains("JACK") || text.Contains("TAMP")) return 8;
+            return -1;
+        }
 
         private void ProcessRealEvent(Match m)
         {
@@ -370,10 +415,17 @@ namespace DraxTechnology.Panels
                     ClearAllActiveArmEvents(device);
                     return;
                 }
-                if (text.Contains("TAMPER") || text.Contains("MAINS") || text.Contains("BATT") || text.Contains("SOUNDER"))
+                // "TAMP" not "TAMPER": the documented clear is "PANEL TAMP OK",
+                // which the longer keyword missed — leaving the tamper fault
+                // stuck raised on AMX.
+                if (text.Contains("TAMP") || text.Contains("MAINS") || text.Contains("BATT") || text.Contains("SOUNDER"))
                 {
                     bool faultOn = token != "CLR" && !text.Contains(" OK");
-                    SendArmEvent(device, "CONTROLLER FAULT: " + text, 8, faultOn, sensor, logNumber);
+                    // Each controller condition gets its OWN AMX point (keyed
+                    // on the normalised condition stem) — one shared point
+                    // meant SOUNDER 1 OK cleared an outstanding MAINS FAILURE.
+                    string conditionKey = device + " " + ControllerConditionStem(text);
+                    SendArmEvent(conditionKey, "CONTROLLER FAULT: " + text, 8, faultOn, sensor, logNumber);
                     return;
                 }
                 base.NotifyClient("ARM controller info (sensor " + sensor + ", log " + logNumber + "): '"
@@ -393,19 +445,7 @@ namespace DraxTechnology.Panels
                     SendArmEvent(device, text, 8, true, sensor, logNumber);
                     return;
                 case "CLR":
-                    int clearType;
-                    lock (_activeArmLock)
-                    {
-                        if (!_activeArmEvents.TryGetValue(device, out clearType))
-                        {
-                            // Not tracked (service restarted mid-alarm) — fall
-                            // back to the text family so AMX can still clear.
-                            clearType = text.Contains("EMERGENCY") ? 0
-                                : (text.Contains("FLT") || text.Contains("FAULT") || text.Contains("JACK") || text.Contains("TAMPER")) ? 8
-                                : 1;
-                        }
-                    }
-                    SendArmEvent(device, text, clearType, false, sensor, logNumber);
+                    ClearArmEvent(device, text, sensor, logNumber);
                     return;
                 default:
                     // INFO level and token-less lines (PRESENCE, NOT PRESENCE)
@@ -417,12 +457,40 @@ namespace DraxTechnology.Panels
             }
         }
 
+        // Normalises a controller condition to a stable stem so raise and
+        // clear share one AMX point: trailing state words drop, and the
+        // panel's abbreviated "TAMP" (PANEL TAMP OK) matches "TAMPER".
+        private static string ControllerConditionStem(string text)
+        {
+            var words = new List<string>(text.Split((char[])null, StringSplitOptions.RemoveEmptyEntries));
+            while (words.Count > 1)
+            {
+                string last = words[words.Count - 1];
+                if (last == "OK" || last == "FLT" || last == "CLR" || last == "FAILURE" || last == "LOW")
+                    words.RemoveAt(words.Count - 1);
+                else
+                    break;
+            }
+            for (int i = 0; i < words.Count; i++)
+                if (words[i] == "TAMP") words[i] = "TAMPER";
+            return string.Join(" ", words);
+        }
+
         private void SendArmEvent(string device, string text, int p1, bool on, int sensor, int logNumber)
         {
             lock (_activeArmLock)
             {
-                if (on) _activeArmEvents[device] = p1;
-                else _activeArmEvents.Remove(device);
+                if (on)
+                {
+                    if (!_activeArmEvents.TryGetValue(device, out var types))
+                        _activeArmEvents[device] = types = new HashSet<int>();
+                    types.Add(p1);
+                }
+                else if (_activeArmEvents.TryGetValue(device, out var types))
+                {
+                    types.Remove(p1);
+                    if (types.Count == 0) _activeArmEvents.Remove(device);
+                }
             }
 
             var addr = AssignOrLookup(device, null, null);
@@ -434,24 +502,55 @@ namespace DraxTechnology.Panels
             send_response_amx_and_serial(evnum, device, "", text);
         }
 
+        // CLR carries no level. Route by the clear text's family when it has
+        // one (the clear text matches its raise text: "JACK REMOVED CLR" ->
+        // fault, "PATIENT CLR" -> call); otherwise clear every type this
+        // device has outstanding — the panel re-reports anything still live.
+        private void ClearArmEvent(string device, string text, int sensor, int logNumber)
+        {
+            int family = TextFamily(text);
+            int[] toClear;
+            lock (_activeArmLock)
+            {
+                if (_activeArmEvents.TryGetValue(device, out var types) && types.Count > 0)
+                {
+                    toClear = (family >= 0 && types.Contains(family))
+                        ? new[] { family }
+                        : types.ToArray();
+                }
+                else
+                {
+                    // Nothing tracked (service restarted mid-alarm) — fall
+                    // back to the text family so AMX can still clear.
+                    toClear = new[] { family >= 0 ? family : 1 };
+                }
+            }
+            foreach (int p1 in toClear)
+                SendArmEvent(device, text, p1, false, sensor, logNumber);
+        }
+
         // Doc §4: "Use the control panel log event POWER ON to clear any
         // outstanding calls." Sends an OFF for every tracked raise.
         private void ClearAllActiveArmEvents(string controllerName)
         {
-            KeyValuePair<string, int>[] active;
+            KeyValuePair<string, HashSet<int>>[] active;
             lock (_activeArmLock)
             {
-                active = _activeArmEvents.ToArray();
+                active = _activeArmEvents.Select(kv =>
+                    new KeyValuePair<string, HashSet<int>>(kv.Key, new HashSet<int>(kv.Value))).ToArray();
                 _activeArmEvents.Clear();
             }
             base.NotifyClient("ARM POWER ON from " + controllerName + " — clearing "
-                + active.Length + " outstanding event(s)");
+                + active.Length + " outstanding device(s)");
             foreach (var kv in active)
             {
                 var addr = AssignOrLookup(kv.Key, null, null);
-                int evnum = CSAMXSingleton.CS.MakeInputNumber(
-                    addr.Node + this.Offset, addr.Loop, addr.Device, kv.Value, false);
-                send_response_amx_and_serial(evnum, kv.Key, "", "CLEARED BY PANEL POWER ON");
+                foreach (int p1 in kv.Value)
+                {
+                    int evnum = CSAMXSingleton.CS.MakeInputNumber(
+                        addr.Node + this.Offset, addr.Loop, addr.Device, p1, false);
+                    send_response_amx_and_serial(evnum, kv.Key, "", "CLEARED BY PANEL POWER ON");
+                }
             }
         }
 

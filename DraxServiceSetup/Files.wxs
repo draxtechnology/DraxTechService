@@ -11,6 +11,9 @@
       <Component Id="cmp_ini_EmlMan_ini" Guid="59BF9FDB-873B-FB5F-3340-1C57A1A73B76">
         <File Id="fil_ini_EmlMan_ini" Source="$(var.Drax360Service.TargetDir)ini\EmlMan.ini" KeyPath="yes" />
       </Component>
+      <Component Id="cmp_ini_GalaxyMan_ini" Guid="2907629C-AE8E-838B-70AC-27FD74414638">
+        <File Id="fil_ini_GalaxyMan_ini" Source="$(var.Drax360Service.TargetDir)ini\GalaxyMan.ini" KeyPath="yes" />
+      </Component>
       <Component Id="cmp_ini_GenMan_ini" Guid="EB805059-5D31-7707-D6C8-67CFA073FD75">
         <File Id="fil_ini_GenMan_ini" Source="$(var.Drax360Service.TargetDir)ini\GenMan.ini" KeyPath="yes" />
       </Component>

@@ -17,4 +17,12 @@
     <ProjectReference Include="..\Drax360NetworkManager\Drax360Service.csproj" />
   </ItemGroup>
 
+  <!-- Regenerate Files.wxs from bin\Debug on every installer build so a
+       new/removed assembly or ini template can never silently miss the MSI
+       (the script hard-fails on an empty ini set). Restores the pre-build
+       step lost in the multi-instance restructure. -->
+  <Target Name="RegenerateFilesWxs" BeforeTargets="CoreCompile">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\Regenerate-Files.ps1&quot;" />
+  </Target>
+
 </Project>

@@ -26,6 +26,12 @@ $rootFiles = Get-ChildItem $bin -File | Where-Object {
 } | Sort-Object Name
 
 $iniFiles = Get-ChildItem (Join-Path $bin 'ini') -File -ErrorAction SilentlyContinue | Sort-Object Name
+# An empty ini set silently produced an MSI with no templates once already
+# (fresh installs then fail firstruncheck with "Error No Ini Files Copied").
+# The csproj Never-copy accident of 2026-08-18 nearly repeated it - fail hard.
+if (-not $iniFiles -or @($iniFiles).Count -eq 0) {
+  throw "No ini templates found in $bin\ini - an MSI built from this would break every fresh install. Check the csproj Content items copy ini\*.ini to the output."
+}
 
 # NuGet packages like System.ServiceProcess.ServiceController ship Windows-specific
 # DLLs under runtimes\win\lib\net10.0\. The .NET runtime resolves these via the

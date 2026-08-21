@@ -199,10 +199,22 @@ namespace DraxTechnology.Panels
                 amxsend(type, text, inputtype, on, node, loop, device);
             }
         }
-        public void Shutdown()
+        // Virtual so TCP drivers can stop their readers/pumps/sockets too.
+        // SERVICERESTART re-enters init_service and rebuilds the panel list;
+        // before this was virtual, the old Taktis/Galaxy instances kept their
+        // reader loops, heartbeat timers and TCP sessions alive and carried on
+        // posting events to AMX through CSAMXSingleton — every event doubled
+        // per restart, and the Galaxy Ethernet module's single-client port
+        // could stay owned by the orphan.
+        public virtual void Shutdown()
         {
             try { _hdTimer?.Dispose(); } catch { }
             _hdTimer = null;
+
+            // Every panel creates its heartbeat timer in its constructor;
+            // dispose centrally so no driver leaks a ticking timer.
+            try { heartbeat_timer?.Dispose(); } catch { }
+            heartbeat_timer = null;
 
             if (serialport != null)
             {

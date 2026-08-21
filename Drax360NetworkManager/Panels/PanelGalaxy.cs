@@ -101,6 +101,7 @@ namespace DraxTechnology.Panels
         private DateTime _evLastBlockAt = DateTime.MinValue;
 
         private int _siaLevel = -1;   // from @AL<n>; queried not negotiated
+        private bool _warnedAccountMismatch;
 
         public override string FakeString => throw new NotImplementedException();
         public override string PanelVersion => "1.0.0.0";
@@ -125,7 +126,11 @@ namespace DraxTechnology.Panels
                 _amx1Offset = base.GetSetting<int>(ksettingsetupsection, "giAmx1Offset");
                 this.Offset = _amx1Offset;
 
-                if (!string.IsNullOrEmpty(baselogfolder))
+                // Transport hex logging is DataLogging-gated: unconditional
+                // logging of the 3s logon cycle grows several MB a day
+                // forever on a quiet site.
+                if (!string.IsNullOrEmpty(baselogfolder)
+                    && base.GetSetting<int>(ksettingsetupsection, "DataLogging") != 0)
                 {
                     _txLogPath = Path.Combine(baselogfolder, "GALAXY_transport.log");
                 }
@@ -144,8 +149,15 @@ namespace DraxTechnology.Panels
                 heartbeat_timer_callback, this.Identifier, kLogonIntervalMs, kLogonIntervalMs);
         }
 
+        // Set once StartUp has actually started the reader/pump; the timer
+        // exists from construction, so without this guard a FakeMode or
+        // aborted-start instance queued heartbeats forever into a pump that
+        // never runs and raised a permanent comms fault to AMX.
+        private volatile bool _running;
+
         protected override void heartbeat_timer_callback(object sender)
         {
+            if (!_running) return;
             base.heartbeat_timer_callback(sender);
             EnqueueCommand(kBlkPasscode + _passcode + "*1", expectsResponse: true);
             CheckCommsMonitor();
@@ -157,6 +169,18 @@ namespace DraxTechnology.Panels
         // no CTS over TCP); the fault reports against the panel's own node.
         protected override int HeartbeatIntervalSeconds => 10;
         protected override int CommsFaultNode => _siteId + this.Offset;
+
+        // Full teardown for SERVICERESTART: stop the reader and pump, drop
+        // the TCP session (the Ethernet module accepts a single client, so an
+        // orphaned instance would lock the replacement out), and let the base
+        // dispose the heartbeat timer.
+        public override void Shutdown()
+        {
+            _running = false;
+            try { _readerCts?.Cancel(); } catch { }
+            CloseConnection();
+            base.Shutdown();
+        }
 
         public override void StartUp(int fakemode)
         {
@@ -176,6 +200,7 @@ namespace DraxTechnology.Panels
             var token = _readerCts.Token;
             _readerTask = Task.Run(() => ReaderLoop(token));
             _pumpTask = Task.Run(() => PumpLoop(token));
+            _running = true;
         }
 
         #region Framing
@@ -207,13 +232,16 @@ namespace DraxTechnology.Panels
             while (_assembly.Count >= kMinFrameLen)
             {
                 int header = _assembly[0];
-                int frameLen = (header & 0x3F) + 3;
-                if (frameLen < kMinFrameLen || frameLen > kMaxFrameLen)
+                // Bit 7 is always set on a genuine header (the VB sets it to
+                // avoid a NUL header byte) — a candidate without it is stream
+                // garbage or a misalignment, so resync one byte at a time
+                // instead of trusting a corrupt length field.
+                if ((header & 0x80) == 0)
                 {
-                    NotifyClient($"GALAXY bad frame length {frameLen} - flushing buffer");
-                    _assembly.Clear();
-                    return;
+                    _assembly.RemoveAt(0);
+                    continue;
                 }
+                int frameLen = (header & 0x3F) + 3;
                 if (_assembly.Count < frameLen) return;   // wait for more bytes
 
                 int parity = 0xFF;
@@ -387,6 +415,10 @@ namespace DraxTechnology.Panels
 
         // One outstanding command at a time: send, wait for its response (or
         // the 2s timeout), retry up to 3 times on timeout or a '9' reject.
+        // ACK/NAK frames expect no reply and never wait behind an in-flight
+        // command — the panel wants its event acks promptly, and holding
+        // them behind a command's retry cycle invited block retransmits
+        // (duplicate events on AMX).
         private void PumpLoop(CancellationToken token)
         {
             while (!token.IsCancellationRequested)
@@ -401,7 +433,12 @@ namespace DraxTechnology.Panels
                         {
                             if (_inFlight.RetriesLeft > 0)
                             {
-                                toSend = _inFlight;   // resend
+                                // Decrement on the RETRY decision only: 3
+                                // retries means four attempts total, as the
+                                // VB's GLX_CMD_SEND_RETRIES intended.
+                                _inFlight.RetriesLeft--;
+                                _inFlightSentAt = DateTime.Now;
+                                toSend = _inFlight;
                             }
                             else
                             {
@@ -410,9 +447,24 @@ namespace DraxTechnology.Panels
                             }
                         }
                     }
-                    if (toSend == null && _inFlight == null && _cmdQueue.Count > 0)
+                    if (toSend == null && _cmdQueue.Count > 0)
                     {
-                        toSend = _cmdQueue.Dequeue();
+                        if (!_cmdQueue.Peek().ExpectsResponse)
+                        {
+                            toSend = _cmdQueue.Dequeue();
+                        }
+                        else if (_inFlight == null)
+                        {
+                            toSend = _cmdQueue.Dequeue();
+                            // Register as in-flight BEFORE the wire write:
+                            // the reader thread can process the response
+                            // before WriteRaw returns, and an unregistered
+                            // response was discarded — the command then timed
+                            // out and resent, duplicating its side effect (a
+                            // second system reset).
+                            _inFlight = toSend;
+                            _inFlightSentAt = DateTime.Now;
+                        }
                     }
                 }
 
@@ -424,25 +476,15 @@ namespace DraxTechnology.Panels
 
                 if (!WriteRaw(toSend.Frame))
                 {
-                    // Not connected - drop acks, requeue nothing: the logon
-                    // timer repopulates the queue once the link returns.
                     lock (_cmdLock) { if (_inFlight == toSend) _inFlight = null; }
+                    if (toSend.ExpectsResponse)
+                    {
+                        // An operator's omit/reset vanishing on a link blip
+                        // must leave a trace.
+                        NotifyClient($"GALAXY command dropped - not connected: {toSend.Payload}");
+                    }
                     try { Task.Delay(200, token).Wait(token); } catch { break; }
                     continue;
-                }
-
-                if (toSend.ExpectsResponse)
-                {
-                    lock (_cmdLock)
-                    {
-                        toSend.RetriesLeft--;
-                        _inFlight = toSend;
-                        _inFlightSentAt = DateTime.Now;
-                    }
-                }
-                else
-                {
-                    lock (_cmdLock) { if (_inFlight == toSend) _inFlight = null; }
                 }
             }
             NotifyClient("GALAXY pump stopped");
@@ -516,6 +558,19 @@ namespace DraxTechnology.Panels
                     break;
 
                 case kBlkAccount:
+                    // The panel's transmitted account number IS its identity
+                    // (menu 56.2.3); a mismatch against the configured SiteID
+                    // silently routes every event to the wrong AMX node, so
+                    // shout once.
+                    if (!_warnedAccountMismatch
+                        && int.TryParse(data.Trim(), out int account)
+                        && account > 0 && account != _siteId)
+                    {
+                        _warnedAccountMismatch = true;
+                        NotifyClient("GALAXY panel account number " + account
+                            + " does not match configured SiteID " + _siteId
+                            + " - events will carry the SiteID node; check GalaxyMan.ini");
+                    }
                     NoteEventBlock(account: data);
                     break;
 
@@ -567,6 +622,10 @@ namespace DraxTechnology.Panels
             {
                 // A second data block before the first flushed = new event.
                 if (_evData != null) FlushPendingEvent();
+                // Any ASCII text lying around belongs to a PREVIOUS event —
+                // carrying it forward married the old event's text onto the
+                // new one in the pre-@AL startup window.
+                _evAscii = null;
                 _evData = data;
                 _evDataIsAlarm = isAlarm;
                 _evLastBlockAt = DateTime.Now;
@@ -755,7 +814,17 @@ namespace DraxTechnology.Panels
                     }
                     ZoneAlarm(true, address, kZitHoldup, Fallback(text, "Holdup"), extra, needsCancel: false, resetClass: 'P');
                     return;
-                case "HR": ZoneAlarm(false, address, kZitHoldup, Fallback(text, "Holdup Restored"), extra, needsCancel: false, resetClass: 'P'); return;
+                case "HR":
+                    if (userSourced)
+                    {
+                        // The user-sourced HA went to the STICKY Duress point
+                        // (manual clear only) — its restore must not fabricate
+                        // a zone-0 clear for a row that never existed.
+                        NotifyClient("GALAXY user-sourced holdup restore - duress point stays latched for manual clear", false);
+                        return;
+                    }
+                    ZoneAlarm(false, address, kZitHoldup, Fallback(text, "Holdup Restored"), extra, needsCancel: false, resetClass: 'P');
+                    return;
                 case "TA":
                     if (zoneSourced || moduleSourced)
                         ZoneAlarm(true, ModuleOrZone(address, module, moduleSourced), kZitTamper, Fallback(text, "Tamper"), extra, needsCancel: true, resetClass: 'T');

@@ -500,14 +500,40 @@ namespace DraxTechnology.Panels
         private readonly TaktisConnectionSettings _conn;
         private readonly bool _standalone;
         private readonly int _assignedPanel;
-        // Panel numbers owned by standalone sibling connections — a network
+        // EFFECTIVE AMX node identities (PanelNumber + that connection's
+        // offset) owned by standalone sibling connections — a network
         // connection must not also act on controls addressed to those.
         // Populated by DraxService when the connection set is built.
-        internal HashSet<int> SiblingStandalonePanels = new HashSet<int>();
+        internal HashSet<int> SiblingStandaloneAmxNodes = new HashSet<int>();
         #endregion
 
         #region public properties
+        // Written by BOTH channel reader threads (the TX snapshot and the RX
+        // event stream genuinely overlap at start of day) and read to build
+        // EVENT_ACKs — a torn write acked a serial the panel never sent,
+        // which is the ~12s TX-drop failure mode all over again. All access
+        // goes through SetSerial/SerialSnapshot under _serialLock.
         public long[] glSerialNo = new long[4];
+        private readonly object _serialLock = new object();
+
+        private void SetSerial(byte b0, byte b1, byte b2, byte b3)
+        {
+            lock (_serialLock)
+            {
+                glSerialNo[0] = b0;
+                glSerialNo[1] = b1;
+                glSerialNo[2] = b2;
+                glSerialNo[3] = b3;
+            }
+        }
+
+        private long[] SerialSnapshot()
+        {
+            lock (_serialLock)
+            {
+                return new[] { glSerialNo[0], glSerialNo[1], glSerialNo[2], glSerialNo[3] };
+            }
+        }
         #endregion
         public override string FakeString => throw new NotImplementedException();
         public override string PanelVersion => "1.0.0.0";
@@ -539,8 +565,11 @@ namespace DraxTechnology.Panels
 
         private int ToWireNode(int amxNode)
         {
-            int raw = DeOffsetNode(amxNode);
-            return _standalone && _assignedPanel > 0 ? 1 : raw;
+            // Legacy single connection keeps the historic raw fallback so the
+            // client test tool's bare panel numbers still work there.
+            if (_conn == null) return DeOffsetNode(amxNode);
+            if (_standalone && _assignedPanel > 0) return 1;
+            return amxNode - _amx1Offset;
         }
 
         // Controls are broadcast to every panel instance (DispatchAmxPipeCommand
@@ -548,11 +577,23 @@ namespace DraxTechnology.Panels
         // A standalone connection owns exactly its assigned panel number; a
         // network connection owns everything except numbers claimed by its
         // standalone siblings (populated by DraxService at connection build).
+        // Claims are matched on the EXACT AMX identity (PanelNumber + this
+        // connection's effective offset). The old bare-number fallback let a
+        // control for one panel be claimed by another when connections
+        // carried different offsets — a Reset landing on the wrong physical
+        // panel — so in multi-IP mode controls must carry the full AMX node
+        // number, the client test tool included. Effective offsets are
+        // resolved by DraxService at connection read, so _amx1Offset is
+        // always this connection's real offset here.
         private bool ClaimsAmxNode(int amxNode)
         {
-            int raw = DeOffsetNode(amxNode);
-            if (_standalone && _assignedPanel > 0) return raw == _assignedPanel;
-            return !SiblingStandalonePanels.Contains(raw);
+            if (_conn == null) return true;   // legacy single connection: unchanged behaviour
+            if (_standalone && _assignedPanel > 0)
+                return amxNode == _assignedPanel + _amx1Offset;
+            // Network: only nodes inside this connection's offset range, and
+            // never a standalone sibling's AMX identity.
+            if (SiblingStandaloneAmxNodes.Contains(amxNode)) return false;
+            return amxNode - _amx1Offset > 0;
         }
 
         public override void Alert(string passedValues)
@@ -674,8 +715,11 @@ namespace DraxTechnology.Panels
 
         private bool HaveSerial()
         {
-            return glSerialNo[0] != 0 || glSerialNo[1] != 0
-                || glSerialNo[2] != 0 || glSerialNo[3] != 0;
+            lock (_serialLock)
+            {
+                return glSerialNo[0] != 0 || glSerialNo[1] != 0
+                    || glSerialNo[2] != 0 || glSerialNo[3] != 0;
+            }
         }
         private Task _rxReaderTask;
         private Task _txPumpTask;
@@ -687,6 +731,18 @@ namespace DraxTechnology.Panels
         // at all, and the 2026-07-20 test showed 5s here freezes the pump long
         // enough that queued client commands feel like a lock-up.
         private const int kAckTimeoutMs = 2000;
+
+        // Full teardown for SERVICERESTART: stop both channel readers and
+        // pumps, close both sockets, and let the base dispose the heartbeat
+        // timer — without this the orphaned instance kept its TCP session and
+        // kept posting duplicate events and comms faults to AMX.
+        public override void Shutdown()
+        {
+            try { _readerCts?.Cancel(); } catch { }
+            CloseChannel(_txCh);
+            CloseChannel(_rxCh);
+            base.Shutdown();
+        }
 
         public override void StartUp(int fakemode)
         {
@@ -903,7 +959,7 @@ namespace DraxTechnology.Panels
                 // snapshot's EVENT_ID frame has told us the current serial.
                 if (HaveSerial())
                 {
-                    sendtotaktis(TakSendType.TAKSendRequestEventLogEx, glSerialNo);
+                    sendtotaktis(TakSendType.TAKSendRequestEventLogEx, SerialSnapshot());
                 }
                 else
                 {
@@ -953,10 +1009,7 @@ namespace DraxTechnology.Panels
             // Serial number lives at bytes 8..11 for any payload-bearing frame.
             if (frame.Length >= 12)
             {
-                glSerialNo[0] = frame[8];
-                glSerialNo[1] = frame[9];
-                glSerialNo[2] = frame[10];
-                glSerialNo[3] = frame[11];
+                SetSerial(frame[8], frame[9], frame[10], frame[11]);
             }
 
             // RX connected before we knew the panel's serial - now that a
@@ -966,7 +1019,7 @@ namespace DraxTechnology.Panels
             {
                 _rxSubscribeWhenSerialKnown = false;
                 NotifyClient("TAKTIS [RX] panel serial known - subscribing to the event log from here");
-                sendtotaktis(TakSendType.TAKSendRequestEventLogEx, glSerialNo);
+                sendtotaktis(TakSendType.TAKSendRequestEventLogEx, SerialSnapshot());
             }
 
             long mt = frame.Length >= 8 ? ReadFieldU32(frame, 4) : -1;
@@ -988,7 +1041,7 @@ namespace DraxTechnology.Panels
                     {
                         await Task.Delay(2000);
                         _rxResubscribePending = false;
-                        sendtotaktis(TakSendType.TAKSendRequestEventLogEx, glSerialNo);
+                        sendtotaktis(TakSendType.TAKSendRequestEventLogEx, SerialSnapshot());
                     });
                 }
             }
@@ -1032,7 +1085,7 @@ namespace DraxTechnology.Panels
             {
                 sendtotaktis(ch == _rxCh
                     ? TakSendType.TAKSendEventACKRX
-                    : TakSendType.TAKSendEventACKTX, glSerialNo);
+                    : TakSendType.TAKSendEventACKTX, SerialSnapshot());
             }
         }
 
@@ -1685,10 +1738,7 @@ namespace DraxTechnology.Panels
 
             if (frame.Length >= o + 12)
             {
-                glSerialNo[0] = frame[o + 8];
-                glSerialNo[1] = frame[o + 9];
-                glSerialNo[2] = frame[o + 10];
-                glSerialNo[3] = frame[o + 11];
+                SetSerial(frame[o + 8], frame[o + 9], frame[o + 10], frame[o + 11]);
             }
 
             long lEventGroup = ReadFieldU32(frame, o + 12);
@@ -1724,12 +1774,12 @@ namespace DraxTechnology.Panels
                 case 2:   // Event ID
                     break;
                 case 133: // Start event
-                    ParseTAKMessage(gMessageType, glSerialNo, lEventGroup, gEventType, gEventCode,
+                    ParseTAKMessage(gMessageType, SerialSnapshot(), lEventGroup, gEventType, gEventCode,
                         iNode, iAddressType, iAddress, iSubAddress, iLoop, iZone, iInputAction,
                         lTimeStamp, sLocationText, sPanelText, sZoneText, "", true);
                     break;
                 case 135: // Clear event
-                    ParseTAKMessage(gMessageType, glSerialNo, lEventGroup, gEventType, gEventCode,
+                    ParseTAKMessage(gMessageType, SerialSnapshot(), lEventGroup, gEventType, gEventCode,
                         iNode, iAddressType, iAddress, iSubAddress, iLoop, iZone, iInputAction,
                         lTimeStamp, sLocationText, sPanelText, sZoneText, "", false);
                     break;

@@ -1542,6 +1542,14 @@ namespace DraxTechnology
 
         private static List<TaktisConnectionSettings> ReadTaktisConnections(AbstractPanel settings)
         {
+            // Resolve every connection's EFFECTIVE offset here (entry Offset,
+            // else the shared [SetUp] giAmx1Offset) so that the uniqueness
+            // check, the sibling exclusion set and the claim matching all
+            // work on real AMX identities. Leaving the -1 sentinel unresolved
+            // was the root of the mixed-offset misrouting: two connections
+            // could share an AMX identity unnoticed, or a control could be
+            // claimed by the wrong connection's fallback arithmetic.
+            int setupOffset = settings.GetSetting<int>(ksettingsetupsection, "giAmx1Offset");
             var ret = new List<TaktisConnectionSettings>();
             for (int i = 1; i <= kMaxTaktisConnectionSections; i++)
             {
@@ -1562,7 +1570,7 @@ namespace DraxTechnology
                     Standalone = mode.Trim().Equals("Standalone", StringComparison.OrdinalIgnoreCase),
                     PanelNumber = settings.GetSetting<int>(section, "PanelNumber"),
                     ClientID = settings.GetSetting<int>(section, "ClientID"),
-                    Offset = offset,
+                    Offset = offset >= 0 ? offset : setupOffset,
                 });
             }
             return ret;
@@ -1585,6 +1593,14 @@ namespace DraxTechnology
             bool gateHeld = false;
             try { gateHeld = nwmGate.WaitOne(TimeSpan.FromSeconds(10)); }
             catch (System.Threading.AbandonedMutexException) { gateHeld = true; }
+            if (!gateHeld)
+            {
+                // Never read the file the writer is mid-rewrite on — the
+                // guard existed for exactly that. Fail closed: treat the key
+                // as absent (restrictive cap) rather than risk a torn read.
+                ln("Taktis licence: Current.Nwm gate not acquired within 10s — treating the maximum-IP key as absent", EventLogEntryType.Warning);
+                return -1;
+            }
             try
             {
                 string[] keyNames = { "MAXIMUMIPADDRESSES", "MAXIPADDRESSES", "MAXIPS" };
@@ -1630,20 +1646,14 @@ namespace DraxTechnology
                 cap = 2;
                 ln("Taktis licence: no maximum-IP-addresses key in Current.Nwm — TEST FUDGE cap of 2 applied (release builds must cap at 1)");
             }
-            if (conns.Count > cap)
-            {
-                var refused = conns.Skip(cap).ToList();
-                conns = conns.Take(cap).ToList();
-                ln("Taktis licence: " + (refused.Count + conns.Count) + " IP connection(s) configured but the licence allows "
-                    + cap + " — refused: "
-                    + string.Join(", ", refused.Select(c => "Connection" + c.Index + " (" + c.IPAddress + ")")),
-                    EventLogEntryType.Error);
-            }
-
-            // Standalone entries need a usable, unique assigned panel number —
-            // numbering collisions are a commissioning error the service can't
-            // guess its way out of, so refuse the offender visibly.
-            var standalonePanels = new HashSet<int>();
+            // Validate BEFORE capping — an invalid entry must not consume a
+            // licensed slot (a broken Connection1 used to waste a slot and
+            // leave a licensed panel refused). Standalone entries need a
+            // usable, UNIQUE EFFECTIVE AMX identity (PanelNumber + resolved
+            // offset): raw-number uniqueness both missed genuine collisions
+            // (1+100 and 101+0 are the same AMX node 101) and refused
+            // legitimate configs (1+0 and 1+100 are different panels).
+            var standaloneAmxNodes = new HashSet<int>();
             var valid = new List<TaktisConnectionSettings>();
             foreach (var c in conns)
             {
@@ -1654,13 +1664,28 @@ namespace DraxTechnology
                         ln("Taktis Connection" + c.Index + " (" + c.IPAddress + ") is Standalone but has no PanelNumber — connection not started", EventLogEntryType.Error);
                         continue;
                     }
-                    if (!standalonePanels.Add(c.PanelNumber))
+                    int amxNode = c.PanelNumber + c.Offset;
+                    if (!standaloneAmxNodes.Add(amxNode))
                     {
-                        ln("Taktis Connection" + c.Index + " (" + c.IPAddress + ") repeats standalone panel number " + c.PanelNumber + " — connection not started", EventLogEntryType.Error);
+                        ln("Taktis Connection" + c.Index + " (" + c.IPAddress + ") lands on AMX node " + amxNode
+                            + " (PanelNumber " + c.PanelNumber + " + Offset " + c.Offset + ") which another standalone connection already owns — connection not started", EventLogEntryType.Error);
                         continue;
                     }
                 }
                 valid.Add(c);
+            }
+
+            if (valid.Count > cap)
+            {
+                var refused = valid.Skip(cap).ToList();
+                valid = valid.Take(cap).ToList();
+                ln("Taktis licence: " + (refused.Count + valid.Count) + " valid IP connection(s) configured but the licence allows "
+                    + cap + " — refused: "
+                    + string.Join(", ", refused.Select(c => "Connection" + c.Index + " (" + c.IPAddress + ")")),
+                    EventLogEntryType.Error);
+                // Keep the sibling set aligned with what actually runs.
+                standaloneAmxNodes = new HashSet<int>(
+                    valid.Where(c => c.Standalone).Select(c => c.PanelNumber + c.Offset));
             }
 
             foreach (var c in valid)
@@ -1668,9 +1693,9 @@ namespace DraxTechnology
                 string identifier = "TAKTIS" + c.Index;
                 var ap = new PanelTaktis(this.configurationbasefolder, identifier, c);
                 // Network connections must not also act on controls addressed
-                // to a standalone sibling's panel number (standalone instances
-                // ignore the set — they claim by their own number only).
-                ap.SiblingStandalonePanels = standalonePanels;
+                // to a standalone sibling's effective AMX identity (standalone
+                // instances ignore the set — they claim exactly their own).
+                ap.SiblingStandaloneAmxNodes = standaloneAmxNodes;
                 ap.StartUp(fakemode);
                 ap.OutsideEvents += Sp_Fire;
 
