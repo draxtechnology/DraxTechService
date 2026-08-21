@@ -306,66 +306,153 @@ namespace DraxTechnology.Panels
             return true;
         }
 
-        // Real single-line events (PC DISPLAY ON). EMERGENCY / CALL / fault
-        // families route to AMX with the established input types; anything the
-        // class table hasn't pinned yet (SILENCE ALM n, POWER ON...) is logged
-        // with its wire class code and NOT sent — the previous behaviour
-        // classified every unknown line as a fire alarm. The format document
-        // decides the full class-code table.
+        // Real single-line events (PC DISPLAY ON), per "Control Panel Printer
+        // Output Detail" (GWJ, 16/12/2022). The 15-byte prefix ahead of the
+        // standard log data is <esc> <message type> <status value> <sensor
+        // number>; the log data then opens with the log number (0..500,
+        // wraps). So the leading integers, right to left, are: log number,
+        // sensor number (>=1001 means the control panel itself — panels take
+        // two sensor numbers, 1001+1002 = controller 1), status flag value,
+        // and message type 0-8 (types above 4 mean the panel's INFRARED MODE
+        // display is off, which sites shouldn't run).
+        //
+        // Level tokens per the doc: ALM, CALL, FLT, INFO, CLR — and CLR does
+        // not say WHICH level cleared, so raises are remembered per device
+        // and the clear releases whatever that device had outstanding.
+        // Doc §4 recommendation implemented: the controller's POWER ON event
+        // (sent on reset and power-up) clears every outstanding call.
+        private static readonly Regex LevelTokenRegex =
+            new Regex(@"\b(CLR|ALM|CALL|FLT|INFO)\b", RegexOptions.Compiled);
+
+        // Active raises keyed on device text -> the input type sent, so a
+        // level-less CLR clears the right point.
+        private readonly Dictionary<string, int> _activeArmEvents
+            = new Dictionary<string, int>(StringComparer.Ordinal);
+        private readonly object _activeArmLock = new object();
+        private bool _warnedInfraredOff;
+
         private void ProcessRealEvent(Match m)
         {
             int[] nums = m.Groups["nums"].Value
                 .Split((char[])null, StringSplitOptions.RemoveEmptyEntries)
                 .Select(int.Parse).ToArray();
-            int sequence = nums[nums.Length - 1];
-            int wireAddress = nums.Length >= 2 ? nums[nums.Length - 2] : 0;
-            int classCode = nums.Length >= 3 ? nums[nums.Length - 3] : 0;
+            int logNumber = nums[nums.Length - 1];
+            int sensor = nums.Length >= 2 ? nums[nums.Length - 2] : 0;
+            int statusValue = nums.Length >= 3 ? nums[nums.Length - 3] : 0;
+            int messageType = nums.Length >= 4 ? nums[nums.Length - 4] : -1;
+
+            if (messageType > 4 && !_warnedInfraredOff)
+            {
+                _warnedInfraredOff = true;
+                base.NotifyClient("ARM: message type " + messageType
+                    + " — the panel's INFRARED MODE display is OFF; the doc recommends ON");
+            }
 
             string device = Regex.Replace(m.Groups["device"].Value, @" {2,}", " ").Trim();
             string text = Regex.Replace(m.Groups["text"].Value, @" {2,}", " ").Trim();
 
-            // Tail state token: ALM (alarm on), CLR (clear), FLT (fault on) —
-            // "PANEL TAMPER      FLT" in the 19/11 trace. Info lines
-            // (PRESENCE, POWER ON, SILENCE ALM n) carry no token.
-            bool on = true;
-            bool faultSuffix = false;
-            if (text.EndsWith(" CLR", StringComparison.Ordinal))
+            // Level token may sit mid-text on IR lines ("PATIE CALL PATIENT 32",
+            // "ASSIST CLR 42001 CP"), so scan for the word, CLR first.
+            string token = "";
+            Match tok = LevelTokenRegex.Match(text);
+            if (tok.Success) token = text.Contains("CLR") ? "CLR" : tok.Groups[1].Value;
+
+            // Controller self-events (sensor 1001..1128): POWER ON clears all
+            // outstanding calls (doc §4 — it fires on reset as well as power
+            // up, and anything still live re-raises when the sensor next
+            // reports). PANEL TAMPER FLT/CLR go to AMX as the controller's
+            // fault point; the rest of the controller vocabulary (SILENCE ALM
+            // n, SETUP START/END, MODE DAY/NIGHT...) is information only.
+            if (sensor >= 1001)
             {
-                on = false;
-                text = text.Substring(0, text.Length - 4).Trim();
-            }
-            else if (text.EndsWith(" ALM", StringComparison.Ordinal))
-            {
-                text = text.Substring(0, text.Length - 4).Trim();
-            }
-            else if (text.EndsWith(" FLT", StringComparison.Ordinal))
-            {
-                faultSuffix = true;
-                text = text.Substring(0, text.Length - 4).Trim();
+                if (text.StartsWith("POWER ON", StringComparison.Ordinal))
+                {
+                    ClearAllActiveArmEvents(device);
+                    return;
+                }
+                if (text.Contains("TAMPER") || text.Contains("MAINS") || text.Contains("BATT") || text.Contains("SOUNDER"))
+                {
+                    bool faultOn = token != "CLR" && !text.Contains(" OK");
+                    SendArmEvent(device, "CONTROLLER FAULT: " + text, 8, faultOn, sensor, logNumber);
+                    return;
+                }
+                base.NotifyClient("ARM controller info (sensor " + sensor + ", log " + logNumber + "): '"
+                    + device + "' " + text, false);
+                return;
             }
 
-            // TAMPER is in the fault family so "PANEL TAMPER CLR" clears the
-            // same AMX point its FLT raised.
-            int p1;
-            if (faultSuffix) p1 = 8;
-            else if (text.Contains("EMERGENCY")) p1 = 0;
-            else if (text.Contains("CALL") || text.Contains("PATIENT")) p1 = 1;
-            else if (text.Contains("FLT") || text.Contains("FAULT") || text.Contains("JACK") || text.Contains("TAMPER")) p1 = 8;
-            else
+            switch (token)
             {
-                base.NotifyClient("ARM event logged only (class " + classCode + ", wire addr " + wireAddress
-                    + ", seq " + sequence + "): '" + device + "' " + text, false);
-                return;
+                case "ALM":
+                    SendArmEvent(device, text, 0, true, sensor, logNumber);
+                    return;
+                case "CALL":
+                    SendArmEvent(device, text, 1, true, sensor, logNumber);
+                    return;
+                case "FLT":
+                    SendArmEvent(device, text, 8, true, sensor, logNumber);
+                    return;
+                case "CLR":
+                    int clearType;
+                    lock (_activeArmLock)
+                    {
+                        if (!_activeArmEvents.TryGetValue(device, out clearType))
+                        {
+                            // Not tracked (service restarted mid-alarm) — fall
+                            // back to the text family so AMX can still clear.
+                            clearType = text.Contains("EMERGENCY") ? 0
+                                : (text.Contains("FLT") || text.Contains("FAULT") || text.Contains("JACK") || text.Contains("TAMPER")) ? 8
+                                : 1;
+                        }
+                    }
+                    SendArmEvent(device, text, clearType, false, sensor, logNumber);
+                    return;
+                default:
+                    // INFO level and token-less lines (PRESENCE, NOT PRESENCE)
+                    // are information only — the previous build raised these
+                    // as fire alarms.
+                    base.NotifyClient("ARM info (type " + messageType + ", status " + statusValue
+                        + ", sensor " + sensor + ", log " + logNumber + "): '" + device + "' " + text, false);
+                    return;
+            }
+        }
+
+        private void SendArmEvent(string device, string text, int p1, bool on, int sensor, int logNumber)
+        {
+            lock (_activeArmLock)
+            {
+                if (on) _activeArmEvents[device] = p1;
+                else _activeArmEvents.Remove(device);
             }
 
             var addr = AssignOrLookup(device, null, null);
             int evnum = CSAMXSingleton.CS.MakeInputNumber(
                 addr.Node + this.Offset, addr.Loop, addr.Device, p1, on);
-            base.NotifyClient("ARM " + (on ? "ALM" : "CLR") + " class=" + classCode
-                + " wireAddr=" + wireAddress + " -> AMX node " + (addr.Node + this.Offset)
-                + " loop " + addr.Loop + " dev " + addr.Device + " type " + p1
-                + ": " + device + " " + text);
+            base.NotifyClient("ARM " + (on ? "ON" : "OFF") + " sensor=" + sensor + " log=" + logNumber
+                + " -> AMX node " + (addr.Node + this.Offset) + " loop " + addr.Loop
+                + " dev " + addr.Device + " type " + p1 + ": " + device + " " + text);
             send_response_amx_and_serial(evnum, device, "", text);
+        }
+
+        // Doc §4: "Use the control panel log event POWER ON to clear any
+        // outstanding calls." Sends an OFF for every tracked raise.
+        private void ClearAllActiveArmEvents(string controllerName)
+        {
+            KeyValuePair<string, int>[] active;
+            lock (_activeArmLock)
+            {
+                active = _activeArmEvents.ToArray();
+                _activeArmEvents.Clear();
+            }
+            base.NotifyClient("ARM POWER ON from " + controllerName + " — clearing "
+                + active.Length + " outstanding event(s)");
+            foreach (var kv in active)
+            {
+                var addr = AssignOrLookup(kv.Key, null, null);
+                int evnum = CSAMXSingleton.CS.MakeInputNumber(
+                    addr.Node + this.Offset, addr.Loop, addr.Device, kv.Value, false);
+                send_response_amx_and_serial(evnum, kv.Key, "", "CLEARED BY PANEL POWER ON");
+            }
         }
 
         private void processEventLine(string headerLine, string eventText, string deviceTextOverride = null)
