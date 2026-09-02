@@ -2223,6 +2223,15 @@ namespace DraxTechnology
                     }
                     break;
 
+                case "SETTINGSDELETE":
+                    if (partssplit == null || partssplit.Length != 2) break;
+                    {
+                        string section = partssplit[0];
+                        string key = partssplit[1];
+                        SettingsSingleton.Instance(panel).RemoveSetting(section, key);
+                    }
+                    break;
+
                 case "SETTINGSSAVE":
                     SettingsSingleton.Instance(panel).SaveSettings();
                     break;
