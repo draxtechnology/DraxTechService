@@ -1644,7 +1644,7 @@ namespace DraxTechnology
                 // mean a single connection, or a plain single-panel licence
                 // gains panels by ini edits alone.
                 cap = 2;
-                ln("Taktis licence: no maximum-IP-addresses key in Current.Nwm — TEST FUDGE cap of 2 applied (release builds must cap at 1)");
+                ln("Taktis licence: no maximum-IP-addresses key in Current.Nwm — TEST FUDGE cap of 2 applied (release builds must cap at 1)");     // in Two places
             }
             // Validate BEFORE capping — an invalid entry must not consume a
             // licensed slot (a broken Connection1 used to waste a slot and
@@ -2072,70 +2072,70 @@ namespace DraxTechnology
                     break;
 
                 case "RSMNODES":
-                    // Tier-1 read-only node snapshot for the client's RSM "Node
-                    // Configuration and Status" grid. JSON array, ≤255 rows. Empty
-                    // array if no RSM panel is active.
-                    {
-                        PanelRSM rsm = abstractpanels.OfType<PanelRSM>().FirstOrDefault();
-                        ret = rsm != null ? rsm.BuildNodeSnapshot() : "[]";
-                    }
-                    break;
+                // Tier-1 read-only node snapshot for the client's RSM "Node
+                // Configuration and Status" grid. JSON array, ≤255 rows. Empty
+                // array if no RSM panel is active.
+                {
+                    PanelRSM rsm = abstractpanels.OfType<PanelRSM>().FirstOrDefault();
+                    ret = rsm != null ? rsm.BuildNodeSnapshot() : "[]";
+                }
+                break;
 
                 case "RSMNODE":
-                    // Per-node read-only properties for the client's RSM "Node
-                    // Properties" window (VB6 frmRSMProperties). Arg = node number
-                    // ("RSMNODE|5"). JSON object, or "{}" if the node/panel is
-                    // unknown.
-                    {
-                        PanelRSM rsm = abstractpanels.OfType<PanelRSM>().FirstOrDefault();
-                        int node = (partssplit != null && partssplit.Length >= 1)
-                            ? (int.TryParse(partssplit[0].Trim(), out int n) ? n : -1)
-                            : -1;
-                        ret = (rsm != null && node >= 0) ? rsm.BuildNodePropertiesSnapshot(node) : "{}";
-                    }
-                    break;
+                // Per-node read-only properties for the client's RSM "Node
+                // Properties" window (VB6 frmRSMProperties). Arg = node number
+                // ("RSMNODE|5"). JSON object, or "{}" if the node/panel is
+                // unknown.
+                {
+                    PanelRSM rsm = abstractpanels.OfType<PanelRSM>().FirstOrDefault();
+                    int node = (partssplit != null && partssplit.Length >= 1)
+                        ? (int.TryParse(partssplit[0].Trim(), out int n) ? n : -1)
+                        : -1;
+                    ret = (rsm != null && node >= 0) ? rsm.BuildNodePropertiesSnapshot(node) : "{}";
+                }
+                break;
 
                 case "RSMNODEGET":
-                    // Trigger the Module-Options GET batch for a node so its GAK
-                    // replies populate the option fields the client's properties
-                    // window shows. Arg = node number ("RSMNODEGET|5").
-                    // Fire-and-forget; returns OK.
+                // Trigger the Module-Options GET batch for a node so its GAK
+                // replies populate the option fields the client's properties
+                // window shows. Arg = node number ("RSMNODEGET|5").
+                // Fire-and-forget; returns OK.
+                {
+                    PanelRSM rsm = abstractpanels.OfType<PanelRSM>().FirstOrDefault();
+                    if (rsm != null && partssplit != null && partssplit.Length >= 1
+                        && int.TryParse(partssplit[0].Trim(), out int node))
                     {
-                        PanelRSM rsm = abstractpanels.OfType<PanelRSM>().FirstOrDefault();
-                        if (rsm != null && partssplit != null && partssplit.Length >= 1
-                            && int.TryParse(partssplit[0].Trim(), out int node))
-                        {
-                            rsm.RequestModuleOptions(node);
-                        }
+                        rsm.RequestModuleOptions(node);
                     }
-                    break;
+                }
+                break;
 
                 case "RSMSETOPT":
-                    // Apply a Module-Options change to a node. Pipe-delimited so the
-                    // value may itself contain commas (panel-number lists):
-                    // RSMSETOPT|node|option|value.
+                // Apply a Module-Options change to a node. Pipe-delimited so the
+                // value may itself contain commas (panel-number lists):
+                // RSMSETOPT|node|option|value.
+                {
+                    PanelRSM rsm = abstractpanels.OfType<PanelRSM>().FirstOrDefault();
+                    if (rsm != null && parts.Length >= 4
+                        && int.TryParse(parts[1].Trim(), out int node)
+                        && int.TryParse(parts[2].Trim(), out int option))
                     {
-                        PanelRSM rsm = abstractpanels.OfType<PanelRSM>().FirstOrDefault();
-                        if (rsm != null && parts.Length >= 4
-                            && int.TryParse(parts[1].Trim(), out int node)
-                            && int.TryParse(parts[2].Trim(), out int option))
-                        {
-                            rsm.SetModuleOption(node, option, parts[3]);
-                        }
+                        rsm.SetModuleOption(node, option, parts[3]);
                     }
-                    break;
+                }
+                break;
 
                 case "RSMRESTART":
-                    // Restart a node ("RSMRESTART|5").
+                // Restart a node ("RSMRESTART|5").
+                {
+                    PanelRSM rsm = abstractpanels.OfType<PanelRSM>().FirstOrDefault();
+                    if (rsm != null && partssplit != null && partssplit.Length >= 1
+                        && int.TryParse(partssplit[0].Trim(), out int node))
                     {
-                        PanelRSM rsm = abstractpanels.OfType<PanelRSM>().FirstOrDefault();
-                        if (rsm != null && partssplit != null && partssplit.Length >= 1
-                            && int.TryParse(partssplit[0].Trim(), out int node))
-                        {
-                            rsm.RestartModule(node);
-                        }
+                        rsm.RestartModule(node);
                     }
-                    break;
+                }
+                break;
 
                 case "GETCOMMPORTSTATUS":
                     if (partssplit == null || partssplit.Length != 1) break;
@@ -2253,12 +2253,22 @@ namespace DraxTechnology
                     break;
 
                 case "GETVERSIONS":
+                {
+                    string svcVer = Assembly.GetEntryAssembly()
+                        .GetCustomAttribute<AssemblyFileVersionAttribute>().Version;
+                    string panVer = abstractpanels.FirstOrDefault()?.PanelVersion ?? "1.0.0.0";
+                    ret = svcVer + "|" + panVer;
+                }
+                break;
+
+                case "READLICENSEDMAXIPCONNECTIONS":
+
+                    int cap = ReadLicensedMaxIpConnections();
+                    if (cap < 0)
                     {
-                        string svcVer = Assembly.GetEntryAssembly()
-                            .GetCustomAttribute<AssemblyFileVersionAttribute>().Version;
-                        string panVer = abstractpanels.FirstOrDefault()?.PanelVersion ?? "1.0.0.0";
-                        ret = svcVer + "|" + panVer;
+                        cap = 2;  // TEST FUDGE cap of 2 applied (release builds must cap at 1)    - In 2 Places
                     }
+                    ret = cap + " Licensed Max IP Connections";
                     break;
 
                 default:

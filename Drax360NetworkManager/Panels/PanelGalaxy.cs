@@ -232,15 +232,17 @@ namespace DraxTechnology.Panels
             while (_assembly.Count >= kMinFrameLen)
             {
                 int header = _assembly[0];
-                // Bit 7 is always set on a genuine header (the VB sets it to
-                // avoid a NUL header byte) — a candidate without it is stream
-                // garbage or a misalignment, so resync one byte at a time
-                // instead of trusting a corrupt length field.
-                if ((header & 0x80) == 0)
-                {
-                    _assembly.RemoveAt(0);
-                    continue;
-                }
+                // Bit 7 is set on frames WE build (BuildFrame ORs in 0x80 to
+                // avoid a NUL header on a zero-length no-ack frame), but the
+                // panel does not set it on its own replies - a live capture
+                // against the real Ethernet module (2026-09-07) showed every
+                // reply header with bit 7 clear (e.g. 0x46 for a config
+                // response). Gating on bit 7 here discarded the real header
+                // of every incoming frame and resynced onto the following
+                // frame's parity byte instead, which happened to have bit 7
+                // set - producing a consistent one-byte-shifted misread
+                // ("unknown block 'F'" for what was really an '@' config
+                // block) and starving every command's response match.
                 int frameLen = (header & 0x3F) + 3;
                 if (_assembly.Count < frameLen) return;   // wait for more bytes
 
