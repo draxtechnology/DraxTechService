@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -23,6 +24,18 @@ namespace DraxTechnology.Panels
     //   - The multi-block event window is 5s measured in milliseconds. The
     //     VB used DateDiff seconds on a 2s window (real tolerance 1-2s) and
     //     its logs show event blocks routinely falling outside it.
+    //
+    // Two independent TCP connections, confirmed against a live module
+    // (2026-09-08):
+    //   - Control: PanelIPAddress:IPPort - the module is the server, we
+    //     dial out for logon/passcode and operator commands (omit, reset).
+    //   - Event reporting: EventListenIPAddress:EventListenPort - WE are
+    //     the server here. The module dials IN, ephemerally, once per
+    //     report, to send its account (#) / data (N or O) / ascii (A)
+    //     block group, then disconnects. Confirmed live: #001234, then
+    //     Oti23:27/id099/pi010/RX, then "A ENG TEST  ENG." for an
+    //     engineer-test transmission - nothing arrives on the control
+    //     connection for real events, only this one.
     internal class PanelGalaxy : AbstractPanel
     {
         #region Protocol constants
@@ -60,6 +73,12 @@ namespace DraxTechnology.Panels
 
         private string gsIPAddress;
         private string gsIPPort;
+        // Event-reporting listener config - separate from the control
+        // connection above. EventListenIPAddress may be left blank for
+        // IPAddress.Any; EventListenPort missing/zero disables the listener
+        // entirely (older sites with no separate reporting channel).
+        private string _eventListenIPAddress;
+        private string _eventListenPort;
         private string _passcode = "543210";   // VB GLX_PASSCODE default; override via GalaxyMan.ini
         // Galaxy Account No. (panel menu 56.2.3, 1..100) - the AMX node is
         // SiteID + offset, matching the legacy GalaxyMan.ini SiteID key. The
@@ -75,6 +94,16 @@ namespace DraxTechnology.Panels
         private CancellationTokenSource _readerCts;
         private Task _readerTask;
         private Task _pumpTask;
+
+        private TcpListener _eventListener;
+        private CancellationTokenSource _eventCts;
+        private Task _eventAcceptTask;
+        // Guards the event-assembly fields below (_evAccount/_evData/etc.):
+        // previously untouched by a lock because only the control-channel
+        // reader ever wrote them. The event listener writes them too now,
+        // on its own thread, so a real concurrent report from both
+        // connections would otherwise interleave two events' fields.
+        private readonly object _evLock = new object();
 
         // Single-outstanding command queue with timeout + retries, the VB
         // command state machine (frmGalaxyNetworkManager.frm:1417-1554)
@@ -117,6 +146,10 @@ namespace DraxTechnology.Panels
                 int port = base.GetSetting<int>(ksettingsetupsection, "IPPort");
                 if (port > 0) gsIPPort = port.ToString();
 
+                _eventListenIPAddress = base.GetSetting<string>(ksettingsetupsection, "EventListenIPAddress");
+                int eventPort = base.GetSetting<int>(ksettingsetupsection, "EventListenPort");
+                if (eventPort > 0) _eventListenPort = eventPort.ToString();
+
                 string passcode = base.GetSetting<string>(ksettingsetupsection, "Passcode");
                 if (!string.IsNullOrWhiteSpace(passcode)) _passcode = passcode.Trim();
 
@@ -135,7 +168,8 @@ namespace DraxTechnology.Panels
                     _txLogPath = Path.Combine(baselogfolder, "GALAXY_transport.log");
                 }
 
-                NotifyClient($"PanelGalaxy: {gsIPAddress}:{gsIPPort} offset={_amx1Offset}");
+                NotifyClient($"PanelGalaxy: {gsIPAddress}:{gsIPPort} offset={_amx1Offset}"
+                    + (string.IsNullOrEmpty(_eventListenPort) ? "" : $", event listener {(string.IsNullOrEmpty(_eventListenIPAddress) ? "any" : _eventListenIPAddress)}:{_eventListenPort}"));
             }
             catch (Exception ex)
             {
@@ -179,6 +213,11 @@ namespace DraxTechnology.Panels
             _running = false;
             try { _readerCts?.Cancel(); } catch { }
             CloseConnection();
+            try { _eventCts?.Cancel(); } catch { }
+            // Unblocks a pending AcceptTcpClient() so the event accept task
+            // actually exits instead of holding the port across a
+            // SERVICERESTART.
+            try { _eventListener?.Stop(); } catch { }
             base.Shutdown();
         }
 
@@ -201,6 +240,26 @@ namespace DraxTechnology.Panels
             _readerTask = Task.Run(() => ReaderLoop(token));
             _pumpTask = Task.Run(() => PumpLoop(token));
             _running = true;
+
+            if (!string.IsNullOrEmpty(_eventListenPort))
+            {
+                try
+                {
+                    IPAddress bindAddress = string.IsNullOrEmpty(_eventListenIPAddress)
+                        ? IPAddress.Any : IPAddress.Parse(_eventListenIPAddress);
+                    _eventListener = new TcpListener(bindAddress, Convert.ToInt32(_eventListenPort));
+                    _eventListener.Start();
+                    NotifyClient($"GALAXY event listener on {bindAddress}:{_eventListenPort}");
+
+                    _eventCts?.Cancel();
+                    _eventCts = new CancellationTokenSource();
+                    _eventAcceptTask = Task.Run(() => EventAcceptLoop(_eventCts.Token));
+                }
+                catch (Exception ex)
+                {
+                    NotifyClient($"GALAXY event listener start failed on {_eventListenIPAddress}:{_eventListenPort}: {ex.Message}");
+                }
+            }
         }
 
         #region Framing
@@ -370,6 +429,160 @@ namespace DraxTechnology.Panels
                     $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {direction}: {sb.ToString().TrimEnd()}{Environment.NewLine}");
             }
             catch { /* logging is best-effort */ }
+        }
+        #endregion
+
+        #region Event-reporting listener
+        // The module dials IN here to report (account/data/ascii block
+        // group), ephemerally - one connection per report, then it
+        // disconnects. No command queue on this side: we only ever ACK
+        // what arrives, never send a query, so there is nothing to match a
+        // response against.
+        private void EventAcceptLoop(CancellationToken token)
+        {
+            while (!token.IsCancellationRequested)
+            {
+                TcpClient client;
+                try
+                {
+                    client = _eventListener.AcceptTcpClient();
+                }
+                catch (ObjectDisposedException) { break; }   // listener stopped (Shutdown)
+                catch (Exception ex)
+                {
+                    if (token.IsCancellationRequested) break;
+                    NotifyClient($"GALAXY event listener accept error: {ex.Message}");
+                    continue;
+                }
+
+                try
+                {
+                    HandleEventConnection(client, token);
+                }
+                catch (Exception ex)
+                {
+                    NotifyClient($"GALAXY event connection error: {ex.Message}");
+                }
+                finally
+                {
+                    try { client.Close(); } catch { }
+                }
+            }
+            NotifyClient("GALAXY event listener stopped");
+        }
+
+        private void HandleEventConnection(TcpClient client, CancellationToken token)
+        {
+            NotifyClient($"GALAXY event report from {client.Client.RemoteEndPoint}");
+            NetworkStream stream = client.GetStream();
+            var assembly = new List<byte>();
+            byte[] buffer = new byte[4096];
+
+            while (!token.IsCancellationRequested)
+            {
+                int bytesRead;
+                try
+                {
+                    bytesRead = stream.Read(buffer, 0, buffer.Length);
+                }
+                catch { break; }
+                if (bytesRead == 0) break;   // module reports one shot then closes
+
+                LogTransport("<evt", buffer, bytesRead);
+                for (int i = 0; i < bytesRead; i++) assembly.Add(buffer[i]);
+
+                // Same self-delimiting frame format as the control channel
+                // (see BuildFrame/DrainFrames), inlined here because the ACK
+                // must go back on THIS stream, not the control connection's.
+                while (assembly.Count >= kMinFrameLen)
+                {
+                    int header = assembly[0];
+                    int frameLen = (header & 0x3F) + 3;
+                    if (assembly.Count < frameLen) break;
+
+                    int parity = 0xFF;
+                    for (int i = 0; i < frameLen - 1; i++) parity ^= assembly[i];
+                    bool parityOk = assembly[frameLen - 1] == (byte)parity;
+
+                    bool ackRequested = (header & 0x40) != 0;
+                    var payloadChars = new char[frameLen - 2];
+                    for (int i = 0; i < payloadChars.Length; i++) payloadChars[i] = (char)assembly[i + 1];
+                    assembly.RemoveRange(0, frameLen);
+                    string payload = new string(payloadChars);
+
+                    if (!parityOk)
+                    {
+                        NotifyClient("GALAXY event parity mismatch - rejecting frame");
+                        WriteEventFrame(stream, BuildFrame(kBlkReject.ToString(), ackRequest: false));
+                        continue;
+                    }
+
+                    CountMessage();
+                    if (payload.Length == 0) continue;
+
+                    if (ackRequested && payload[0] != kBlkAck && payload[0] != kBlkReject)
+                    {
+                        WriteEventFrame(stream, BuildFrame(kBlkAck.ToString(), ackRequest: false));
+                    }
+
+                    ProcessEventBlock(payload);
+                }
+            }
+            NotifyClient("GALAXY event report complete");
+        }
+
+        private void WriteEventFrame(NetworkStream stream, byte[] frame)
+        {
+            try
+            {
+                stream.Write(frame, 0, frame.Length);
+                stream.Flush();
+                LogTransport(">evt", frame, frame.Length);
+            }
+            catch (Exception ex)
+            {
+                NotifyClient($"GALAXY event ack write failed: {ex.Message}");
+            }
+        }
+
+        // Same block vocabulary as ProcessBlock (control channel) but no
+        // ResolveInFlight - the module never answers a query on this
+        // connection, it only ever reports.
+        private void ProcessEventBlock(string payload)
+        {
+            char block = payload[0];
+            string data = payload.Length > 1 ? payload.Substring(1) : "";
+            switch (block)
+            {
+                case kBlkAccount:
+                    if (!_warnedAccountMismatch
+                        && int.TryParse(data.Trim(), out int account)
+                        && account > 0 && account != _siteId)
+                    {
+                        _warnedAccountMismatch = true;
+                        NotifyClient("GALAXY panel account number " + account
+                            + " does not match configured SiteID " + _siteId
+                            + " - events will carry the SiteID node; check GalaxyMan.ini");
+                    }
+                    NoteEventBlock(account: data);
+                    break;
+
+                case kBlkAlarmData:
+                    NoteEventBlock(data: data, isAlarm: true);
+                    break;
+
+                case kBlkOtherData:
+                    NoteEventBlock(data: data, isAlarm: false);
+                    break;
+
+                case kBlkAscii:
+                    NoteEventBlock(ascii: data);
+                    break;
+
+                default:
+                    NotifyClient($"GALAXY event unknown block '{block}' data '{data}'", false);
+                    break;
+            }
         }
         #endregion
 
@@ -608,38 +821,41 @@ namespace DraxTechnology.Panels
         private void NoteEventBlock(string account = null, string data = null,
             bool isAlarm = false, string ascii = null)
         {
-            double sinceLastMs = (DateTime.Now - _evLastBlockAt).TotalMilliseconds;
-            if (sinceLastMs > kEventBlockWindowMs)
+            lock (_evLock)
             {
-                // Stale partial event - a data block on its own is still
-                // decodable, so flush rather than drop (the VB dropped, and
-                // its logs show real events lost to exactly this).
-                FlushPendingEvent();
-            }
-            _evLastBlockAt = DateTime.Now;
-
-            if (account != null) _evAccount = account;
-            if (ascii != null) _evAscii = ascii;
-            if (data != null)
-            {
-                // A second data block before the first flushed = new event.
-                if (_evData != null) FlushPendingEvent();
-                // Any ASCII text lying around belongs to a PREVIOUS event —
-                // carrying it forward married the old event's text onto the
-                // new one in the pre-@AL startup window.
-                _evAscii = null;
-                _evData = data;
-                _evDataIsAlarm = isAlarm;
+                double sinceLastMs = (DateTime.Now - _evLastBlockAt).TotalMilliseconds;
+                if (sinceLastMs > kEventBlockWindowMs)
+                {
+                    // Stale partial event - a data block on its own is still
+                    // decodable, so flush rather than drop (the VB dropped, and
+                    // its logs show real events lost to exactly this).
+                    FlushPendingEvent_NoLock();
+                }
                 _evLastBlockAt = DateTime.Now;
-            }
 
-            if (_evData != null && (_siaLevel < 3 || _evAscii != null))
-            {
-                FlushPendingEvent();
+                if (account != null) _evAccount = account;
+                if (ascii != null) _evAscii = ascii;
+                if (data != null)
+                {
+                    // A second data block before the first flushed = new event.
+                    if (_evData != null) FlushPendingEvent_NoLock();
+                    // Any ASCII text lying around belongs to a PREVIOUS event —
+                    // carrying it forward married the old event's text onto the
+                    // new one in the pre-@AL startup window.
+                    _evAscii = null;
+                    _evData = data;
+                    _evDataIsAlarm = isAlarm;
+                    _evLastBlockAt = DateTime.Now;
+                }
+
+                if (_evData != null && (_siaLevel < 3 || _evAscii != null))
+                {
+                    FlushPendingEvent_NoLock();
+                }
             }
         }
 
-        private void FlushPendingEvent()
+        private void FlushPendingEvent_NoLock()
         {
             if (_evData == null)
             {
