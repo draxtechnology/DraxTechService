@@ -10,7 +10,7 @@
        an equal version. -->
   <Package Name="Drax Technology Service"
            Manufacturer="Drax Technology"
-           Version="1.0.41"
+           Version="1.0.42"
            UpgradeCode="B5758DCA-6BC5-4E2C-BF55-7FA118631F65"
            Scope="perMachine"
            InstallerVersion="500">
@@ -87,7 +87,14 @@
          No instance question (Mike/James, 2026-08-11) and no directory or
          license pages — all four instances install to their fixed NWM1..4
          subfolders under the AMX root and sit dormant until configured and
-         started. -->
+         started. The AMX root itself (AMXROOT, default C:\AMX1) is a public
+         property so the AMX installer that calls this one can hand over the
+         folder it was given (James, 2026-09-15 — AMX is not always at
+         C:\AMX1). Optional: omit it and C:\AMX1 stands.
+           msiexec /i DraxTechnologyServiceSetup.msi AMXROOT="D:\AMX2" /qn
+           DraxTechnologyServiceSetup.exe /quiet InstallFolder="D:\AMX2"
+         Nothing in the service needs the name — it works from its own exe
+         folder and reads ini templates one level up (SeedIniTemplates). -->
     <ui:WixUI Id="WixUI_Minimal" />
 
     <!-- Logo bitmaps — regenerate with DraxServiceSetup\MakeBitmaps.ps1
@@ -113,7 +120,7 @@
          DraxService.cs reads from there (one level up from its own instance
          folder) when it seeds each instance's live config on first run. -->
     <StandardDirectory Id="TARGETDIR">
-      <Directory Id="AmxRootDir" Name="AMX1">
+      <Directory Id="AMXROOT" Name="AMX1">
         <Directory Id="IniFolder" Name="ini" />
         <Directory Id="INSTALLFOLDER1" Name="NWM1">
           <Directory Id="RuntimesDir1" Name="runtimes">
