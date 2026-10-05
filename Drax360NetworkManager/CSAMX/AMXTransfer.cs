@@ -350,7 +350,7 @@ namespace DraxTechnology
         }
 
         // A client UI frame from AMX is "<three-letter panel tag>:<command>",
-        // e.g. NWM:SETUPSHOW, TAK:TBSHOW, GEN:END. The tag is whatever AMX
+        // e.g. NWM:SETUPSHOW, TAK:TBSHOW. The tag is whatever AMX
         // calls that panel, so accept any three upper-case letters and only
         // exclude the file-handshake frames, which share the shape but are
         // dispatched separately.
