@@ -201,7 +201,14 @@ namespace DraxTechnology
                     // pipe-delimited graphic command is a separate message
                     // type. Use else-if so a "NWM:foo|bar" frame doesn't
                     // double-dispatch.
-                    if (msg.StartsWith("NWM:") || msg.StartsWith("GEN:") || msg.StartsWith("AUT:"))
+                    //
+                    // The tag is AMX's own panel code (NWM:, GEN:, AUT:, TAK:,
+                    // ...) and not something this service controls, so forward
+                    // every tagged UI frame instead of listing the panels met so
+                    // far. Mike's Taktis/Galaxy/ARM AMX panels send TAK:SETUPSHOW
+                    // and the old NWM/GEN/AUT list dropped it silently
+                    // (2026-10-05). MAK:/MTX: are file handshakes, handled below.
+                    if (IsClientUiFrame(msg))
                     {
                         DraxService drax = new DraxService();
                         drax.sendreturncmd("", msg);
@@ -340,6 +347,27 @@ namespace DraxTechnology
         public void NotifyClient(string message)
         {
             OutsideEvents?.Invoke(this, new CustomEventArgs(message, false));
+        }
+
+        // A client UI frame from AMX is "<three-letter panel tag>:<command>",
+        // e.g. NWM:SETUPSHOW, TAK:TBSHOW, GEN:END. The tag is whatever AMX
+        // calls that panel, so accept any three upper-case letters and only
+        // exclude the file-handshake frames, which share the shape but are
+        // dispatched separately.
+        internal static bool IsClientUiFrame(string msg)
+        {
+            if (msg == null || msg.Length < 5 || msg[3] != ':')
+                return false;
+
+            for (int i = 0; i < 3; i++)
+            {
+                if (msg[i] < 'A' || msg[i] > 'Z')
+                    return false;
+            }
+
+            return !msg.StartsWith("MAK:", StringComparison.Ordinal)
+                && !msg.StartsWith("MTX:", StringComparison.Ordinal)
+                && !msg.StartsWith("NTX:", StringComparison.Ordinal);
         }
 
         // The AMX link just went from connected to down (the trace line here,
