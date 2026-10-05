@@ -202,7 +202,7 @@ namespace DraxTechnology
                     // type. Use else-if so a "NWM:foo|bar" frame doesn't
                     // double-dispatch.
                     //
-                    // The tag is AMX's own panel code (NWM:, GEN:, AUT:, TAK:,
+                    // The tag is AMX's own panel code (NWM:,
                     // ...) and not something this service controls, so forward
                     // every tagged UI frame instead of listing the panels met so
                     // far. Mike's Taktis/Galaxy/ARM AMX panels send TAK:SETUPSHOW
@@ -210,6 +210,7 @@ namespace DraxTechnology
                     // (2026-10-05). MAK:/MTX: are file handshakes, handled below.
                     if (IsClientUiFrame(msg))
                     {
+                        NotifyClient("AMX Form: " + msg);
                         DraxService drax = new DraxService();
                         drax.sendreturncmd("", msg);
                     }
