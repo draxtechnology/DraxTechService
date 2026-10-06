@@ -796,10 +796,37 @@ namespace DraxTechnology
         const string ksettingpanelsection = "PANEL";
         const string ksettingmainsection = "MAIN";
 
-        // Follows the configured base folder (default c:\AMX1); safe as a computed
-        // property because configurationbasefolder is set at the top of Run(),
-        // before anything reads or writes the file.
-        string CURRENTNWMDATAFILE => Path.Combine(configurationbasefolder, "Temp", "Current.Nwm");
+        // AMX's own root folder, where its Temp\Current.Nwm lives. The installer
+        // puts each service instance one level down (C:\AMX1\NWM1..4, Product.wxs)
+        // and stamps that folder into Configuration, so the root is its parent.
+        // A single legacy install configured straight at C:\AMX1 has no NWM{n}
+        // leaf and is its own root. AmxRoot in App.config overrides both for an
+        // AMX that lives somewhere else entirely. Mike's side-by-side instances
+        // looked for C:\AMX1\NWM2\Temp\Current.Nwm, never found it, and AMX was
+        // never told about the NWM (2026-10-06).
+        string amxrootfolder
+        {
+            get
+            {
+                string configured = ConfigurationManager.AppSettings["AmxRoot"]?.Trim();
+                if (!string.IsNullOrEmpty(configured))
+                    return configured;
+
+                string basefolder = configurationbasefolder.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                string leaf = Path.GetFileName(basefolder);
+                if (Regex.IsMatch(leaf, @"^NWM\d+$", RegexOptions.IgnoreCase))
+                {
+                    string parent = Path.GetDirectoryName(basefolder);
+                    if (!string.IsNullOrEmpty(parent))
+                        return parent;
+                }
+                return configurationbasefolder;
+            }
+        }
+
+        // Safe as a computed property because configurationbasefolder is set at
+        // the top of Run(), before anything reads or writes the file.
+        string CURRENTNWMDATAFILE => Path.Combine(amxrootfolder, "Temp", "Current.Nwm");
 
         private const int NwmMaxNodesKsf = 64;   // Kentec Signifire NWM Maximum nodes in Lite versions
         private const int NwmMaxNodesZx = 255;  // Zetaplex NWM Maximum nodes in Lite versions
@@ -2478,6 +2505,7 @@ namespace DraxTechnology
             kvp(DateTime.Now + ": Version", Assembly.GetEntryAssembly().GetCustomAttribute<AssemblyFileVersionAttribute>().Version);
             kvp(DateTime.Now + ": Panel", panel);
             kvp(DateTime.Now + ": Configuration", this.configurationbasefolder);
+            kvp(DateTime.Now + ": Current.Nwm", CURRENTNWMDATAFILE);
             if (!Elements.isService)
             {
                 title("Interactive Session");
