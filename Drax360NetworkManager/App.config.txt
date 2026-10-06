@@ -9,16 +9,16 @@
       Email                             U2FsdGVkX1+YN+3YDMt0ebrDTZ2F
       AUTESPA                           U2FsdGVkX191GGJ/bumkNXbg8/TxbEI=                    1070 Channel
       Gent                              U2FsdGVkX18mnN7TEM2sVBO+0tw=
-      Inspire                           U2FsdGVkX1+f3C+TzSBV52yzgMMjNa8=                    1080 Chanel
+      Inspire                           U2FsdGVkX1+f3C+TzSBV52yzgMMjNa8=                    1080 Channel
       MorleyMax                         U2FsdGVkX18lYZGUa4wybYDH/IvY1JtcgA==
 	  MorleyZX                          U2FsdGVkX18NyBOg7pRGwII0IHkcqQt3
 	  Notifier                          U2FsdGVkX19zEDkZEbF52Y4s3TnjygSE==
 	  Pearl                             U2FsdGVkX18idM3bupLKS9bQ5I6k
 	  RSM                               U2FsdGVkX18OMDQk8xhCw1xicQ==
 	  Syncro                            U2FsdGVkX1/5DsGH2yC+z/jVGTW23A==
-      Taktis                            U2FsdGVkX18EWMTvtQVOK6qA+tJkkQ==
-      ARM                               U2FsdGVkX18Hlrftm2W91iTLSQ==
-      Galaxy                            U2FsdGVkX18Xx26BNBfeQZMR526Oqw==
+      Taktis                            U2FsdGVkX18EWMTvtQVOK6qA+tJkkQ==                    1100 Channel
+      ARM                               U2FsdGVkX18Hlrftm2W91iTLSQ==                        1090 Channel
+      Galaxy                            U2FsdGVkX18Xx26BNBfeQZMR526Oqw==                    1110 Channel
 
     Galaxy (Honeywell Galaxy Dimension intruder panel, IP-only via its
     Ethernet module - single TCP connection, no serial option): set

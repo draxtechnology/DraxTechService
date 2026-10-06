@@ -1304,7 +1304,7 @@ namespace DraxTechnology
         {
             if (!File.Exists(CURRENTNWMDATAFILE))
             {
-                EventLogger.WriteToEventLog("Current.Nwm not found — AMX may not be running yet", EventLogEntryType.Warning);
+                EventLogger.WriteToEventLog(CURRENTNWMDATAFILE + " NOT found — AMX may not be running yet", EventLogEntryType.Warning);
                 return;
             }
 
@@ -2361,6 +2361,7 @@ namespace DraxTechnology
         public DraxService()
         {
             InitializeComponent();
+            EventLogger.Mirror = (message, type) => ln(message, type);
         }
         #endregion
 
