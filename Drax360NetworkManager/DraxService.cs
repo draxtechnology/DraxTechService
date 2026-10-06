@@ -778,6 +778,15 @@ namespace DraxTechnology
         // this token guarantees a real, complete message that the client maps back to "".
         // Must stay byte-for-byte identical to PipeProtocol.EmptyResult on the client.
         const string kpipeemptyresult = "\u0001EMPTY\u0001";
+
+        // Test inputs raised from the client's test box and not yet reset, stored as
+        // the off-state event number (on-bit stripped) so "Test Box Reset All" can send
+        // a reset for each without the client re-sending them. Static because
+        // AMXTransfer news up a DraxService per inbound frame; the set belongs to the
+        // service as a whole.
+        private static readonly HashSet<int> _testBoxRaised = new HashSet<int>();
+        private static readonly object _testBoxLock = new object();
+
         const string kappname = "DraxTechnology Service";
         const int kfaketimertickseconds = 60;
         const int kfakefireinitialwakeseconds = 0;
@@ -2176,6 +2185,10 @@ namespace DraxTechnology
                         int evnum = CSAMXSingleton.CS.MakeInputNumber(tbP2, tbP3, tbP4, tbP1, true);
                         CSAMXSingleton.CS.SendAlarmToAMX(evnum, "##TEST", "", "");
                         CSAMXSingleton.CS.FlushMessages();
+                        lock (_testBoxLock)
+                        {
+                            _testBoxRaised.Add(evnum & 0x7FFFFFFF);
+                        }
                     }
                     break;
 
@@ -2188,8 +2201,37 @@ namespace DraxTechnology
                         int evnum = CSAMXSingleton.CS.MakeInputNumber(trP2, trP3, trP4, trP1, false);
                         CSAMXSingleton.CS.SendResetToAMX(evnum, "##TEST", "", "");
                         CSAMXSingleton.CS.FlushMessages();
+                        lock (_testBoxLock)
+                        {
+                            _testBoxRaised.Remove(evnum);
+                        }
                     }
                     break;
+
+                case "TEST BOX RESET ALL":
+                {
+                    // Reset every test input this service has raised and not yet
+                    // reset, the way the VB Galaxy test box's Reset All walked its
+                    // event history and wrote an off event for each one still on
+                    // (SupportGalaxy.bas ClearEventsHistory). Returns the count so
+                    // the client can show what it cleared.
+                    int[] pending;
+                    lock (_testBoxLock)
+                    {
+                        pending = _testBoxRaised.ToArray();
+                        _testBoxRaised.Clear();
+                    }
+                    foreach (int evnum in pending)
+                    {
+                        CSAMXSingleton.CS.SendResetToAMX(evnum, "##TEST", "", "");
+                    }
+                    if (pending.Length > 0)
+                    {
+                        CSAMXSingleton.CS.FlushMessages();
+                    }
+                    ret = pending.Length.ToString();
+                    break;
+                }
 
                 case "SETTINGSGET":
                     if (partssplit == null || partssplit.Length != 2) break;
