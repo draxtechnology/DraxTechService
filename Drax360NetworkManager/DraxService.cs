@@ -1412,7 +1412,6 @@ namespace DraxTechnology
                     w.WriteLine("Name=" + panel + "\r\nVersion=" + versionString + "\r\nNodeName=" + panel + " Fire Panel");
                     int giamx1offset = apbase.GetSetting<int>("SETUP", "GIAMX1OFFSET");
                     w.WriteLine("Offset="+ giamx1offset+"\r\nFirstNode=1\r\nLastNode=" + GetNwmMaxNodes(0, "NwmHandle" + result));
-                 //   w.WriteLine("Offset=0\r\nFirstNode=1\r\nLastNode=" + GetNwmMaxNodes(0, "NwmHandle" + result));
                     w.WriteLine("Startup=" + DateTime.Now);
                     w.WriteLine("1A=NWM DLL File Date\r\n1B=" + exeDateTime);
                     w.WriteLine("2A=" + panel + " Panel Timeout\r\n2B=None");
@@ -1529,7 +1528,6 @@ namespace DraxTechnology
             CustomEventArgs ex = e as CustomEventArgs;
             string msg = ex.Message.ToString();
             ln(msg);
-
         }
 
         private void fake_timer(object sender)
