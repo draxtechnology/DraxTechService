@@ -1410,7 +1410,9 @@ namespace DraxTechnology
                     w.WriteLine("[" + allProgNameCount + "]\r\nProgName=" + panel + " Network Manager");
 
                     w.WriteLine("Name=" + panel + "\r\nVersion=" + versionString + "\r\nNodeName=" + panel + " Fire Panel");
-                    w.WriteLine("Offset=0\r\nFirstNode=1\r\nLastNode=" + GetNwmMaxNodes(0, "NwmHandle" + result));
+                    int giamx1offset = apbase.GetSetting<int>("SETUP", "GIAMX1OFFSET");
+                    w.WriteLine("Offset="+ giamx1offset+"\r\nFirstNode=1\r\nLastNode=" + GetNwmMaxNodes(0, "NwmHandle" + result));
+                 //   w.WriteLine("Offset=0\r\nFirstNode=1\r\nLastNode=" + GetNwmMaxNodes(0, "NwmHandle" + result));
                     w.WriteLine("Startup=" + DateTime.Now);
                     w.WriteLine("1A=NWM DLL File Date\r\n1B=" + exeDateTime);
                     w.WriteLine("2A=" + panel + " Panel Timeout\r\n2B=None");
@@ -1426,7 +1428,7 @@ namespace DraxTechnology
                     w.WriteLine("12A=Comms Port 4 Settings\r\n12B=9600,e,8,1");
                     w.WriteLine("13A=Comms Port 5 Settings\r\n13B=9600,e,8,1");
                     w.WriteLine("14A=Comms Port 6 Settings\r\n14B=9600,e,8,1");
-                    w.WriteLine("15A=\r\n15B=\r\n16A=\r\n16B=\r\n17A=\r\n17B=\r\n18A=\r\n18B=\r\n19A=\r\n19B=\r\n20A=\r\n20B=\r\n21A=\r\n21B=\r\n22A=\r\n22B=\r\n23A=\r\n23B=\r\n24A=\r\n24B=\r\n25A=\r\n25B=\r\n");
+                    w.WriteLine("15A=\r\n15B=\r\n16A=\r\n16B=\r\n17A=\r\n17B=\r\n18A=\r\n18B=\r\n19A=\r\n19B=\r\n20A=\r\n20B=\r\n21A=\r\n21B=\r\n22A=\r\n22B=\r\n23A=\r\n23B=\r\n24A=\r\n24B=\r\n25A=\r\n25B=");
                     w.Flush();
                 }
             }

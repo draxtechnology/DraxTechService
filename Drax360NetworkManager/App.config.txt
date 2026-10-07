@@ -9,7 +9,7 @@
       Email                             U2FsdGVkX1+YN+3YDMt0ebrDTZ2F
       AUTESPA                           U2FsdGVkX191GGJ/bumkNXbg8/TxbEI=                    1070 Channel
       Gent                              U2FsdGVkX18mnN7TEM2sVBO+0tw=
-      Inspire                           U2FsdGVkX1+f3C+TzSBV52yzgMMjNa8=                    1080 Channel
+      Inspire                           U2FsdGVkX1+f3C+TzSBV52yzgMMjNa8=Cant                1080 Channel
       MorleyMax                         U2FsdGVkX18lYZGUa4wybYDH/IvY1JtcgA==
 	  MorleyZX                          U2FsdGVkX18NyBOg7pRGwII0IHkcqQt3
 	  Notifier                          U2FsdGVkX19zEDkZEbF52Y4s3TnjygSE==
