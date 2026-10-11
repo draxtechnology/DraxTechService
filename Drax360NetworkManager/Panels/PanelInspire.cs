@@ -2119,6 +2119,165 @@ namespace DraxTechnology.Panels
                             Console.WriteLine(DateTime.Now + ": " + gsTextField);
                             break;
 
+                        // Panel-level events the Ireland site raised that had no case
+                        // here and fell through to "Unknown Event", reaching AMX as a
+                        // blank status event (earth fault, 2026-10-02 site log). Alarm
+                        // type, address and text mirror AbstractPanelId3k so the three
+                        // ID3K-family drivers report them the same way.
+                        case enmNotEventType.LossOfLoop:  // 148
+                            gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                            giAddressNumber = 20 + loop;
+                            gsTextField = "Loop Loss";
+                            getDeviceText = false;
+                            Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                            break;
+
+                        case enmNotEventType.LossPartLoop:  // 149
+                            gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                            giAddressNumber = 20 + loop;
+                            gsTextField = "Loop Part Loss";
+                            getDeviceText = false;
+                            Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                            break;
+
+                        case enmNotEventType.EndBFaultLoop:  // 150
+                            gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                            giAddressNumber = 20 + loop;
+                            gsTextField = "End B Fault Loop";
+                            getDeviceText = false;
+                            Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                            break;
+
+                        case enmNotEventType.NetworkDisabled:  // 156
+                            gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                            giAddressNumber = 72;
+                            gsTextField = "Network Disabled";
+                            getDeviceText = false;
+                            Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                            break;
+
+                        case enmNotEventType.SounderImmediateMode:  // 170
+                            gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                            giAddressNumber = 70;
+                            gsTextField = "Sounder Immediate Mode";
+                            getDeviceText = false;
+                            Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                            break;
+
+                        case enmNotEventType.SounderDelayMode:  // 171
+                            gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                            giAddressNumber = 5;
+                            gsTextField = "Sounder Delay Mode";
+                            getDeviceText = false;
+                            Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                            break;
+
+                        case enmNotEventType.SounderRelayCircuitDisabled:  // 181
+                            gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                            giAddressNumber = 73;
+                            gsTextField = "Sounder or Relay Circuit Disabled";
+                            getDeviceText = false;
+                            Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                            break;
+
+                        case enmNotEventType.FireRelayDisabled:  // 182
+                            gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                            giAddressNumber = 74;
+                            gsTextField = "Fire Relay Disabled";
+                            getDeviceText = false;
+                            Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                            break;
+
+                        case enmNotEventType.FaultRelayDisabled:  // 183
+                            gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                            giAddressNumber = 75;
+                            gsTextField = "Fault Relay Disabled";
+                            getDeviceText = false;
+                            Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                            break;
+
+                        case enmNotEventType.SounderRelayCircuitEnabled:  // 184
+                            gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                            giAddressNumber = 73;
+                            gsTextField = "Sounder or Relay Circuit Enabled";
+                            getDeviceText = false;
+                            Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                            break;
+
+                        case enmNotEventType.FireRelayEnabled:  // 185
+                            gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                            giAddressNumber = 74;
+                            gsTextField = "Fire Relay Enabled";
+                            getDeviceText = false;
+                            Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                            break;
+
+                        case enmNotEventType.FaultRelayEnabled:  // 186
+                            gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                            giAddressNumber = 75;
+                            gsTextField = "Fault Relay Enabled";
+                            getDeviceText = false;
+                            Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                            break;
+
+                        case enmNotEventType.NetworkEnableZone:  // 195
+                            gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                            loop = 15;
+                            giAddressNumber = zone;
+                            gsTextField = "Network Zone " + zone + " Enabled";
+                            getDeviceText = false;
+                            Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                            break;
+
+                        case enmNotEventType.NetworkDisableZone:  // 196
+                            gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                            loop = 15;
+                            giAddressNumber = zone;
+                            gsTextField = "Network Zone " + zone + " Disabled";
+                            getDeviceText = false;
+                            Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                            break;
+
+                        case enmNotEventType.NetworkSoundersEnabled:  // 197
+                            gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                            giAddressNumber = 92;
+                            gsTextField = "Network Sounder Zone " + zone + " Enabled";
+                            getDeviceText = false;
+                            Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                            break;
+
+                        case enmNotEventType.NetworkSoundersDisabled:  // 198
+                            gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                            giAddressNumber = 92;
+                            gsTextField = "Network Sounder Zone " + zone + " Disabled";
+                            getDeviceText = false;
+                            Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                            break;
+
+                        case enmNotEventType.ZoneInFault:  // 200
+                            gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                            giAddressNumber = 3;
+                            gsTextField = "Zone In Fault";
+                            getDeviceText = false;
+                            Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                            break;
+
+                        case enmNotEventType.MainsPSUFault:  // 289
+                            gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                            giAddressNumber = 11;
+                            gsTextField = "Mains PSU Fault";
+                            getDeviceText = false;
+                            Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                            break;
+
+                        case enmNotEventType.EarthFault:  // 312
+                            gAlarmType = enmNotAlarmType.NOTFault.ToString();
+                            giAddressNumber = 17;
+                            gsTextField = "Earth Fault";
+                            getDeviceText = false;
+                            Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                            break;
+
                         default:
                             base.NotifyClient("Unknown Event " + ((enmNotEventType)eventcode));
                             break;

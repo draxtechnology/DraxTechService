@@ -327,6 +327,15 @@ namespace DraxTechnology.Panels
         // each IP address"). -1 = key absent, inherit [SetUp] giAmx1Offset;
         // 0 is a valid explicit no-offset.
         public int Offset = -1;
+        // Optional [ConnectionN] MaxPanels: how many AMX node numbers above
+        // Offset this NETWORK connection owns. 0 = not set.
+        public int MaxPanels;
+        // Highest AMX node this network connection claims, resolved by
+        // DraxService at connection build: Offset + MaxPanels when set, else
+        // the next higher sibling network offset, else 0 = no ceiling. Two
+        // live networks used to both answer a control for node 502 because
+        // every number above an offset was claimed without limit.
+        public int NodeCeiling;
     }
 
     internal partial class PanelTaktis : AbstractPanel
@@ -593,6 +602,7 @@ namespace DraxTechnology.Panels
             // Network: only nodes inside this connection's offset range, and
             // never a standalone sibling's AMX identity.
             if (SiblingStandaloneAmxNodes.Contains(amxNode)) return false;
+            if (_conn.NodeCeiling > 0 && amxNode > _conn.NodeCeiling) return false;
             return amxNode - _amx1Offset > 0;
         }
 

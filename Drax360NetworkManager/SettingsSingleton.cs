@@ -185,6 +185,15 @@ namespace DraxTechnology
                 }
             }
 
+            // An empty value is "not set", same as an absent key: legacy inis
+            // ship lines like DataLoggingSet= and the VB read them as 0 via
+            // Val(""). Converting "" used to throw and log a warning on every
+            // read (Morley Max, 2026-10-02).
+            if (string.IsNullOrWhiteSpace(val))
+            {
+                return default(T);
+            }
+
             try
             {
                 return (T)Convert.ChangeType(val, typeof(T));

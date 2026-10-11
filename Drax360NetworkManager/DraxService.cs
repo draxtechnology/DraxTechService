@@ -989,7 +989,11 @@ namespace DraxTechnology
             filelockmutex.WaitOne();
             try
             {
-                string logdir = Path.Combine(configurationbasefolder, klogfilefolder);
+                // Logs go to AMX's own System folder (C:\AMX1\System), beside
+                // AMX's logs, not the instance's NWM{n}\System — James, Kentec
+                // visit 2026-10-09. Single legacy installs resolve to the same
+                // place because amxrootfolder is then the base folder itself.
+                string logdir = Path.Combine(amxrootfolder, klogfilefolder);
                 if (!Directory.Exists(logdir))
                     Directory.CreateDirectory(logdir);
                 // Cache the log-name stem: getpanel() constructs a complete
@@ -1607,6 +1611,7 @@ namespace DraxTechnology
                     PanelNumber = settings.GetSetting<int>(section, "PanelNumber"),
                     ClientID = settings.GetSetting<int>(section, "ClientID"),
                     Offset = offset >= 0 ? offset : setupOffset,
+                    MaxPanels = settings.GetSetting<int>(section, "MaxPanels"),
                 });
             }
             return ret;
@@ -1674,13 +1679,11 @@ namespace DraxTechnology
             int cap = ReadLicensedMaxIpConnections();
             if (cap < 0)
             {
-                // TEMPORARY TEST FUDGE (2026-08-18): capped at 2 so the
-                // two-panel rig runs while James's licence key doesn't exist
-                // yet. REVERT TO 1 BEFORE ANY RELEASE — an absent key must
-                // mean a single connection, or a plain single-panel licence
-                // gains panels by ini edits alone.
-                cap = 2;
-                ln("Taktis licence: no maximum-IP-addresses key in Current.Nwm — TEST FUDGE cap of 2 applied (release builds must cap at 1)");     // in Two places
+                // Absent key = single connection. The 2026-08-18 test fudge
+                // of 2 (two-panel rig before James's key existed) was reverted
+                // 2026-10-11; multiple IPs need the key actually granted.
+                cap = 1;
+                ln("Taktis licence: no maximum-IP-addresses key in Current.Nwm — capped at 1 connection");     // in Two places
             }
             // Validate BEFORE capping — an invalid entry must not consume a
             // licensed slot (a broken Connection1 used to waste a slot and
@@ -1724,6 +1727,26 @@ namespace DraxTechnology
                     valid.Where(c => c.Standalone).Select(c => c.PanelNumber + c.Offset));
             }
 
+            // Cap each network connection's claim range so two live networks
+            // never both answer the same control: explicit MaxPanels wins,
+            // otherwise the range ends where the next network's offset begins.
+            foreach (var c in valid.Where(c => !c.Standalone))
+            {
+                if (c.MaxPanels > 0)
+                {
+                    c.NodeCeiling = c.Offset + c.MaxPanels;
+                }
+                else
+                {
+                    var next = valid.Where(o => !o.Standalone && o != c && o.Offset > c.Offset)
+                                    .Select(o => (int?)o.Offset).Min();
+                    c.NodeCeiling = next ?? 0;
+                }
+                if (c.NodeCeiling > 0)
+                    ln("Taktis Connection" + c.Index + " (network, offset " + c.Offset + ") claims AMX nodes "
+                        + (c.Offset + 1) + ".." + c.NodeCeiling);
+            }
+
             foreach (var c in valid)
             {
                 string identifier = "TAKTIS" + c.Index;
@@ -1746,6 +1769,69 @@ namespace DraxTechnology
 
             ln("Taktis multi-IP: started " + valid.Count + " connection(s) ("
                 + valid.Count(c => c.Standalone) + " standalone, " + valid.Count(c => !c.Standalone) + " network)");
+        }
+
+
+        // Derive DebugLog from the ini. Called at init and again on
+        // SETTINGSRELOAD / SETTINGSSAVE so the client's Debug tick takes
+        // effect without a service restart (Ireland, 2026-10-01: the tick
+        // was set, the service kept running, no log appeared).
+        private void ReadDebugLogSetting(AbstractPanel apbase)
+        {
+            // SETUP/DataLogging is the standard key — the client's settings
+            // form writes it for every serial panel. The per-panel legacy keys
+            // below are honoured only when the standard key is absent, so a
+            // deployed ini keeps its setting until the first save migrates it.
+            string dataLogging = apbase.GetSetting<string>(ksettingsetupsection, "DataLogging");
+            if (!string.IsNullOrEmpty(dataLogging))
+            {
+                this.DebugLog = dataLogging == "1" ||
+                    dataLogging.Equals("true", StringComparison.OrdinalIgnoreCase);
+            }
+            else
+            switch (panel)
+
+            {
+                case "ADVANCED":
+                    this.DebugLog = apbase.GetSetting<bool>(ksettingmainsection, "DesignTime");
+                    break;
+                case "EMAIL":
+                    this.DebugLog = apbase.GetSetting<bool>(ksettingmainsection, "Debug");
+                    break;
+                case "GENT":
+                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DataLogging"));
+                    break;
+                case "MORLEYMAX":
+                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DataLoggingSet"));
+                    break;
+                case "MORLEYZX":
+                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DebugLog"));
+                    break;
+                case "NOTIFIER":
+                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DesignTime"));
+                    break;
+                case "PEARL":
+                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DesignTime"));
+                    break;
+                case "RSM":
+                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "Debug"));
+                    break;
+                case "TAKTIS":
+                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DataLogging"));
+                    break;
+                case "GALAXY":
+                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DataLogging"));
+                    break;
+                case "SYNCRO":
+                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "CreateLog"));
+                    break;
+                case "AUTESPA":
+                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "CreateLog"));
+                    break;
+                default:
+                    this.DebugLog = true;
+                    break;
+            }
         }
 
         private AbstractPanel getpanel(string identifier = "")
@@ -2303,6 +2389,9 @@ namespace DraxTechnology
 
                 case "SETTINGSSAVE":
                     SettingsSingleton.Instance(panel).SaveSettings();
+                    // The client's Setup Save is SETTINGSSET + SETTINGSSAVE with
+                    // no reload, so the Debug tick is picked up here.
+                    ReadDebugLogSetting(abstractpanels.FirstOrDefault() ?? getpanel());
                     break;
 
                 case "SERVICERESTART":
@@ -2311,6 +2400,7 @@ namespace DraxTechnology
 
                 case "SETTINGSRELOAD":
                     SettingsSingleton.Instance(panel).ReLoadSettings();
+                    ReadDebugLogSetting(abstractpanels.FirstOrDefault() ?? getpanel());
                     break;
 
                 case "GETPANELHANDSHAKE":
@@ -2335,7 +2425,7 @@ namespace DraxTechnology
                     int cap = ReadLicensedMaxIpConnections();
                     if (cap < 0)
                     {
-                        cap = 2;  // TEST FUDGE cap of 2 applied (release builds must cap at 1)    - In 2 Places
+                        cap = 1;  // absent key = single connection (test fudge of 2 reverted 2026-10-11)    - In 2 Places
                     }
                     ret = cap + " Licensed Max IP Connections";
                     break;
@@ -2519,60 +2609,7 @@ namespace DraxTechnology
             pad();
 
             AbstractPanel apbase = getpanel();
-            // SETUP/DataLogging is the standard key — the client's settings
-            // form writes it for every serial panel. The per-panel legacy keys
-            // below are honoured only when the standard key is absent, so a
-            // deployed ini keeps its setting until the first save migrates it.
-            string dataLogging = apbase.GetSetting<string>(ksettingsetupsection, "DataLogging");
-            if (!string.IsNullOrEmpty(dataLogging))
-            {
-                this.DebugLog = dataLogging == "1" ||
-                    dataLogging.Equals("true", StringComparison.OrdinalIgnoreCase);
-            }
-            else
-            switch (panel)
-
-            {
-                case "ADVANCED":
-                    this.DebugLog = apbase.GetSetting<bool>(ksettingmainsection, "DesignTime");
-                    break;
-                case "EMAIL":
-                    this.DebugLog = apbase.GetSetting<bool>(ksettingmainsection, "Debug");
-                    break;
-                case "GENT":
-                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DataLogging"));
-                    break;
-                case "MORLEYMAX":
-                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DataLoggingSet"));
-                    break;
-                case "MORLEYZX":
-                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DebugLog"));
-                    break;
-                case "NOTIFIER":
-                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DesignTime"));
-                    break;
-                case "PEARL":
-                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DesignTime"));
-                    break;
-                case "RSM":
-                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "Debug"));
-                    break;
-                case "TAKTIS":
-                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DataLogging"));
-                    break;
-                case "GALAXY":
-                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DataLogging"));
-                    break;
-                case "SYNCRO":
-                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "CreateLog"));
-                    break;
-                case "AUTESPA":
-                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "CreateLog"));
-                    break;
-                default:
-                    this.DebugLog = true;
-                    break;
-            }
+            ReadDebugLogSetting(apbase);
             // OutsideEvents must subscribe on the singleton, not a fresh instance —
             // earlier code instantiated a throwaway AMXTransfer just to add the
             // handler, but Run() drives Instance only, so Sp_Log was silently
@@ -2914,24 +2951,30 @@ namespace DraxTechnology
                 // instance's own NWM{n} folder (C:\AMX1\ini — see Product.wxs).
                 // Dev/console mode runs straight from the build output with no
                 // NWM{n} nesting, so fall back to the folder next to the exe.
-                string templates = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "ini"));
-                if (!Directory.Exists(templates))
-                {
-                    templates = Path.Combine(AppContext.BaseDirectory, "ini");
-                }
-                if (!Directory.Exists(templates)) return;
+                // A site upgraded from the single-folder layout keeps its live
+                // inis in the AMX root itself (C:\AMX1\Takman.ini) — Mike had
+                // to copy that by hand at Kentec (2026-10-09). The root is
+                // taken first so real site settings beat blank defaults, then
+                // the shipped templates fill in whatever the root lacked.
+                string parent = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, ".."));
                 int seeded = 0;
-                foreach (string src in Directory.GetFiles(templates, "*.ini", SearchOption.TopDirectoryOnly))
+                foreach (string templates in new[] { parent, Path.Combine(parent, "ini"), Path.Combine(AppContext.BaseDirectory, "ini") })
                 {
-                    string dest = Path.Combine(inifolder, Path.GetFileName(src));
-                    if (!File.Exists(dest))
+                    if (!Directory.Exists(templates)) continue;
+                    int fromHere = 0;
+                    foreach (string src in Directory.GetFiles(templates, "*.ini", SearchOption.TopDirectoryOnly))
                     {
-                        File.Copy(src, dest);
-                        seeded++;
+                        string dest = Path.Combine(inifolder, Path.GetFileName(src));
+                        if (!File.Exists(dest))
+                        {
+                            File.Copy(src, dest);
+                            fromHere++;
+                        }
                     }
+                    if (fromHere > 0)
+                        ln("Seeded " + fromHere + " ini file(s) from " + templates + " into " + inifolder);
+                    seeded += fromHere;
                 }
-                if (seeded > 0)
-                    ln("Seeded " + seeded + " ini template(s) from " + templates + " into " + inifolder);
             }
             catch (Exception ex)
             {
