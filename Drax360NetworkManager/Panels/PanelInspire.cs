@@ -436,6 +436,9 @@ namespace DraxTechnology.Panels
                             gsTextField = "Panel Reset";
                             giAddressNumber = 9;
                             getDeviceText = false;
+                            // One-shot, as the VB (NOTNetManager.bas Case SystemReset);
+                            // the clear-down of sent alarms follows the send below.
+                            bOneShotReset = true;
                             Console.WriteLine(DateTime.Now + ": " + gsTextField);
                             break;
 
@@ -488,16 +491,17 @@ namespace DraxTechnology.Panels
                             Console.WriteLine(DateTime.Now + ": " + gsTextField);
                             break;
 
-                        // A reset pressed on another panel of a networked
-                        // Inspire arrives here as 153, never as 129, so it
-                        // goes to AMX as that panel's Panel Reset (address 9)
-                        // or the AMX event list never clears (Janssen,
-                        // panels 1/3/11, 2026-10-27).
+                        // Network General Reset goes to AMX as that panel's
+                        // reset (address 9) and clears down like a Panel Reset.
+                        // Janssen's networked panels report every reset as 129,
+                        // one per panel (logs 2026-10-27), but a network that
+                        // does send 153 needs the same handling.
                         case enmNotEventType.NetworkGeneralReset:  // 153
                             gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
                             gsTextField = "Network Reset";
                             giAddressNumber = 9;
                             getDeviceText = false;
+                            bOneShotReset = true;
                             Console.WriteLine(DateTime.Now + ": " + gsTextField);
                             break;
 
@@ -2413,6 +2417,15 @@ namespace DraxTechnology.Panels
                         send_response_amx_and_serial(evnum, gsTextField, gsDeviceText, zonetext);
                     }
 
+                    if (!bDontSendToAMX && !bOneShotReset && evnum != 0)
+                    {
+                        int offEvnum = CSAMXSingleton.CS.MakeInputNumber(p2, p3, p4, p1, false);
+                        if (!on)
+                            sentAlarms.Forget(offEvnum);
+                        else if (ClearsOnReset((enmNotEventType)eventcode))
+                            sentAlarms.Track(offEvnum);
+                    }
+
                     if (bOneShotReset && evnum != 0)
                     {
                         if (!bDontSendToAMX)
@@ -2422,9 +2435,59 @@ namespace DraxTechnology.Panels
                             CSAMXSingleton.CS.FlushMessages();
                         }
                     }
+
+                    // A reset clears everything sent since the last one. The
+                    // Inspire never sends an off for a fire, so without this AMX
+                    // keeps the whole event list after a reset (Janssen,
+                    // 2026-10-27). A networked reset arrives once per panel; the
+                    // first clears the lot and the rest find nothing left.
+                    if (!bDontSendToAMX &&
+                        ((enmNotEventType)eventcode == enmNotEventType.SystemReset ||
+                         (enmNotEventType)eventcode == enmNotEventType.NetworkGeneralReset))
+                    {
+                        List<int> cleared = sentAlarms.SweepAll();
+                        this.NotifyClient("Reset: clearing " + cleared.Count + " sent alarm(s) on AMX", false);
+                        foreach (int offEvnum in cleared)
+                        {
+                            CSAMXSingleton.CS.SendResetToAMX(offEvnum, gsTextField, "", "");
+                        }
+                        if (cleared.Count > 0)
+                            CSAMXSingleton.CS.FlushMessages();
+                    }
                 }
             } // end while(true) — drain all complete messages from buffer
         }
+        // Which sent events a reset clears: everything except disablements,
+        // which have their own enable/disable pairing, and the missing-device
+        // faults the VB also left alone (NOTNetManager.bas:2858-2862).
+        private static bool ClearsOnReset(enmNotEventType e)
+        {
+            switch (e)
+            {
+                case enmNotEventType.SystemReset:
+                case enmNotEventType.NetworkGeneralReset:
+                case enmNotEventType.Devicedisabled:
+                case enmNotEventType.SounderRelayCircuitDisabled:
+                case enmNotEventType.SounderDisabled:
+                case enmNotEventType.EntireZoneDisable:
+                case enmNotEventType.FaultRelayDisabled:
+                case enmNotEventType.FireDisabled:
+                case enmNotEventType.FireRelayDisabled:
+                case enmNotEventType.NetworkZoneInDisabled:
+                case enmNotEventType.NetworkDisableZone:
+                case enmNotEventType.NetworkEntireZoneDisable:
+                case enmNotEventType.NetworkSoundersDisabled:
+                case enmNotEventType.RemoteFireOutputDisabled:
+                case enmNotEventType.RemovedDisabled:
+                case enmNotEventType.NoReplyMissing:
+                case enmNotEventType.TypeMisMatch:
+                case enmNotEventType.DisableZone:
+                    return false;
+                default:
+                    return true;
+            }
+        }
+
         private void send_response_amx_and_serial(int evnum, string message1, string message2, string message3 = "")
         {
             string friendlymessage = message2 + (message3.Length > 0 ? (" " + message3) : "");

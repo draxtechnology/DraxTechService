@@ -421,6 +421,48 @@ namespace DraxTechnology.Panels
         protected readonly DisabledZoneTracker disabledZones = new DisabledZoneTracker();
         #endregion
 
+        #region Sent-alarm tracking
+        // Panels that never send an "off" for a fire (the Inspire, Janssen logs
+        // 2026-10-27: 211 fires, none cleared) rely on the panel reset to clear
+        // AMX. The legacy VB kept every alarm it sent in garyAlarmsSent and, on
+        // SystemReset, sent an off for each one and emptied the list
+        // (NOTNetManager.bas:2847-2910, 3081-3105). Event numbers are stored in
+        // their off form (MakeInputNumber on=false) ready for SendResetToAMX.
+        // In-memory only, like the zone bookings: a service restart forgets.
+        protected sealed class SentAlarmTracker
+        {
+            private readonly object gate = new object();
+            private readonly List<int> entries = new List<int>();
+
+            public void Track(int offEvnum)
+            {
+                lock (gate)
+                {
+                    if (!entries.Contains(offEvnum)) entries.Add(offEvnum);
+                }
+            }
+
+            // The panel cleared this one itself, so the reset needn't.
+            public void Forget(int offEvnum)
+            {
+                lock (gate) entries.Remove(offEvnum);
+            }
+
+            // Removes and returns everything tracked. The caller sends the offs.
+            public List<int> SweepAll()
+            {
+                lock (gate)
+                {
+                    List<int> swept = new List<int>(entries);
+                    entries.Clear();
+                    return swept;
+                }
+            }
+        }
+
+        protected readonly SentAlarmTracker sentAlarms = new SentAlarmTracker();
+        #endregion
+
         public virtual void SerialPort_Datareceived(object sender, SerialDataReceivedEventArgs e)
         {
             // Stamp every received-bytes event so GETCOMMPORTSTATUS can report
