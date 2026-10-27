@@ -1600,8 +1600,8 @@ namespace DraxTechnology
         // AMX writes — the key NAME below is provisional until James confirms
         // it; the parse is deliberately section-agnostic and accepts the
         // likely spellings so his side can land without another service build.
-        // Returns -1 when the key is absent or the file is unreadable; both
-        // callers treat -1 as a cap of 1 connection.
+        // Returns -1 when the key is absent or the file is unreadable;
+        // EffectiveMaxIpConnections decides what that means.
         private int ReadLicensedMaxIpConnections()
         {
             if (!File.Exists(CURRENTNWMDATAFILE)) return -1;
@@ -1645,6 +1645,31 @@ namespace DraxTechnology
             return -1;
         }
 
+        // The licence key in Current.Nwm wins. Without one, a site defaults to
+        // a single connection, unless this machine's own config carries
+        // TaktisMaxIpConnections: an interim, per-machine setting for test
+        // sites (Kentec) while James's licence line is a while off (Mike,
+        // 2026-10-27). AMX rebuilds Current.Nwm at every start, so a hand-added
+        // key there can't hold; DraxTechnology.dll.config is never touched by
+        // AMX and no MSI ships the setting, so the default stays at 1.
+        private int EffectiveMaxIpConnections(out string source)
+        {
+            int licensed = ReadLicensedMaxIpConnections();
+            if (licensed >= 0)
+            {
+                source = "licence key in Current.Nwm";
+                return licensed;
+            }
+            string local = ConfigurationManager.AppSettings["TaktisMaxIpConnections"]?.Trim();
+            if (int.TryParse(local, out int configured) && configured >= 1)
+            {
+                source = "no licence key; TaktisMaxIpConnections in this machine's config";
+                return configured;
+            }
+            source = "no licence key in Current.Nwm";
+            return 1;
+        }
+
         private void StartTaktisConnections(List<TaktisConnectionSettings> conns)
         {
             // Licence cap first: connections beyond the licensed maximum are
@@ -1654,15 +1679,8 @@ namespace DraxTechnology
             // every existing licence lacks the key, and a single-panel site
             // must not gain panels just by adding [ConnectionN] ini entries —
             // multiple IPs need James's key actually granted.
-            int cap = ReadLicensedMaxIpConnections();
-            if (cap < 0)
-            {
-                // Absent key = single connection. The 2026-08-18 test fudge
-                // of 2 (two-panel rig before James's key existed) was reverted
-                // 2026-10-11; multiple IPs need the key actually granted.
-                cap = 1;
-                ln("Taktis licence: no maximum-IP-addresses key in Current.Nwm — capped at 1 connection");     // in Two places
-            }
+            int cap = EffectiveMaxIpConnections(out string capSource);
+            ln("Taktis licence: " + cap + " connection(s) allowed (" + capSource + ")");
             // Validate BEFORE capping — an invalid entry must not consume a
             // licensed slot (a broken Connection1 used to waste a slot and
             // leave a licensed panel refused). Standalone entries need a
@@ -2396,11 +2414,7 @@ namespace DraxTechnology
 
                 case "READLICENSEDMAXIPCONNECTIONS":
 
-                    int cap = ReadLicensedMaxIpConnections();
-                    if (cap < 0)
-                    {
-                        cap = 1;  // absent key = single connection (test fudge of 2 reverted 2026-10-11)    - In 2 Places
-                    }
+                    int cap = EffectiveMaxIpConnections(out _);
                     ret = cap + " Licensed Max IP Connections";
                     break;
 
