@@ -1623,7 +1623,8 @@ namespace DraxTechnology
         // AMX writes — the key NAME below is provisional until James confirms
         // it; the parse is deliberately section-agnostic and accepts the
         // likely spellings so his side can land without another service build.
-        // Returns -1 when the key is absent or the file is unreadable = no cap.
+        // Returns -1 when the key is absent or the file is unreadable; both
+        // callers treat -1 as a cap of 1 connection.
         private int ReadLicensedMaxIpConnections()
         {
             if (!File.Exists(CURRENTNWMDATAFILE)) return -1;
@@ -1658,7 +1659,7 @@ namespace DraxTechnology
             }
             catch (Exception ex)
             {
-                ln("Taktis licence: Current.Nwm read failed (" + ex.Message + ") — no IP cap applied", EventLogEntryType.Warning);
+                ln("Taktis licence: Current.Nwm read failed (" + ex.Message + ") — treating the maximum-IP key as absent", EventLogEntryType.Warning);
             }
             finally
             {
