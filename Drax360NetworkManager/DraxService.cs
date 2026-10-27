@@ -796,33 +796,10 @@ namespace DraxTechnology
         const string ksettingpanelsection = "PANEL";
         const string ksettingmainsection = "MAIN";
 
-        // AMX's own root folder, where its Temp\Current.Nwm lives. The installer
-        // puts each service instance one level down (C:\AMX1\NWM1..4, Product.wxs)
-        // and stamps that folder into Configuration, so the root is its parent.
-        // A single legacy install configured straight at C:\AMX1 has no NWM{n}
-        // leaf and is its own root. AmxRoot in App.config overrides both for an
-        // AMX that lives somewhere else entirely. Mike's side-by-side instances
-        // looked for C:\AMX1\NWM2\Temp\Current.Nwm, never found it, and AMX was
-        // never told about the NWM (2026-10-06).
-        string amxrootfolder
-        {
-            get
-            {
-                string configured = ConfigurationManager.AppSettings["AmxRoot"]?.Trim();
-                if (!string.IsNullOrEmpty(configured))
-                    return configured;
-
-                string basefolder = configurationbasefolder.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-                string leaf = Path.GetFileName(basefolder);
-                if (Regex.IsMatch(leaf, @"^NWM\d+$", RegexOptions.IgnoreCase))
-                {
-                    string parent = Path.GetDirectoryName(basefolder);
-                    if (!string.IsNullOrEmpty(parent))
-                        return parent;
-                }
-                return configurationbasefolder;
-            }
-        }
+        // AMX's own root folder (C:\AMX1), resolved by AmxFolders.Root. Mike's
+        // side-by-side instances looked for C:\AMX1\NWM2\Temp\Current.Nwm, never
+        // found it, and AMX was never told about the NWM (2026-10-06).
+        string amxrootfolder => AmxFolders.Root(configurationbasefolder);
 
         // Safe as a computed property because configurationbasefolder is set at
         // the top of Run(), before anything reads or writes the file.
@@ -2913,24 +2890,21 @@ namespace DraxTechnology
 
         private bool firstruncheck()
         {
-            const string kinifolder = "";
-            string inifolder = Path.Combine(this.configurationbasefolder, kinifolder);
+            // The live inis sit in the AMX root (C:\AMX1), shared with AMX and
+            // the legacy network managers; AbstractPanel reads them from there.
+            string inifolder = amxrootfolder;
             if (!Directory.Exists(inifolder))
             {
                 Directory.CreateDirectory(inifolder);
             }
+            ln("Ini folder: " + inifolder);
+            // Fill in any ini the root lacks. Never overwrites, so a site's
+            // own settings always win. The root usually holds other ini files
+            // already (AMX's own, legacy managers'), so this can't wait for an
+            // empty folder the way it did when each instance had its own.
+            SeedIniTemplates(inifolder);
             var dirInfo = new DirectoryInfo(inifolder);
             var allFiles = dirInfo.GetFiles("*." + "ini", SearchOption.TopDirectoryOnly);
-            if (allFiles.Length == 0)
-            {
-                // Fresh instance folder — seed from the shared install-wide
-                // ini\ template store (C:\AMX1\ini, one level up from every
-                // instance's own NWM{n} folder — identical templates, shipped
-                // once) before failing the start. The service reads inis from
-                // the base-folder ROOT; the shared ini\ folder is templates only.
-                SeedIniTemplates(inifolder);
-                allFiles = dirInfo.GetFiles("*." + "ini", SearchOption.TopDirectoryOnly);
-            }
             if (allFiles.Length == 0)
             {
                 ln("Error No Ini Files Copied into " + inifolder, EventLogEntryType.Error);
@@ -2944,20 +2918,18 @@ namespace DraxTechnology
         {
             try
             {
-                // Production layout: templates are shared one level up from this
-                // instance's own NWM{n} folder (C:\AMX1\ini — see Product.wxs).
-                // Dev/console mode runs straight from the build output with no
-                // NWM{n} nesting, so fall back to the folder next to the exe.
-                // A site upgraded from the single-folder layout keeps its live
-                // inis in the AMX root itself (C:\AMX1\Takman.ini) — Mike had
-                // to copy that by hand at Kentec (2026-10-09). The root is
-                // taken first so real site settings beat blank defaults, then
-                // the shipped templates fill in whatever the root lacked.
-                string parent = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, ".."));
+                // Sources in priority order, first copy of a name wins:
+                // 1. this instance's own NWM{n} folder: builds before 1.0.0.46
+                //    read their inis from there, so settings edited since
+                //    install move up to the root rather than being lost;
+                // 2. the shared template store (C:\AMX1\ini, see Product.wxs);
+                // 3. the folder next to the exe, for dev/console mode, which
+                //    runs straight from the build output with no NWM{n} nesting.
                 int seeded = 0;
-                foreach (string templates in new[] { parent, Path.Combine(parent, "ini"), Path.Combine(AppContext.BaseDirectory, "ini") })
+                foreach (string templates in new[] { configurationbasefolder, Path.Combine(inifolder, "ini"), Path.Combine(AppContext.BaseDirectory, "ini") })
                 {
                     if (!Directory.Exists(templates)) continue;
+                    if (string.Equals(Path.GetFullPath(templates).TrimEnd('\\'), Path.GetFullPath(inifolder).TrimEnd('\\'), StringComparison.OrdinalIgnoreCase)) continue;
                     int fromHere = 0;
                     foreach (string src in Directory.GetFiles(templates, "*.ini", SearchOption.TopDirectoryOnly))
                     {

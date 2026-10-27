@@ -107,7 +107,11 @@ namespace DraxTechnology.Panels
         {
             Identifier = identifier;
             BaseFolder = basesettingsfolder;
-            string inifolder = Path.Combine(basesettingsfolder, kinifolder);
+            // Inis live in the AMX root (C:\AMX1), where AMX and the legacy
+            // network managers keep them, not in this instance's NWM{n} folder.
+            // Reading a per-instance copy let it drift from the root file that
+            // site engineers edit (Mike, 2026-10-27).
+            string inifolder = Path.Combine(AmxFolders.Root(basesettingsfolder), kinifolder);
             if (!Directory.Exists(inifolder))
             {
                 Directory.CreateDirectory(inifolder);
