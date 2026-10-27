@@ -493,6 +493,14 @@ namespace DraxTechnology.Panels
             return serialport.IsOpen;
         }
 
+        // Whether the panel link is up, for the client's GETCOMMPORTSTATUS
+        // dot. Serial panels answer from the port; the TCP drivers (Taktis,
+        // Galaxy) override with their socket state.
+        public virtual bool LinkIsOpen()
+        {
+            return SerialPortIsOpen();
+        }
+
         public T GetSetting<T>(string section, string name)
         {
             return SettingsSingleton.Instance(this.FullFilePath).GetSetting<T>(section, name);

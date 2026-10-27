@@ -2262,20 +2262,16 @@ namespace DraxTechnology
                 case "GETCOMMPORTSTATUS":
                     if (partssplit == null || partssplit.Length != 1) break;
                     string identifier = partssplit[0];
-                    DateTime lastSeen = DateTime.MinValue;
-                    AbstractPanel ourabstractpanel = null;
-                    foreach (AbstractPanel ap in abstractpanels)
-                    {
-                        if (ap.Identifier == identifier)
-                        {
-                            ourabstractpanel = ap;
-                            lastSeen = ourabstractpanel.lastDataReceived;
-
-                            break;
-                        }
-                    }
-                    if (ourabstractpanel == null) return "ERROR";
-                    ret = ourabstractpanel.SerialPortIsOpen() ? "CONNECTED" : "DISCONNECTED";
+                    // Exact match for the serial panels (COMn) and Galaxy. The
+                    // client asks for "TAKTIS" as a whole: the connections are
+                    // TAKTIS1..n, so it reads connected only when every one is
+                    // up, and fresh only when the quietest one is.
+                    var statusPanels = abstractpanels.Where(ap => ap.Identifier == identifier).Take(1).ToList();
+                    if (statusPanels.Count == 0 && identifier == "TAKTIS")
+                        statusPanels = abstractpanels.Where(ap => ap is PanelTaktis).ToList();
+                    if (statusPanels.Count == 0) return "ERROR";
+                    DateTime lastSeen = statusPanels.Min(ap => ap.lastDataReceived);
+                    ret = statusPanels.All(ap => ap.LinkIsOpen()) ? "CONNECTED" : "DISCONNECTED";
                     // Fake mode never opens a real serial port, so SerialPortIsOpen()
                     // stays false forever — but fake_timer still stamps lastDataReceived
                     // once a minute. Surface that here too so fake-mode testing (no

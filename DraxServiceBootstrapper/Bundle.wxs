@@ -45,7 +45,7 @@
     <util:RegistrySearch Id="SearchNetDesktop10"
                          Root="HKLM"
                          Key="SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.WindowsDesktop.App"
-                         Value="10.0.10"
+                         Value="10.0.12"
                          Variable="NetDesktop10Present"
                          Result="exists" />
 

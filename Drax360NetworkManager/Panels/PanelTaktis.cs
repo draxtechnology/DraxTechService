@@ -795,6 +795,13 @@ namespace DraxTechnology.Panels
             NotifyClient($"TAKTIS [{ch.Name}] connected");
         }
 
+        // Both channels must be up: RX alone carries events but no controls,
+        // TX alone carries controls but no events.
+        public override bool LinkIsOpen()
+        {
+            return _rxCh?.Client?.Connected == true && _txCh?.Client?.Connected == true;
+        }
+
         private void CloseChannel(Channel ch)
         {
             lock (ch.Lock)

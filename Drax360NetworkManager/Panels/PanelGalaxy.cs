@@ -95,6 +95,13 @@ namespace DraxTechnology.Panels
         private Task _readerTask;
         private Task _pumpTask;
 
+        // The control socket is the link we hold open; the event listener
+        // only sees the panel when it dials in with a report.
+        public override bool LinkIsOpen()
+        {
+            return _client?.Connected == true;
+        }
+
         private TcpListener _eventListener;
         private CancellationTokenSource _eventCts;
         private Task _eventAcceptTask;
