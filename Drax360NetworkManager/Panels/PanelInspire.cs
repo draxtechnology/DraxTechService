@@ -488,7 +488,19 @@ namespace DraxTechnology.Panels
                             Console.WriteLine(DateTime.Now + ": " + gsTextField);
                             break;
 
-                        case enmNotEventType.NetworkGeneralReset:
+                        // A reset pressed on another panel of a networked
+                        // Inspire arrives here as 153, never as 129, so it
+                        // goes to AMX as that panel's Panel Reset (address 9)
+                        // or the AMX event list never clears (Janssen,
+                        // panels 1/3/11, 2026-10-27).
+                        case enmNotEventType.NetworkGeneralReset:  // 153
+                            gAlarmType = enmNotAlarmType.NOTStatusEvent.ToString();
+                            gsTextField = "Network Reset";
+                            giAddressNumber = 9;
+                            getDeviceText = false;
+                            Console.WriteLine(DateTime.Now + ": " + gsTextField);
+                            break;
+
                         case enmNotEventType.NetworkSilenceSounders:
                         case enmNotEventType.NetworkGeneralMuteSounder:
                         case enmNotEventType.NetworkZoneInTestMode:
