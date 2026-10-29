@@ -1,6 +1,8 @@
-﻿using System;
+﻿#region usings
+using System;
 using System.Collections.Generic;
 using System.Linq;
+#endregion
 
 namespace DraxTechnology.Panels
 {

@@ -1,4 +1,5 @@
 
+#region usings
 using System;
 using System.Collections.Generic;
 using System.IO.Ports;
@@ -7,6 +8,7 @@ using System.Reflection.Emit;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Timers;
+#endregion
 
 namespace DraxTechnology.Panels
 {

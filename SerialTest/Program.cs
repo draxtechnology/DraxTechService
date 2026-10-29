@@ -1,4 +1,6 @@
+#region usings
 using System.IO.Ports;
+#endregion
 
 class Program
 {

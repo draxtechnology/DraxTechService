@@ -1,4 +1,6 @@
-﻿using System;
+﻿#region usings
+using System;
+#endregion
 
 namespace DraxTechnology.Panels
 {

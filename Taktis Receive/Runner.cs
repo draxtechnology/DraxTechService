@@ -1,4 +1,5 @@
-﻿using System;
+﻿#region usings
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.Metrics;
 using System.IO;
@@ -12,6 +13,7 @@ using System.Threading.Tasks;
 using static System.Formats.Asn1.AsnWriter;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using System.Globalization;
+#endregion
 
 namespace Taktis_Receive
 {

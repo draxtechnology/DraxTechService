@@ -1,5 +1,7 @@
+#region usings
 using System;
 using System.Diagnostics;
+#endregion
 
 namespace DraxTechnology
 {

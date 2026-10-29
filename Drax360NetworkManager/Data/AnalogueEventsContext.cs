@@ -1,5 +1,7 @@
+#region usings
 using System;
 using Microsoft.EntityFrameworkCore;
+#endregion
 
 namespace DraxTechnology.Data
 {

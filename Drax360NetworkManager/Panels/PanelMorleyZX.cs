@@ -1,9 +1,11 @@
-﻿using System;
+﻿#region usings
+using System;
 using System.Collections.Generic;
 using System.IO.Ports;
 using System.Linq;
 using System.Threading;
 using System.Timers;
+#endregion
 
 namespace DraxTechnology.Panels
 {

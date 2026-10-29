@@ -1,3 +1,4 @@
+#region usings
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -8,6 +9,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using DraxTechnology.Data;
 using Microsoft.EntityFrameworkCore;
+#endregion
 
 namespace DraxTechnology.Panels
 {

@@ -1,3 +1,4 @@
+#region usings
 using System;
 using System.Collections.Concurrent;
 using System.Configuration;
@@ -7,6 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
+#endregion
 
 namespace DraxTechnology
 {

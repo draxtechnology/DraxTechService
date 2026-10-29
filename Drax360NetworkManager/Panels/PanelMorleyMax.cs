@@ -1,7 +1,9 @@
+#region usings
 using System;
 using System.IO.Ports;
 using System.Text;
 using System.Threading;
+#endregion
 
 namespace DraxTechnology.Panels
 {

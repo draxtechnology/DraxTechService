@@ -1,3 +1,4 @@
+#region usings
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -20,6 +21,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CryptoModule;
 using DraxTechnology.Panels;
+#endregion
 
 namespace DraxTechnology
 {

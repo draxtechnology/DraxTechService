@@ -1,5 +1,7 @@
+#region usings
 using System;
 using Microsoft.Data.Sqlite;
+#endregion
 
 namespace DraxTechnology.Data
 {

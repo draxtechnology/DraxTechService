@@ -1,7 +1,9 @@
+#region usings
 using System.Text;
 using System.Text.Json;
 using MQTTnet;
 using MQTTnet.Protocol;
+#endregion
 
 
 // MqttMonitor — a tiny console subscriber that prints the events the Drax

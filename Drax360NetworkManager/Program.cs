@@ -1,6 +1,8 @@
+#region usings
 using System;
 using System.ServiceProcess;
 using System.Threading.Tasks;
+#endregion
 
 namespace DraxTechnology
 {

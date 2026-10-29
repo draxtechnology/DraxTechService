@@ -1,6 +1,8 @@
+#region usings
 using System.Configuration;
 using System.IO;
 using System.Text.RegularExpressions;
+#endregion
 
 namespace DraxTechnology
 {
