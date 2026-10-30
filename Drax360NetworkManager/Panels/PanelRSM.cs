@@ -17,8 +17,9 @@ namespace DraxTechnology.Panels
         // Wire-format field separator. VB6: 'Global Const sepCHAR = 199' — that's
         // 'Ç' (0xC7). NOT ';'. Outgoing ACKs must use this byte or the panel rejects.
         const char kSeparator = 'Ç';
-        // Follows the configured base folder (default c:\AMX1) via AbstractPanel.
-        string CURRENTNWMDATAFILE => Path.Combine(BaseFolder, "Temp", "Current.Nwm");
+        // AMX writes Current.Nwm under its own root (C:\AMX1\Temp), not under
+        // this instance's NWM{n} folder, so read it from there like the service.
+        string CURRENTNWMDATAFILE => Path.Combine(AmxFolders.Root(BaseFolder), "Temp", "Current.Nwm");
 
         #endregion
 

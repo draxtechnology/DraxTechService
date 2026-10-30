@@ -2918,36 +2918,69 @@ namespace DraxTechnology
             // own settings always win. The root usually holds other ini files
             // already (AMX's own, legacy managers'), so this can't wait for an
             // empty folder the way it did when each instance had its own.
-            SeedIniTemplates(inifolder);
-            var dirInfo = new DirectoryInfo(inifolder);
-            var allFiles = dirInfo.GetFiles("*." + "ini", SearchOption.TopDirectoryOnly);
-            if (allFiles.Length == 0)
+            kPanelIniNames.TryGetValue(panel, out string ownIni);
+            SeedIniTemplates(inifolder, ownIni);
+            // The root always holds AMX's own inis, so "any ini at all" says
+            // nothing; check for this panel's. Not every panel ships a template
+            // (Morley MAX/ZX, ARM), and those run on their defaults, so a
+            // missing one is a warning rather than a refused start.
+            if (ownIni != null && !File.Exists(Path.Combine(inifolder, ownIni + ".ini")))
             {
-                ln("Error No Ini Files Copied into " + inifolder, EventLogEntryType.Error);
-                return false;
+                ln("No " + ownIni + ".ini in " + inifolder + " — running on default settings", EventLogEntryType.Warning);
             }
 
             return true;
         }
 
-        private void SeedIniTemplates(string inifolder)
+        // The ini each panel type reads, as its constructor passes it to
+        // AbstractPanel. Start-up needs the name before any panel exists, to
+        // know which ini in this instance's NWM{n} folder belongs to it.
+        // Keep in step with the panel constructors.
+        private static readonly Dictionary<string, string> kPanelIniNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["ADVANCED"] = "AdvMan",
+            ["EMAIL"] = "EMLMan",
+            ["AUTESPA"] = "AutEspa",
+            ["GENT"] = "GenMan",
+            ["INSPIRE"] = "INSMan",
+            ["MORLEYMAX"] = "MaxMan",
+            ["MORLEYZX"] = "MorleyMan",
+            ["NOTIFIER"] = "NOTMan",
+            ["PEARL"] = "PRLMan",
+            ["RSM"] = "RSMMan",
+            ["TAKTIS"] = "TAKMan",
+            ["GALAXY"] = "GalaxyMan",
+            ["SYNCRO"] = "KsfMan",
+            ["ARM"] = "Arm",
+        };
+
+        private void SeedIniTemplates(string inifolder, string ownIni)
         {
             try
             {
                 // Sources in priority order, first copy of a name wins:
-                // 1. this instance's own NWM{n} folder: builds before 1.0.0.46
-                //    read their inis from there, so settings edited since
-                //    install move up to the root rather than being lost;
+                // 1. this panel's own ini in this instance's NWM{n} folder:
+                //    builds before 1.0.0.46 read their inis from there, so
+                //    settings edited since install move up to the root rather
+                //    than being lost. Only its own: those builds copied every
+                //    template into every NWM{n}, so on a multi-instance site
+                //    the first service to start would otherwise push its blank
+                //    copies of the other panels' inis up ahead of their edited
+                //    ones;
                 // 2. the shared template store (C:\AMX1\ini, see Product.wxs);
                 // 3. the folder next to the exe, for dev/console mode, which
                 //    runs straight from the build output with no NWM{n} nesting.
+                var sources = new List<(string folder, string pattern)>();
+                if (ownIni != null) sources.Add((configurationbasefolder, ownIni + ".ini"));
+                sources.Add((Path.Combine(inifolder, "ini"), "*.ini"));
+                sources.Add((Path.Combine(AppContext.BaseDirectory, "ini"), "*.ini"));
                 int seeded = 0;
-                foreach (string templates in new[] { configurationbasefolder, Path.Combine(inifolder, "ini"), Path.Combine(AppContext.BaseDirectory, "ini") })
+                foreach (var (templates, pattern) in sources)
                 {
                     if (!Directory.Exists(templates)) continue;
                     if (string.Equals(Path.GetFullPath(templates).TrimEnd('\\'), Path.GetFullPath(inifolder).TrimEnd('\\'), StringComparison.OrdinalIgnoreCase)) continue;
                     int fromHere = 0;
-                    foreach (string src in Directory.GetFiles(templates, "*.ini", SearchOption.TopDirectoryOnly))
+                    foreach (string src in Directory.GetFiles(templates, pattern, SearchOption.TopDirectoryOnly))
                     {
                         string dest = Path.Combine(inifolder, Path.GetFileName(src));
                         if (!File.Exists(dest))
@@ -2963,8 +2996,8 @@ namespace DraxTechnology
             }
             catch (Exception ex)
             {
-                // Best-effort — a failure here falls through to the existing
-                // no-inis error rather than taking the start down differently.
+                // Best-effort — a failure here falls through to the missing-ini
+                // warning rather than taking the start down.
                 ln("Ini template seeding failed: " + ex.Message, EventLogEntryType.Warning);
             }
         }
