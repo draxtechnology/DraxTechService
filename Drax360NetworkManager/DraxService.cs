@@ -1044,95 +1044,67 @@ namespace DraxTechnology
             // used to just load our settings from the ini file
             AbstractPanel apbase = getpanel();
 
-            if (panel == "EMAIL")
+            // Panels that are a single connection, not the per-COM-port loop below.
+            switch (panel)
             {
-                string identifier = "EMAIL";
-                AbstractPanel ap = getpanel(identifier);
-                ap.StartUp(fakemode);
-                ap.OutsideEvents += Sp_Fire;
-                abstractpanels = new List<AbstractPanel>(abstractpanels) { ap };
-                StartDeviceWatcher();
-                return;
-            }
-
-            if (panel == "RSM")
-            {
-
-                string identifier = "RSM";
-                AbstractPanel ap = getpanel(identifier);
-                ap.StartUp(fakemode);
-                ap.OutsideEvents += Sp_Fire;
-                abstractpanels = new List<AbstractPanel>(abstractpanels) { ap };
-
-                try
-                {
-                    // SERVICERESTART re-enters here with the previous listener
-                    // still bound to the port — a fresh TcpListener.Start()
-                    // then throws address-in-use and the catch below tears down
-                    // the NEW (dead) listener, leaving no RSM transport at all
-                    // until a full service restart. Stop the old one first;
-                    // its accept loop exits on the cancelled token.
-                    rsmStopListener();
-
-                    rsmtcpListener = new TcpListener(IPAddress.Any, krsmport);
-                    rsmtcpListener.Start();
-
-                    rsmcancellationTokenSource = new CancellationTokenSource();
-                    rsmisListening = true;
-
-
-                    Task.Run(() => rsmListenForConnections(rsmcancellationTokenSource.Token));
-                }
-                catch (Exception)
-                {
-                    //MessageBox.Show($"Error starting listener: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    rsmStopListener();
-                }
-
-                StartDeviceWatcher();
-
-                return;
-            }
-            if (panel == "GALAXY")
-            {
-                // Galaxy Dimension over its Ethernet module - IP-only (Mike,
-                // 2026-08-17), single TCP connection like RSM/EMAIL.
-                string galaxyIdentifier = "GALAXY";
-                AbstractPanel galaxyPanel = getpanel(galaxyIdentifier);
-                galaxyPanel.StartUp(fakemode);
-                galaxyPanel.OutsideEvents += Sp_Fire;
-                abstractpanels = new List<AbstractPanel>(abstractpanels) { galaxyPanel };
-                return;
-            }
-
-            if (panel == "AUTOFLAME")
-            {
-                // Autoflame Mk8 DTI boiler controller, polled over Modbus
-                // (TCP or RTU per AflMan.ini). The driver runs its own poll
-                // loop, and its own fake-mode script, so no serial ports and
-                // no fake timer here.
-                // Subscribe before StartUp so its connection banner reaches
-                // the log and the client.
-                AbstractPanel dtiPanel = getpanel("AUTOFLAME");
-                dtiPanel.OutsideEvents += Sp_Fire;
-                dtiPanel.StartUp(fakemode);
-                abstractpanels = new List<AbstractPanel>(abstractpanels) { dtiPanel };
-                return;
-            }
-
-            if (panel == "TAKTIS")
-            {
-                // Multi-IP build: one PanelTaktis per [ConnectionN] entry in
-                // Takman.ini, mixed standalone/network (James's requirement),
-                // capped by the licence's maximum-IP-addresses key. A site
-                // with no [ConnectionN] sections falls through to the legacy
-                // single-connection path below, unchanged.
-                List<TaktisConnectionSettings> conns = ReadTaktisConnections(apbase);
-                if (conns.Count > 0)
-                {
-                    StartTaktisConnections(conns);
+                case "EMAIL":
+                    StartSinglePanel(panel);
+                    StartDeviceWatcher();
                     return;
-                }
+
+                case "RSM":
+                    StartSinglePanel(panel);
+
+                    try
+                    {
+                        // SERVICERESTART re-enters here with the previous listener
+                        // still bound to the port — a fresh TcpListener.Start()
+                        // then throws address-in-use and the catch below tears down
+                        // the NEW (dead) listener, leaving no RSM transport at all
+                        // until a full service restart. Stop the old one first;
+                        // its accept loop exits on the cancelled token.
+                        rsmStopListener();
+
+                        rsmtcpListener = new TcpListener(IPAddress.Any, krsmport);
+                        rsmtcpListener.Start();
+
+                        rsmcancellationTokenSource = new CancellationTokenSource();
+                        rsmisListening = true;
+
+
+                        Task.Run(() => rsmListenForConnections(rsmcancellationTokenSource.Token));
+                    }
+                    catch (Exception)
+                    {
+                        //MessageBox.Show($"Error starting listener: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        rsmStopListener();
+                    }
+
+                    StartDeviceWatcher();
+                    return;
+
+                // Galaxy Dimension over its Ethernet module - IP-only (Mike,
+                // 2026-08-17). Autoflame Mk8 DTI boiler controller, polled over
+                // Modbus TCP or RTU per AflMan.ini; the driver runs its own poll
+                // loop and its own fake-mode script, so no fake timer here.
+                case "GALAXY":
+                case "AUTOFLAME":
+                    StartSinglePanel(panel);
+                    return;
+
+                case "TAKTIS":
+                    // Multi-IP build: one PanelTaktis per [ConnectionN] entry in
+                    // Takman.ini, mixed standalone/network (James's requirement),
+                    // capped by the licence's maximum-IP-addresses key. A site
+                    // with no [ConnectionN] sections falls through to the legacy
+                    // single-connection path below, unchanged.
+                    List<TaktisConnectionSettings> conns = ReadTaktisConnections(apbase);
+                    if (conns.Count > 0)
+                    {
+                        StartTaktisConnections(conns);
+                        return;
+                    }
+                    break;
             }
 
             string ext = apbase.Extension.ToUpper();
@@ -1687,6 +1659,16 @@ namespace DraxTechnology
             return 1;
         }
 
+        // One panel instance named after the panel type. Subscribed before
+        // StartUp so the driver's start-up messages reach the log and client.
+        private void StartSinglePanel(string identifier)
+        {
+            AbstractPanel ap = getpanel(identifier);
+            ap.OutsideEvents += Sp_Fire;
+            ap.StartUp(fakemode);
+            abstractpanels = new List<AbstractPanel>(abstractpanels) { ap };
+        }
+
         private void StartTaktisConnections(List<TaktisConnectionSettings> conns)
         {
             // Licence cap first: connections beyond the licensed maximum are
@@ -1812,6 +1794,9 @@ namespace DraxTechnology
                     this.DebugLog = apbase.GetSetting<bool>(ksettingmainsection, "Debug");
                     break;
                 case "GENT":
+                case "TAKTIS":
+                case "GALAXY":
+                case "AUTOFLAME":
                     this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DataLogging"));
                     break;
                 case "MORLEYMAX":
@@ -1829,18 +1814,7 @@ namespace DraxTechnology
                 case "RSM":
                     this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "Debug"));
                     break;
-                case "TAKTIS":
-                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DataLogging"));
-                    break;
-                case "GALAXY":
-                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DataLogging"));
-                    break;
-                case "AUTOFLAME":
-                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DataLogging"));
-                    break;
                 case "SYNCRO":
-                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "CreateLog"));
-                    break;
                 case "AUTESPA":
                     this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "CreateLog"));
                     break;
