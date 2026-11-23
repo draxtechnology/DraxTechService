@@ -19,6 +19,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="FluentModbus" Version="5.3.2" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />
     <!-- MQTT publisher (MqttTransfer.cs) — mirrors the normalised event stream to a
          local broker for the open head-end / Node-RED PoC. Off unless MqttEnabled=true;

@@ -1105,6 +1105,21 @@ namespace DraxTechnology
                 return;
             }
 
+            if (panel == "AUTOFLAME")
+            {
+                // Autoflame Mk8 DTI boiler controller, polled over Modbus
+                // (TCP or RTU per AflMan.ini). The driver runs its own poll
+                // loop, and its own fake-mode script, so no serial ports and
+                // no fake timer here.
+                // Subscribe before StartUp so its connection banner reaches
+                // the log and the client.
+                AbstractPanel dtiPanel = getpanel("AUTOFLAME");
+                dtiPanel.OutsideEvents += Sp_Fire;
+                dtiPanel.StartUp(fakemode);
+                abstractpanels = new List<AbstractPanel>(abstractpanels) { dtiPanel };
+                return;
+            }
+
             if (panel == "TAKTIS")
             {
                 // Multi-IP build: one PanelTaktis per [ConnectionN] entry in
@@ -1820,6 +1835,9 @@ namespace DraxTechnology
                 case "GALAXY":
                     this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DataLogging"));
                     break;
+                case "AUTOFLAME":
+                    this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "DataLogging"));
+                    break;
                 case "SYNCRO":
                     this.DebugLog = Convert.ToBoolean(apbase.GetSetting<int>(ksettingsetupsection, "CreateLog"));
                     break;
@@ -1884,6 +1902,10 @@ namespace DraxTechnology
 
                 case "GALAXY":
                     ret = new PanelGalaxy(this.configurationbasefolder, identifier);
+                    break;
+
+                case "AUTOFLAME":
+                    ret = new PanelAutoflame(this.configurationbasefolder, identifier);
                     break;
 
                 case "SYNCRO":
@@ -2612,7 +2634,7 @@ namespace DraxTechnology
 
             startpipeserver();
 
-            if (panel != "TAKTIS" && panel != "EMAIL" && panel != "RSM" && panel != "GALAXY")
+            if (panel != "TAKTIS" && panel != "EMAIL" && panel != "RSM" && panel != "GALAXY" && panel != "AUTOFLAME")
             {
                 pad();
                 dumpavailableserialports();
@@ -2950,6 +2972,7 @@ namespace DraxTechnology
             ["RSM"] = "RSMMan",
             ["TAKTIS"] = "TAKMan",
             ["GALAXY"] = "GalaxyMan",
+            ["AUTOFLAME"] = "AflMan",
             ["SYNCRO"] = "KsfMan",
             ["ARM"] = "Arm",
         };

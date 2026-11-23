@@ -5,6 +5,9 @@
       <Component Id="cmp_ini_AdvMan_ini" Guid="1F748C41-F2EA-7342-F80D-AB077EF1E753">
         <File Id="fil_ini_AdvMan_ini" Source="$(var.Drax360Service.TargetDir)ini\AdvMan.ini" KeyPath="yes" />
       </Component>
+      <Component Id="cmp_ini_AflMan_ini" Guid="0033EE82-0A78-BD75-FC81-0CEFC50B2DBB">
+        <File Id="fil_ini_AflMan_ini" Source="$(var.Drax360Service.TargetDir)ini\AflMan.ini" KeyPath="yes" />
+      </Component>
       <Component Id="cmp_ini_AutEspa_ini" Guid="EC09CBA2-CA35-339A-3266-AEDE223C1A6E">
         <File Id="fil_ini_AutEspa_ini" Source="$(var.Drax360Service.TargetDir)ini\AutEspa.ini" KeyPath="yes" />
       </Component>
@@ -52,6 +55,9 @@
       </Component>
       <Component Id="cmp_e_sqlite3_dll_1" Guid="1F9232BB-8DDE-1BA2-DEC1-EA92787F9777">
         <File Id="fil_e_sqlite3_dll_1" Source="$(var.Drax360Service.TargetDir)e_sqlite3.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_FluentModbus_dll_1" Guid="B9AC466B-BCDB-BA9D-1C1E-6831BEE8BF96">
+        <File Id="fil_FluentModbus_dll_1" Source="$(var.Drax360Service.TargetDir)FluentModbus.dll" KeyPath="yes" />
       </Component>
       <Component Id="cmp_Microsoft_Data_Sqlite_dll_1" Guid="88ABFF0C-C041-E24C-7D45-4173C2B28414">
         <File Id="fil_Microsoft_Data_Sqlite_dll_1" Source="$(var.Drax360Service.TargetDir)Microsoft.Data.Sqlite.dll" KeyPath="yes" />
@@ -167,6 +173,9 @@
       <Component Id="cmp_e_sqlite3_dll_2" Guid="4A237566-20E3-1F48-D880-FE2A26E68B8A">
         <File Id="fil_e_sqlite3_dll_2" Source="$(var.Drax360Service.TargetDir)e_sqlite3.dll" KeyPath="yes" />
       </Component>
+      <Component Id="cmp_FluentModbus_dll_2" Guid="1AA5E232-CABF-8AE3-48A7-8F79770B601B">
+        <File Id="fil_FluentModbus_dll_2" Source="$(var.Drax360Service.TargetDir)FluentModbus.dll" KeyPath="yes" />
+      </Component>
       <Component Id="cmp_Microsoft_Data_Sqlite_dll_2" Guid="71927A79-EF20-E8EE-EF87-5EC702E2BECB">
         <File Id="fil_Microsoft_Data_Sqlite_dll_2" Source="$(var.Drax360Service.TargetDir)Microsoft.Data.Sqlite.dll" KeyPath="yes" />
       </Component>
@@ -281,6 +290,9 @@
       <Component Id="cmp_e_sqlite3_dll_3" Guid="FD1B323B-E5D9-14C4-1659-FD583E5F1A98">
         <File Id="fil_e_sqlite3_dll_3" Source="$(var.Drax360Service.TargetDir)e_sqlite3.dll" KeyPath="yes" />
       </Component>
+      <Component Id="cmp_FluentModbus_dll_3" Guid="EF16B086-0453-BF71-D648-999DB185262A">
+        <File Id="fil_FluentModbus_dll_3" Source="$(var.Drax360Service.TargetDir)FluentModbus.dll" KeyPath="yes" />
+      </Component>
       <Component Id="cmp_Microsoft_Data_Sqlite_dll_3" Guid="95D40438-392D-86B8-41FB-6185F2A5AE80">
         <File Id="fil_Microsoft_Data_Sqlite_dll_3" Source="$(var.Drax360Service.TargetDir)Microsoft.Data.Sqlite.dll" KeyPath="yes" />
       </Component>
@@ -394,6 +406,9 @@
       </Component>
       <Component Id="cmp_e_sqlite3_dll_4" Guid="E98C2628-3863-CFA4-F094-59C8B3292B2D">
         <File Id="fil_e_sqlite3_dll_4" Source="$(var.Drax360Service.TargetDir)e_sqlite3.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="cmp_FluentModbus_dll_4" Guid="DBB512AA-C9EE-8504-A763-73F65DA8C38A">
+        <File Id="fil_FluentModbus_dll_4" Source="$(var.Drax360Service.TargetDir)FluentModbus.dll" KeyPath="yes" />
       </Component>
       <Component Id="cmp_Microsoft_Data_Sqlite_dll_4" Guid="87E4A2DF-45E0-436A-8D73-CCB82F0F3BC0">
         <File Id="fil_Microsoft_Data_Sqlite_dll_4" Source="$(var.Drax360Service.TargetDir)Microsoft.Data.Sqlite.dll" KeyPath="yes" />

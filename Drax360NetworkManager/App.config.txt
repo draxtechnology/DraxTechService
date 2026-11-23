@@ -19,6 +19,7 @@
       Taktis                            U2FsdGVkX18EWMTvtQVOK6qA+tJkkQ==                    1100 Channel
       ARM                               U2FsdGVkX18Hlrftm2W91iTLSQ==                        1090 Channel
       Galaxy                            U2FsdGVkX18Xx26BNBfeQZMR526Oqw==                    1110 Channel
+      Autoflame                         U2FsdGVkX18KPBn622c3vUdGVxiJBU3vyw==
 
     Galaxy (Honeywell Galaxy Dimension intruder panel, IP-only via its
     Ethernet module - single TCP connection, no serial option): set
@@ -29,6 +30,12 @@
     56.2.2.1), trigger events 1-19 enabled (18 = zone restorals - without
     it no restores ever arrive), zone Omit attribute set (menu 52) for any
     zone AMX should be able to omit.
+
+    Autoflame (Mk8 DTI boiler-house controller, read-only Modbus poll):
+    set Panels=Autoflame here; everything else lives in AflMan.ini [SetUp]
+    (Transport TCP or RTU, IPAddress/IPPort 502 or CommPort/BaudRate/Parity,
+    ModbusID = DTI option 21, Burners blank = any MM seen online, ScanMs,
+    giAmx1Offset) and [Names] MM1..MM10 for the boiler names AMX shows.
     -->
 
 
