@@ -36,6 +36,12 @@
     (Transport TCP or RTU, IPAddress/IPPort 502 or CommPort/BaudRate/Parity,
     ModbusID = DTI option 21, Burners blank = any MM seen online, ScanMs,
     giAmx1Offset) and [Names] MM1..MM10 for the boiler names AMX shows.
+    Several DTIs (one per boiler house): add [Connection1..N] sections,
+    each IPAddress (required), IPPort, ModbusID, PanelNumber (AMX panel,
+    default N), Offset (default giAmx1Offset), Burners, and MM1..MM10
+    names. TCP only. Capped by the licence's maximum-IP key like Taktis;
+    until that key exists a test machine can set AutoflameMaxIpConnections
+    in its own DraxTechnology.dll.config.
     -->
 
 

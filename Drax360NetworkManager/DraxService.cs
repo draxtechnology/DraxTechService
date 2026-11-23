@@ -1084,12 +1084,22 @@ namespace DraxTechnology
                     return;
 
                 // Galaxy Dimension over its Ethernet module - IP-only (Mike,
-                // 2026-08-17). Autoflame Mk8 DTI boiler controller, polled over
-                // Modbus TCP or RTU per AflMan.ini; the driver runs its own poll
-                // loop and its own fake-mode script, so no fake timer here.
+                // 2026-08-17).
                 case "GALAXY":
-                case "AUTOFLAME":
                     StartSinglePanel(panel);
+                    return;
+
+                // Autoflame Mk8 DTI boiler controller, polled over Modbus. One
+                // driver per [ConnectionN] in AflMan.ini (several DTIs on
+                // their own IPs, like Taktis), else the single DTI in [SetUp]
+                // over TCP or RTU. The driver runs its own poll loop and its
+                // own fake-mode script, so no fake timer here.
+                case "AUTOFLAME":
+                    List<AutoflameConnectionSettings> dtis = ReadAutoflameConnections(apbase);
+                    if (dtis.Count > 0)
+                        StartAutoflameConnections(dtis);
+                    else
+                        StartSinglePanel(panel);
                     return;
 
                 case "TAKTIS":
@@ -1641,7 +1651,9 @@ namespace DraxTechnology
         // 2026-10-27). AMX rebuilds Current.Nwm at every start, so a hand-added
         // key there can't hold; DraxTechnology.dll.config is never touched by
         // AMX and no MSI ships the setting, so the default stays at 1.
-        private int EffectiveMaxIpConnections(out string source)
+        // configKey names the per-machine fallback for each panel type
+        // (TaktisMaxIpConnections, AutoflameMaxIpConnections).
+        private int EffectiveMaxIpConnections(string configKey, out string source)
         {
             int licensed = ReadLicensedMaxIpConnections();
             if (licensed >= 0)
@@ -1649,14 +1661,83 @@ namespace DraxTechnology
                 source = "licence key in Current.Nwm";
                 return licensed;
             }
-            string local = ConfigurationManager.AppSettings["TaktisMaxIpConnections"]?.Trim();
+            string local = ConfigurationManager.AppSettings[configKey]?.Trim();
             if (int.TryParse(local, out int configured) && configured >= 1)
             {
-                source = "no licence key; TaktisMaxIpConnections in this machine's config";
+                source = "no licence key; " + configKey + " in this machine's config";
                 return configured;
             }
             source = "no licence key in Current.Nwm";
             return 1;
+        }
+
+        // [ConnectionN] sections of AflMan.ini, one per DTI. PanelNumber
+        // defaults to N, so Connection1..3 land on AMX nodes 1..3 (+ offset).
+        private static List<AutoflameConnectionSettings> ReadAutoflameConnections(AbstractPanel settings)
+        {
+            int setupOffset = settings.GetSetting<int>(ksettingsetupsection, "giAmx1Offset");
+            var ret = new List<AutoflameConnectionSettings>();
+            for (int i = 1; i <= kMaxTaktisConnectionSections; i++)
+            {
+                string section = "CONNECTION" + i;
+                string ip = settings.GetSetting<string>(section, "IPAddress");
+                if (string.IsNullOrWhiteSpace(ip)) continue;
+                // Offset and PanelNumber need absent-vs-zero (0 is a valid offset).
+                string offsetRaw = settings.GetSetting<string>(section, "Offset");
+                int offset = int.TryParse(offsetRaw?.Trim(), out int o) && o >= 0 ? o : setupOffset;
+                int panelNumber = settings.GetSetting<int>(section, "PanelNumber");
+                ret.Add(new AutoflameConnectionSettings
+                {
+                    Index = i,
+                    IPAddress = ip.Trim(),
+                    Port = settings.GetSetting<int>(section, "IPPort"),
+                    ModbusID = settings.GetSetting<int>(section, "ModbusID"),
+                    PanelNumber = panelNumber > 0 ? panelNumber : i,
+                    Offset = offset,
+                    Burners = settings.GetSetting<string>(section, "Burners"),
+                });
+            }
+            return ret;
+        }
+
+        // Same licence rule as Taktis: the maximum-IP key caps how many DTIs
+        // run (1 when absent), and two DTIs may not share an AMX node.
+        private void StartAutoflameConnections(List<AutoflameConnectionSettings> dtis)
+        {
+            int cap = EffectiveMaxIpConnections("AutoflameMaxIpConnections", out string capSource);
+            ln("Autoflame licence: " + cap + " connection(s) allowed (" + capSource + ")");
+
+            var nodes = new HashSet<int>();
+            var valid = new List<AutoflameConnectionSettings>();
+            foreach (var c in dtis)
+            {
+                int amxNode = c.PanelNumber + c.Offset;
+                if (!nodes.Add(amxNode))
+                {
+                    ln("Autoflame Connection" + c.Index + " (" + c.IPAddress + ") lands on AMX node " + amxNode
+                        + " which another connection already owns — connection not started", EventLogEntryType.Error);
+                    continue;
+                }
+                valid.Add(c);
+            }
+
+            if (valid.Count > cap)
+            {
+                ln("Autoflame licence: " + valid.Count + " valid IP connection(s) configured but the licence allows " + cap
+                    + " — refused: " + string.Join(", ", valid.Skip(cap).Select(c => "Connection" + c.Index + " (" + c.IPAddress + ")")),
+                    EventLogEntryType.Error);
+                valid = valid.Take(cap).ToList();
+            }
+
+            foreach (var c in valid)
+            {
+                var ap = new PanelAutoflame(this.configurationbasefolder, "AUTOFLAME" + c.Index, c);
+                ap.OutsideEvents += Sp_Fire;
+                ap.StartUp(fakemode);
+                abstractpanels = new List<AbstractPanel>(abstractpanels) { ap };
+            }
+
+            ln("Autoflame multi-IP: started " + valid.Count + " connection(s)");
         }
 
         // One panel instance named after the panel type. Subscribed before
@@ -1678,7 +1759,7 @@ namespace DraxTechnology
             // every existing licence lacks the key, and a single-panel site
             // must not gain panels just by adding [ConnectionN] ini entries —
             // multiple IPs need James's key actually granted.
-            int cap = EffectiveMaxIpConnections(out string capSource);
+            int cap = EffectiveMaxIpConnections("TaktisMaxIpConnections", out string capSource);
             ln("Taktis licence: " + cap + " connection(s) allowed (" + capSource + ")");
             // Validate BEFORE capping — an invalid entry must not consume a
             // licensed slot (a broken Connection1 used to waste a slot and
@@ -2263,6 +2344,9 @@ namespace DraxTechnology
                     var statusPanels = abstractpanels.Where(ap => ap.Identifier == identifier).Take(1).ToList();
                     if (statusPanels.Count == 0 && identifier == "TAKTIS")
                         statusPanels = abstractpanels.Where(ap => ap is PanelTaktis).ToList();
+                    // Same for several Autoflame DTIs (AUTOFLAME1..n).
+                    if (statusPanels.Count == 0 && identifier == "AUTOFLAME")
+                        statusPanels = abstractpanels.Where(ap => ap is PanelAutoflame).ToList();
                     if (statusPanels.Count == 0) return "ERROR";
                     DateTime lastSeen = statusPanels.Min(ap => ap.lastDataReceived);
                     ret = statusPanels.All(ap => ap.LinkIsOpen()) ? "CONNECTED" : "DISCONNECTED";
@@ -2412,7 +2496,8 @@ namespace DraxTechnology
 
                 case "READLICENSEDMAXIPCONNECTIONS":
 
-                    int cap = EffectiveMaxIpConnections(out _);
+                    int cap = EffectiveMaxIpConnections(
+                        panel == "AUTOFLAME" ? "AutoflameMaxIpConnections" : "TaktisMaxIpConnections", out _);
                     ret = cap + " Licensed Max IP Connections";
                     break;
 

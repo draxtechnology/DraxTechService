@@ -21,8 +21,12 @@ namespace DraxTechnology.Panels
     // changes into AMX events. Those go through CSAMX like any panel's, so
     // the MQTT mirror (MqttEnabled) publishes them with no extra code.
     //
+    // Several DTIs (one per boiler house) run as [ConnectionN] sections in
+    // AflMan.ini, one driver instance each, like Taktis multi-IP (Chris,
+    // 2026-11-23). Without them the single DTI is configured in [SetUp].
+    //
     // AMX addressing, one node per DTI:
-    //   Node   = 1 + giAmx1Offset
+    //   Node   = 1 + giAmx1Offset (single), PanelNumber + Offset (connection)
     //   Loop 0 = the DTI itself: device 1 error, device 2 warning
     //   Loop n = burner (MM) n, 1-10:
     //            device 1 lockout, 2 alarm, 3 warning, 4 MM error, 5 offline
@@ -92,6 +96,10 @@ namespace DraxTechnology.Panels
         private int lockoutInputType = (int)enmNotAlarmType.NOTFault;
         private int alarmInputType = (int)enmNotAlarmType.NOTFault;
         private const int kFaultInputType = (int)enmNotAlarmType.NOTFault;
+        // This DTI's AMX node: 1 + giAmx1Offset for the single [SetUp] DTI,
+        // PanelNumber + Offset for a [ConnectionN] one.
+        private int node;
+        private string label = "Autoflame DTI";
         #endregion
 
         #region State
@@ -113,14 +121,20 @@ namespace DraxTechnology.Panels
         // Polls every couple of seconds, so it can fault faster than the
         // 60s serial heartbeat: three missed 10s ticks = comms failure.
         protected override int HeartbeatIntervalSeconds => 10;
+        // Each DTI faults on its own node, not on panel 1.
+        protected override int CommsFaultNode => node;
 
         #region Constructor
         public PanelAutoflame(string baselogfolder, string identifier)
+            : this(baselogfolder, identifier, null) { }
+
+        public PanelAutoflame(string baselogfolder, string identifier, AutoflameConnectionSettings conn)
             : base(baselogfolder, identifier, "AflMan", "AUTOFLAME")
         {
             if (string.IsNullOrEmpty(identifier)) return;
 
             this.Offset = base.GetSetting<int>(ksettingsetupsection, "giAmx1Offset");
+            node = 1 + this.Offset;
 
             transport = Setting("Transport", transport).ToUpperInvariant();
             ipAddress = Setting("IPAddress", ipAddress);
@@ -137,9 +151,27 @@ namespace DraxTechnology.Panels
                 burners.Add(mm);
             learnBurners = burners.Count == 0;
 
+            // A connection overrides the shared [SetUp] values; scan rate,
+            // input types and burner learning stay shared.
+            string namesSection = "Names";
+            if (conn != null)
+            {
+                transport = "TCP";
+                ipAddress = conn.IPAddress;
+                if (conn.Port > 0) ipPort = conn.Port;
+                if (conn.ModbusID > 0) unitId = (byte)Math.Clamp(conn.ModbusID, 1, 254);
+                this.Offset = conn.Offset;
+                node = conn.PanelNumber + conn.Offset;
+                label = "Autoflame DTI " + conn.Index;
+                namesSection = "Connection" + conn.Index;
+                burners.Clear();
+                foreach (int mm in ParseBurnerList(conn.Burners ?? "")) burners.Add(mm);
+                learnBurners = burners.Count == 0;
+            }
+
             for (int mm = 1; mm <= kMaxMm; mm++)
             {
-                string name = base.GetSetting<string>("Names", "MM" + mm);
+                string name = base.GetSetting<string>(namesSection, "MM" + mm);
                 burnerNames[mm] = string.IsNullOrWhiteSpace(name) ? "Boiler " + mm : name.Trim();
             }
 
@@ -183,26 +215,27 @@ namespace DraxTechnology.Panels
             if (fakemode > 0)
             {
                 link = new FakeDtiRegisters();
-                base.NotifyClient("Autoflame DTI running in FAKE mode — scripted lockouts and alarms on boilers 1 and 2.", false);
+                base.NotifyClient(label + " running in FAKE mode — scripted lockouts and alarms on boilers 1 and 2.", false);
             }
             else if (transport == "RTU")
             {
                 link = new RtuDtiRegisters(commPort, baudRate, parity);
-                base.NotifyClient("Autoflame DTI: Modbus RTU on " + commPort + " @ " + baudRate + " " + parity +
+                base.NotifyClient(label + ": Modbus RTU on " + commPort + " @ " + baudRate + " " + parity +
                                   ", Modbus ID " + unitId, false);
             }
             else
             {
                 if (string.IsNullOrWhiteSpace(ipAddress))
                 {
-                    base.NotifyClient("Autoflame DTI: no IPAddress in AflMan.ini [SetUp] — not polling.", false);
+                    base.NotifyClient(label + ": no IPAddress in AflMan.ini — not polling.", false);
                     return;
                 }
                 link = new TcpDtiRegisters(ipAddress, ipPort);
-                base.NotifyClient("Autoflame DTI: Modbus TCP " + ipAddress + ":" + ipPort + ", Modbus ID " + unitId, false);
+                base.NotifyClient(label + ": Modbus TCP " + ipAddress + ":" + ipPort + ", Modbus ID " + unitId +
+                                  ", AMX node " + node, false);
             }
 
-            base.NotifyClient("Autoflame DTI: watching " +
+            base.NotifyClient(label + ": watching " +
                 (learnBurners ? "any boiler seen online" : "boilers " + string.Join(",", burners.OrderBy(b => b))) +
                 ", scan every " + scanMs + " ms", false);
 
@@ -240,7 +273,7 @@ namespace DraxTechnology.Panels
                     NoteCommsRestored();
                     if (lastPollError != null)
                     {
-                        base.NotifyClient("Autoflame DTI: polling again", false);
+                        base.NotifyClient(label + ": polling again", false);
                         lastPollError = null;
                     }
                 }
@@ -250,7 +283,7 @@ namespace DraxTechnology.Panels
                     // comms monitor raises the AMX fault if it persists.
                     if (ex.Message != lastPollError)
                     {
-                        base.NotifyClient("Autoflame DTI poll failed: " + ex.Message, false);
+                        base.NotifyClient(label + " poll failed: " + ex.Message, false);
                         lastPollError = ex.Message;
                     }
                     try { link.Disconnect(); } catch { }
@@ -273,7 +306,7 @@ namespace DraxTechnology.Panels
             for (int mm = 1; mm <= kMaxMm; mm++)
             {
                 if (learnBurners && online[mm - 1] && burners.Add(mm))
-                    base.NotifyClient("Autoflame DTI: " + burnerNames[mm] + " (MM " + mm + ") online — now watched", false);
+                    base.NotifyClient(label + ": " + burnerNames[mm] + " (MM " + mm + ") online — now watched", false);
             }
 
             foreach (int mm in burners.OrderBy(b => b))
@@ -310,12 +343,10 @@ namespace DraxTechnology.Panels
             active.TryGetValue((loop, device), out var was);
             if (was.Code == code) return;
 
-            int node = 1 + this.Offset;
-
             if (was.Code != 0)
             {
                 int clr = CSAMXSingleton.CS.MakeInputNumber(node, loop, device, inputType, false);
-                base.NotifyClient("Autoflame DTI clear: " + was.Text1 + " - " + was.Text2 +
+                base.NotifyClient(label + " clear: " + was.Text1 + " - " + was.Text2 +
                                   "  (N" + node + " L" + loop + " D" + device + ")", false);
                 CSAMXSingleton.CS.SendResetToAMX(clr, Clip(was.Text1), Clip(was.Text2), "");
             }
@@ -324,7 +355,7 @@ namespace DraxTechnology.Panels
             {
                 var (text1, text2) = describe(code);
                 int evnum = CSAMXSingleton.CS.MakeInputNumber(node, loop, device, inputType, true);
-                base.NotifyClient("Autoflame DTI raise: " + text1 + " - " + text2 + " (code " + code + ")" +
+                base.NotifyClient(label + " raise: " + text1 + " - " + text2 + " (code " + code + ")" +
                                   "  (N" + node + " L" + loop + " D" + device + ")", false);
                 CSAMXSingleton.CS.SendAlarmToAMX(evnum, Clip(text1), Clip(text2), "");
                 active[(loop, device)] = (code, text1, text2);
@@ -503,5 +534,17 @@ namespace DraxTechnology.Panels
             }
         }
         #endregion
+    }
+
+    // One [ConnectionN] section of AflMan.ini: a DTI reached over Modbus TCP.
+    internal sealed class AutoflameConnectionSettings
+    {
+        public int Index;            // N of [ConnectionN]
+        public string IPAddress;
+        public int Port;             // 0 = [SetUp] IPPort (default 502)
+        public int ModbusID;         // 0 = [SetUp] ModbusID (default 1)
+        public int PanelNumber;      // AMX panel number for this DTI
+        public int Offset;           // resolved: entry Offset, else [SetUp] giAmx1Offset
+        public string Burners;       // blank = learn any MM seen online
     }
 }
