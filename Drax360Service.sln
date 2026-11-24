@@ -10,6 +10,9 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Taktis Receive", "Taktis Receive\Taktis Receive.csproj", "{CD812DF2-7475-44D4-87C4-E3C2BBFD98ED}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DraxServiceSetup", "DraxServiceSetup\DraxServiceSetup.wixproj", "{82246966-236A-4AA2-8BBB-BF6D9C34FC94}"
+	ProjectSection(ProjectDependencies) = postProject
+		{040A3342-B92B-4794-B3F9-DB63B796BD30} = {040A3342-B92B-4794-B3F9-DB63B796BD30}
+	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DraxServiceBootstrapper", "DraxServiceBootstrapper\DraxServiceBootstrapper.wixproj", "{C5F8E3B1-9D2A-4F7E-A3C6-1B5D8F2E9A4C}"
 EndProject

@@ -13,9 +13,27 @@
     <PackageReference Include="WixToolset.Util.wixext" Version="7.0.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Drax360NetworkManager\Drax360Service.csproj" />
-  </ItemGroup>
+  <!-- The service is built from here rather than through a ProjectReference.
+       WiX projects count as "native" to NuGet, and Visual Studio 18.11's
+       NuGet reports NU1201 (service "not compatible with native") for a
+       ProjectReference from one, even though WiX marks it build-order-only
+       (Mike, 2026-11-24). The reference only ever supplied this one
+       variable, so it is defined directly: the folder Files.wxs harvests
+       (Regenerate-Files.ps1 reads bin\Debug). Platform is pinned to AnyCPU
+       because the solution can build this installer as x64. -->
+  <PropertyGroup>
+    <DraxServiceProject>$(MSBuildProjectDirectory)\..\Drax360NetworkManager\Drax360Service.csproj</DraxServiceProject>
+    <DraxServiceTargetDir>$(MSBuildProjectDirectory)\..\Drax360NetworkManager\bin\$(Configuration)\</DraxServiceTargetDir>
+    <DefineConstants>$(DefineConstants);Drax360Service.TargetDir=$(DraxServiceTargetDir)</DefineConstants>
+  </PropertyGroup>
+
+  <Target Name="BuildDraxService" BeforeTargets="RegenerateFilesWxs">
+    <!-- Restore in its own evaluation (the unique property forces one), then build. -->
+    <MSBuild Projects="$(DraxServiceProject)" Targets="Restore"
+             Properties="Configuration=$(Configuration);Platform=AnyCPU;_DraxServiceRestore=$([System.Guid]::NewGuid())" />
+    <MSBuild Projects="$(DraxServiceProject)" Targets="Build"
+             Properties="Configuration=$(Configuration);Platform=AnyCPU" />
+  </Target>
 
   <!-- Regenerate Files.wxs from bin\Debug on every installer build so a
        new/removed assembly or ini template can never silently miss the MSI
