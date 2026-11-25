@@ -1,7 +1,7 @@
 ﻿{
   "sdk": {
     "version": "10.0.300",
-    "rollForward": "latestMinor"
+    "rollForward": "latestMajor"
   },
   "msbuild-sdks": {
     "WixToolset.Sdk": "7.0.0"
